@@ -12,7 +12,6 @@
     <a
       class="action-btn action-primary"
       href="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
-      data-open-quick-form
       hx-get="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
       hx-target="#quick-form-root"
       hx-swap="innerHTML"

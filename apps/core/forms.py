@@ -9,7 +9,6 @@ class OdometerOverrideForm(forms.Form):
 	def __init__(self, *args, motorcycle=None, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.motorcycle = motorcycle
-		self.fields["odometer_override_km"].widget.attrs["data-quick-autofocus"] = "true"
 
 	def clean_odometer_override_km(self):
 		value = self.cleaned_data["odometer_override_km"]

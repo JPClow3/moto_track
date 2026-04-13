@@ -1,8 +1,8 @@
-<div class="quick-overlay" role="dialog" aria-modal="true" aria-labelledby="quick-odometer-title" tabindex="-1">
+<div class="quick-overlay" role="dialog" aria-modal="true" aria-labelledby="quick-odometer-title">
   <div class="quick-panel" role="document">
     <div class="quick-head">
       <h3 id="quick-odometer-title">{{ title }}</h3>
-      <button type="button" class="text-button" data-close-quick-form>Fechar</button>
+      <button type="button" class="text-button" onclick="this.closest('#quick-form-root').innerHTML=''">Fechar</button>
     </div>
 
     <form

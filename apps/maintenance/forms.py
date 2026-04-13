@@ -41,4 +41,3 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
 		self.fields["parts_used"].required = False
 		self.fields["interval_km"].required = False
 		self.fields["interval_days"].required = False
-		self.fields["motorcycle"].widget.attrs["data-quick-autofocus"] = "true"
