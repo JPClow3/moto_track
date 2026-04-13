@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Entrar - Moto Track{% endblock %}
+
+{% block content %}
+<section aria-labelledby="login-title" class="auth-section">
+  <h2 id="login-title">Entrar</h2>
+  <p class="section-subtitle">Use sua conta para acessar os dados da moto.</p>
+
+  <form method="post" novalidate class="auth-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="alert" role="alert">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="form-field">
+      <label for="id_username">Usuario</label>
+      {{ form.username }}
+    </div>
+
+    <div class="form-field">
+      <label for="id_password">Senha</label>
+      {{ form.password }}
+    </div>
+
+    <button type="submit">Entrar</button>
+  </form>
+</section>
+{% endblock %}

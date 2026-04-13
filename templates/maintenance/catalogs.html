@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Catálogos de manutenção - Moto Track{% endblock %}
+
+{% block content %}
+<section aria-labelledby="maintenance-catalog-title" class="catalog-page">
+  <header class="list-header">
+    <div>
+      <h2 id="maintenance-catalog-title">Catálogos de manutenção</h2>
+      <p class="section-subtitle">Peças e insumos reutilizáveis para registros mais rápidos.</p>
+    </div>
+    <a class="action-btn action-primary" href="{% url 'maintenance:list' %}">
+      <span>Voltar às manutenções</span>
+      <small>Histórico</small>
+    </a>
+  </header>
+
+  <article class="panel" aria-label="Peças e insumos">
+    {% if parts %}
+      <ul class="activity-list">
+        {% for part in parts %}
+          <li>
+            <div>
+              <strong>{{ part.name }}</strong>
+              <p>{% if part.manufacturer %}{{ part.manufacturer }} • {% endif %}{{ part.get_part_type_display }}{% if part.sku %} • {{ part.sku }}{% endif %}</p>
+            </div>
+            <span>{% if part.price %}R$ {{ part.price }}{% else %}Sem preço{% endif %}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-text">Nenhuma peça cadastrada.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

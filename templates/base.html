@@ -1,0 +1,106 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Moto Track{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  <script src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js" defer></script>
+  <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Pular para o conteudo principal</a>
+
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegacao principal">
+      <div class="sidebar-brand-wrap">
+        <div class="sidebar-brand">Moto Track</div>
+        <p class="sidebar-subtitle">Precision Management</p>
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li><a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a></li>
+          <li><a href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Abastecimentos</span></a></li>
+          <li><a href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Manutenções</span></a></li>
+          <li><a href="{% url 'tires:catalogs' %}" {% if request.resolver_match.namespace == 'tires' %}aria-current="page"{% endif %}><i data-lucide="circle-dot" aria-hidden="true"></i><span>Catálogos de pneus</span></a></li>
+          <li><a href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}><i data-lucide="file-text" aria-hidden="true"></i><span>Documentos</span></a></li>
+          <li><a href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}><i data-lucide="bell-ring" aria-hidden="true"></i><span>Lembretes</span></a></li>
+          <li><a href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' %}aria-current="page"{% endif %}><i data-lucide="chart-column" aria-hidden="true"></i><span>Relatórios</span></a></li>
+        </ul>
+      </nav>
+      <div class="sidebar-footer">
+        <p class="sidebar-bike">{{ request.user.username|default:'Garage' }}</p>
+        <button type="button" class="ride-btn"><i data-lucide="play" aria-hidden="true"></i>Start Ride</button>
+      </div>
+    </aside>
+
+    <div class="main-shell">
+      <header class="site-header">
+        <div class="container header-inner">
+          <div class="header-brand">
+            <p class="site-eyebrow">MotoAtelier</p>
+            <h1 class="site-title">Controle da sua moto em um só lugar</h1>
+          </div>
+          <div class="top-actions" aria-label="Ações do topo">
+            <label class="top-search-wrap" for="top-search-input">
+              <i data-lucide="search" aria-hidden="true"></i>
+              <input id="top-search-input" type="search" placeholder="Search records..." />
+            </label>
+            <button class="icon-btn" type="button" aria-label="Notificações">
+              <i data-lucide="bell" aria-hidden="true"></i>
+            </button>
+            <button class="icon-btn" type="button" aria-label="Configurações">
+              <i data-lucide="settings" aria-hidden="true"></i>
+            </button>
+            {% if request.user.is_authenticated %}
+              <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="text-button">Sair</button>
+              </form>
+            {% else %}
+              <a href="{% url 'login' %}">Entrar</a>
+            {% endif %}
+          </div>
+        </div>
+      </header>
+
+      <main id="main-content" class="container" tabindex="-1">
+        {% if messages %}
+          <section aria-label="Mensagens do sistema">
+            {% for message in messages %}
+              <div class="alert">{{ message }}</div>
+            {% endfor %}
+          </section>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </main>
+
+      <nav class="bottom-nav" aria-label="Navegacao rapida">
+        <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a>
+        <a href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Fuel</span></a>
+        <a href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Serviços</span></a>
+        <a href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}><i data-lucide="file-text" aria-hidden="true"></i><span>Docs</span></a>
+        <a href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' %}aria-current="page"{% endif %}><i data-lucide="ellipsis" aria-hidden="true"></i><span>Mais</span></a>
+      </nav>
+    </div>
+  </div>
+
+  <div id="quick-form-root" aria-live="polite"></div>
+  <script>
+    function renderLucideIcons() {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", renderLucideIcons);
+    document.body.addEventListener("htmx:afterSwap", renderLucideIcons);
+  </script>
+</body>
+</html>

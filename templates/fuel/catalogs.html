@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Catálogos de combustível - Moto Track{% endblock %}
+
+{% block content %}
+<section aria-labelledby="fuel-catalog-title" class="catalog-page">
+  <header class="list-header">
+    <div>
+      <h2 id="fuel-catalog-title">Catálogos de combustível</h2>
+      <p class="section-subtitle">Postos, grades e referências reutilizáveis para abastecimento rápido.</p>
+    </div>
+    <a class="action-btn action-primary" href="{% url 'fuel:list' %}">
+      <span>Voltar aos abastecimentos</span>
+      <small>Histórico</small>
+    </a>
+  </header>
+
+  <section class="content-grid" aria-label="Catálogos de combustível">
+    <article class="panel">
+      <h3>Postos</h3>
+      {% if stations %}
+        <ul class="activity-list">
+          {% for station in stations %}
+            <li>
+              <div>
+                <strong>{{ station.name }}</strong>
+                <p>{% if station.brand %}{{ station.brand }}{% endif %}{% if station.city %}{% if station.brand %} • {% endif %}{{ station.city }}{% endif %}{% if station.state %} / {{ station.state }}{% endif %}</p>
+              </div>
+              <span>Ativo</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-text">Nenhum posto cadastrado.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h3>Grades de combustível</h3>
+      {% if grades %}
+        <ul class="activity-list">
+          {% for grade in grades %}
+            <li>
+              <div>
+                <strong>{{ grade.name }}</strong>
+                <p>{{ grade.get_fuel_type_display }}{% if grade.octane_rating %} • {{ grade.octane_rating }} octanas{% endif %}</p>
+              </div>
+              <span>{% if grade.default_price_per_liter %}R$ {{ grade.default_price_per_liter }}{% else %}Sem preço{% endif %}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-text">Nenhuma grade cadastrada.</p>
+      {% endif %}
+    </article>
+  </section>
+</section>
+{% endblock %}

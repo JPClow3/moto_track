@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Manutencoes - Moto Track{% endblock %}
+
+{% block content %}
+<section aria-labelledby="maintenance-list-title">
+  <header class="list-header">
+    <div>
+      <h2 id="maintenance-list-title">Manutencoes</h2>
+      <p class="section-subtitle">Serviços preventivos e corretivos em uma linha do tempo única.</p>
+    </div>
+    <a
+      class="action-btn action-primary"
+      href="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
+      hx-get="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
+      hx-target="#quick-form-root"
+      hx-swap="innerHTML"
+    >
+      <span>Nova manutenção</span>
+      <small>1 toque</small>
+    </a>
+  </header>
+
+  <article class="panel" aria-label="Registros de manutencao">
+    {% if records %}
+      <ul class="activity-list">
+        {% for record in records %}
+          <li>
+            <div>
+              <strong>{{ record.motorcycle.name }} • {{ record.get_maintenance_type_display }}</strong>
+              <p>{{ record.date }} • {{ record.odometer_km }} km</p>
+            </div>
+            <span>R$ {{ record.cost }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-text">Nenhuma manutenção registrada ainda.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

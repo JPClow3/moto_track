@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Painel - Moto Track{% endblock %}
+
+{% block content %}
+<section class="dashboard" aria-labelledby="dashboard-title">
+  <header class="dashboard-header">
+    <div>
+      <p class="dashboard-kicker">Active Vehicle</p>
+      <h2 id="dashboard-title">Painel principal</h2>
+      <p class="section-subtitle">Visão rápida do que exige atenção e do histórico mais recente.</p>
+    </div>
+    <div class="bike-chip" aria-label="Moto atual">
+      {% if motorcycle %}
+        <strong>{{ motorcycle.name }}</strong>
+      {% else %}
+        <strong>Sem moto cadastrada</strong>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="dashboard-cta-row" aria-label="Atalhos de registro">
+    <a
+      class="inline-cta primary"
+      href="{% url 'fuel:quick_create' %}?next={% url 'dashboard' %}"
+      hx-get="{% url 'fuel:quick_create' %}?next={% url 'dashboard' %}"
+      hx-target="#quick-form-root"
+      hx-swap="innerHTML"
+    >Add Fuel</a>
+    <a
+      class="inline-cta"
+      href="{% url 'maintenance:quick_create' %}?next={% url 'dashboard' %}"
+      hx-get="{% url 'maintenance:quick_create' %}?next={% url 'dashboard' %}"
+      hx-target="#quick-form-root"
+      hx-swap="innerHTML"
+    >Add Maintenance</a>
+  </div>
+
+  <section aria-labelledby="quick-actions-title">
+    <h3 id="quick-actions-title">Ações rápidas</h3>
+    <div class="quick-actions">
+      {% for action in quick_actions %}
+        <a
+          class="action-btn action-{{ action.tone }}"
+          href="{{ action.url }}"
+          {% if action.htmx_url %}
+          hx-get="{{ action.htmx_url }}?next={% url 'dashboard' %}"
+          hx-target="#quick-form-root"
+          hx-swap="innerHTML"
+          {% endif %}
+        >
+          <span>{{ action.label }}</span>
+          <small>{{ action.hint }}</small>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section aria-label="Indicadores principais">
+    <div class="cards-grid" role="list">
+      {% for card in cards %}
+        <article class="card" role="listitem">
+          <h3>{{ card.title }}</h3>
+          <p class="card-value">{{ card.value }}</p>
+          <p class="card-subtitle">{{ card.subtitle }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="dashboard-main-grid" aria-label="Atividade e próximos passos">
+    <article class="panel feed-panel">
+      <h3>Últimos abastecimentos</h3>
+      {% if recent_fuels %}
+        <ul class="activity-list">
+          {% for fuel in recent_fuels %}
+            <li>
+              <div>
+                <strong>{{ fuel.date }}</strong>
+                <p>{{ fuel.odometer_km }} km{% if fuel.station_name %} • {{ fuel.station_name }}{% endif %}</p>
+              </div>
+              <span>R$ {{ fuel.total_price }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-text">Sem abastecimentos recentes.</p>
+      {% endif %}
+      <h3>Últimas manutenções</h3>
+      {% if recent_maintenance %}
+        <ul class="activity-list">
+          {% for service in recent_maintenance %}
+            <li>
+              <div>
+                <strong>{{ service.get_maintenance_type_display }}</strong>
+                <p>{{ service.date }} • {{ service.odometer_km }} km</p>
+              </div>
+              <span>R$ {{ service.cost }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-text">Sem manutenções registradas.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel insights-panel">
+      <h3>Monthly Insights</h3>
+      <p class="insight-value">R$ {{ month_total }}</p>
+      <p class="insight-subtitle">Gasto do mês em combustível</p>
+      <h4 class="insight-title">Próximos lembretes</h4>
+      {% if active_reminders %}
+        <ul class="activity-list">
+          {% for reminder in active_reminders %}
+            <li>
+              <div>
+                <strong>{{ reminder.title }}</strong>
+                <p>
+                  {% if reminder.reference_date %}
+                    Ref: {{ reminder.reference_date }}
+                  {% elif reminder.reference_km %}
+                    Ref: {{ reminder.reference_km }} km
+                  {% else %}
+                    Sem referência
+                  {% endif %}
+                </p>
+              </div>
+              <span class="badge">Ativo</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-text">Nenhum lembrete ativo.</p>
+      {% endif %}
+
+      <h4 class="insight-title">Catálogos</h4>
+      <ul class="mini-link-list">
+        {% for link in catalog_links %}
+          <li><a href="{{ link.url }}">{{ link.label }}</a></li>
+        {% endfor %}
+      </ul>
+    </article>
+  </section>
+</section>
+{% endblock %}

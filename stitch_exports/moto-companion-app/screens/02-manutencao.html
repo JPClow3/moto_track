@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#566166",
+                        "on-background": "#2a3439",
+                        "on-primary-fixed-variant": "#455b8a",
+                        "error-dim": "#4f0116",
+                        "on-error": "#fff7f7",
+                        "primary-dim": "#3c5280",
+                        "primary": "#485e8d",
+                        "primary-fixed": "#d9e2ff",
+                        "on-secondary-fixed-variant": "#4e5c71",
+                        "on-primary-fixed": "#283e6c",
+                        "on-tertiary-fixed": "#303c53",
+                        "on-tertiary-fixed-variant": "#4c5870",
+                        "on-tertiary-container": "#434e66",
+                        "tertiary-fixed": "#d1ddfa",
+                        "surface-variant": "#d9e4ea",
+                        "error": "#9e3f4e",
+                        "secondary-container": "#d5e3fc",
+                        "secondary-fixed": "#d5e3fc",
+                        "inverse-primary": "#a3b8ee",
+                        "secondary-fixed-dim": "#c7d5ed",
+                        "surface-container": "#e8eff3",
+                        "on-secondary-container": "#455367",
+                        "secondary": "#526074",
+                        "outline": "#717c82",
+                        "on-surface": "#2a3439",
+                        "tertiary": "#535f78",
+                        "surface-bright": "#f7f9fb",
+                        "outline-variant": "#a9b4b9",
+                        "surface-container-low": "#f0f4f7",
+                        "on-error-container": "#782232",
+                        "error-container": "#ff8b9a",
+                        "surface-tint": "#485e8d",
+                        "primary-container": "#d9e2ff",
+                        "on-tertiary": "#f8f8ff",
+                        "tertiary-fixed-dim": "#c3cfeb",
+                        "tertiary-container": "#d1ddfa",
+                        "secondary-dim": "#465468",
+                        "tertiary-dim": "#47536b",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "inverse-surface": "#0b0f10",
+                        "inverse-on-surface": "#9a9d9f",
+                        "on-secondary": "#f8f8ff",
+                        "surface-dim": "#cfdce3",
+                        "on-primary": "#f7f7ff",
+                        "background": "#f7f9fb",
+                        "surface-container-highest": "#d9e4ea",
+                        "on-secondary-fixed": "#324053",
+                        "primary-fixed-dim": "#c4d4ff",
+                        "on-primary-container": "#3b5180",
+                        "surface-container-high": "#e1e9ee"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- TopNavBar Shell -->
+<header class="bg-slate-50/85 dark:bg-slate-900/85 backdrop-blur-md font-manrope tracking-tight font-bold text-on-surface docked full-width top-0 sticky z-40 no-border tonal-shift flat no shadows flex justify-between items-center w-full px-6 py-3">
+<div class="text-lg font-bold tracking-widest uppercase text-indigo-800 dark:text-indigo-300">MotoAtelier</div>
+<div class="flex items-center gap-4">
+<button class="hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors p-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors p-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden">
+<img alt="User profile" data-alt="close-up portrait of a man with short hair and a leather jacket, soft studio lighting, professional headshot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_4ANXuBy7i6CpjMAAVsReE67yS9htvF98i0b4nCMwLb28NizYMDUEAwAkBSW_zIUkfn6DSBK7N3bafl33cmEJP4atNXFs42FqlflHy-cMT6rtLJNo80_IVZ2MVo3YHUckbo5Gq7-LAxdmCn1WwharSI933P7_V9Ttg1z9xHqX1ckETfnfRJKR0u7uAbw7vllB5QZ0CImS0JWuLenY4SmDthzYft6I33nJm87-KSvRrHcUwwHDxeHJ7_208v4UMPuV8wX1CeWUNrp4"/>
+</div>
+</div>
+</header>
+<div class="flex">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-4 gap-2 bg-slate-100 dark:bg-slate-950 font-inter text-sm font-medium h-screen w-64 hidden lg:flex tonal-shift via surface-container-low flat no shadows">
+<div class="mb-8 px-2 mt-12">
+<div class="font-manrope text-xl font-extrabold tracking-tight">Garage</div>
+<div class="text-on-surface-variant text-xs uppercase tracking-widest">Precision Management</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800" href="#">
+<span class="material-symbols-outlined" data-icon="local_gas_station">local_gas_station</span>
+<span>Fuel</span>
+</a>
+<!-- Active Navigation: Maintenance -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-indigo-700 dark:text-indigo-400 border-r-4 border-indigo-600 bg-white dark:bg-slate-900 translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="build" style="font-variation-settings: 'FILL' 1;">build</span>
+<span>Maintenance</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span>Documents</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800" href="#">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+<span>More</span>
+</a>
+</nav>
+<button class="bg-primary text-on-primary rounded-xl py-3 px-4 font-bold uppercase text-[0.7rem] tracking-[0.05em] flex items-center justify-center gap-2 mt-auto shadow-lg shadow-indigo-200 dark:shadow-none">
+<span class="material-symbols-outlined" data-icon="play_arrow">play_arrow</span>
+                Start Ride
+            </button>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 lg:ml-64 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24">
+<header class="mb-10">
+<h1 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Service Ledger</h1>
+<p class="text-on-surface-variant font-body">Complete lifecycle documentation for your machine.</p>
+</header>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- Left Column: Add Maintenance Form -->
+<section class="lg:col-span-5 order-2 lg:order-1">
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="add_circle">add_circle</span>
+<h2 class="text-xl font-bold font-headline">New Maintenance Entry</h2>
+</div>
+<form class="space-y-6">
+<div class="space-y-4">
+<div class="grid grid-cols-2 gap-4">
+<div class="col-span-2">
+<label class="block text-[0.7rem] font-bold text-on-surface-variant uppercase tracking-widest mb-1 ml-1">Title</label>
+<input class="w-full bg-surface-container-low border-none border-b-2 border-transparent focus:border-primary focus:ring-0 rounded-sm py-3 px-4 text-on-surface" placeholder="e.g. Major 20k Service" type="text"/>
+</div>
+<div>
+<label class="block text-[0.7rem] font-bold text-on-surface-variant uppercase tracking-widest mb-1 ml-1">Service Type</label>
+<select class="w-full bg-surface-container-low border-none border-b-2 border-transparent focus:border-primary focus:ring-0 rounded-sm py-3 px-4 text-on-surface appearance-none">
+<option>Oil Change</option>
+<option>Brake Service</option>
+<option>Tire Replacement</option>
+<option>Chain &amp; Sprockets</option>
+<option>General Inspection</option>
+</select>
+</div>
+<div>
+<label class="block text-[0.7rem] font-bold text-on-surface-variant uppercase tracking-widest mb-1 ml-1">Date</label>
+<input class="w-full bg-surface-container-low border-none border-b-2 border-transparent focus:border-primary focus:ring-0 rounded-sm py-3 px-4 text-on-surface" type="date"/>
+</div>
+<div>
+<label class="block text-[0.7rem] font-bold text-on-surface-variant uppercase tracking-widest mb-1 ml-1">Odometer (km)</label>
+<input class="w-full bg-surface-container-low border-none border-b-2 border-transparent focus:border-primary focus:ring-0 rounded-sm py-3 px-4 text-on-surface" placeholder="24,500" type="number"/>
+</div>
+<div>
+<label class="block text-[0.7rem] font-bold text-on-surface-variant uppercase tracking-widest mb-1 ml-1">Total Cost ($)</label>
+<input class="w-full bg-surface-container-low border-none border-b-2 border-transparent focus:border-primary focus:ring-0 rounded-sm py-3 px-4 text-on-surface" placeholder="0.00" type="number"/>
+</div>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low rounded-lg">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-dim text-sm" data-icon="event_repeat">event_repeat</span>
+<span class="text-sm font-semibold">Set Next Service Reminder</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<input class="bg-white border-none rounded-sm py-2 px-3 text-xs opacity-50 pointer-events-none" placeholder="Distance (km)" type="number"/>
+<input class="bg-white border-none rounded-sm py-2 px-3 text-xs opacity-50 pointer-events-none" type="date"/>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary py-4 rounded-xl font-bold uppercase text-[0.75rem] tracking-widest hover:bg-primary-dim transition-all active:scale-[0.98]" type="submit">
+                                Record Service Entry
+                            </button>
+</form>
+</div>
+<div class="mt-6 bg-indigo-50/50 rounded-xl p-6 border border-indigo-100/20">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-indigo-400 mt-1" data-icon="lightbulb">lightbulb</span>
+<div>
+<p class="text-sm font-semibold text-indigo-900 mb-1">Maintenance Tip</p>
+<p class="text-xs text-indigo-700/80 leading-relaxed">Keeping detailed records increases the resale value of your motorcycle by up to 15%. Don't forget to attach a clear photo of your receipt.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Column: Timeline & Service Details -->
+<section class="lg:col-span-7 order-1 lg:order-2">
+<div class="relative space-y-8">
+<!-- Timeline Line -->
+<div class="absolute left-[23px] top-4 bottom-4 w-1 bg-outline-variant/20 rounded-full"></div>
+<!-- Timeline Item 1 -->
+<div class="relative flex gap-6">
+<div class="relative z-10 w-12 h-12 rounded-full bg-surface-container-lowest flex items-center justify-center shadow-sm text-primary">
+<span class="material-symbols-outlined" data-icon="oil_barrel" style="font-variation-settings: 'FILL' 1;">oil_barrel</span>
+</div>
+<div class="flex-1 bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h3 class="text-lg font-bold">Standard Oil Change</h3>
+<span class="bg-green-100 text-green-700 text-[0.6rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Completed</span>
+</div>
+<p class="text-xs text-on-surface-variant font-medium flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-[14px]" data-icon="calendar_today">calendar_today</span> Oct 12, 2023 
+                                            <span class="mx-2 text-outline-variant">•</span>
+<span class="material-symbols-outlined text-[14px]" data-icon="speed">speed</span> 18,420 km
+                                        </p>
+</div>
+<div class="bg-surface-container-low px-4 py-2 rounded-lg text-right">
+<div class="text-[0.65rem] font-bold text-on-surface-variant uppercase tracking-tighter">Service Cost</div>
+<div class="text-xl font-bold font-headline text-primary">$184.00</div>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-surface-container-low">
+<div>
+<p class="text-[0.6rem] uppercase font-bold text-on-surface-variant mb-1">Workshop</p>
+<p class="text-sm font-semibold">Moto Garage Co.</p>
+</div>
+<div>
+<p class="text-[0.6rem] uppercase font-bold text-on-surface-variant mb-1">Parts</p>
+<p class="text-sm font-semibold">$112.00</p>
+</div>
+<div>
+<p class="text-[0.6rem] uppercase font-bold text-on-surface-variant mb-1">Labor</p>
+<p class="text-sm font-semibold">$72.00</p>
+</div>
+<div class="flex justify-end items-center">
+<button class="flex items-center gap-2 text-primary hover:text-primary-dim transition-colors">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="text-xs font-bold uppercase tracking-tighter">Receipt</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Timeline Item 2 -->
+<div class="relative flex gap-6">
+<div class="relative z-10 w-12 h-12 rounded-full bg-surface-container-lowest flex items-center justify-center shadow-sm text-primary">
+<span class="material-symbols-outlined" data-icon="settings_input_component" style="font-variation-settings: 'FILL' 1;">settings_input_component</span>
+</div>
+<div class="flex-1 bg-surface-container-lowest rounded-xl p-5 shadow-sm opacity-90">
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h3 class="text-lg font-bold">Brake Pad Replacement</h3>
+<span class="bg-green-100 text-green-700 text-[0.6rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Completed</span>
+</div>
+<p class="text-xs text-on-surface-variant font-medium flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-[14px]" data-icon="calendar_today">calendar_today</span> Aug 22, 2023 
+                                            <span class="mx-2 text-outline-variant">•</span>
+<span class="material-symbols-outlined text-[14px]" data-icon="speed">speed</span> 16,100 km
+                                        </p>
+</div>
+<div class="bg-surface-container-low px-4 py-2 rounded-lg text-right">
+<div class="text-[0.65rem] font-bold text-on-surface-variant uppercase tracking-tighter">Service Cost</div>
+<div class="text-xl font-bold font-headline text-primary">$245.50</div>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-surface-container-low">
+<p class="text-xs text-on-surface-variant leading-relaxed">Front sintered pads replaced with Brembo OEM. Rear pads inspected; ~40% life remaining.</p>
+</div>
+</div>
+</div>
+<!-- Timeline Item 3 -->
+<div class="relative flex gap-6">
+<div class="relative z-10 w-12 h-12 rounded-full bg-surface-container-lowest flex items-center justify-center shadow-sm text-primary">
+<span class="material-symbols-outlined" data-icon="cleaning_services">cleaning_services</span>
+</div>
+<div class="flex-1 bg-surface-container-lowest rounded-xl p-5 shadow-sm opacity-80">
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h3 class="text-lg font-bold">Chain Lubing &amp; Tension</h3>
+<span class="bg-slate-100 text-slate-500 text-[0.6rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Maintenance</span>
+</div>
+<p class="text-xs text-on-surface-variant font-medium flex items-center gap-1 mb-2">
+<span class="material-symbols-outlined text-[14px]" data-icon="calendar_today">calendar_today</span> Jul 05, 2023 
+                                            <span class="mx-2 text-outline-variant">•</span>
+<span class="material-symbols-outlined text-[14px]" data-icon="speed">speed</span> 15,200 km
+                                        </p>
+</div>
+<div class="text-right">
+<div class="text-[0.65rem] font-bold text-on-surface-variant uppercase tracking-tighter">DIY</div>
+<div class="text-xl font-bold font-headline text-on-surface">$15.00</div>
+</div>
+</div>
+</div>
+</div>
+<div class="text-center pt-4">
+<button class="bg-surface-container-highest text-on-surface-variant py-2 px-6 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-surface-variant transition-colors">
+                                View Full Archive
+                            </button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- BottomNavBar Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-2 pb-safe bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl lg:hidden shadow-xl border-t border-slate-200 dark:border-slate-800">
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-tighter">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="local_gas_station">local_gas_station</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-tighter">Fuel</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl px-3 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="build" style="font-variation-settings: 'FILL' 1;">build</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-tighter">Service</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-tighter">Docs</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-tighter">More</span>
+</a>
+</nav>
+</body></html>

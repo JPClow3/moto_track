@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Catálogos de pneus - Moto Track{% endblock %}
+
+{% block content %}
+<section aria-labelledby="tires-catalog-title" class="catalog-page">
+  <header class="list-header">
+    <div>
+      <h2 id="tires-catalog-title">Catálogos de pneus</h2>
+      <p class="section-subtitle">Produtos estruturados com fabricante, tipo e especificações técnicas.</p>
+    </div>
+    <a class="action-btn action-primary" href="{% url 'dashboard' %}">
+      <span>Voltar ao painel</span>
+      <small>Resumo</small>
+    </a>
+  </header>
+
+  <article class="panel" aria-label="Pneus estruturados">
+    {% if products %}
+      <ul class="activity-list">
+        {% for product in products %}
+          <li>
+            <div>
+              <strong>{{ product.manufacturer }} {{ product.model_name }}</strong>
+              <p>{{ product.get_tire_type_display }}{% if product.width_mm %} • {{ product.width_mm }}/{% endif %}{% if product.aspect_ratio %}{{ product.aspect_ratio }}{% endif %}{% if product.rim_diameter_in %}R{{ product.rim_diameter_in }}{% endif %}{% if product.speed_rating %} • {{ product.speed_rating }}{% endif %}</p>
+            </div>
+            <span>{% if product.price %}R$ {{ product.price }}{% else %}Sem preço{% endif %}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-text">Nenhum pneu cadastrado.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

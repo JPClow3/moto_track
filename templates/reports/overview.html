@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatórios - Moto Track{% endblock %}
+
+{% block content %}
+<section aria-labelledby="reports-title">
+  <header class="list-header">
+    <div>
+      <h2 id="reports-title">Relatórios</h2>
+      <p class="section-subtitle">Resumo consolidado de custos e volume de registros.</p>
+    </div>
+  </header>
+
+  <div class="cards-grid" role="list">
+    <article class="card" role="listitem">
+      <h3>Total combustível</h3>
+      <p class="card-value">R$ {{ fuel_total }}</p>
+      <p class="card-subtitle">{{ fuel_records_count }} registros</p>
+    </article>
+    <article class="card" role="listitem">
+      <h3>Total manutenção</h3>
+      <p class="card-value">R$ {{ maintenance_total }}</p>
+      <p class="card-subtitle">{{ maintenance_records_count }} registros</p>
+    </article>
+    <article class="card" role="listitem">
+      <h3>Média odômetro</h3>
+      <p class="card-value">{% if avg_km_per_l %}{{ avg_km_per_l|floatformat:0 }} km{% else %}-{% endif %}</p>
+      <p class="card-subtitle">Média dos registros de abastecimento</p>
+    </article>
+  </div>
+</section>
+{% endblock %}

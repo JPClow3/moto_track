@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Lembretes - Moto Track{% endblock %}
+
+{% block content %}
+<section aria-labelledby="reminders-title">
+  <header class="list-header">
+    <div>
+      <h2 id="reminders-title">Lembretes</h2>
+      <p class="section-subtitle">Acompanhe eventos por data, quilometragem e intervalo.</p>
+    </div>
+  </header>
+
+  <div class="content-grid">
+    <article class="panel">
+      <h3>Ativos</h3>
+      {% if active_reminders %}
+        <ul class="activity-list">
+          {% for reminder in active_reminders %}
+            <li>
+              <div>
+                <strong>{{ reminder.title }}</strong>
+                <p>{{ reminder.get_trigger_type_display }}</p>
+              </div>
+              <span class="badge">Ativo</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-text">Nenhum lembrete ativo.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h3>Inativos</h3>
+      {% if inactive_reminders %}
+        <ul class="activity-list">
+          {% for reminder in inactive_reminders %}
+            <li>
+              <div>
+                <strong>{{ reminder.title }}</strong>
+                <p>{{ reminder.get_trigger_type_display }}</p>
+              </div>
+              <span>Inativo</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-text">Nenhum lembrete inativo.</p>
+      {% endif %}
+    </article>
+  </div>
+</section>
+{% endblock %}
