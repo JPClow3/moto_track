@@ -12,6 +12,7 @@
     <a
       class="action-btn action-primary"
       href="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
+      data-open-quick-form
       hx-get="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
       hx-target="#quick-form-root"
       hx-swap="innerHTML"

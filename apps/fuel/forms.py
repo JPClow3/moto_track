@@ -44,6 +44,7 @@ class FuelRecordQuickForm(forms.ModelForm):
 		self.fields["price_per_liter"].required = False
 		self.fields["station_name"].required = False
 		self.fields["notes"].required = False
+		self.fields["motorcycle"].widget.attrs["data-quick-autofocus"] = "true"
 
 	def clean(self):
 		cleaned_data = super().clean()

@@ -7,6 +7,24 @@ from .forms import MaintenanceRecordQuickForm
 from .models import MaintenancePart, MaintenanceRecord, MaintenanceRecordPart
 
 
+def _configure_form_accessibility(form):
+	for bound_field in form.visible_fields():
+		widget_attrs = bound_field.field.widget.attrs
+		describedby_ids = []
+		if bound_field.help_text:
+			describedby_ids.append(f"{bound_field.id_for_label}_help")
+		if bound_field.errors:
+			widget_attrs["aria-invalid"] = "true"
+			describedby_ids.append(f"{bound_field.id_for_label}_error")
+		else:
+			widget_attrs.pop("aria-invalid", None)
+
+		if describedby_ids:
+			widget_attrs["aria-describedby"] = " ".join(describedby_ids)
+		else:
+			widget_attrs.pop("aria-describedby", None)
+
+
 @login_required
 def maintenance_list_view(request):
 	records = MaintenanceRecord.objects.filter(motorcycle__owner=request.user).select_related("motorcycle")
@@ -48,4 +66,5 @@ def maintenance_quick_create_view(request):
 		"submit_label": "Salvar manutenção",
 		"next_url": request.GET.get("next") or request.POST.get("next") or "",
 	}
+	_configure_form_accessibility(form)
 	return render(request, "maintenance/partials/quick_form.html", context, status=status)

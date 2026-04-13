@@ -20,7 +20,7 @@
     <aside class="sidebar" aria-label="Navegacao principal">
       <div class="sidebar-brand-wrap">
         <div class="sidebar-brand">Moto Track</div>
-        <p class="sidebar-subtitle">Precision Management</p>
+        <p class="sidebar-subtitle">Gestão de precisão</p>
       </div>
       <nav>
         <ul class="sidebar-nav">
@@ -34,8 +34,8 @@
         </ul>
       </nav>
       <div class="sidebar-footer">
-        <p class="sidebar-bike">{{ request.user.username|default:'Garage' }}</p>
-        <button type="button" class="ride-btn"><i data-lucide="play" aria-hidden="true"></i>Start Ride</button>
+        <p class="sidebar-bike">{{ request.user.username|default:'Garagem' }}</p>
+        <button type="button" class="ride-btn"><i data-lucide="play" aria-hidden="true"></i>Iniciar registro</button>
       </div>
     </aside>
 
@@ -48,15 +48,16 @@
           </div>
           <div class="top-actions" aria-label="Ações do topo">
             <label class="top-search-wrap" for="top-search-input">
+              <span>Buscar registros</span>
               <i data-lucide="search" aria-hidden="true"></i>
-              <input id="top-search-input" type="search" placeholder="Search records..." />
+              <input id="top-search-input" type="search" name="q" aria-label="Buscar registros" placeholder="Buscar registros" />
             </label>
-            <button class="icon-btn" type="button" aria-label="Notificações">
+            <a class="icon-btn" href="{% url 'reminders:list' %}" aria-label="Ir para lembretes">
               <i data-lucide="bell" aria-hidden="true"></i>
-            </button>
-            <button class="icon-btn" type="button" aria-label="Configurações">
+            </a>
+            <a class="icon-btn" href="{% url 'reports:overview' %}" aria-label="Ir para relatórios">
               <i data-lucide="settings" aria-hidden="true"></i>
-            </button>
+            </a>
             {% if request.user.is_authenticated %}
               <form method="post" action="{% url 'logout' %}">
                 {% csrf_token %}
@@ -83,10 +84,11 @@
 
       <nav class="bottom-nav" aria-label="Navegacao rapida">
         <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a>
-        <a href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Fuel</span></a>
-        <a href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Serviços</span></a>
-        <a href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}><i data-lucide="file-text" aria-hidden="true"></i><span>Docs</span></a>
-        <a href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' %}aria-current="page"{% endif %}><i data-lucide="ellipsis" aria-hidden="true"></i><span>Mais</span></a>
+        <a href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Abastecimentos</span></a>
+        <a href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Manutenções</span></a>
+        <a href="{% url 'tires:catalogs' %}" {% if request.resolver_match.namespace == 'tires' %}aria-current="page"{% endif %}><i data-lucide="circle-dot" aria-hidden="true"></i><span>Pneus</span></a>
+        <a href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}><i data-lucide="bell-ring" aria-hidden="true"></i><span>Lembretes</span></a>
+        <a href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' %}aria-current="page"{% endif %}><i data-lucide="chart-column" aria-hidden="true"></i><span>Relatórios</span></a>
       </nav>
     </div>
   </div>

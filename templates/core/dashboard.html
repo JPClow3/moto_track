@@ -6,7 +6,7 @@
 <section class="dashboard" aria-labelledby="dashboard-title">
   <header class="dashboard-header">
     <div>
-      <p class="dashboard-kicker">Active Vehicle</p>
+      <p class="dashboard-kicker">Veículo ativo</p>
       <h2 id="dashboard-title">Painel principal</h2>
       <p class="section-subtitle">Visão rápida do que exige atenção e do histórico mais recente.</p>
     </div>
@@ -26,14 +26,14 @@
       hx-get="{% url 'fuel:quick_create' %}?next={% url 'dashboard' %}"
       hx-target="#quick-form-root"
       hx-swap="innerHTML"
-    >Add Fuel</a>
+    >Adicionar abastecimento</a>
     <a
       class="inline-cta"
       href="{% url 'maintenance:quick_create' %}?next={% url 'dashboard' %}"
       hx-get="{% url 'maintenance:quick_create' %}?next={% url 'dashboard' %}"
       hx-target="#quick-form-root"
       hx-swap="innerHTML"
-    >Add Maintenance</a>
+    >Adicionar manutenção</a>
   </div>
 
   <section aria-labelledby="quick-actions-title">
@@ -105,7 +105,7 @@
     </article>
 
     <article class="panel insights-panel">
-      <h3>Monthly Insights</h3>
+      <h3>Resumo do mês</h3>
       <p class="insight-value">R$ {{ month_total }}</p>
       <p class="insight-subtitle">Gasto do mês em combustível</p>
       <h4 class="insight-title">Próximos lembretes</h4>
