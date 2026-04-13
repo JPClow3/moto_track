@@ -1,7 +1,7 @@
 FROM node:20-alpine AS build-css
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 COPY tailwind.config.js postcss.config.js ./
 COPY static/css/input.css ./static/css/
 RUN npm run build:css
