@@ -1,42 +1,76 @@
 {% extends 'base.html' %}
 
-{% block title %}Manutencoes - Moto Track{% endblock %}
+{% block title %}Manutenções - Moto Track{% endblock %}
 
 {% block content %}
-<section aria-labelledby="maintenance-list-title">
+<section class="list-section" aria-labelledby="maintenance-list-title">
   <header class="list-header">
     <div>
-      <h2 id="maintenance-list-title">Manutencoes</h2>
-      <p class="section-subtitle">Serviços preventivos e corretivos em uma linha do tempo única.</p>
+      <h2 id="maintenance-list-title">Manutenções</h2>
+      <p class="section-subtitle">Histórico de serviços com custo e odômetro em uma linha do tempo única.</p>
     </div>
-    <a
-      class="action-btn action-primary"
-      href="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
-      hx-get="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
-      hx-target="#quick-form-root"
-      hx-swap="innerHTML"
-    >
-      <span>Nova manutenção</span>
-      <small>1 toque</small>
-    </a>
   </header>
 
-  <article class="panel" aria-label="Registros de manutencao">
-    {% if records %}
-      <ul class="activity-list">
-        {% for record in records %}
-          <li>
-            <div>
-              <strong>{{ record.motorcycle.name }} • {{ record.get_maintenance_type_display }}</strong>
-              <p>{{ record.date }} • {{ record.odometer_km }} km</p>
-            </div>
-            <span>R$ {{ record.cost }}</span>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="empty-text">Nenhuma manutenção registrada ainda.</p>
-    {% endif %}
-  </article>
+  <div class="ledger-grid" aria-label="Registros de manutenção">
+    <aside class="ledger-form-panel" aria-label="Atalhos de manutenção">
+      <h3>Nova entrada</h3>
+      <p class="section-subtitle">Abra o formulário rápido para registrar o serviço com lembrete opcional.</p>
+      <div class="dashboard-cta-row" aria-label="Ações de manutenção">
+        <a
+          class="inline-cta primary"
+          href="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
+          hx-get="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
+          hx-target="#quick-form-root"
+          hx-swap="innerHTML"
+        >Registrar serviço</a>
+        <a class="inline-cta" href="{% url 'maintenance:catalogs' %}">Catálogo de peças</a>
+      </div>
+
+      <div class="ledger-summary" aria-live="polite">
+        <p><strong>{{ records_count }}</strong> serviços registrados</p>
+        <p><strong>R$ {{ total_cost }}</strong> em custos acumulados</p>
+        {% if latest_record %}
+          <p>Último serviço: {{ latest_record.get_maintenance_type_display }} em {{ latest_record.date }}</p>
+        {% else %}
+          <p>Comece registrando sua primeira manutenção.</p>
+        {% endif %}
+      </div>
+    </aside>
+
+    <div>
+      {% if records %}
+        <div class="timeline" role="list">
+          {% for record in records %}
+            <article class="timeline-row" role="listitem">
+              <div class="timeline-node" aria-hidden="true"><i data-lucide="wrench"></i></div>
+              <div class="timeline-card">
+                <div class="timeline-card-head">
+                  <div>
+                    <div class="feed-header">
+                      <strong>{{ record.get_maintenance_type_display }}</strong>
+                      <span class="status-pill {% if record.cost > 0 %}status-pill-complete{% else %}status-pill-maintenance{% endif %}">{% if record.cost > 0 %}Concluído{% else %}Registro{% endif %}</span>
+                    </div>
+                    <p class="timeline-meta">{{ record.motorcycle.name }} • {{ record.date }} • {{ record.odometer_km }} km</p>
+                  </div>
+                  <div class="timeline-cost">
+                    <span class="timeline-cost-label">Custo</span>
+                    <span class="timeline-cost-value">R$ {{ record.cost }}</span>
+                  </div>
+                </div>
+                {% if record.description %}
+                  <p class="timeline-meta">{{ record.description }}</p>
+                {% endif %}
+                {% if record.parts_used %}
+                  <p class="timeline-meta">Peças: {{ record.parts_used }}</p>
+                {% endif %}
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty-text">Nenhuma manutenção registrada ainda.</p>
+      {% endif %}
+    </div>
+  </div>
 </section>
 {% endblock %}

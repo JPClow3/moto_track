@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir moto - Moto Track{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="garage-delete-title">
+  <header class="list-header">
+    <div>
+      <h2 id="garage-delete-title">Excluir moto</h2>
+      <p class="section-subtitle">Esta ação remove a moto e seus registros relacionados.</p>
+    </div>
+    <a class="inline-cta" href="{% url 'garage:list' %}">Voltar para garagem</a>
+  </header>
+
+  <article class="panel danger-banner" role="alert" aria-live="polite">
+    <div class="alert-body">
+      <span class="alert-icon" aria-hidden="true"><i data-lucide="triangle-alert"></i></span>
+      <div>
+        <h3>{{ motorcycle.name }}</h3>
+        <p>Confirme para excluir esta moto permanentemente.</p>
+      </div>
+    </div>
+
+    <form method="post" class="inline-actions">
+      {% csrf_token %}
+      <a class="secondary-btn" href="{% url 'garage:list' %}">Cancelar</a>
+      <button type="submit" class="danger-btn">Excluir moto</button>
+    </form>
+  </article>
+</section>
+{% endblock %}

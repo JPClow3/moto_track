@@ -1,15 +1,19 @@
 from pathlib import Path
 
 import dj_database_url
+import environ
 from dotenv import load_dotenv
-import os
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
+environ.Env.read_env(BASE_DIR / ".env")
+env = environ.Env(
+    DJANGO_DEBUG=(bool, False),
+)
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-production")
-DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if h.strip()]
+SECRET_KEY = env("DJANGO_SECRET_KEY", default="change-me-in-production")
+DEBUG = env("DJANGO_DEBUG")
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -18,6 +22,17 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
+    "crispy_forms",
+    "crispy_tailwind",
+    "dal",
+    "dal_select2",
+    "allauth",
+    "allauth.account",
+    "allauth_ui",
+    "django_bleach",
+    "djmoney",
+    "django_cotton",
     "apps.core",
     "apps.accounts",
     "apps.garage",
@@ -36,6 +51,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -62,7 +78,7 @@ ASGI_APPLICATION = "config.asgi.application"
 
 DATABASES = {
     "default": dj_database_url.parse(
-        os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+        env("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
         conn_max_age=600,
     )
 }
@@ -86,11 +102,38 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-LOGIN_URL = "login"
+LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "dashboard"
-LOGOUT_REDIRECT_URL = "login"
+LOGOUT_REDIRECT_URL = "account_login"
 
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@motoapp.local")
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@motoapp.local")
+
+SITE_ID = env.int("DJANGO_SITE_ID", default=1)
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = ("tailwind",)
+CRISPY_TEMPLATE_PACK = "tailwind"
+
+ACCOUNT_LOGIN_METHODS = {"username", "email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_LOGOUT_ON_GET = False
+ACCOUNT_RATE_LIMITS = {
+    "login_failed": "5/m",
+}
+
+BLEACH_ALLOWED_TAGS = []
+BLEACH_ALLOWED_ATTRIBUTES = {}
+BLEACH_ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
+BLEACH_STRIP_TAGS = True
+BLEACH_STRIP_COMMENTS = True
+
+DEFAULT_CURRENCY = "BRL"
+CURRENCIES = ("BRL",)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

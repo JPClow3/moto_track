@@ -27,6 +27,13 @@ A ideia é transformar o controle da moto em algo simples, confiável e útil no
 ## Stack
 
 - Django com templates server-rendered
+- django-crispy-forms com crispy-tailwind para padronização de formulários
+- django-allauth e django-allauth-ui para autenticação
+- django-environ para configuração por ambiente
+- django-bleach para sanitização de texto
+- django-autocomplete-light para campos de busca assistida
+- django-money para valores monetários com moeda explícita
+- django-cotton para componentes de template
 - HTMX para interações rápidas
 - Alpine.js para interações leves
 - PostgreSQL em produção

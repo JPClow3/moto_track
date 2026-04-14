@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Garagem - Moto Track{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="garage-list-title">
+  <header class="list-header">
+    <div>
+      <h2 id="garage-list-title">Garagem</h2>
+      <p class="section-subtitle">Cadastre suas motos e acompanhe o odômetro atual de cada uma.</p>
+    </div>
+    <a class="action-btn action-primary" href="{% url 'garage:create' %}">
+      <span>Nova moto</span>
+      <small>cadastro</small>
+    </a>
+  </header>
+
+  <article class="panel" aria-label="Motos cadastradas">
+    {% if motorcycles %}
+      <div class="doc-table-wrap">
+        <table class="doc-table">
+          <thead>
+            <tr>
+              <th scope="col">Nome</th>
+              <th scope="col">Modelo</th>
+              <th scope="col">Ano</th>
+              <th scope="col">Placa</th>
+              <th scope="col">Odômetro</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for motorcycle in motorcycles %}
+              <tr>
+                <td><strong>{{ motorcycle.name }}</strong></td>
+                <td>{{ motorcycle.brand }} {{ motorcycle.model }}</td>
+                <td>{{ motorcycle.year }}</td>
+                <td>{{ motorcycle.license_plate|default:"--" }}</td>
+                <td>{{ motorcycle.current_odometer_km }} km</td>
+                <td>
+                  <div class="table-actions" role="group" aria-label="Ações da moto {{ motorcycle.name }}">
+                    <a href="{% url 'garage:update' motorcycle.pk %}" aria-label="Editar moto {{ motorcycle.name }}">
+                      <i data-lucide="pencil" aria-hidden="true"></i>
+                    </a>
+                    <a href="{% url 'garage:delete' motorcycle.pk %}" aria-label="Excluir moto {{ motorcycle.name }}">
+                      <i data-lucide="trash-2" aria-hidden="true"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-text">Você ainda não cadastrou nenhuma moto.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

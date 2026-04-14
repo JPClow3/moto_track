@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.core.models import TimeStampedModel, UserOwnedModel
@@ -40,7 +41,7 @@ class TirePosition(models.TextChoices):
 	REAR = "rear", "Traseiro"
 
 
-class TireRecord(models.Model):
+class TireRecord(TimeStampedModel):
 	motorcycle = models.ForeignKey(Motorcycle, on_delete=models.CASCADE, related_name="tire_records")
 	tire_product = models.ForeignKey(TireProduct, on_delete=models.SET_NULL, null=True, blank=True, related_name="installations")
 	position = models.CharField(max_length=16, choices=TirePosition.choices)
@@ -53,12 +54,22 @@ class TireRecord(models.Model):
 	wear_percent = models.PositiveSmallIntegerField(default=0)
 	estimated_change_km = models.PositiveIntegerField(null=True, blank=True)
 	is_active = models.BooleanField(default=True)
-	created_at = models.DateTimeField(auto_now_add=True)
 
 	class Meta:
 		ordering = ["-installed_at"]
 
 	def __str__(self):
 		return f"{self.motorcycle.name} - {self.get_position_display()}"
+
+	def clean(self):
+		errors = {}
+		if self.wear_percent is not None and self.wear_percent > 100:
+			errors["wear_percent"] = "O desgaste deve estar entre 0 e 100%."
+		if self.cost is not None and self.cost < 0:
+			errors["cost"] = "O custo não pode ser negativo."
+		if self.purchase_price is not None and self.purchase_price < 0:
+			errors["purchase_price"] = "O preço de compra não pode ser negativo."
+		if errors:
+			raise ValidationError(errors)
 
 # Create your models here.

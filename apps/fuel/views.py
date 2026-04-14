@@ -1,7 +1,9 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 
 from .forms import FuelRecordQuickForm
 from .models import FuelGrade, FuelRecord, FuelStation
@@ -10,6 +12,11 @@ from .models import FuelGrade, FuelRecord, FuelStation
 def _configure_form_accessibility(form):
 	for bound_field in form.visible_fields():
 		widget_attrs = bound_field.field.widget.attrs
+		if bound_field.field.required:
+			widget_attrs["aria-required"] = "true"
+		else:
+			widget_attrs.pop("aria-required", None)
+
 		describedby_ids = []
 		if bound_field.help_text:
 			describedby_ids.append(f"{bound_field.id_for_label}_help")
@@ -27,8 +34,33 @@ def _configure_form_accessibility(form):
 
 @login_required
 def fuel_list_view(request):
-	records = FuelRecord.objects.filter(motorcycle__owner=request.user).select_related("motorcycle")
-	return render(request, "fuel/list.html", {"records": records})
+	records_qs = FuelRecord.objects.filter(motorcycle__owner=request.user).select_related("motorcycle")
+	records = list(records_qs)
+	now = timezone.now()
+	month_total = records_qs.filter(date__year=now.year, date__month=now.month).aggregate(total=Sum("total_price"))["total"] or 0
+	total_spend = records_qs.aggregate(total=Sum("total_price"))["total"] or 0
+	total_liters = records_qs.aggregate(total=Sum("liters"))["total"] or 0
+
+	odometer_span = 0
+	if len(records) > 1:
+		odometer_values = [record.odometer_km for record in records]
+		odometer_span = max(odometer_values) - min(odometer_values)
+
+	avg_cost_per_km = None
+	if odometer_span > 0:
+		avg_cost_per_km = round(float(total_spend) / odometer_span, 3)
+
+	last_record = records[0] if records else None
+
+	context = {
+		"records": records,
+		"month_total": month_total,
+		"total_spend": total_spend,
+		"total_liters": total_liters,
+		"avg_cost_per_km": avg_cost_per_km,
+		"last_record": last_record,
+	}
+	return render(request, "fuel/list.html", context)
 
 
 @login_required

@@ -16,18 +16,22 @@ Including another URLconf
 """
 from django.conf import settings
 from django.conf.urls.static import static
+from allauth.account import views as allauth_views
 from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
     path("", include("apps.core.urls")),
+    path("garage/", include("apps.garage.urls")),
     path("fuel/", include("apps.fuel.urls")),
     path("maintenance/", include("apps.maintenance.urls")),
     path("tires/", include("apps.tires.urls")),
     path("documents/", include("apps.documents.urls")),
     path("reminders/", include("apps.reminders.urls")),
     path("reports/", include("apps.reports.urls")),
-    path("accounts/", include("django.contrib.auth.urls")),
+    path("accounts/login/", allauth_views.LoginView.as_view(), name="login"),
+    path("accounts/logout/", allauth_views.LogoutView.as_view(), name="logout"),
+    path("accounts/", include("allauth.urls")),
     path('admin/', admin.site.urls),
 ]
 

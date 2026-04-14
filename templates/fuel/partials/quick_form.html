@@ -1,46 +1,30 @@
+{% load crispy_forms_tags %}
+
 <div class="quick-overlay" role="dialog" aria-modal="true" aria-labelledby="quick-fuel-title">
   <div class="quick-panel" role="document">
     <div class="quick-head">
-      <h3 id="quick-fuel-title">{{ title }}</h3>
-      <button type="button" class="text-button" onclick="this.closest('#quick-form-root').innerHTML=''">Fechar</button>
+      <div>
+        <h3 id="quick-fuel-title">{{ title }}</h3>
+        <p>Registre o abastecimento e mantenha seu histórico atualizado.</p>
+      </div>
+      <button type="button" class="quick-close" onclick="window.closeQuickFormModal?.()" aria-label="Fechar formulário">
+        <i data-lucide="x"></i>
+      </button>
     </div>
 
     <form
       method="post"
-      class="data-form"
+      class="data-form quick-form-grid"
       hx-post="{% url 'fuel:quick_create' %}"
       hx-target="#quick-form-root"
       hx-swap="innerHTML"
     >
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ next_url }}" />
+      {{ form|crispy }}
 
-      {% if form.non_field_errors %}
-        <div class="form-errors" aria-live="polite">
-          {% for error in form.non_field_errors %}
-            <p>{{ error }}</p>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      {% for field in form.visible_fields %}
-        <div class="form-field">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.help_text %}
-            <small id="{{ field.id_for_label }}_help">{{ field.help_text }}</small>
-          {% endif %}
-          {% if field.errors %}
-            <div class="field-error" id="{{ field.id_for_label }}_error" aria-live="polite">
-              {% for error in field.errors %}
-                <p>{{ error }}</p>
-              {% endfor %}
-            </div>
-          {% endif %}
-        </div>
-      {% endfor %}
-
-      <div class="quick-actions-row">
+      <div class="quick-actions-row-split">
+        <button type="button" class="secondary-btn" onclick="window.closeQuickFormModal?.()">Cancelar</button>
         <button type="submit" class="primary-btn">{{ submit_label }}</button>
       </div>
     </form>

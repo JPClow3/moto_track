@@ -1,15 +1,33 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from dal import autocomplete
 
 from .forms import MaintenanceRecordQuickForm
 from .models import MaintenancePart, MaintenanceRecord, MaintenanceRecordPart
 
 
+class MaintenancePartAutocomplete(autocomplete.Select2QuerySetView):
+	def get_queryset(self):
+		if not self.request.user.is_authenticated:
+			return MaintenancePart.objects.none()
+
+		queryset = MaintenancePart.objects.filter(owner=self.request.user).order_by("name")
+		if self.q:
+			queryset = queryset.filter(name__icontains=self.q)
+		return queryset
+
+
 def _configure_form_accessibility(form):
 	for bound_field in form.visible_fields():
 		widget_attrs = bound_field.field.widget.attrs
+		if bound_field.field.required:
+			widget_attrs["aria-required"] = "true"
+		else:
+			widget_attrs.pop("aria-required", None)
+
 		describedby_ids = []
 		if bound_field.help_text:
 			describedby_ids.append(f"{bound_field.id_for_label}_help")
@@ -27,8 +45,17 @@ def _configure_form_accessibility(form):
 
 @login_required
 def maintenance_list_view(request):
-	records = MaintenanceRecord.objects.filter(motorcycle__owner=request.user).select_related("motorcycle")
-	return render(request, "maintenance/list.html", {"records": records})
+	records_qs = MaintenanceRecord.objects.filter(motorcycle__owner=request.user).select_related("motorcycle")
+	records = list(records_qs)
+	total_cost = records_qs.aggregate(total=Sum("cost"))["total"] or 0
+	latest_record = records[0] if records else None
+	context = {
+		"records": records,
+		"total_cost": total_cost,
+		"records_count": len(records),
+		"latest_record": latest_record,
+	}
+	return render(request, "maintenance/list.html", context)
 
 
 @login_required

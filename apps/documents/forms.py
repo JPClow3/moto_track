@@ -1,5 +1,6 @@
 from django import forms
 
+from apps.core.sanitizers import sanitize_text
 from apps.garage.models import Motorcycle
 
 from .models import MotorcycleDocument
@@ -17,3 +18,6 @@ class DocumentUploadForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["motorcycle"].queryset = Motorcycle.objects.filter(owner=user).order_by("name")
         self.fields["notes"].required = False
+
+    def clean_notes(self):
+        return sanitize_text(self.cleaned_data.get("notes"))

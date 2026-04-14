@@ -39,3 +39,9 @@ class DocumentsTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, "Manual A")
 		self.assertNotContains(response, "Manual B")
+
+	def test_document_has_audit_timestamps(self):
+		document = MotorcycleDocument.objects.filter(motorcycle=self.motorcycle).first()
+
+		self.assertIsNotNone(document.created_at)
+		self.assertIsNotNone(document.updated_at)

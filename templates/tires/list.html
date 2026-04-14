@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Pneus - Moto Track{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="tires-list-title">
+  <header class="list-header">
+    <div>
+      <h2 id="tires-list-title">Pneus</h2>
+      <p class="section-subtitle">Gerencie instalação, desgaste e vida útil dos pneus por moto.</p>
+    </div>
+    <a class="action-btn action-primary" href="{% url 'tires:create' %}">
+      <span>Novo registro</span>
+      <small>pneu</small>
+    </a>
+  </header>
+
+  <article class="panel" aria-label="Registros de pneus">
+    {% if records %}
+      <div class="doc-table-wrap">
+        <table class="doc-table">
+          <thead>
+            <tr>
+              <th scope="col">Moto</th>
+              <th scope="col">Posição</th>
+              <th scope="col">Modelo</th>
+              <th scope="col">Instalação</th>
+              <th scope="col">Desgaste</th>
+              <th scope="col">Status</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in records %}
+              <tr>
+                <td>{{ record.motorcycle.name }}</td>
+                <td>{{ record.get_position_display }}</td>
+                <td>
+                  <strong>{{ record.brand_model }}</strong>
+                  {% if record.tire_product %}
+                    <p class="doc-note">{{ record.tire_product.manufacturer }} {{ record.tire_product.model_name }}</p>
+                  {% endif %}
+                </td>
+                <td>{{ record.installed_at|date:"d/m/Y" }} • {{ record.installed_odometer_km }} km</td>
+                <td>{{ record.wear_percent }}%</td>
+                <td>
+                  {% if record.is_active %}
+                    <span class="status-pill status-pill-complete">Ativo</span>
+                  {% else %}
+                    <span class="status-pill">Inativo</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="table-actions" role="group" aria-label="Ações do pneu {{ record.brand_model }}">
+                    <a href="{% url 'tires:update' record.pk %}" aria-label="Editar pneu {{ record.brand_model }}">
+                      <i data-lucide="pencil" aria-hidden="true"></i>
+                    </a>
+                    <a href="{% url 'tires:delete' record.pk %}" aria-label="Excluir pneu {{ record.brand_model }}">
+                      <i data-lucide="trash-2" aria-hidden="true"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-text">Nenhum pneu registrado ainda.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

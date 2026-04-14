@@ -4,7 +4,6 @@ from django.utils import timezone
 
 class OdometerOverrideForm(forms.Form):
 	odometer_override_km = forms.IntegerField(min_value=1, label="Odômetro atual (km)")
-	next = forms.CharField(required=False, widget=forms.HiddenInput())
 
 	def __init__(self, *args, motorcycle=None, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -17,6 +16,9 @@ class OdometerOverrideForm(forms.Form):
 		return value
 
 	def save(self):
+		if self.motorcycle is None:
+			raise ValueError("motorcycle must be provided before saving odometer override")
+
 		self.motorcycle.odometer_override_km = self.cleaned_data["odometer_override_km"]
 		self.motorcycle.odometer_override_at = timezone.now()
 		self.motorcycle.save(update_fields=["odometer_override_km", "odometer_override_at", "updated_at"])

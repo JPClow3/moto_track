@@ -13,17 +13,17 @@
 
   <div class="cards-grid" role="list">
     <article class="card" role="listitem">
-      <h3>Total combustível</h3>
+      <h3>Total de combustível</h3>
       <p class="card-value">R$ {{ fuel_total }}</p>
       <p class="card-subtitle">{{ fuel_records_count }} registros</p>
     </article>
     <article class="card" role="listitem">
-      <h3>Total manutenção</h3>
+      <h3>Total de manutenção</h3>
       <p class="card-value">R$ {{ maintenance_total }}</p>
       <p class="card-subtitle">{{ maintenance_records_count }} registros</p>
     </article>
     <article class="card" role="listitem">
-      <h3>Média odômetro</h3>
+      <h3>Média do odômetro</h3>
       <p class="card-value">{% if avg_odometer_km %}{{ avg_odometer_km|floatformat:0 }} km{% else %}-{% endif %}</p>
       <p class="card-subtitle">Média dos registros de abastecimento</p>
     </article>

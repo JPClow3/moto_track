@@ -14,10 +14,10 @@
   <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Pular para o conteudo principal</a>
+  <a class="skip-link" href="#main-content">Pular para o conteúdo principal</a>
 
   <div class="app-shell">
-    <aside class="sidebar" aria-label="Navegacao principal">
+    <aside class="sidebar" aria-label="Navegação principal">
       <div class="sidebar-brand-wrap">
         <div class="sidebar-brand">Moto Track</div>
         <p class="sidebar-subtitle">Gestão de precisão</p>
@@ -25,9 +25,10 @@
       <nav>
         <ul class="sidebar-nav">
           <li><a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a></li>
+          <li><a href="{% url 'garage:list' %}" {% if request.resolver_match.namespace == 'garage' %}aria-current="page"{% endif %}><i data-lucide="bike" aria-hidden="true"></i><span>Garagem</span></a></li>
           <li><a href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Abastecimentos</span></a></li>
           <li><a href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Manutenções</span></a></li>
-          <li><a href="{% url 'tires:catalogs' %}" {% if request.resolver_match.namespace == 'tires' %}aria-current="page"{% endif %}><i data-lucide="circle-dot" aria-hidden="true"></i><span>Catálogos de pneus</span></a></li>
+          <li><a href="{% url 'tires:list' %}" {% if request.resolver_match.namespace == 'tires' %}aria-current="page"{% endif %}><i data-lucide="circle-dot" aria-hidden="true"></i><span>Pneus</span></a></li>
           <li><a href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}><i data-lucide="file-text" aria-hidden="true"></i><span>Documentos</span></a></li>
           <li><a href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}><i data-lucide="bell-ring" aria-hidden="true"></i><span>Lembretes</span></a></li>
           <li><a href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' %}aria-current="page"{% endif %}><i data-lucide="chart-column" aria-hidden="true"></i><span>Relatórios</span></a></li>
@@ -59,12 +60,12 @@
               <i data-lucide="settings" aria-hidden="true"></i>
             </a>
             {% if request.user.is_authenticated %}
-              <form method="post" action="{% url 'logout' %}">
+              <form method="post" action="{% url 'account_logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="text-button">Sair</button>
               </form>
             {% else %}
-              <a href="{% url 'login' %}">Entrar</a>
+              <a href="{% url 'account_login' %}">Entrar</a>
             {% endif %}
           </div>
         </div>
@@ -82,27 +83,118 @@
         {% block content %}{% endblock %}
       </main>
 
-      <nav class="bottom-nav" aria-label="Navegacao rapida">
+      <nav class="bottom-nav" aria-label="Navegação rápida">
         <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a>
+        <a href="{% url 'garage:list' %}" {% if request.resolver_match.namespace == 'garage' %}aria-current="page"{% endif %}><i data-lucide="bike" aria-hidden="true"></i><span>Garagem</span></a>
         <a href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Abastecimentos</span></a>
         <a href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Manutenções</span></a>
-        <a href="{% url 'tires:catalogs' %}" {% if request.resolver_match.namespace == 'tires' %}aria-current="page"{% endif %}><i data-lucide="circle-dot" aria-hidden="true"></i><span>Pneus</span></a>
-        <a href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}><i data-lucide="bell-ring" aria-hidden="true"></i><span>Lembretes</span></a>
-        <a href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' %}aria-current="page"{% endif %}><i data-lucide="chart-column" aria-hidden="true"></i><span>Relatórios</span></a>
+        <a href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}><i data-lucide="file-text" aria-hidden="true"></i><span>Documentos</span></a>
+        <a href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' or request.resolver_match.namespace == 'reminders' or request.resolver_match.namespace == 'tires' %}aria-current="page"{% endif %}><i data-lucide="ellipsis" aria-hidden="true"></i><span>Mais</span></a>
       </nav>
     </div>
   </div>
 
   <div id="quick-form-root" aria-live="polite"></div>
   <script>
+    let previousFocusedElement = null;
+
+    function getFocusableElements(container) {
+      return Array.from(
+        container.querySelectorAll(
+          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => !element.hasAttribute("hidden") && element.offsetParent !== null);
+    }
+
+    function closeQuickFormModal() {
+      const quickFormRoot = document.getElementById("quick-form-root");
+      if (!quickFormRoot) {
+        return;
+      }
+
+      quickFormRoot.innerHTML = "";
+      if (previousFocusedElement && typeof previousFocusedElement.focus === "function") {
+        previousFocusedElement.focus();
+      }
+    }
+
+    window.closeQuickFormModal = closeQuickFormModal;
+
     function renderLucideIcons() {
       if (window.lucide) {
         window.lucide.createIcons();
       }
     }
 
+    function setupQuickFormAccessibility() {
+      const quickFormRoot = document.getElementById("quick-form-root");
+      if (!quickFormRoot) {
+        return;
+      }
+
+      const dialog = quickFormRoot.querySelector('[role="dialog"]');
+      if (!dialog) {
+        return;
+      }
+
+      const focusableElements = getFocusableElements(dialog);
+      if (focusableElements.length > 0) {
+        focusableElements[0].focus();
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", renderLucideIcons);
     document.body.addEventListener("htmx:afterSwap", renderLucideIcons);
+
+    document.body.addEventListener("htmx:beforeRequest", () => {
+      previousFocusedElement = document.activeElement;
+    });
+
+    document.body.addEventListener("htmx:afterSwap", (event) => {
+      if (event.target && event.target.id === "quick-form-root") {
+        setupQuickFormAccessibility();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      const quickFormRoot = document.getElementById("quick-form-root");
+      if (!quickFormRoot || !quickFormRoot.firstElementChild) {
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeQuickFormModal();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const quickFormRoot = document.getElementById("quick-form-root");
+      const dialog = quickFormRoot ? quickFormRoot.querySelector('[role="dialog"]') : null;
+      if (!dialog) {
+        return;
+      }
+
+      const focusableElements = getFocusableElements(dialog);
+      if (focusableElements.length === 0) {
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    });
   </script>
 </body>
 </html>

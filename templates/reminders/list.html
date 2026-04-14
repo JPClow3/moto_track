@@ -9,6 +9,10 @@
       <h2 id="reminders-title">Lembretes</h2>
       <p class="section-subtitle">Acompanhe eventos por data, quilometragem e intervalo.</p>
     </div>
+    <a class="action-btn action-primary" href="{% url 'reminders:create' %}">
+      <span>Novo lembrete</span>
+      <small>criar</small>
+    </a>
   </header>
 
   <div class="content-grid">
@@ -22,7 +26,11 @@
                 <strong>{{ reminder.title }}</strong>
                 <p>{{ reminder.get_trigger_type_display }}</p>
               </div>
-              <span class="badge">Ativo</span>
+              <div class="table-actions" role="group" aria-label="Ações do lembrete {{ reminder.title }}">
+                <span class="badge">Ativo</span>
+                <a href="{% url 'reminders:update' reminder.pk %}" aria-label="Editar lembrete {{ reminder.title }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                <a href="{% url 'reminders:delete' reminder.pk %}" aria-label="Excluir lembrete {{ reminder.title }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+              </div>
             </li>
           {% endfor %}
         </ul>
@@ -41,7 +49,11 @@
                 <strong>{{ reminder.title }}</strong>
                 <p>{{ reminder.get_trigger_type_display }}</p>
               </div>
-              <span>Inativo</span>
+              <div class="table-actions" role="group" aria-label="Ações do lembrete {{ reminder.title }}">
+                <span class="badge">Inativo</span>
+                <a href="{% url 'reminders:update' reminder.pk %}" aria-label="Editar lembrete {{ reminder.title }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                <a href="{% url 'reminders:delete' reminder.pk %}" aria-label="Excluir lembrete {{ reminder.title }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+              </div>
             </li>
           {% endfor %}
         </ul>

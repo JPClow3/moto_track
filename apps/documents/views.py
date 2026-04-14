@@ -27,6 +27,17 @@ def list_documents(request):
 	category_counts = dict(
 		documents_qs.values("document_type").annotate(total=Count("id")).values_list("document_type", "total")
 	)
+	category_cards = [
+		{"label": "Registro", "type": DocumentType.CRLV, "count": category_counts.get(DocumentType.CRLV, 0), "icon": "id-card"},
+		{
+			"label": "Seguro",
+			"type": DocumentType.INSURANCE,
+			"count": category_counts.get(DocumentType.INSURANCE, 0),
+			"icon": "shield-check",
+		},
+		{"label": "Manuais", "type": DocumentType.MANUAL, "count": category_counts.get(DocumentType.MANUAL, 0), "icon": "book-open"},
+		{"label": "Recibos", "type": DocumentType.RECEIPT, "count": category_counts.get(DocumentType.RECEIPT, 0), "icon": "receipt"},
+	]
 
 	context = {
 		"documents": documents,
@@ -34,5 +45,6 @@ def list_documents(request):
 		"pinned_manual": pinned_manual,
 		"insurance_alert": insurance_alert,
 		"category_counts": category_counts,
+		"category_cards": category_cards,
 	}
 	return render(request, "documents/list.html", context)

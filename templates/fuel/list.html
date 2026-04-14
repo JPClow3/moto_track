@@ -3,7 +3,7 @@
 {% block title %}Abastecimentos - Moto Track{% endblock %}
 
 {% block content %}
-<section aria-labelledby="fuel-list-title">
+<section class="list-section" aria-labelledby="fuel-list-title">
   <header class="list-header">
     <div>
       <h2 id="fuel-list-title">Abastecimentos</h2>
@@ -21,19 +21,64 @@
     </a>
   </header>
 
+  <section class="stats-grid" aria-label="Resumo de abastecimento">
+    <article class="stats-card">
+      <p class="stats-label">Total acumulado</p>
+      <p class="stats-value">R$ {{ total_spend }}</p>
+      <p class="stats-note">Todos os registros</p>
+    </article>
+    <article class="stats-card">
+      <p class="stats-label">Média de custo por km</p>
+      <p class="stats-value">
+        {% if avg_cost_per_km is not None %}
+          R$ {{ avg_cost_per_km }}
+        {% else %}
+          --
+        {% endif %}
+      </p>
+      <p class="stats-note">Baseado no histórico</p>
+    </article>
+    <article class="stats-card stats-card-emphasis">
+      <p class="stats-label">Último abastecimento</p>
+      <p class="stats-value">{% if last_record %}{{ last_record.date|date:"d M" }}{% else %}--{% endif %}</p>
+      <p class="stats-note">{% if month_total %}R$ {{ month_total }} no mês{% else %}Sem custo no mês{% endif %}</p>
+    </article>
+  </section>
+
   <article class="panel" aria-label="Registros de abastecimento">
     {% if records %}
-      <ul class="activity-list">
-        {% for record in records %}
-          <li>
-            <div>
-              <strong>{{ record.motorcycle.name }} • {{ record.date }}</strong>
-              <p>{{ record.odometer_km }} km{% if record.station_name %} • {{ record.station_name }}{% endif %}</p>
-            </div>
-            <span>R$ {{ record.total_price }}</span>
-          </li>
-        {% endfor %}
-      </ul>
+      <div class="doc-table-wrap">
+        <table class="doc-table">
+          <thead>
+            <tr>
+              <th scope="col">Data</th>
+              <th scope="col">Moto</th>
+              <th scope="col">Odômetro</th>
+              <th scope="col">Litros</th>
+              <th scope="col">Preço/L</th>
+              <th scope="col">Total</th>
+              <th scope="col">Posto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in records %}
+              <tr>
+                <td>
+                  <strong>{{ record.date|date:"d/m/Y" }}</strong>
+                </td>
+                <td>{{ record.motorcycle.name }}</td>
+                <td>{{ record.odometer_km }} km</td>
+                <td>{{ record.liters }} L</td>
+                <td>R$ {{ record.price_per_liter }}</td>
+                <td><strong>R$ {{ record.total_price }}</strong></td>
+                <td>
+                  <span class="doc-pill">{{ record.station_name|default:"Sem posto" }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% else %}
       <p class="empty-text">Nenhum abastecimento registrado ainda.</p>
     {% endif %}

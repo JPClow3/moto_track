@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
 from apps.garage.models import Motorcycle
-from apps.tires.models import TireProduct, TireType
+from apps.tires.models import TirePosition, TireProduct, TireRecord, TireType
 
 
 class TireModelTests(TestCase):
@@ -36,3 +37,101 @@ class TireModelTests(TestCase):
 	def test_owner_scoped_products_are_usable_in_queryset(self):
 		self.assertEqual(TireProduct.objects.filter(owner=self.user).count(), 1)
 		self.assertEqual(TireProduct.objects.filter(owner=self.other_user).count(), 1)
+
+	def test_tire_record_clean_rejects_wear_over_100(self):
+		record = TireRecord(
+			motorcycle=self.motorcycle,
+			position=TirePosition.FRONT,
+			brand_model="Pirelli Angel GT",
+			installed_at="2026-04-14",
+			installed_odometer_km=10000,
+			cost="500.00",
+			wear_percent=101,
+		)
+
+		with self.assertRaises(ValidationError):
+			record.full_clean()
+
+	def test_tire_record_has_audit_timestamps(self):
+		record = TireRecord.objects.create(
+			motorcycle=self.motorcycle,
+			position=TirePosition.FRONT,
+			brand_model="Pirelli Angel GT",
+			installed_at="2026-04-14",
+			installed_odometer_km=10200,
+			cost="500.00",
+			wear_percent=10,
+		)
+
+		self.assertIsNotNone(record.created_at)
+		self.assertIsNotNone(record.updated_at)
+
+
+class TireViewTests(TestCase):
+	def setUp(self):
+		User = get_user_model()
+		self.user = User.objects.create_user(username="tire-view-user", email="tire-view@example.com", password="pass12345")
+		self.other_user = User.objects.create_user(username="tire-view-other", email="tire-view-other@example.com", password="pass12345")
+		self.motorcycle = Motorcycle.objects.create(owner=self.user, name="Moto 1", brand="Honda", model="CB 300F", year=2024)
+		self.other_motorcycle = Motorcycle.objects.create(owner=self.other_user, name="Moto 2", brand="Yamaha", model="MT-03", year=2024)
+		self.product = TireProduct.objects.create(owner=self.user, manufacturer="Pirelli", model_name="Angel GT", tire_type=TireType.TOURING)
+		self.record = TireRecord.objects.create(
+			motorcycle=self.motorcycle,
+			tire_product=self.product,
+			position=TirePosition.REAR,
+			brand_model="Pirelli Angel GT",
+			installed_at="2026-04-10",
+			installed_odometer_km=10000,
+			cost="650.00",
+			wear_percent=20,
+		)
+		self.other_record = TireRecord.objects.create(
+			motorcycle=self.other_motorcycle,
+			position=TirePosition.FRONT,
+			brand_model="Outro pneu",
+			installed_at="2026-04-11",
+			installed_odometer_km=12000,
+			cost="550.00",
+			wear_percent=10,
+		)
+
+	def test_list_view_is_owner_scoped(self):
+		self.client.force_login(self.user)
+		response = self.client.get(reverse("tires:list"))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "Pirelli Angel GT")
+		self.assertNotContains(response, "Outro pneu")
+
+	def test_create_view_creates_tire_record(self):
+		self.client.force_login(self.user)
+		response = self.client.post(
+			reverse("tires:create"),
+			{
+				"motorcycle": self.motorcycle.pk,
+				"tire_product": self.product.pk,
+				"position": TirePosition.FRONT,
+				"brand_model": "Novo Pneu",
+				"installed_at": "2026-04-14",
+				"installed_odometer_km": 11000,
+				"cost": "700.00",
+				"wear_percent": 5,
+				"is_active": True,
+			},
+		)
+
+		self.assertEqual(response.status_code, 302)
+		self.assertTrue(TireRecord.objects.filter(motorcycle=self.motorcycle, brand_model="Novo Pneu").exists())
+
+	def test_update_view_denies_other_user_record(self):
+		self.client.force_login(self.user)
+		response = self.client.get(reverse("tires:update", args=[self.other_record.pk]))
+
+		self.assertEqual(response.status_code, 404)
+
+	def test_delete_view_removes_owned_record(self):
+		self.client.force_login(self.user)
+		response = self.client.post(reverse("tires:delete", args=[self.record.pk]))
+
+		self.assertEqual(response.status_code, 302)
+		self.assertFalse(TireRecord.objects.filter(pk=self.record.pk).exists())

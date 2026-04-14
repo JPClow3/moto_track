@@ -1,16 +1,16 @@
 from decimal import Decimal, InvalidOperation
+from typing import cast
 
 from django import forms
 from django.utils import timezone
 
+from apps.core.sanitizers import sanitize_text
 from apps.garage.models import Motorcycle
 
 from .models import FuelGrade, FuelRecord, FuelStation
 
 
 class FuelRecordQuickForm(forms.ModelForm):
-	next = forms.CharField(required=False, widget=forms.HiddenInput())
-
 	class Meta:
 		model = FuelRecord
 		fields = [
@@ -35,9 +35,12 @@ class FuelRecordQuickForm(forms.ModelForm):
 	def __init__(self, *args, user=None, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.user = user
-		self.fields["motorcycle"].queryset = Motorcycle.objects.filter(owner=user).order_by("name")
-		self.fields["station"].queryset = FuelStation.objects.filter(owner=user).order_by("name")
-		self.fields["fuel_grade"].queryset = FuelGrade.objects.filter(owner=user).order_by("name")
+		motorcycle_field = cast(forms.ModelChoiceField, self.fields["motorcycle"])
+		station_field = cast(forms.ModelChoiceField, self.fields["station"])
+		fuel_grade_field = cast(forms.ModelChoiceField, self.fields["fuel_grade"])
+		motorcycle_field.queryset = Motorcycle.objects.filter(owner=user).order_by("name")
+		station_field.queryset = FuelStation.objects.filter(owner=user).order_by("name")
+		fuel_grade_field.queryset = FuelGrade.objects.filter(owner=user).order_by("name")
 		self.fields["date"].initial = self.initial.get("date") or timezone.localdate()
 		self.fields["station"].required = False
 		self.fields["fuel_grade"].required = False
@@ -57,3 +60,9 @@ class FuelRecordQuickForm(forms.ModelForm):
 			except (InvalidOperation, ZeroDivisionError):
 				self.add_error("price_per_liter", "Informe um preço por litro válido.")
 		return cleaned_data
+
+	def clean_station_name(self):
+		return sanitize_text(self.cleaned_data.get("station_name"))
+
+	def clean_notes(self):
+		return sanitize_text(self.cleaned_data.get("notes"))

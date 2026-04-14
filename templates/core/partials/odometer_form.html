@@ -1,3 +1,5 @@
+{% load crispy_forms_tags %}
+
 <div class="quick-overlay" role="dialog" aria-modal="true" aria-labelledby="quick-odometer-title">
   <div class="quick-panel" role="document">
     <div class="quick-head">
@@ -14,28 +16,7 @@
     >
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ next_url }}" />
-
-      {% if form.non_field_errors %}
-        <div class="form-errors" aria-live="polite">
-          {% for error in form.non_field_errors %}
-            <p>{{ error }}</p>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      {% for field in form.visible_fields %}
-        <div class="form-field">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-            <div class="field-error" aria-live="polite">
-              {% for error in field.errors %}
-                <p>{{ error }}</p>
-              {% endfor %}
-            </div>
-          {% endif %}
-        </div>
-      {% endfor %}
+      {{ form|crispy }}
 
       <div class="quick-actions-row">
         <button type="submit" class="primary-btn">{{ submit_label }}</button>
