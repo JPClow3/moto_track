@@ -13,6 +13,7 @@ class MotorcycleAdmin(UserScopedAdmin):
 
 @admin.register(MotorcycleSpec)
 class MotorcycleSpecAdmin(UserScopedAdmin):
+	owner_lookup = "motorcycle__owner"
 	foreign_key_scopes = {"motorcycle": lambda user: Motorcycle.objects.filter(owner=user)}
 
 	list_display = ("motorcycle", "fuel_tank_capacity_l", "recommended_tire_pressure_front", "recommended_tire_pressure_rear")

@@ -15,13 +15,21 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 
 CSRF_COOKIE_SECURE = True
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"
 
-SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
+STORAGES = {
+	"default": {
+		"BACKEND": "django.core.files.storage.FileSystemStorage",
+	},
+	"staticfiles": {
+		"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+	},
+}
 
 
 def _parse_hosts(value: str) -> list[str]:

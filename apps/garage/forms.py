@@ -1,5 +1,6 @@
 from django import forms
 
+from apps.core.sanitizers import sanitize_text
 from .models import Motorcycle
 
 
@@ -28,3 +29,15 @@ class MotorcycleForm(forms.ModelForm):
 
 		self.fields["license_plate"].required = False
 		self.fields["odometer_override_km"].required = False
+
+	def clean_name(self):
+		return sanitize_text(self.cleaned_data.get("name"))
+
+	def clean_brand(self):
+		return sanitize_text(self.cleaned_data.get("brand"))
+
+	def clean_model(self):
+		return sanitize_text(self.cleaned_data.get("model"))
+
+	def clean_license_plate(self):
+		return sanitize_text(self.cleaned_data.get("license_plate"))

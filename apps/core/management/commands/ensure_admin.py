@@ -1,4 +1,5 @@
 import os
+import secrets
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -12,7 +13,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         username = os.getenv("DJANGO_BOOTSTRAP_ADMIN_USERNAME", "admin")
-        password = os.getenv("DJANGO_BOOTSTRAP_ADMIN_PASSWORD", "admin")
+        password = os.getenv("DJANGO_BOOTSTRAP_ADMIN_PASSWORD")
         email = os.getenv("DJANGO_BOOTSTRAP_ADMIN_EMAIL", "admin@example.com")
 
         user_model = get_user_model()
@@ -30,7 +31,21 @@ class Command(BaseCommand):
         user.is_active = True
         user.is_staff = True
         user.is_superuser = True
-        user.set_password(password)
+
+        # Only rotate password when explicitly provided or while creating the bootstrap user.
+        if password:
+            user.set_password(password)
+        elif created:
+            generated_password = secrets.token_urlsafe(24)
+            user.set_password(generated_password)
+            self.stdout.write(self.style.WARNING(f"Using generated random password for admin: {generated_password}"))
+        else:
+            self.stdout.write(
+                self.style.WARNING(
+                    "DJANGO_BOOTSTRAP_ADMIN_PASSWORD not set; keeping existing admin password unchanged."
+                )
+            )
+
         user.save()
 
         motorcycle, motorcycle_created = Motorcycle.objects.get_or_create(

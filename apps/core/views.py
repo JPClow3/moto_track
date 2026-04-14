@@ -17,42 +17,65 @@ from apps.tires.models import TirePosition, TireRecord
 @login_required
 def dashboard_view(request):
 	motorcycle = Motorcycle.objects.filter(owner=request.user).first()
-	latest_fuel = FuelRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km").first() if motorcycle else None
-	recent_fuels = list(FuelRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km")[:3]) if motorcycle else []
-	fuel_history = list(FuelRecord.objects.filter(motorcycle=motorcycle).order_by("date", "odometer_km")) if motorcycle else []
-	recent_maintenance = list(MaintenanceRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km")[:3]) if motorcycle else []
-	active_reminders = list(Reminder.objects.filter(motorcycle=motorcycle, is_active=True).order_by("reference_date", "reference_km")[:4]) if motorcycle else []
+
+	if not motorcycle:
+		context = {
+			"motorcycle": None,
+			"status_cards": [],
+			"tire_cards": [],
+			"quick_actions": [
+				{
+					"label": "Adicionar minha primeira moto",
+					"hint": "Para começar a usar",
+					"icon": "plus-circle",
+					"url": reverse("garage:create"),
+					"tone": "primary",
+				}
+			],
+			"catalog_links": [],
+			"recent_fuels": [],
+			"recent_maintenance": [],
+			"active_reminders": [],
+			"month_total": 0,
+			"pending_alerts": 0,
+			"cards": [
+				{
+					"title": "Odômetro atual",
+					"value": "Sem moto cadastrada",
+					"subtitle": "Cadastre sua moto para iniciar",
+				}
+			]
+		}
+		return render(request, "core/dashboard.html", context)
+
+	latest_fuel = FuelRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km").first()
+	recent_fuels = list(FuelRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km")[:3])
+	fuel_history = list(FuelRecord.objects.filter(motorcycle=motorcycle).order_by("date", "odometer_km"))
+	recent_maintenance = list(MaintenanceRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km")[:3])
+	active_reminders = list(Reminder.objects.filter(motorcycle=motorcycle, is_active=True).order_by("reference_date", "reference_km")[:4])
 	last_oil = (
 		MaintenanceRecord.objects.filter(motorcycle=motorcycle, maintenance_type=MaintenanceType.OIL_CHANGE)
 		.order_by("-date", "-odometer_km")
 		.first()
-		if motorcycle
-		else None
 	)
 	rear_tire = (
 		TireRecord.objects.filter(motorcycle=motorcycle, position=TirePosition.REAR, is_active=True)
 		.order_by("-installed_at")
 		.first()
-		if motorcycle
-		else None
 	)
 	front_tire = (
 		TireRecord.objects.filter(motorcycle=motorcycle, position=TirePosition.FRONT, is_active=True)
 		.order_by("-installed_at")
 		.first()
-		if motorcycle
-		else None
 	)
 	now = timezone.now()
 	month_total = (
 		FuelRecord.objects.filter(motorcycle=motorcycle, date__year=now.year, date__month=now.month).aggregate(total=Sum("total_price"))["total"]
-		if motorcycle
-		else 0
 	)
 	pending_alerts = len(active_reminders)
 	average_consumption = None
-	if fuel_history:
-		total_liters = sum(float(record.liters) for record in fuel_history)
+	if len(fuel_history) > 1:
+		total_liters = sum(float(record.liters) for record in fuel_history[1:])
 		distance_span = fuel_history[-1].odometer_km - fuel_history[0].odometer_km
 		if total_liters > 0 and distance_span > 0:
 			average_consumption = round(distance_span / total_liters, 1)
@@ -70,7 +93,7 @@ def dashboard_view(request):
 		return f"{value:,} km".replace(",", ".")
 
 	next_oil_km_remaining = None
-	if last_oil and last_oil.computed_next_change_km and motorcycle:
+	if last_oil and last_oil.computed_next_change_km:
 		next_oil_km_remaining = max(last_oil.computed_next_change_km - motorcycle.current_odometer_km, 0)
 
 	status_cards = [
@@ -124,6 +147,7 @@ def dashboard_view(request):
 		{
 			"label": "Adicionar abastecimento",
 			"hint": "Registre em segundos",
+			"icon": "fuel",
 			"url": reverse("fuel:list"),
 			"htmx_url": reverse("fuel:quick_create"),
 			"tone": "primary",
@@ -131,6 +155,7 @@ def dashboard_view(request):
 		{
 			"label": "Registrar manutenção",
 			"hint": "Preventiva ou corretiva",
+			"icon": "wrench",
 			"url": reverse("maintenance:list"),
 			"htmx_url": reverse("maintenance:quick_create"),
 			"tone": "secondary",
@@ -138,11 +163,18 @@ def dashboard_view(request):
 		{
 			"label": "Atualizar odômetro",
 			"hint": "Ajuste manual",
+			"icon": "gauge",
 			"url": reverse("dashboard"),
 			"htmx_url": reverse("quick_odometer_update"),
 			"tone": "secondary",
 		},
-		{"label": "Abrir manual", "hint": "Consulta rápida", "url": reverse("documents:list"), "tone": "secondary"},
+		{
+			"label": "Abrir manual",
+			"hint": "Consulta rápida",
+			"icon": "file-text",
+			"url": reverse("documents:list"),
+			"tone": "secondary",
+		},
 	]
 	catalog_links = [
 		{"label": "Catálogos de combustível", "hint": "Postos e grades", "url": reverse("fuel:catalogs")},
@@ -164,14 +196,14 @@ def dashboard_view(request):
 		"cards": [
 			{
 				"title": "Odômetro atual",
-				"value": f"{motorcycle.current_odometer_km} km" if motorcycle else "Sem moto cadastrada",
-				"subtitle": motorcycle.name if motorcycle else "Cadastre sua moto para iniciar",
+				"value": f"{motorcycle.current_odometer_km} km",
+				"subtitle": motorcycle.name,
 			},
 			{
 				"title": "Próxima troca de óleo",
 				"value": (
 					f"em {max(last_oil.computed_next_change_km - motorcycle.current_odometer_km, 0)} km"
-					if last_oil and last_oil.computed_next_change_km and motorcycle
+					if last_oil and last_oil.computed_next_change_km
 					else "Não definida"
 				),
 				"subtitle": (

@@ -7,3 +7,6 @@ media/
 staticfiles/
 .pytest_cache/
 .vscode/
+node_modules/
+test_output.txt
+single_test_output.txt

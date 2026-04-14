@@ -33,29 +33,12 @@
     </div>
   </header>
 
-  <div class="dashboard-cta-row" aria-label="Atalhos de registro">
-    <a
-      class="inline-cta primary"
-      href="{% url 'fuel:quick_create' %}?next={% url 'dashboard' %}"
-      hx-get="{% url 'fuel:quick_create' %}?next={% url 'dashboard' %}"
-      hx-target="#quick-form-root"
-      hx-swap="innerHTML"
-    >Adicionar abastecimento</a>
-    <a
-      class="inline-cta"
-      href="{% url 'maintenance:quick_create' %}?next={% url 'dashboard' %}"
-      hx-get="{% url 'maintenance:quick_create' %}?next={% url 'dashboard' %}"
-      hx-target="#quick-form-root"
-      hx-swap="innerHTML"
-    >Adicionar manutenção</a>
-  </div>
-
   <section aria-labelledby="quick-actions-title">
     <h3 id="quick-actions-title">Ações rápidas</h3>
-    <div class="quick-actions">
+    <div class="quick-actions quick-actions-compact">
       {% for action in quick_actions %}
         <a
-          class="action-btn action-{{ action.tone }}"
+          class="quick-action-card"
           href="{{ action.url }}"
           {% if action.htmx_url %}
           hx-get="{{ action.htmx_url }}?next={% url 'dashboard' %}"
@@ -63,8 +46,11 @@
           hx-swap="innerHTML"
           {% endif %}
         >
-          <span>{{ action.label }}</span>
-          <small>{{ action.hint }}</small>
+          <span class="quick-action-icon" aria-hidden="true"><i data-lucide="{{ action.icon }}"></i></span>
+          <span class="quick-action-main">
+            <strong>{{ action.label }}</strong>
+            <small>{{ action.hint }}</small>
+          </span>
         </a>
       {% endfor %}
     </div>

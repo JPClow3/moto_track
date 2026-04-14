@@ -7,7 +7,7 @@
   <title>{% block title %}Moto Track{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   <script src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js" defer></script>
@@ -36,7 +36,6 @@
       </nav>
       <div class="sidebar-footer">
         <p class="sidebar-bike">{{ request.user.username|default:'Garagem' }}</p>
-        <button type="button" class="ride-btn"><i data-lucide="play" aria-hidden="true"></i>Iniciar registro</button>
       </div>
     </aside>
 
@@ -52,11 +51,7 @@
             </h1>
           </div>
           <div class="top-actions" aria-label="Ações do topo">
-            <label class="top-search-wrap" for="top-search-input">
-              <span>Buscar registros</span>
-              <i data-lucide="search" aria-hidden="true"></i>
-              <input id="top-search-input" type="search" name="q" aria-label="Buscar registros" placeholder="Buscar registros" />
-            </label>
+
             <a class="icon-btn" href="{% url 'reminders:list' %}" aria-label="Ir para lembretes">
               <i data-lucide="bell" aria-hidden="true"></i>
             </a>

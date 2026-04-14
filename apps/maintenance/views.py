@@ -7,6 +7,7 @@ from dal import autocomplete
 
 from .forms import MaintenanceRecordQuickForm
 from .models import MaintenancePart, MaintenanceRecord, MaintenanceRecordPart
+from apps.core.forms import configure_form_accessibility
 
 
 class MaintenancePartAutocomplete(autocomplete.Select2QuerySetView):
@@ -20,27 +21,7 @@ class MaintenancePartAutocomplete(autocomplete.Select2QuerySetView):
 		return queryset
 
 
-def _configure_form_accessibility(form):
-	for bound_field in form.visible_fields():
-		widget_attrs = bound_field.field.widget.attrs
-		if bound_field.field.required:
-			widget_attrs["aria-required"] = "true"
-		else:
-			widget_attrs.pop("aria-required", None)
 
-		describedby_ids = []
-		if bound_field.help_text:
-			describedby_ids.append(f"{bound_field.id_for_label}_help")
-		if bound_field.errors:
-			widget_attrs["aria-invalid"] = "true"
-			describedby_ids.append(f"{bound_field.id_for_label}_error")
-		else:
-			widget_attrs.pop("aria-invalid", None)
-
-		if describedby_ids:
-			widget_attrs["aria-describedby"] = " ".join(describedby_ids)
-		else:
-			widget_attrs.pop("aria-describedby", None)
 
 
 @login_required
@@ -71,10 +52,11 @@ def maintenance_quick_create_view(request):
 	if request.method == "POST":
 		form = MaintenanceRecordQuickForm(request.POST, user=request.user)
 		if form.is_valid():
-			parts = list(form.cleaned_data.pop("parts", []))
-			record = form.save()
-			for part in parts:
-				MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
+			parts = form.cleaned_data.pop("parts", [])
+			record = form.save()  # parts is not a model field, so this is safe
+			if parts:
+				for part in parts:
+					MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
 			messages.success(request, f"Manutenção registrada para {record.motorcycle.name}.")
 			if is_htmx:
 				response = HttpResponse()
@@ -93,5 +75,5 @@ def maintenance_quick_create_view(request):
 		"submit_label": "Salvar manutenção",
 		"next_url": request.GET.get("next") or request.POST.get("next") or "",
 	}
-	_configure_form_accessibility(form)
+	configure_form_accessibility(form)
 	return render(request, "maintenance/partials/quick_form.html", context, status=status)

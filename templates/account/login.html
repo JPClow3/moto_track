@@ -1,0 +1,65 @@
+{% extends "allauth/layouts/base.html" %}
+{% load i18n %}
+
+{% block head_title %}{% trans "Entrar" %} - Moto Track{% endblock %}
+
+{% block content %}
+  <header class="auth-local-header" aria-label="{% trans 'Acesso ao sistema' %}">
+    <h1 class="auth-local-title">{% trans "Entrar" %}</h1>
+    <p class="auth-local-subtitle">{% trans "Acesse sua garagem e continue seus registros." %}</p>
+  </header>
+
+  {% if form.non_field_errors %}
+    <div class="form-errors" role="alert" aria-label="{% trans 'Erros do formulário' %}">
+      {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" action="{% url 'account_login' %}" class="data-form" novalidate>
+    {% csrf_token %}
+
+    <div class="form-field">
+      <label for="{{ form.login.id_for_label }}">{% trans "Login" %}</label>
+      {{ form.login }}
+      {% if form.login.errors %}
+        <div class="field-error" role="alert">
+          {% for error in form.login.errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.password.id_for_label }}">{% trans "Senha" %}</label>
+      {{ form.password }}
+      {% if form.password.errors %}
+        <div class="field-error" role="alert">
+          {% for error in form.password.errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    {% if form.remember %}
+      <div class="auth-local-row">
+        <label class="auth-local-check">
+          {{ form.remember }}
+          <span>{% trans "Manter conectado" %}</span>
+        </label>
+        <a class="text-link" href="{% url 'account_reset_password' %}">{% trans "Esqueceu a senha?" %}</a>
+      </div>
+    {% endif %}
+
+    {% if redirect_field_value %}
+      <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+    {% endif %}
+
+    <button type="submit" class="primary-btn">{% trans "Entrar" %}</button>
+  </form>
+
+  <p class="auth-local-footer">
+    {% trans "Ainda não tem conta?" %}
+    <a class="text-link" href="{% url 'account_signup' %}">{% trans "Criar conta" %}</a>
+  </p>
+{% endblock %}
+

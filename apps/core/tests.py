@@ -31,7 +31,8 @@ class CoreViewsTests(TestCase):
 		response = self.client.get(reverse("dashboard"))
 
 		self.assertEqual(response.status_code, 200)
-		self.assertContains(response, "Controle da sua moto em um só lugar")
+		self.assertContains(response, self.motorcycle.name)
+		self.assertContains(response, "Média de consumo")
 
 	def test_odometer_quick_update_rejects_lower_value(self):
 		self.client.force_login(self.user)

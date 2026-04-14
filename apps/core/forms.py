@@ -23,3 +23,29 @@ class OdometerOverrideForm(forms.Form):
 		self.motorcycle.odometer_override_at = timezone.now()
 		self.motorcycle.save(update_fields=["odometer_override_km", "odometer_override_at", "updated_at"])
 		return self.motorcycle
+
+
+def configure_form_accessibility(form):
+	"""
+	Configures aria attributes for form fields based on requirements, help text, and errors.
+	"""
+	for bound_field in form.visible_fields():
+		widget_attrs = bound_field.field.widget.attrs
+		if bound_field.field.required:
+			widget_attrs["aria-required"] = "true"
+		else:
+			widget_attrs.pop("aria-required", None)
+
+		describedby_ids = []
+		if bound_field.help_text:
+			describedby_ids.append(f"{bound_field.id_for_label}_help")
+		if bound_field.errors:
+			widget_attrs["aria-invalid"] = "true"
+			describedby_ids.append(f"{bound_field.id_for_label}_error")
+		else:
+			widget_attrs.pop("aria-invalid", None)
+
+		if describedby_ids:
+			widget_attrs["aria-describedby"] = " ".join(describedby_ids)
+		else:
+			widget_attrs.pop("aria-describedby", None)

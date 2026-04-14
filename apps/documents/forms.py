@@ -1,4 +1,6 @@
+import os
 from django import forms
+from django.core.exceptions import ValidationError
 
 from apps.core.sanitizers import sanitize_text
 from apps.garage.models import Motorcycle
@@ -7,17 +9,37 @@ from .models import MotorcycleDocument
 
 
 class DocumentUploadForm(forms.ModelForm):
-    class Meta:
-        model = MotorcycleDocument
-        fields = ["motorcycle", "name", "document_type", "file", "notes"]
-        widgets = {
-            "notes": forms.Textarea(attrs={"rows": 2}),
-        }
+	ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png", ".docx", ".doc"]
+	MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
-    def __init__(self, *args, user=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["motorcycle"].queryset = Motorcycle.objects.filter(owner=user).order_by("name")
-        self.fields["notes"].required = False
+	class Meta:
+		model = MotorcycleDocument
+		fields = ["motorcycle", "name", "document_type", "file", "notes"]
+		widgets = {
+			"notes": forms.Textarea(attrs={"rows": 2}),
+		}
 
-    def clean_notes(self):
-        return sanitize_text(self.cleaned_data.get("notes"))
+	def __init__(self, *args, user=None, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.fields["motorcycle"].queryset = Motorcycle.objects.filter(owner=user).order_by("name")
+		self.fields["notes"].required = False
+
+	def clean_name(self):
+		return sanitize_text(self.cleaned_data.get("name"))
+
+	def clean_notes(self):
+		return sanitize_text(self.cleaned_data.get("notes"))
+
+	def clean_file(self):
+		file = self.cleaned_data.get("file")
+		if not file:
+			return file
+
+		ext = os.path.splitext(file.name)[1].lower()
+		if ext not in self.ALLOWED_EXTENSIONS:
+			raise ValidationError(f"Extensão de arquivo não permitida. Use: {', '.join(self.ALLOWED_EXTENSIONS)}")
+
+		if file.size > self.MAX_FILE_SIZE:
+			raise ValidationError("O arquivo deve ter no máximo 10MB.")
+
+		return file

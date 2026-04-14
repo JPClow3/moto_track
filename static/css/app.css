@@ -51,7 +51,7 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: "Fraunces", "Plus Jakarta Sans", serif;
+  font-family: "Plus Jakarta Sans", "Segoe UI", Tahoma, sans-serif;
   letter-spacing: -0.015em;
 }
 
@@ -455,6 +455,61 @@ h4 {
   gap: 0.78rem;
 }
 
+.quick-actions-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.quick-action-card {
+  display: grid;
+  grid-template-columns: 2.35rem 1fr;
+  gap: 0.7rem;
+  align-items: center;
+  text-decoration: none;
+  border: 1px solid #d4deea;
+  border-radius: 1rem;
+  padding: 0.7rem 0.8rem;
+  background: linear-gradient(165deg, #ffffff 0%, #f7faff 100%);
+  color: var(--ink);
+  box-shadow: var(--shadow-soft);
+  transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
+  min-height: 3.1rem;
+}
+
+.quick-action-card:hover {
+  transform: translateY(-1px);
+  border-color: #bfd0e3;
+}
+
+.quick-action-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.8rem;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(207, 218, 232, 0.95);
+  color: var(--brand);
+}
+
+.quick-action-main {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.quick-action-main strong {
+  font-size: 0.92rem;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.quick-action-main small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
 .action-btn {
   display: grid;
   gap: 0.2rem;
@@ -846,7 +901,7 @@ h4 {
 .doc-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 680px;
+  min-width: 740px;
 }
 
 .doc-table thead th {
@@ -857,6 +912,7 @@ h4 {
   letter-spacing: 0.08em;
   border-bottom: 1px solid var(--border);
   padding: 0.65rem 0.5rem;
+  background: rgba(225, 233, 238, 0.55);
 }
 
 .doc-table tbody td {
@@ -1471,14 +1527,6 @@ h4 {
   font-weight: 700;
 }
 
-.doc-table {
-  min-width: 740px;
-}
-
-.doc-table thead th {
-  background: rgba(225, 233, 238, 0.55);
-}
-
 .doc-table tbody tr {
   transition: background-color 120ms ease;
 }
@@ -1582,6 +1630,21 @@ textarea:focus-visible {
 
   .quick-actions {
     grid-template-columns: 1fr;
+  }
+
+  .quick-actions-compact {
+    gap: 0.55rem;
+  }
+
+  .quick-action-card {
+    grid-template-columns: 2.15rem 1fr;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .quick-action-icon {
+    width: 2.15rem;
+    height: 2.15rem;
+    border-radius: 0.72rem;
   }
 
   .list-header {
@@ -1882,12 +1945,54 @@ main,
 }
 
 .auth-allauth-brand {
-  font-family: "Fraunces", "Plus Jakarta Sans", serif;
+  font-family: "Plus Jakarta Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: clamp(1.5rem, 3.3vw, 2rem);
   font-weight: 700;
   color: #0f6cbd;
   letter-spacing: 0.01em;
   text-decoration: none;
+}
+
+.auth-local-header {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.auth-local-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 1.7rem);
+  letter-spacing: -0.02em;
+}
+
+.auth-local-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.auth-local-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.4rem 0 0.85rem;
+  flex-wrap: wrap;
+}
+
+.auth-local-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.auth-local-footer {
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .auth-allauth-subtitle {
@@ -2079,7 +2184,7 @@ main {
 .status-value,
 .insight-stat,
 .stats-value {
-  font-family: "Fraunces", "Plus Jakarta Sans", serif;
+  font-family: "Plus Jakarta Sans", "Segoe UI", Tahoma, sans-serif;
 }
 
 .feed-item:hover {
