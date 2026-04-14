@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "dal",
     "dal_select2",
     "allauth_ui",
+    "widget_tweaks",
     "allauth",
     "allauth.account",
     "djmoney",

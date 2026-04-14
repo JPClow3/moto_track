@@ -18,19 +18,56 @@
     <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
   {% endblock extra_head %}
 </head>
-<body class="min-h-screen bg-surface text-on-surface antialiased">
+<body class="min-h-screen bg-surface text-on-surface antialiased overflow-x-hidden">
   <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
   <a class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-inverse-surface focus:px-4 focus:py-2 focus:text-on-primary" href="#main-content">Pular para o conteúdo principal</a>
 
+  <!-- Background decoration -->
+  <div class="fixed inset-0 -z-10 overflow-hidden">
+    <div class="absolute -top-24 -right-24 h-[520px] w-[520px] rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-3xl opacity-50"></div>
+    <div class="absolute -bottom-28 -left-24 h-[560px] w-[560px] rounded-full bg-gradient-to-tr from-surface-highest/60 to-transparent blur-3xl opacity-60"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-surface-lowest/70 via-surface/90 to-surface-low"></div>
+  </div>
+
   {% block body %}
-    <main id="main-content" class="mx-auto w-[min(520px,92%)] py-10 space-y-6" tabindex="-1">
-      <header aria-label="Identidade do aplicativo" class="space-y-2">
-        <a class="text-primary text-3xl font-extrabold tracking-tight" href="{% url 'dashboard' %}">Moto Track</a>
-        <p class="text-on-surface-variant text-sm">Acesso seguro para gestão da sua moto</p>
-      </header>
+    <main id="main-content" class="relative min-h-screen flex flex-col md:flex-row" tabindex="-1">
+      <!-- Brand / story -->
+      <section class="hidden md:flex md:w-1/2 p-12 flex-col justify-between">
+        <header aria-label="Identidade do aplicativo" class="flex items-center gap-3">
+          <span class="h-11 w-11 grid place-items-center rounded-2xl bg-surface-lowest shadow-ambient text-primary" aria-hidden="true">
+            <i data-lucide="gauge"></i>
+          </span>
+          <a class="font-extrabold text-3xl tracking-tight text-on-surface" href="{% url 'dashboard' %}">Moto Track</a>
+        </header>
+
+        <div class="max-w-xl">
+          <h1 class="text-6xl font-extrabold tracking-tight leading-tight">
+            Precisão em<br />
+            <span class="text-primary">cada curva.</span>
+          </h1>
+          <p class="mt-6 text-lg leading-relaxed text-on-surface-variant">
+            Acompanhe sua garagem digital com um painel projetado para quem não aceita nada menos que a perfeição mecânica.
+          </p>
+
+          <div class="mt-10 flex gap-4">
+            <div class="w-1 h-12 bg-primary rounded-full"></div>
+            <div class="space-y-1">
+              <div class="text-[10px] font-extrabold uppercase tracking-widest text-primary">Performance estável</div>
+              <div class="text-sm text-on-surface-variant">Monitoramento rápido de custos, serviço e telemetria.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <div class="h-12 w-12 rounded-2xl bg-surface-lowest shadow-ambient grid place-items-center text-on-surface-variant" aria-hidden="true">
+            <i data-lucide="wrench"></i>
+          </div>
+          <div class="text-xs font-extrabold uppercase tracking-widest text-on-surface-variant">Divisão Motorsport // 2026</div>
+        </div>
+      </section>
 
       {% if messages %}
-        <section class="space-y-2" aria-label="Mensagens do sistema">
+        <section class="absolute top-6 left-1/2 -translate-x-1/2 w-[min(720px,92%)] space-y-2" aria-label="Mensagens do sistema">
           {% for message in messages %}
             <div role="alert" class="rounded-2xl bg-surface-lowest px-4 py-3 text-sm font-semibold shadow-ambient">
               <strong>{{ message }}</strong>
@@ -39,44 +76,62 @@
         </section>
       {% endif %}
 
-      <section class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Formulário de autenticação">
-        {% block content %}
-        {% endblock content %}
-      </section>
+      <!-- Auth card -->
+      <section class="flex-1 flex items-center justify-center p-6 md:p-12">
+        <div class="w-full max-w-md rounded-2xl bg-surface-lowest/70 backdrop-blur-2xl p-8 md:p-10 shadow-ambient ring-1 ring-outline-variant/20">
+          <!-- Mobile logo -->
+          <div class="md:hidden flex items-center justify-center gap-3 mb-8">
+            <span class="h-10 w-10 grid place-items-center rounded-2xl bg-surface-lowest shadow-ambient text-primary" aria-hidden="true">
+              <i data-lucide="gauge"></i>
+            </span>
+            <a class="font-extrabold text-2xl tracking-tight text-on-surface" href="{% url 'dashboard' %}">Moto Track</a>
+          </div>
 
-      <nav class="flex flex-wrap gap-4 text-sm font-bold text-primary" aria-label="Links de conta">
-        {% if user.is_authenticated %}
-          {% url 'account_email' as email_url %}
-          {% if email_url %}
-            <a class="hover:underline" href="{{ email_url }}">{% trans "Alterar e-mail" %}</a>
-          {% endif %}
-          {% url 'account_change_password' as change_password_url %}
-          {% if change_password_url %}
-            <a class="hover:underline" href="{{ change_password_url }}">{% trans "Alterar senha" %}</a>
-          {% endif %}
-          {% url 'mfa_index' as mfa_url %}
-          {% if mfa_url %}
-            <a class="hover:underline" href="{{ mfa_url }}">{% trans "Autenticação em dois fatores" %}</a>
-          {% endif %}
-          {% url 'usersessions_list' as usersessions_list_url %}
-          {% if usersessions_list_url %}
-            <a class="hover:underline" href="{{ usersessions_list_url }}">{% trans "Sessões" %}</a>
-          {% endif %}
-          {% url 'account_logout' as logout_url %}
-          {% if logout_url %}
-            <a class="hover:underline" href="{{ logout_url }}">{% trans "Sair" %}</a>
-          {% endif %}
-        {% else %}
-          {% url 'account_login' as login_url %}
-          {% if login_url %}
-            <a class="hover:underline" href="{{ login_url }}">{% trans "Entrar" %}</a>
-          {% endif %}
-          {% url 'account_signup' as signup_url %}
-          {% if signup_url %}
-            <a class="hover:underline" href="{{ signup_url }}">{% trans "Criar conta" %}</a>
-          {% endif %}
-        {% endif %}
-      </nav>
+          <header class="mb-8 text-center md:text-left">
+            <h2 class="text-3xl font-extrabold tracking-tight text-on-surface">Bem-vindo</h2>
+            <p class="mt-2 text-sm text-on-surface-variant">Acesse sua garagem digital para ver estatísticas.</p>
+          </header>
+
+          <section aria-label="Formulário de autenticação">
+            {% block content %}
+            {% endblock content %}
+          </section>
+
+          <nav class="mt-8 flex flex-wrap gap-4 text-sm font-bold text-primary justify-center md:justify-start" aria-label="Links de conta">
+            {% if user.is_authenticated %}
+              {% url 'account_email' as email_url %}
+              {% if email_url %}
+                <a class="hover:underline" href="{{ email_url }}">{% trans "Alterar e-mail" %}</a>
+              {% endif %}
+              {% url 'account_change_password' as change_password_url %}
+              {% if change_password_url %}
+                <a class="hover:underline" href="{{ change_password_url }}">{% trans "Alterar senha" %}</a>
+              {% endif %}
+              {% url 'mfa_index' as mfa_url %}
+              {% if mfa_url %}
+                <a class="hover:underline" href="{{ mfa_url }}">{% trans "Autenticação em dois fatores" %}</a>
+              {% endif %}
+              {% url 'usersessions_list' as usersessions_list_url %}
+              {% if usersessions_list_url %}
+                <a class="hover:underline" href="{{ usersessions_list_url }}">{% trans "Sessões" %}</a>
+              {% endif %}
+              {% url 'account_logout' as logout_url %}
+              {% if logout_url %}
+                <a class="hover:underline" href="{{ logout_url }}">{% trans "Sair" %}</a>
+              {% endif %}
+            {% else %}
+              {% url 'account_login' as login_url %}
+              {% if login_url %}
+                <a class="hover:underline" href="{{ login_url }}">{% trans "Entrar" %}</a>
+              {% endif %}
+              {% url 'account_signup' as signup_url %}
+              {% if signup_url %}
+                <a class="hover:underline" href="{{ signup_url }}">{% trans "Criar conta" %}</a>
+              {% endif %}
+            {% endif %}
+          </nav>
+        </div>
+      </section>
     </main>
   {% endblock body %}
 

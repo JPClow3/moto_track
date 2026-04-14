@@ -13,3 +13,154 @@
     @apply bg-surface text-on-surface antialiased;
   }
 }
+
+@layer components {
+  /* Layout base de páginas CRUD */
+  .list-section {
+    @apply space-y-8 pb-10;
+  }
+
+  .list-header {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between;
+  }
+
+  .list-header h2 {
+    @apply text-3xl font-extrabold tracking-tight text-on-surface;
+  }
+
+  .section-subtitle {
+    @apply mt-2 text-sm font-medium text-on-surface-variant;
+  }
+
+  .panel {
+    @apply rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/20;
+  }
+
+  .inline-cta {
+    @apply inline-flex items-center justify-center rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60;
+  }
+
+  .quick-actions-row {
+    @apply pt-2;
+  }
+
+  .quick-actions-row-split {
+    @apply pt-2 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  /* Tipografia (hierarquia) */
+  .ui-eyebrow {
+    @apply text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant;
+  }
+
+  .ui-h1 {
+    @apply text-lg font-extrabold tracking-tight text-on-surface;
+  }
+
+  .ui-subtitle {
+    @apply text-sm font-medium text-on-surface-variant;
+  }
+
+  /* Formulários */
+  .data-form {
+    @apply space-y-5;
+  }
+
+  .form-field {
+    @apply space-y-2;
+  }
+
+  .form-field > label {
+    @apply text-xs font-bold tracking-wide text-on-surface-variant;
+  }
+
+  /* Quando o form é renderizado via {{ form.as_p }} */
+  .data-form p {
+    @apply space-y-2;
+  }
+
+  .data-form p > label {
+    @apply block text-xs font-bold tracking-wide text-on-surface-variant;
+  }
+
+  .data-form :is(input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="url"], input[type="search"], textarea, select) {
+    @apply w-full rounded-2xl bg-surface-low px-4 py-3 border border-outline-variant/30 text-on-surface placeholder:text-on-surface-variant/70 shadow-ambient;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40;
+  }
+
+  .data-form textarea {
+    @apply min-h-[120px] resize-y;
+  }
+
+  .data-form :is(input[type="checkbox"], input[type="radio"]) {
+    @apply h-4 w-4 rounded-md border-outline-variant/40 text-primary focus:ring-primary/20;
+  }
+
+  .data-form select {
+    /* Aparência do select alinhada com o app (seta custom) */
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%23566166' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    background-size: 1.15rem 1.15rem;
+    padding-right: 3rem;
+  }
+
+  .data-form :is(input, select, textarea):disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  .data-form :is(input, select, textarea)[aria-invalid="true"] {
+    @apply border-error/50 focus:ring-error/20 focus:border-error/60;
+  }
+
+  .field-error {
+    @apply rounded-xl bg-error/10 px-3 py-2 text-xs font-semibold text-error;
+  }
+
+  .form-errors {
+    @apply rounded-2xl bg-error/10 px-4 py-3 text-sm font-semibold text-error;
+  }
+
+  .text-link {
+    @apply font-bold text-primary hover:underline;
+  }
+
+  /* Botões */
+  .primary-btn {
+    @apply w-full rounded-xl bg-gradient-to-br from-primary to-primary-dim px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-primary shadow-ambient hover:opacity-95;
+  }
+
+  .secondary-btn {
+    @apply inline-flex items-center justify-center rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60;
+  }
+
+  .action-btn {
+    @apply inline-flex items-center gap-2 rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60;
+  }
+
+  /* Auth (classes usadas nos templates do allauth) */
+  .auth-local-header {
+    @apply space-y-2;
+  }
+
+  .auth-local-title {
+    @apply text-2xl font-extrabold tracking-tight text-on-surface;
+  }
+
+  .auth-local-subtitle {
+    @apply text-sm font-medium text-on-surface-variant;
+  }
+
+  .auth-local-row {
+    @apply flex items-center justify-between gap-3;
+  }
+
+  .auth-local-check {
+    @apply inline-flex items-center gap-2 text-sm font-semibold text-on-surface-variant;
+  }
+
+  .auth-local-footer {
+    @apply text-sm font-semibold text-on-surface-variant;
+  }
+}
