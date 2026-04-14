@@ -2,4 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Arquivo de entrada do Tailwind; app.css atual segue como estilo base inicial. */
+/* Arquivo de entrada do Tailwind. Saída gerada: static/css/tailwind.generated.css */
+
+@layer base {
+  html {
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, "Segoe UI", Tahoma, sans-serif;
+  }
+
+  body {
+    @apply bg-surface text-on-surface antialiased;
+  }
+}

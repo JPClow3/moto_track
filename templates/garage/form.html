@@ -4,23 +4,24 @@
 {% block title %}{{ title }} - Moto Track{% endblock %}
 
 {% block content %}
-<section class="list-section" aria-labelledby="garage-form-title">
-  <header class="list-header">
-    <div>
-      <h2 id="garage-form-title">{{ title }}</h2>
-      <p class="section-subtitle">Preencha os dados da moto para manter os registros organizados.</p>
+<section class="space-y-8 pb-10" aria-labelledby="garage-form-title">
+  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+    <div class="space-y-2">
+      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Garagem</span>
+      <h2 id="garage-form-title" class="text-3xl font-extrabold tracking-tight">{{ title }}</h2>
+      <p class="text-on-surface-variant text-sm">Preencha os dados da moto para manter os registros organizados.</p>
     </div>
-    <a class="inline-cta" href="{% url 'garage:list' %}">Voltar para garagem</a>
+    <a class="rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'garage:list' %}">Voltar</a>
   </header>
 
-  <article class="panel">
-    <form method="post" class="data-form" enctype="multipart/form-data" novalidate>
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+    <form method="post" class="space-y-4" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
       {{ form|crispy }}
 
-      <div class="quick-actions-row-split">
-        <a class="secondary-btn" href="{% url 'garage:list' %}">Cancelar</a>
-        <button type="submit" class="primary-btn">{{ submit_label }}</button>
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
+        <a class="rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60 text-center" href="{% url 'garage:list' %}">Cancelar</a>
+        <button type="submit" class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient">{{ submit_label }}</button>
       </div>
     </form>
   </article>

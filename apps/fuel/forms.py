@@ -56,7 +56,8 @@ class FuelRecordQuickForm(forms.ModelForm):
 
 		if liters and total_price is not None and not price_per_liter:
 			try:
-				cleaned_data["price_per_liter"] = (Decimal(total_price) / Decimal(liters)).quantize(Decimal("0.001"))
+				total_amount = getattr(total_price, "amount", total_price)
+				cleaned_data["price_per_liter"] = (Decimal(total_amount) / Decimal(liters)).quantize(Decimal("0.001"))
 			except (InvalidOperation, ZeroDivisionError):
 				self.add_error("price_per_liter", "Informe um preço por litro válido.")
 		return cleaned_data
@@ -66,3 +67,17 @@ class FuelRecordQuickForm(forms.ModelForm):
 
 	def clean_notes(self):
 		return sanitize_text(self.cleaned_data.get("notes"))
+
+
+class FuelStationForm(forms.ModelForm):
+	class Meta:
+		model = FuelStation
+		fields = ["name", "brand", "city", "state", "notes"]
+		widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+
+
+class FuelGradeForm(forms.ModelForm):
+	class Meta:
+		model = FuelGrade
+		fields = ["name", "fuel_type", "octane_rating", "ethanol_percentage", "default_price_per_liter", "notes"]
+		widgets = {"notes": forms.Textarea(attrs={"rows": 2})}

@@ -45,3 +45,11 @@ class DocumentsTests(TestCase):
 
 		self.assertIsNotNone(document.created_at)
 		self.assertIsNotNone(document.updated_at)
+
+	def test_delete_document_removes_owned_document(self):
+		self.client.force_login(self.user)
+		document = MotorcycleDocument.objects.filter(motorcycle=self.motorcycle).first()
+		response = self.client.post(reverse("documents:delete", args=[document.pk]))
+
+		self.assertEqual(response.status_code, 302)
+		self.assertFalse(MotorcycleDocument.objects.filter(pk=document.pk).exists())

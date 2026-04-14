@@ -1,17 +1,32 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.core.active_motorcycle import get_active_motorcycle
+from apps.core.pagination import paginate
 from .forms import ReminderForm
 from .models import Reminder
+from .services import evaluate_reminder
 
 
 @login_required
 def reminder_list_view(request):
-	active_reminders = Reminder.objects.filter(motorcycle__owner=request.user, is_active=True)
+	active_motorcycle = get_active_motorcycle(request)
+	current_odometer = active_motorcycle.current_odometer_km if active_motorcycle else 0
+	today = timezone.localdate()
+
+	active_qs = Reminder.objects.filter(motorcycle__owner=request.user, is_active=True).select_related("motorcycle").order_by("reference_date", "reference_km")
+	paged = paginate(request, active_qs, per_page=50)
+	active_reminders = list(paged.items)
 	inactive_reminders = Reminder.objects.filter(motorcycle__owner=request.user, is_active=False)
+
+	active_with_status = [
+		{"reminder": r, "evaluation": evaluate_reminder(r, current_odometer_km=current_odometer, today=today)} for r in active_reminders
+	]
 	context = {
-		"active_reminders": active_reminders,
+		"active_reminders": active_with_status,
+		"page_obj": paged.page,
 		"inactive_reminders": inactive_reminders,
 	}
 	return render(request, "reminders/list.html", context)

@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="h-full">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,73 +8,131 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   <script src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js" defer></script>
   <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
 </head>
-<body>
-  <a class="skip-link" href="#main-content">Pular para o conteúdo principal</a>
+<body class="min-h-full">
+  <a class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-inverse-surface focus:px-4 focus:py-2 focus:text-on-primary" href="#main-content">
+    Pular para o conteúdo principal
+  </a>
 
-  <div class="app-shell">
-    <aside class="sidebar" aria-label="Navegação principal">
-      <div class="sidebar-brand-wrap">
-        <div class="sidebar-brand">Moto Track</div>
-        <p class="sidebar-subtitle">Gestão de precisão</p>
+  <div class="min-h-screen lg:grid lg:grid-cols-[18rem_1fr]">
+    <aside class="hidden lg:flex lg:flex-col lg:gap-2 lg:bg-surface-low lg:px-4 lg:py-5 lg:sticky lg:top-0 lg:h-screen" aria-label="Navegação principal">
+      <div class="px-2 pb-3">
+        <div class="text-primary font-extrabold tracking-tight text-xl">Moto Track</div>
+        <p class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mt-1">Gestão de precisão</p>
       </div>
-      <nav>
-        <ul class="sidebar-nav">
-          <li><a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a></li>
-          <li><a href="{% url 'garage:list' %}" {% if request.resolver_match.namespace == 'garage' %}aria-current="page"{% endif %}><i data-lucide="bike" aria-hidden="true"></i><span>Garagem</span></a></li>
-          <li><a href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Abastecimentos</span></a></li>
-          <li><a href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Manutenções</span></a></li>
-          <li><a href="{% url 'tires:list' %}" {% if request.resolver_match.namespace == 'tires' %}aria-current="page"{% endif %}><i data-lucide="circle-dot" aria-hidden="true"></i><span>Pneus</span></a></li>
-          <li><a href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}><i data-lucide="file-text" aria-hidden="true"></i><span>Documentos</span></a></li>
-          <li><a href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}><i data-lucide="bell-ring" aria-hidden="true"></i><span>Lembretes</span></a></li>
-          <li><a href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' %}aria-current="page"{% endif %}><i data-lucide="chart-column" aria-hidden="true"></i><span>Relatórios</span></a></li>
+
+      <nav class="flex-1">
+        <ul class="space-y-1 text-sm font-semibold">
+          <li>
+            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.url_name == 'dashboard' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+               href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}>
+              <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'garage' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+               href="{% url 'garage:list' %}" {% if request.resolver_match.namespace == 'garage' %}aria-current="page"{% endif %}>
+              <i data-lucide="bike" aria-hidden="true"></i><span>Garagem</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+               href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}>
+              <i data-lucide="fuel" aria-hidden="true"></i><span>Abastecimentos</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+               href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}>
+              <i data-lucide="wrench" aria-hidden="true"></i><span>Manutenções</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'tires' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+               href="{% url 'tires:list' %}" {% if request.resolver_match.namespace == 'tires' %}aria-current="page"{% endif %}>
+              <i data-lucide="circle-dot" aria-hidden="true"></i><span>Pneus</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'documents' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+               href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}>
+              <i data-lucide="file-text" aria-hidden="true"></i><span>Documentos</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'reminders' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+               href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}>
+              <i data-lucide="bell-ring" aria-hidden="true"></i><span>Lembretes</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'reports' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+               href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' %}aria-current="page"{% endif %}>
+              <i data-lucide="chart-column" aria-hidden="true"></i><span>Relatórios</span>
+            </a>
+          </li>
         </ul>
       </nav>
-      <div class="sidebar-footer">
-        <p class="sidebar-bike">{{ request.user.username|default:'Garagem' }}</p>
+
+      <div class="rounded-2xl bg-surface-lowest p-3 shadow-ambient">
+        <p class="text-on-surface-variant text-xs font-semibold">{{ request.user.username|default:'Garagem' }}</p>
+        {% if garage_motorcycles|length > 1 %}
+          <form method="post" action="{% url 'dashboard' %}" class="mt-3 space-y-2">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}" />
+            <select name="active_motorcycle_id" aria-label="Selecionar moto ativa" class="w-full rounded-lg bg-surface-low border-0 focus:ring-2 focus:ring-primary/20">
+              {% for bike in garage_motorcycles %}
+                <option value="{{ bike.id }}" {% if active_motorcycle and bike.id == active_motorcycle.id %}selected{% endif %}>{{ bike.name }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="w-full rounded-xl bg-gradient-to-br from-primary to-primary-dim px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-primary shadow-ambient">
+              Usar esta moto
+            </button>
+          </form>
+        {% endif %}
       </div>
     </aside>
 
-    <div class="main-shell">
-      <header class="site-header">
-        <div class="container header-inner">
-          <div class="header-brand">
-            <p class="site-eyebrow">
+    <div class="min-h-screen pb-24 lg:pb-0">
+      <header class="sticky top-0 z-40 bg-surface/85 backdrop-blur-xl">
+        <div class="mx-auto w-[min(1240px,93%)] py-4 flex items-end justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">
               {% block topbar_eyebrow %}Moto Track{% endblock %}
             </p>
-            <h1 class="site-title">
+            <h1 class="mt-1 text-lg font-extrabold tracking-tight text-on-surface truncate">
               {% block topbar_title %}Controle da sua moto em um só lugar{% endblock %}
             </h1>
           </div>
-          <div class="top-actions" aria-label="Ações do topo">
-
-            <a class="icon-btn" href="{% url 'reminders:list' %}" aria-label="Ir para lembretes">
+          <div class="flex items-center gap-2" aria-label="Ações do topo">
+            <a class="h-10 w-10 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'reminders:list' %}" aria-label="Ir para lembretes">
               <i data-lucide="bell" aria-hidden="true"></i>
             </a>
-            <a class="icon-btn" href="{% url 'reports:overview' %}" aria-label="Ir para relatórios">
+            <a class="h-10 w-10 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'reports:overview' %}" aria-label="Ir para relatórios">
               <i data-lucide="settings" aria-hidden="true"></i>
             </a>
             {% if request.user.is_authenticated %}
               <form method="post" action="{% url 'account_logout' %}">
                 {% csrf_token %}
-                <button type="submit" class="text-button">Sair</button>
+                <button type="submit" class="rounded-full bg-surface-lowest px-4 py-2 text-sm font-bold text-on-surface shadow-ambient hover:bg-surface-highest/60">Sair</button>
               </form>
             {% else %}
-              <a href="{% url 'account_login' %}">Entrar</a>
+              <a class="rounded-full bg-surface-lowest px-4 py-2 text-sm font-bold text-on-surface shadow-ambient hover:bg-surface-highest/60" href="{% url 'account_login' %}">Entrar</a>
             {% endif %}
           </div>
         </div>
       </header>
 
-      <main id="main-content" class="container" tabindex="-1">
+      <main id="main-content" class="mx-auto w-[min(1240px,93%)] pt-6" tabindex="-1">
         {% if messages %}
-          <section aria-label="Mensagens do sistema">
+          <section aria-label="Mensagens do sistema" class="space-y-2">
             {% for message in messages %}
-              <div class="alert">{{ message }}</div>
+              <div class="rounded-xl bg-surface-lowest px-4 py-3 text-sm font-semibold text-on-surface shadow-ambient">{{ message }}</div>
             {% endfor %}
           </section>
         {% endif %}
@@ -82,13 +140,19 @@
         {% block content %}{% endblock %}
       </main>
 
-      <nav class="bottom-nav" aria-label="Navegação rápida">
-        <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a>
-        <a href="{% url 'garage:list' %}" {% if request.resolver_match.namespace == 'garage' %}aria-current="page"{% endif %}><i data-lucide="bike" aria-hidden="true"></i><span>Garagem</span></a>
-        <a href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Abastecimentos</span></a>
-        <a href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Manutenções</span></a>
-        <a href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}><i data-lucide="file-text" aria-hidden="true"></i><span>Documentos</span></a>
-        <a href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' or request.resolver_match.namespace == 'reminders' or request.resolver_match.namespace == 'tires' %}aria-current="page"{% endif %}><i data-lucide="ellipsis" aria-hidden="true"></i><span>Mais</span></a>
+      <nav class="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-surface/90 backdrop-blur-xl border-t border-outline-variant/20" aria-label="Navegação rápida">
+        <div class="mx-auto w-[min(1240px,93%)] py-2 grid grid-cols-5 text-[10px] font-extrabold uppercase tracking-widest">
+          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.url_name == 'dashboard' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a>
+          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'garage' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'garage:list' %}" {% if request.resolver_match.namespace == 'garage' %}aria-current="page"{% endif %}><i data-lucide="bike" aria-hidden="true"></i><span>Garagem</span></a>
+          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Fuel</span></a>
+          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Serviço</span></a>
+          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'documents' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}><i data-lucide="file-text" aria-hidden="true"></i><span>Docs</span></a>
+        </div>
       </nav>
     </div>
   </div>

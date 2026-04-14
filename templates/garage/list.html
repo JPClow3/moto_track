@@ -6,41 +6,41 @@
 {% block topbar_title %}Motos cadastradas{% endblock %}
 
 {% block content %}
-<section class="list-section" aria-labelledby="garage-list-title">
-  <header class="list-header">
-    <div>
-      <h2 id="garage-list-title">Garagem</h2>
-      <p class="section-subtitle">Cadastre suas motos e acompanhe o odômetro atual de cada uma.</p>
+<section class="space-y-8 pb-10" aria-labelledby="garage-list-title">
+  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+    <div class="space-y-2">
+      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Garagem</span>
+      <h2 id="garage-list-title" class="text-3xl font-extrabold tracking-tight">Garagem</h2>
+      <p class="text-on-surface-variant text-sm">Cadastre suas motos e acompanhe o odômetro atual de cada uma.</p>
     </div>
-    <a class="action-btn action-primary" href="{% url 'garage:create' %}">
-      <span>Nova moto</span>
-      <small>Cadastro</small>
+    <a class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient" href="{% url 'garage:create' %}">
+      Nova moto
     </a>
   </header>
 
-  <article class="panel" aria-label="Motos cadastradas">
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Motos cadastradas">
     {% if motorcycles %}
-      <div class="doc-table-wrap">
-        <table class="doc-table">
+      <div class="overflow-x-auto">
+        <table class="min-w-[900px] w-full text-sm">
           <thead>
             <tr>
-              <th scope="col">Foto</th>
-              <th scope="col">Nome</th>
-              <th scope="col">Modelo</th>
-              <th scope="col">Ano</th>
-              <th scope="col">Placa</th>
-              <th scope="col">Odômetro</th>
-              <th scope="col">Ações</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Foto</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Nome</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Modelo</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Ano</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Placa</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Odômetro</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Ações</th>
             </tr>
           </thead>
           <tbody>
             {% for motorcycle in motorcycles %}
-              <tr>
+              <tr class="border-t border-outline-variant/10">
                 <td>
                   {% if motorcycle.photo %}
-                    <img class="thumb thumb-bike" src="{{ motorcycle.photo.url }}" alt="Foto de {{ motorcycle.name }}" loading="lazy" />
+                    <img class="h-10 w-10 rounded-xl object-cover bg-surface-low" src="{{ motorcycle.photo.url }}" alt="Foto de {{ motorcycle.name }}" loading="lazy" />
                   {% else %}
-                    <span class="thumb thumb-fallback" aria-hidden="true"></span>
+                    <span class="h-10 w-10 rounded-xl bg-surface-low" aria-hidden="true"></span>
                   {% endif %}
                 </td>
                 <td><strong>{{ motorcycle.name }}</strong></td>
@@ -49,13 +49,9 @@
                 <td>{{ motorcycle.license_plate|default:"--" }}</td>
                 <td>{{ motorcycle.current_odometer_km }} km</td>
                 <td>
-                  <div class="table-actions" role="group" aria-label="Ações da moto {{ motorcycle.name }}">
-                    <a href="{% url 'garage:update' motorcycle.pk %}" aria-label="Editar moto {{ motorcycle.name }}">
-                      <i data-lucide="pencil" aria-hidden="true"></i>
-                    </a>
-                    <a href="{% url 'garage:delete' motorcycle.pk %}" aria-label="Excluir moto {{ motorcycle.name }}">
-                      <i data-lucide="trash-2" aria-hidden="true"></i>
-                    </a>
+                  <div class="flex items-center justify-end gap-2" role="group" aria-label="Ações da moto {{ motorcycle.name }}">
+                    <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-low" href="{% url 'garage:update' motorcycle.pk %}" aria-label="Editar moto {{ motorcycle.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                    <a class="h-9 w-9 grid place-items-center rounded-xl text-error hover:bg-error/10" href="{% url 'garage:delete' motorcycle.pk %}" aria-label="Excluir moto {{ motorcycle.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
                   </div>
                 </td>
               </tr>
@@ -64,7 +60,7 @@
         </table>
       </div>
     {% else %}
-      <p class="empty-text">Você ainda não cadastrou nenhuma moto.</p>
+      <p class="text-on-surface-variant text-sm">Você ainda não cadastrou nenhuma moto.</p>
     {% endif %}
   </article>
 </section>

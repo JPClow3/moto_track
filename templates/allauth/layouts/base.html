@@ -15,64 +15,65 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
   {% endblock extra_head %}
 </head>
-<body class="auth-allauth-body min-h-screen">
-  <a class="skip-link" href="#main-content">Pular para o conteudo principal</a>
+<body class="min-h-screen bg-surface text-on-surface antialiased">
+  <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
+  <a class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-inverse-surface focus:px-4 focus:py-2 focus:text-on-primary" href="#main-content">Pular para o conteúdo principal</a>
 
   {% block body %}
-    <main id="main-content" class="auth-allauth-main" tabindex="-1">
-      <header class="auth-allauth-header" aria-label="Identidade do aplicativo">
-        <a class="auth-allauth-brand" href="{% url 'dashboard' %}">Moto Track</a>
-        <p class="auth-allauth-subtitle">Acesso seguro para gestao da sua moto</p>
+    <main id="main-content" class="mx-auto w-[min(520px,92%)] py-10 space-y-6" tabindex="-1">
+      <header aria-label="Identidade do aplicativo" class="space-y-2">
+        <a class="text-primary text-3xl font-extrabold tracking-tight" href="{% url 'dashboard' %}">Moto Track</a>
+        <p class="text-on-surface-variant text-sm">Acesso seguro para gestão da sua moto</p>
       </header>
 
       {% if messages %}
-        <section class="auth-allauth-messages" aria-label="Mensagens do sistema">
+        <section class="space-y-2" aria-label="Mensagens do sistema">
           {% for message in messages %}
-            <div role="alert" class="alert auth-allauth-alert">
+            <div role="alert" class="rounded-2xl bg-surface-lowest px-4 py-3 text-sm font-semibold shadow-ambient">
               <strong>{{ message }}</strong>
             </div>
           {% endfor %}
         </section>
       {% endif %}
 
-      <section class="auth-allauth-panel" aria-label="Formulario de autenticacao">
+      <section class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Formulário de autenticação">
         {% block content %}
         {% endblock content %}
       </section>
 
-      <nav class="auth-allauth-links" aria-label="Links de conta">
+      <nav class="flex flex-wrap gap-4 text-sm font-bold text-primary" aria-label="Links de conta">
         {% if user.is_authenticated %}
           {% url 'account_email' as email_url %}
           {% if email_url %}
-            <a href="{{ email_url }}">{% trans "Alterar e-mail" %}</a>
+            <a class="hover:underline" href="{{ email_url }}">{% trans "Alterar e-mail" %}</a>
           {% endif %}
           {% url 'account_change_password' as change_password_url %}
           {% if change_password_url %}
-            <a href="{{ change_password_url }}">{% trans "Alterar senha" %}</a>
+            <a class="hover:underline" href="{{ change_password_url }}">{% trans "Alterar senha" %}</a>
           {% endif %}
           {% url 'mfa_index' as mfa_url %}
           {% if mfa_url %}
-            <a href="{{ mfa_url }}">{% trans "Autenticacao em dois fatores" %}</a>
+            <a class="hover:underline" href="{{ mfa_url }}">{% trans "Autenticação em dois fatores" %}</a>
           {% endif %}
           {% url 'usersessions_list' as usersessions_list_url %}
           {% if usersessions_list_url %}
-            <a href="{{ usersessions_list_url }}">{% trans "Sessoes" %}</a>
+            <a class="hover:underline" href="{{ usersessions_list_url }}">{% trans "Sessões" %}</a>
           {% endif %}
           {% url 'account_logout' as logout_url %}
           {% if logout_url %}
-            <a href="{{ logout_url }}">{% trans "Sair" %}</a>
+            <a class="hover:underline" href="{{ logout_url }}">{% trans "Sair" %}</a>
           {% endif %}
         {% else %}
           {% url 'account_login' as login_url %}
           {% if login_url %}
-            <a href="{{ login_url }}">{% trans "Entrar" %}</a>
+            <a class="hover:underline" href="{{ login_url }}">{% trans "Entrar" %}</a>
           {% endif %}
           {% url 'account_signup' as signup_url %}
           {% if signup_url %}
-            <a href="{{ signup_url }}">{% trans "Criar conta" %}</a>
+            <a class="hover:underline" href="{{ signup_url }}">{% trans "Criar conta" %}</a>
           {% endif %}
         {% endif %}
       </nav>
@@ -81,5 +82,12 @@
 
   {% block extra_body %}
   {% endblock extra_body %}
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    });
+  </script>
 </body>
 </html>

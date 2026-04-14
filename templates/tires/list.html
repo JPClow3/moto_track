@@ -6,42 +6,52 @@
 {% block topbar_title %}Pneus{% endblock %}
 
 {% block content %}
-<section class="list-section" aria-labelledby="tires-list-title">
-  <header class="list-header">
-    <div>
-      <h2 id="tires-list-title">Pneus</h2>
-      <p class="section-subtitle">Gerencie instalação, desgaste e vida útil dos pneus por moto.</p>
+<section class="space-y-8 pb-10" aria-labelledby="tires-list-title">
+  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+    <div class="space-y-2">
+      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Monitor de pneus</span>
+      <h2 id="tires-list-title" class="text-3xl font-extrabold tracking-tight">Pneus</h2>
+      <p class="text-on-surface-variant text-sm">Gerencie instalação, desgaste e vida útil dos pneus por moto.</p>
     </div>
-    <a class="action-btn action-primary" href="{% url 'tires:create' %}">
-      <span>Novo registro</span>
-      <small>Pneu</small>
-    </a>
+    <a class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient" href="{% url 'tires:create' %}">Novo registro</a>
   </header>
 
-  <article class="panel" aria-label="Registros de pneus">
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+    <form method="get" class="space-y-4" aria-label="Filtros de pneus">
+      <select class="w-full rounded-xl bg-surface-low border-0 focus:ring-2 focus:ring-primary/20" name="motorcycle" aria-label="Filtrar por moto">
+        <option value="">Todas as motos</option>
+        {% for bike in garage_motorcycles %}
+          <option value="{{ bike.id }}" {% if filters.motorcycle and bike.id|stringformat:"s" == filters.motorcycle %}selected{% endif %}>{{ bike.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient">Aplicar</button>
+    </form>
+  </article>
+
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Registros de pneus">
     {% if records %}
-      <div class="doc-table-wrap">
-        <table class="doc-table">
+      <div class="overflow-x-auto">
+        <table class="min-w-[900px] w-full text-sm">
           <thead>
             <tr>
-              <th scope="col">Foto</th>
-              <th scope="col">Moto</th>
-              <th scope="col">Posição</th>
-              <th scope="col">Modelo</th>
-              <th scope="col">Instalação</th>
-              <th scope="col">Desgaste</th>
-              <th scope="col">Status</th>
-              <th scope="col">Ações</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Foto</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Moto</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Posição</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Modelo</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Instalação</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Desgaste</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Status</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Ações</th>
             </tr>
           </thead>
           <tbody>
             {% for record in records %}
-              <tr>
+              <tr class="border-t border-outline-variant/10">
                 <td>
                   {% if record.tire_product and record.tire_product.image %}
-                    <img class="thumb" src="{{ record.tire_product.image.url }}" alt="Foto do pneu {{ record.brand_model }}" loading="lazy" />
+                    <img class="h-10 w-10 rounded-xl object-cover bg-surface-low" src="{{ record.tire_product.image.url }}" alt="Foto do pneu {{ record.brand_model }}" loading="lazy" />
                   {% else %}
-                    <span class="thumb thumb-fallback" aria-hidden="true"></span>
+                    <span class="h-10 w-10 rounded-xl bg-surface-low" aria-hidden="true"></span>
                   {% endif %}
                 </td>
                 <td>{{ record.motorcycle.name }}</td>
@@ -49,26 +59,22 @@
                 <td>
                   <strong>{{ record.brand_model }}</strong>
                   {% if record.tire_product %}
-                    <p class="doc-note">{{ record.tire_product.manufacturer }} {{ record.tire_product.model_name }}</p>
+                    <p class="text-xs text-on-surface-variant">{{ record.tire_product.manufacturer }} {{ record.tire_product.model_name }}</p>
                   {% endif %}
                 </td>
                 <td>{{ record.installed_at|date:"d/m/Y" }} • {{ record.installed_odometer_km }} km</td>
                 <td>{{ record.wear_percent }}%</td>
                 <td>
                   {% if record.is_active %}
-                    <span class="status-pill status-pill-complete">Ativo</span>
+                    <span class="inline-flex items-center rounded-full bg-success/15 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-success">Ativo</span>
                   {% else %}
-                    <span class="status-pill">Inativo</span>
+                    <span class="inline-flex items-center rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Inativo</span>
                   {% endif %}
                 </td>
                 <td>
-                  <div class="table-actions" role="group" aria-label="Ações do pneu {{ record.brand_model }}">
-                    <a href="{% url 'tires:update' record.pk %}" aria-label="Editar pneu {{ record.brand_model }}">
-                      <i data-lucide="pencil" aria-hidden="true"></i>
-                    </a>
-                    <a href="{% url 'tires:delete' record.pk %}" aria-label="Excluir pneu {{ record.brand_model }}">
-                      <i data-lucide="trash-2" aria-hidden="true"></i>
-                    </a>
+                  <div class="flex items-center justify-end gap-2" role="group" aria-label="Ações do pneu {{ record.brand_model }}">
+                    <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-low" href="{% url 'tires:update' record.pk %}" aria-label="Editar pneu {{ record.brand_model }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                    <a class="h-9 w-9 grid place-items-center rounded-xl text-error hover:bg-error/10" href="{% url 'tires:delete' record.pk %}" aria-label="Excluir pneu {{ record.brand_model }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
                   </div>
                 </td>
               </tr>
@@ -77,8 +83,26 @@
         </table>
       </div>
     {% else %}
-      <p class="empty-text">Nenhum pneu registrado ainda.</p>
+      <p class="text-on-surface-variant text-sm">Nenhum pneu registrado ainda.</p>
     {% endif %}
   </article>
+
+  {% if page_obj and page_obj.paginator.num_pages > 1 %}
+    <nav class="rounded-2xl bg-surface-lowest p-4 shadow-ambient" aria-label="Paginação">
+      <div class="flex items-center justify-between gap-4">
+        {% if page_obj.has_previous %}
+          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="?page={{ page_obj.previous_page_number }}&motorcycle={{ filters.motorcycle }}">Anterior</a>
+        {% else %}
+          <span></span>
+        {% endif %}
+        <span class="text-xs font-semibold text-on-surface-variant">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="?page={{ page_obj.next_page_number }}&motorcycle={{ filters.motorcycle }}">Próxima</a>
+        {% else %}
+          <span></span>
+        {% endif %}
+      </div>
+    </nav>
+  {% endif %}
 </section>
 {% endblock %}

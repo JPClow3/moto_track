@@ -12,6 +12,14 @@ class Command(BaseCommand):
     help = "Ensure a superuser exists with stable credentials."
 
     def handle(self, *args, **options):
+        if os.getenv("DJANGO_BOOTSTRAP_ENABLE", "").lower() not in {"1", "true", "yes"}:
+            self.stdout.write(
+                self.style.WARNING(
+                    "Bootstrap disabled (set DJANGO_BOOTSTRAP_ENABLE=true to run ensure_admin)."
+                )
+            )
+            return
+
         username = os.getenv("DJANGO_BOOTSTRAP_ADMIN_USERNAME", "admin")
         password = os.getenv("DJANGO_BOOTSTRAP_ADMIN_PASSWORD")
         email = os.getenv("DJANGO_BOOTSTRAP_ADMIN_EMAIL", "admin@example.com")

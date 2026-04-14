@@ -6,46 +6,44 @@
 {% block topbar_title %}Relatórios{% endblock %}
 
 {% block content %}
-<section class="list-section reports-page" aria-labelledby="reports-title">
-  <header class="list-header">
-    <div>
-      <span class="eyebrow-chip">Visão consolidada</span>
-      <h2 id="reports-title">Relatórios</h2>
-      <p class="section-subtitle">Resumo consolidado de custos e volume de registros.</p>
-    </div>
+<section class="space-y-8 pb-10" aria-labelledby="reports-title">
+  <header class="space-y-2">
+    <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Visão consolidada</span>
+    <h2 id="reports-title" class="text-3xl font-extrabold tracking-tight">Relatórios</h2>
+    <p class="text-on-surface-variant text-sm">Resumo consolidado de custos e volume de registros.</p>
   </header>
 
-  <div class="cards-grid reports-cards" role="list" aria-label="Indicadores consolidados">
-    <article class="card" role="listitem">
-      <h3>Total de combustível</h3>
-      <p class="card-value">R$ {{ fuel_total }}</p>
-      <p class="card-subtitle">{{ fuel_records_count }} registros</p>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-5" role="list" aria-label="Indicadores consolidados">
+    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" role="listitem">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Total de combustível</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ fuel_total }}</p>
+      <p class="text-sm text-on-surface-variant">{{ fuel_records_count }} registros</p>
     </article>
-    <article class="card" role="listitem">
-      <h3>Total de manutenção</h3>
-      <p class="card-value">R$ {{ maintenance_total }}</p>
-      <p class="card-subtitle">{{ maintenance_records_count }} registros</p>
+    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" role="listitem">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Total de manutenção</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ maintenance_total }}</p>
+      <p class="text-sm text-on-surface-variant">{{ maintenance_records_count }} registros</p>
     </article>
-    <article class="card" role="listitem">
-      <h3>Média do odômetro</h3>
-      <p class="card-value">{% if avg_odometer_km %}{{ avg_odometer_km|floatformat:0 }} km{% else %}-{% endif %}</p>
-      <p class="card-subtitle">Média dos registros de abastecimento</p>
+    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" role="listitem">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Média do odômetro</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">{% if avg_odometer_km %}{{ avg_odometer_km|floatformat:0 }} km{% else %}-{% endif %}</p>
+      <p class="text-sm text-on-surface-variant">Média dos registros de abastecimento</p>
     </article>
   </div>
 
-  <article class="panel reports-actions" aria-label="Atalhos de análise">
-    <div class="feed-header">
-      <h3>Explorar detalhes</h3>
-      <span class="feed-meta">Acesso rápido</span>
+  <article class="rounded-2xl bg-surface-low p-6" aria-label="Atalhos de análise">
+    <div class="flex items-center justify-between">
+      <h3 class="text-lg font-extrabold tracking-tight">Explorar detalhes</h3>
+      <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Acesso rápido</span>
     </div>
-    <div class="docs-quick-grid">
-      <a class="docs-quick-card" href="{% url 'fuel:list' %}">
-        <strong>Abastecimentos</strong>
-        <small>Custos, litros e evolução</small>
+    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <a class="rounded-2xl bg-surface-lowest px-4 py-4 shadow-ambient hover:bg-surface-highest/60" href="{% url 'fuel:list' %}">
+        <strong class="block font-extrabold">Abastecimentos</strong>
+        <small class="block text-sm text-on-surface-variant">Custos, litros e evolução</small>
       </a>
-      <a class="docs-quick-card" href="{% url 'maintenance:list' %}">
-        <strong>Manutenções</strong>
-        <small>Histórico, peças e serviços</small>
+      <a class="rounded-2xl bg-surface-lowest px-4 py-4 shadow-ambient hover:bg-surface-highest/60" href="{% url 'maintenance:list' %}">
+        <strong class="block font-extrabold">Manutenções</strong>
+        <small class="block text-sm text-on-surface-variant">Histórico, peças e serviços</small>
       </a>
     </div>
   </article>

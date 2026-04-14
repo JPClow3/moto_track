@@ -1,35 +1,38 @@
 {% extends 'base.html' %}
 
 {% block title %}Catálogos de manutenção - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Catálogos{% endblock %}
+{% block topbar_title %}Catálogos de manutenção{% endblock %}
 
 {% block content %}
-<section aria-labelledby="maintenance-catalog-title" class="catalog-page">
-  <header class="list-header">
-    <div>
-      <h2 id="maintenance-catalog-title">Catálogos de manutenção</h2>
-      <p class="section-subtitle">Peças e insumos reutilizáveis para registros mais rápidos.</p>
+<section class="space-y-8 pb-10" aria-labelledby="maintenance-catalog-title">
+  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+    <div class="space-y-2">
+      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Catálogos</span>
+      <h2 id="maintenance-catalog-title" class="text-3xl font-extrabold tracking-tight">Catálogos de manutenção</h2>
+      <p class="text-on-surface-variant text-sm">Peças e insumos reutilizáveis para registros mais rápidos.</p>
     </div>
-    <a class="action-btn action-primary" href="{% url 'maintenance:list' %}">
-      <span>Voltar às manutenções</span>
-      <small>Ver histórico</small>
-    </a>
+    <a class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient" href="{% url 'maintenance:part_create' %}">Nova peça</a>
   </header>
 
-  <article class="panel" aria-label="Peças e insumos">
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient space-y-4" aria-label="Peças e insumos">
     {% if parts %}
-      <ul class="activity-list">
+      <ul class="space-y-3">
         {% for part in parts %}
-          <li>
-            <div>
-              <strong>{{ part.name }}</strong>
-              <p>{% if part.manufacturer %}{{ part.manufacturer }} • {% endif %}{{ part.get_part_type_display }}{% if part.sku %} • {{ part.sku }}{% endif %}</p>
+          <li class="flex items-start justify-between gap-4 rounded-2xl bg-surface-low px-4 py-3">
+            <div class="min-w-0">
+              <strong class="block font-extrabold truncate">{{ part.name }}</strong>
+              <p class="text-xs text-on-surface-variant">{% if part.manufacturer %}{{ part.manufacturer }} • {% endif %}{{ part.get_part_type_display }}{% if part.sku %} • {{ part.sku }}{% endif %}</p>
             </div>
-            <span>{% if part.price %}R$ {{ part.price }}{% else %}Sem preço{% endif %}</span>
+            <div class="flex items-center gap-2" role="group" aria-label="Ações da peça {{ part.name }}">
+              <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'maintenance:part_update' part.pk %}" aria-label="Editar peça {{ part.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+              <a class="h-9 w-9 grid place-items-center rounded-xl text-error hover:bg-error/10" href="{% url 'maintenance:part_delete' part.pk %}" aria-label="Excluir peça {{ part.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+            </div>
           </li>
         {% endfor %}
       </ul>
     {% else %}
-      <p class="empty-text">Nenhuma peça cadastrada.</p>
+      <p class="text-on-surface-variant text-sm">Nenhuma peça cadastrada.</p>
     {% endif %}
   </article>
 </section>

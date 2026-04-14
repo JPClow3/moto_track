@@ -6,83 +6,98 @@
 {% block topbar_title %}Abastecimentos{% endblock %}
 
 {% block content %}
-<section class="list-section fuel-page" aria-labelledby="fuel-list-title">
-  <header class="list-header">
-    <div>
-      <span class="eyebrow-chip">Fluxo crítico</span>
-      <h2 id="fuel-list-title">Abastecimentos</h2>
-      <p class="section-subtitle">Registre consumo em poucos cliques e acompanhe os custos.</p>
+<section class="space-y-8 pb-10" aria-labelledby="fuel-list-title">
+  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+    <div class="space-y-2">
+      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Fluxo crítico</span>
+      <h2 id="fuel-list-title" class="text-3xl font-extrabold tracking-tight">Abastecimentos</h2>
+      <p class="text-on-surface-variant text-sm">Registre consumo em poucos cliques e acompanhe os custos.</p>
     </div>
-    <div class="flow-header-actions" aria-label="Ações da página de abastecimentos">
+    <div class="flex flex-wrap gap-3" aria-label="Ações da página de abastecimentos">
       <a
-        class="action-btn action-primary"
+        class="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient"
         href="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
         hx-get="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
         hx-target="#quick-form-root"
         hx-swap="innerHTML"
       >
         <span>Novo abastecimento</span>
-        <small>1 toque</small>
+        <small class="opacity-90">1 toque</small>
       </a>
-      <a class="action-btn" href="{% url 'fuel:catalogs' %}">
+      <a class="inline-flex items-center justify-center gap-2 rounded-2xl bg-surface-lowest px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface shadow-ambient hover:bg-surface-highest/60" href="{% url 'fuel:catalogs' %}">
         <span>Catálogos</span>
-        <small>Postos e referências</small>
+        <small class="text-on-surface-variant">Postos</small>
       </a>
     </div>
   </header>
 
-  <section class="stats-grid" aria-label="Resumo de abastecimento">
-    <article class="stats-card">
-      <p class="stats-label">Total acumulado</p>
-      <p class="stats-value">R$ {{ total_spend }}</p>
-      <p class="stats-note">Todos os registros</p>
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+    <form method="get" class="space-y-4" aria-label="Filtros de abastecimento">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input class="w-full rounded-xl bg-surface-low border-0 focus:ring-2 focus:ring-primary/20" type="text" name="q" value="{{ filters.q }}" placeholder="Buscar por posto ou notas" />
+        <select class="w-full rounded-xl bg-surface-low border-0 focus:ring-2 focus:ring-primary/20" name="motorcycle" aria-label="Filtrar por moto">
+          <option value="">Todas as motos</option>
+          {% for bike in garage_motorcycles %}
+            <option value="{{ bike.id }}" {% if filters.motorcycle and bike.id|stringformat:"s" == filters.motorcycle %}selected{% endif %}>
+              {{ bike.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient">Aplicar</button>
+    </form>
+  </article>
+
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-5" aria-label="Resumo de abastecimento">
+    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Total acumulado</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ total_spend }}</p>
+      <p class="text-sm text-on-surface-variant">Todos os registros</p>
     </article>
-    <article class="stats-card">
-      <p class="stats-label">Média de custo por km</p>
-      <p class="stats-value">
+    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Média de custo por km</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">
         {% if avg_cost_per_km is not None %}
-          R$ {{ avg_cost_per_km }}
+          {{ avg_cost_per_km }}
         {% else %}
           --
         {% endif %}
       </p>
-      <p class="stats-note">Baseado no histórico</p>
+      <p class="text-sm text-on-surface-variant">Baseado no histórico</p>
     </article>
-    <article class="stats-card stats-card-emphasis">
-      <p class="stats-label">Último abastecimento</p>
-      <p class="stats-value">{% if last_record %}{{ last_record.date|date:"d M" }}{% else %}--{% endif %}</p>
-      <p class="stats-note">{% if month_total %}R$ {{ month_total }} no mês{% else %}Sem custo no mês{% endif %}</p>
+    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Último abastecimento</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">{% if last_record %}{{ last_record.date|date:"d M" }}{% else %}--{% endif %}</p>
+      <p class="text-sm text-on-surface-variant">{% if month_total %}{{ month_total }} no mês{% else %}Sem custo no mês{% endif %}</p>
     </article>
   </section>
 
-  <article class="panel" aria-label="Registros de abastecimento">
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Registros de abastecimento">
     {% if records %}
-      <div class="doc-table-wrap flow-table-wrap">
-        <table class="doc-table flow-table" aria-label="Tabela de abastecimentos">
+      <div class="overflow-x-auto">
+        <table class="min-w-[760px] w-full text-sm" aria-label="Tabela de abastecimentos">
           <thead>
             <tr>
-              <th scope="col">Data</th>
-              <th scope="col">Moto</th>
-              <th scope="col">Odômetro</th>
-              <th scope="col">Litros</th>
-              <th scope="col">Preço/L</th>
-              <th scope="col">Total</th>
-              <th scope="col">Posto</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Data</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Moto</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Odômetro</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Litros</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Preço/L</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Total</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Posto</th>
             </tr>
           </thead>
           <tbody>
             {% for record in records %}
-              <tr>
-                <td>
-                  <strong>{{ record.date|date:"d/m/Y" }}</strong>
-                </td>
+              <tr class="border-t border-outline-variant/10">
+                <td class="py-3"><strong class="font-extrabold">{{ record.date|date:"d/m/Y" }}</strong></td>
                 <td>{{ record.motorcycle.name }}</td>
                 <td>{{ record.odometer_km }} km</td>
                 <td>{{ record.liters }} L</td>
-                <td>R$ {{ record.price_per_liter }}</td>
-                <td><strong>R$ {{ record.total_price }}</strong></td>
+                <td>{{ record.price_per_liter }}</td>
+                <td><strong>{{ record.total_price }}</strong></td>
                 <td>
-                  <span class="doc-pill">{{ record.station_name|default:"Sem posto" }}</span>
+                  <span class="inline-flex items-center rounded-full bg-surface-low px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">{{ record.station_name|default:"Sem posto" }}</span>
                 </td>
               </tr>
             {% endfor %}
@@ -90,8 +105,26 @@
         </table>
       </div>
     {% else %}
-      <p class="empty-text">Nenhum abastecimento registrado ainda.</p>
+      <p class="text-on-surface-variant text-sm">Nenhum abastecimento registrado ainda.</p>
     {% endif %}
   </article>
+
+  {% if page_obj and page_obj.paginator.num_pages > 1 %}
+    <nav class="rounded-2xl bg-surface-lowest p-4 shadow-ambient" aria-label="Paginação">
+      <div class="flex items-center justify-between gap-4">
+        {% if page_obj.has_previous %}
+          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="?page={{ page_obj.previous_page_number }}&q={{ filters.q }}&motorcycle={{ filters.motorcycle }}">Anterior</a>
+        {% else %}
+          <span></span>
+        {% endif %}
+        <span class="text-xs font-semibold text-on-surface-variant">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="?page={{ page_obj.next_page_number }}&q={{ filters.q }}&motorcycle={{ filters.motorcycle }}">Próxima</a>
+        {% else %}
+          <span></span>
+        {% endif %}
+      </div>
+    </nav>
+  {% endif %}
 </section>
 {% endblock %}

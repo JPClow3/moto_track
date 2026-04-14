@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Moto Track{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="station-form-title">
+  <header class="list-header">
+    <div>
+      <h2 id="station-form-title">{{ title }}</h2>
+      <p class="section-subtitle">Cadastre postos para acelerar seus abastecimentos.</p>
+    </div>
+    <a class="action-btn" href="{% url 'fuel:catalogs' %}">
+      <span>Voltar ao catálogo</span>
+      <small>Postos e grades</small>
+    </a>
+  </header>
+
+  <article class="panel">
+    <form method="post" class="data-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="quick-actions-row">
+        <button type="submit" class="primary-btn">{{ submit_label }}</button>
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}
+

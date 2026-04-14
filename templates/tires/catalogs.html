@@ -1,40 +1,44 @@
 {% extends 'base.html' %}
 
 {% block title %}Catálogos de pneus - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Catálogos{% endblock %}
+{% block topbar_title %}Catálogos de pneus{% endblock %}
 
 {% block content %}
-<section aria-labelledby="tires-catalog-title" class="catalog-page">
-  <header class="list-header">
-    <div>
-      <h2 id="tires-catalog-title">Catálogos de pneus</h2>
-      <p class="section-subtitle">Produtos estruturados com fabricante, tipo e especificações técnicas.</p>
+<section class="space-y-8 pb-10" aria-labelledby="tires-catalog-title">
+  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+    <div class="space-y-2">
+      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Catálogos</span>
+      <h2 id="tires-catalog-title" class="text-3xl font-extrabold tracking-tight">Catálogos de pneus</h2>
+      <p class="text-on-surface-variant text-sm">Produtos estruturados com fabricante, tipo e especificações técnicas.</p>
     </div>
-    <a class="action-btn action-primary" href="{% url 'tires:list' %}">
-      <span>Ir para pneus</span>
-      <small>Ver registros</small>
+    <a class="rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'tires:list' %}">
+      Ir para pneus
     </a>
   </header>
 
-  <article class="panel" aria-label="Pneus estruturados">
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient space-y-4" aria-label="Pneus estruturados">
     {% if products %}
-      <ul class="activity-list">
+      <ul class="space-y-3">
         {% for product in products %}
-          <li>
+          <li class="flex items-start gap-4 rounded-2xl bg-surface-low px-4 py-3">
             {% if product.image %}
-              <img class="thumb" src="{{ product.image.url }}" alt="Foto do pneu {{ product.manufacturer }} {{ product.model_name }}" loading="lazy" />
+              <img class="h-10 w-10 rounded-xl object-cover bg-surface-highest" src="{{ product.image.url }}" alt="Foto do pneu {{ product.manufacturer }} {{ product.model_name }}" loading="lazy" />
             {% else %}
-              <span class="thumb thumb-fallback" aria-hidden="true"></span>
+              <span class="h-10 w-10 rounded-xl bg-surface-highest" aria-hidden="true"></span>
             {% endif %}
-            <div>
-              <strong>{{ product.manufacturer }} {{ product.model_name }}</strong>
-              <p>{{ product.get_tire_type_display }}{% if product.width_mm %} • {{ product.width_mm }}/{% endif %}{% if product.aspect_ratio %}{{ product.aspect_ratio }}{% endif %}{% if product.rim_diameter_in %}R{{ product.rim_diameter_in }}{% endif %}{% if product.speed_rating %} • {{ product.speed_rating }}{% endif %}</p>
+            <div class="min-w-0 flex-1">
+              <strong class="block font-extrabold truncate">{{ product.manufacturer }} {{ product.model_name }}</strong>
+              <p class="text-xs text-on-surface-variant">{{ product.get_tire_type_display }}{% if product.width_mm %} • {{ product.width_mm }}/{% endif %}{% if product.aspect_ratio %}{{ product.aspect_ratio }}{% endif %}{% if product.rim_diameter_in %}R{{ product.rim_diameter_in }}{% endif %}{% if product.speed_rating %} • {{ product.speed_rating }}{% endif %}</p>
             </div>
-            <span>{% if product.price %}R$ {{ product.price }}{% else %}Sem preço{% endif %}</span>
+            <div class="text-right text-xs font-semibold text-on-surface-variant">
+              {% if product.price %}{{ product.price }}{% else %}Sem preço{% endif %}
+            </div>
           </li>
         {% endfor %}
       </ul>
     {% else %}
-      <p class="empty-text">Nenhum pneu cadastrado.</p>
+      <p class="text-on-surface-variant text-sm">Nenhum pneu cadastrado.</p>
     {% endif %}
   </article>
 </section>

@@ -132,7 +132,9 @@ railway run python manage.py migrate
 
 ### Media Files Upload Issues
 For user-uploaded files (documents), Railway uses **ephemeral filesystem**.
-**Solution:** Configure S3 storage:
+**Solution (recommended):** Use a Railway persistent volume for `MEDIA_ROOT`.
+
+- Add a **Volume** to the `web` service in Railway and mount it at `/data` (or another path).\n+- Set `RAILWAY_VOLUME_MOUNT_PATH=/data` (or your chosen mount path).\n+- The app will store uploads under `MEDIA_ROOT=/data/media` via `FileSystemStorage` (see `config/settings/prod.py`).\n+\n+**Alternative:** Configure S3-compatible storage:
 ```
 USE_S3=True
 AWS_STORAGE_BUCKET_NAME=your-bucket

@@ -6,17 +6,25 @@ from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from djmoney.money import Money
+
 from .forms import OdometerOverrideForm
+from .active_motorcycle import get_active_motorcycle, set_active_motorcycle
 from apps.fuel.models import FuelRecord
-from apps.garage.models import Motorcycle
+from apps.fuel.services import compute_average_consumption_km_per_liter
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.reminders.models import Reminder
+from apps.reminders.services import evaluate_reminder
 from apps.tires.models import TirePosition, TireRecord
 
 
 @login_required
 def dashboard_view(request):
-	motorcycle = Motorcycle.objects.filter(owner=request.user).first()
+	if request.method == "POST" and request.POST.get("active_motorcycle_id"):
+		set_active_motorcycle(request, int(request.POST["active_motorcycle_id"]))
+		return redirect(request.POST.get("next") or "dashboard")
+
+	motorcycle = get_active_motorcycle(request)
 
 	if not motorcycle:
 		context = {
@@ -52,7 +60,15 @@ def dashboard_view(request):
 	recent_fuels = list(FuelRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km")[:3])
 	fuel_history = list(FuelRecord.objects.filter(motorcycle=motorcycle).order_by("date", "odometer_km"))
 	recent_maintenance = list(MaintenanceRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km")[:3])
-	active_reminders = list(Reminder.objects.filter(motorcycle=motorcycle, is_active=True).order_by("reference_date", "reference_km")[:4])
+	current_odometer_km = motorcycle.current_odometer_km_cached()
+	active_reminders_raw = list(
+		Reminder.objects.filter(motorcycle=motorcycle, is_active=True).order_by("reference_date", "reference_km")[:4]
+	)
+	today = timezone.localdate()
+	active_reminders = [
+		{"reminder": r, "evaluation": evaluate_reminder(r, current_odometer_km=current_odometer_km, today=today)}
+		for r in active_reminders_raw
+	]
 	last_oil = (
 		MaintenanceRecord.objects.filter(motorcycle=motorcycle, maintenance_type=MaintenanceType.OIL_CHANGE)
 		.order_by("-date", "-odometer_km")
@@ -72,13 +88,13 @@ def dashboard_view(request):
 	month_total = (
 		FuelRecord.objects.filter(motorcycle=motorcycle, date__year=now.year, date__month=now.month).aggregate(total=Sum("total_price"))["total"]
 	)
-	pending_alerts = len(active_reminders)
+	if month_total is None:
+		month_total = Money(0, "BRL")
+	pending_alerts = len([e for e in active_reminders if e["evaluation"].status in {"overdue", "due_soon"}])
 	average_consumption = None
-	if len(fuel_history) > 1:
-		total_liters = sum(float(record.liters) for record in fuel_history[1:])
-		distance_span = fuel_history[-1].odometer_km - fuel_history[0].odometer_km
-		if total_liters > 0 and distance_span > 0:
-			average_consumption = round(distance_span / total_liters, 1)
+	consumption_stats = compute_average_consumption_km_per_liter(fuel_history)
+	if consumption_stats:
+		average_consumption = consumption_stats.km_per_liter
 
 	def _tire_status(wear_percent):
 		if wear_percent >= 70:
@@ -94,7 +110,7 @@ def dashboard_view(request):
 
 	next_oil_km_remaining = None
 	if last_oil and last_oil.computed_next_change_km:
-		next_oil_km_remaining = max(last_oil.computed_next_change_km - motorcycle.current_odometer_km, 0)
+		next_oil_km_remaining = max(last_oil.computed_next_change_km - current_odometer_km, 0)
 
 	status_cards = [
 		{
@@ -103,7 +119,7 @@ def dashboard_view(request):
 			"badge": "Atenção",
 			"title": "Próxima troca de óleo",
 			"value": _km_to_text(next_oil_km_remaining),
-			"meta": "restantes",
+			"meta": "Restantes",
 		},
 		{
 			"icon": "gauge",
@@ -111,7 +127,7 @@ def dashboard_view(request):
 			"badge": "Consumo",
 			"title": "Média de consumo",
 			"value": f"{average_consumption} km/L" if average_consumption is not None else "Sem dados",
-			"meta": "histórico de abastecimentos",
+			"meta": "Histórico de abastecimentos",
 		},
 		{
 			"icon": "calendar-clock",
@@ -119,7 +135,7 @@ def dashboard_view(request):
 			"badge": "Lembretes",
 			"title": "Alertas ativos",
 			"value": str(pending_alerts),
-			"meta": "eventos para revisar",
+			"meta": "Eventos para revisar",
 		},
 	]
 
@@ -196,13 +212,13 @@ def dashboard_view(request):
 		"cards": [
 			{
 				"title": "Odômetro atual",
-				"value": f"{motorcycle.current_odometer_km} km",
+				"value": f"{current_odometer_km} km",
 				"subtitle": motorcycle.name,
 			},
 			{
 				"title": "Próxima troca de óleo",
 				"value": (
-					f"em {max(last_oil.computed_next_change_km - motorcycle.current_odometer_km, 0)} km"
+					f"em {max(last_oil.computed_next_change_km - current_odometer_km, 0)} km"
 					if last_oil and last_oil.computed_next_change_km
 					else "Não definida"
 				),
@@ -212,7 +228,7 @@ def dashboard_view(request):
 			},
 			{
 				"title": "Último abastecimento",
-				"value": f"R$ {latest_fuel.total_price}" if latest_fuel else "Sem registro",
+				"value": f"{latest_fuel.total_price}" if latest_fuel else "Sem registro",
 				"subtitle": (
 					f"{latest_fuel.liters} L em {latest_fuel.date}" if latest_fuel else "Adicione um abastecimento"
 				),
@@ -226,7 +242,7 @@ def dashboard_view(request):
 			},
 			{
 				"title": "Gasto do mês (combustível)",
-				"value": f"R$ {month_total or 0}",
+				"value": f"{month_total}",
 				"subtitle": "Acumulado do mês",
 			},
 			{
@@ -241,7 +257,7 @@ def dashboard_view(request):
 
 @login_required
 def odometer_quick_update_view(request):
-	motorcycle = Motorcycle.objects.filter(owner=request.user).first()
+	motorcycle = get_active_motorcycle(request)
 	is_htmx = request.headers.get("HX-Request") == "true"
 
 	if not motorcycle:
@@ -267,7 +283,7 @@ def odometer_quick_update_view(request):
 		form = OdometerOverrideForm(
 			motorcycle=motorcycle,
 			initial={
-				"odometer_override_km": motorcycle.current_odometer_km,
+				"odometer_override_km": current_odometer_km,
 				"next": request.GET.get("next") or "",
 			},
 		)

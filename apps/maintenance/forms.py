@@ -58,3 +58,10 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
 
 	def clean_parts_used(self):
 		return sanitize_text(self.cleaned_data.get("parts_used"))
+
+
+class MaintenancePartForm(forms.ModelForm):
+	class Meta:
+		model = MaintenancePart
+		fields = ["name", "manufacturer", "part_type", "sku", "price", "notes"]
+		widgets = {"notes": forms.Textarea(attrs={"rows": 2})}

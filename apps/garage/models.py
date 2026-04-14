@@ -32,6 +32,17 @@ class Motorcycle(TimeStampedModel, UserOwnedModel):
 		override = self.odometer_override_km or 0
 		return max(self.computed_odometer_km, override)
 
+	def current_odometer_km_cached(self):
+		"""
+		Use if you've annotated `computed_odometer_km_value` on the instance.
+		Falls back to computed properties if not present.
+		"""
+		override = self.odometer_override_km or 0
+		computed = getattr(self, "computed_odometer_km_value", None)
+		if computed is None:
+			computed = self.computed_odometer_km
+		return max(int(computed or 0), int(override or 0))
+
 
 class MotorcycleSpec(TimeStampedModel):
 	motorcycle = models.OneToOneField(Motorcycle, on_delete=models.CASCADE, related_name="spec")
