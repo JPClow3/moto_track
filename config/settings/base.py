@@ -27,9 +27,11 @@ INSTALLED_APPS = [
     "crispy_tailwind",
     "dal",
     "dal_select2",
+    "widget_tweaks",
+    "slippers",
+    "allauth_ui",
     "allauth",
     "allauth.account",
-    "allauth_ui",
     "django_bleach",
     "djmoney",
     "django_cotton",
@@ -126,6 +128,7 @@ ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_RATE_LIMITS = {
     "login_failed": "5/m",
 }
+ALLAUTH_UI_THEME = "light"
 
 BLEACH_ALLOWED_TAGS = []
 BLEACH_ALLOWED_ATTRIBUTES = {}

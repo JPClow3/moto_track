@@ -20,6 +20,11 @@
       <ul class="activity-list">
         {% for product in products %}
           <li>
+            {% if product.image %}
+              <img class="thumb" src="{{ product.image.url }}" alt="Foto do pneu {{ product.manufacturer }} {{ product.model_name }}" loading="lazy" />
+            {% else %}
+              <span class="thumb thumb-fallback" aria-hidden="true"></span>
+            {% endif %}
             <div>
               <strong>{{ product.manufacturer }} {{ product.model_name }}</strong>
               <p>{{ product.get_tire_type_display }}{% if product.width_mm %} • {{ product.width_mm }}/{% endif %}{% if product.aspect_ratio %}{{ product.aspect_ratio }}{% endif %}{% if product.rim_diameter_in %}R{{ product.rim_diameter_in }}{% endif %}{% if product.speed_rating %} • {{ product.speed_rating }}{% endif %}</p>

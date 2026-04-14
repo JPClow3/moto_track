@@ -8,7 +8,7 @@ from .models import TireProduct, TireRecord
 
 @admin.register(TireProduct)
 class TireProductAdmin(UserScopedAdmin):
-	list_display = ("manufacturer", "model_name", "tire_type", "max_speed_kmh", "price")
+	list_display = ("manufacturer", "model_name", "tire_type", "image", "max_speed_kmh", "price")
 	list_filter = ("tire_type",)
 	search_fields = ("manufacturer", "model_name")
 

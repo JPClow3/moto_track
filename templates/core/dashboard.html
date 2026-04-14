@@ -2,10 +2,18 @@
 
 {% block title %}Painel - Moto Track{% endblock %}
 
+{% block topbar_eyebrow %}Veículo ativo{% endblock %}
+{% block topbar_title %}{% if motorcycle %}{{ motorcycle.name }}{% else %}Painel{% endif %}{% endblock %}
+
 {% block content %}
 <section class="dashboard" aria-labelledby="dashboard-title">
   <header class="dashboard-header">
     <div>
+      {% if motorcycle and motorcycle.photo %}
+        <div class="bike-hero" aria-label="Foto da moto {{ motorcycle.name }}">
+          <img class="bike-hero-img" src="{{ motorcycle.photo.url }}" alt="Foto de {{ motorcycle.name }}" loading="lazy" />
+        </div>
+      {% endif %}
       <span class="eyebrow-chip">Veículo ativo</span>
       <h2 id="dashboard-title">
         {% if motorcycle %}
@@ -96,7 +104,14 @@
                 <strong>{{ tire.title }}</strong>
                 <p class="wear-meta">{{ tire.model }}</p>
               </div>
-              <span class="status-pill {% if tire.status_tone == 'warning' %}status-pill-maintenance{% else %}status-pill-complete{% endif %}">{{ tire.status_label }}</span>
+              <div class="wear-badges" aria-label="Identificação do pneu">
+                {% if tire.image_url %}
+                  <img class="thumb" src="{{ tire.image_url }}" alt="Foto do {{ tire.title }}" loading="lazy" />
+                {% else %}
+                  <span class="thumb thumb-fallback" aria-hidden="true"></span>
+                {% endif %}
+                <span class="status-pill {% if tire.status_tone == 'warning' %}status-pill-maintenance{% else %}status-pill-complete{% endif %}">{{ tire.status_label }}</span>
+              </div>
             </div>
             <p class="status-value">{{ tire.wear_percent }}%</p>
             <div class="wear-progress wear-progress-{{ tire.status_tone }}" aria-hidden="true">

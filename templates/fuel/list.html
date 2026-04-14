@@ -2,23 +2,33 @@
 
 {% block title %}Abastecimentos - Moto Track{% endblock %}
 
+{% block topbar_eyebrow %}Fluxo crítico{% endblock %}
+{% block topbar_title %}Abastecimentos{% endblock %}
+
 {% block content %}
-<section class="list-section" aria-labelledby="fuel-list-title">
+<section class="list-section fuel-page" aria-labelledby="fuel-list-title">
   <header class="list-header">
     <div>
+      <span class="eyebrow-chip">Fluxo crítico</span>
       <h2 id="fuel-list-title">Abastecimentos</h2>
       <p class="section-subtitle">Registre consumo em poucos cliques e acompanhe os custos.</p>
     </div>
-    <a
-      class="action-btn action-primary"
-      href="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
-      hx-get="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
-      hx-target="#quick-form-root"
-      hx-swap="innerHTML"
-    >
-      <span>Novo abastecimento</span>
-      <small>1 toque</small>
-    </a>
+    <div class="flow-header-actions" aria-label="Ações da página de abastecimentos">
+      <a
+        class="action-btn action-primary"
+        href="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
+        hx-get="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
+        hx-target="#quick-form-root"
+        hx-swap="innerHTML"
+      >
+        <span>Novo abastecimento</span>
+        <small>1 toque</small>
+      </a>
+      <a class="action-btn" href="{% url 'fuel:catalogs' %}">
+        <span>Catálogos</span>
+        <small>postos e referências</small>
+      </a>
+    </div>
   </header>
 
   <section class="stats-grid" aria-label="Resumo de abastecimento">
@@ -47,8 +57,8 @@
 
   <article class="panel" aria-label="Registros de abastecimento">
     {% if records %}
-      <div class="doc-table-wrap">
-        <table class="doc-table">
+      <div class="doc-table-wrap flow-table-wrap">
+        <table class="doc-table flow-table" aria-label="Tabela de abastecimentos">
           <thead>
             <tr>
               <th scope="col">Data</th>

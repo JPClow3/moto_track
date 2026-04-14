@@ -1,0 +1,3 @@
+# Required by django-slippers to enable component discovery.
+# allauth-ui ships reusable components under its own templates.
+components: {}

@@ -15,7 +15,7 @@ def garage_list_view(request):
 @login_required
 def garage_create_view(request):
 	if request.method == "POST":
-		form = MotorcycleForm(request.POST)
+		form = MotorcycleForm(request.POST, request.FILES)
 		if form.is_valid():
 			motorcycle = form.save(commit=False)
 			motorcycle.owner = request.user
@@ -38,7 +38,7 @@ def garage_update_view(request, pk):
 	motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user)
 
 	if request.method == "POST":
-		form = MotorcycleForm(request.POST, instance=motorcycle)
+		form = MotorcycleForm(request.POST, request.FILES, instance=motorcycle)
 		if form.is_valid():
 			form.save()
 			messages.success(request, f"Moto {motorcycle.name} atualizada com sucesso.")

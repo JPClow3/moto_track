@@ -2,16 +2,20 @@
 
 {% block title %}Relatórios - Moto Track{% endblock %}
 
+{% block topbar_eyebrow %}Visão consolidada{% endblock %}
+{% block topbar_title %}Relatórios{% endblock %}
+
 {% block content %}
-<section aria-labelledby="reports-title">
+<section class="list-section reports-page" aria-labelledby="reports-title">
   <header class="list-header">
     <div>
+      <span class="eyebrow-chip">Visão consolidada</span>
       <h2 id="reports-title">Relatórios</h2>
       <p class="section-subtitle">Resumo consolidado de custos e volume de registros.</p>
     </div>
   </header>
 
-  <div class="cards-grid" role="list">
+  <div class="cards-grid reports-cards" role="list" aria-label="Indicadores consolidados">
     <article class="card" role="listitem">
       <h3>Total de combustível</h3>
       <p class="card-value">R$ {{ fuel_total }}</p>
@@ -28,5 +32,22 @@
       <p class="card-subtitle">Média dos registros de abastecimento</p>
     </article>
   </div>
+
+  <article class="panel reports-actions" aria-label="Atalhos de análise">
+    <div class="feed-header">
+      <h3>Explorar detalhes</h3>
+      <span class="feed-meta">Acesso rápido</span>
+    </div>
+    <div class="docs-quick-grid">
+      <a class="docs-quick-card" href="{% url 'fuel:list' %}">
+        <strong>Abastecimentos</strong>
+        <small>custos, litros e evolução</small>
+      </a>
+      <a class="docs-quick-card" href="{% url 'maintenance:list' %}">
+        <strong>Manutenções</strong>
+        <small>histórico, peças e serviços</small>
+      </a>
+    </div>
+  </article>
 </section>
 {% endblock %}

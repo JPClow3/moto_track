@@ -2,17 +2,21 @@
 
 {% block title %}Manutenções - Moto Track{% endblock %}
 
+{% block topbar_eyebrow %}Fluxo crítico{% endblock %}
+{% block topbar_title %}Manutenções{% endblock %}
+
 {% block content %}
-<section class="list-section" aria-labelledby="maintenance-list-title">
+<section class="list-section maintenance-page" aria-labelledby="maintenance-list-title">
   <header class="list-header">
     <div>
+      <span class="eyebrow-chip">Fluxo crítico</span>
       <h2 id="maintenance-list-title">Manutenções</h2>
       <p class="section-subtitle">Histórico de serviços com custo e odômetro em uma linha do tempo única.</p>
     </div>
   </header>
 
   <div class="ledger-grid" aria-label="Registros de manutenção">
-    <aside class="ledger-form-panel" aria-label="Atalhos de manutenção">
+    <aside class="ledger-form-panel maintenance-panel" aria-label="Atalhos de manutenção">
       <h3>Nova entrada</h3>
       <p class="section-subtitle">Abra o formulário rápido para registrar o serviço com lembrete opcional.</p>
       <div class="dashboard-cta-row" aria-label="Ações de manutenção">
@@ -39,7 +43,7 @@
 
     <div>
       {% if records %}
-        <div class="timeline" role="list">
+        <div class="timeline maintenance-timeline" role="list" aria-label="Linha do tempo de manutenções">
           {% for record in records %}
             <article class="timeline-row" role="listitem">
               <div class="timeline-node" aria-hidden="true"><i data-lucide="wrench"></i></div>

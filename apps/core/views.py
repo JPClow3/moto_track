@@ -105,6 +105,9 @@ def dashboard_view(request):
 		if not tire:
 			continue
 		status_label, status_tone = _tire_status(tire.wear_percent)
+		image_url = None
+		if tire.tire_product and tire.tire_product.image:
+			image_url = tire.tire_product.image.url
 		tire_cards.append(
 			{
 				"title": f"Pneu {tire.get_position_display()}",
@@ -113,6 +116,7 @@ def dashboard_view(request):
 				"estimated_change_km": tire.estimated_change_km,
 				"status_label": status_label,
 				"status_tone": status_tone,
+				"image_url": image_url,
 			}
 		)
 

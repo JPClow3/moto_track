@@ -9,6 +9,7 @@ class Motorcycle(TimeStampedModel, UserOwnedModel):
 	brand = models.CharField(max_length=80)
 	model = models.CharField(max_length=120)
 	year = models.PositiveIntegerField()
+	photo = models.ImageField(upload_to="motorcycles/", null=True, blank=True)
 	license_plate = models.CharField(max_length=16, blank=True)
 	odometer_override_km = models.PositiveIntegerField(null=True, blank=True)
 	odometer_override_at = models.DateTimeField(null=True, blank=True)

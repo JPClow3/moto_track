@@ -11,6 +11,7 @@ class MotorcycleForm(forms.ModelForm):
 			"brand",
 			"model",
 			"year",
+			"photo",
 			"license_plate",
 			"odometer_override_km",
 		]

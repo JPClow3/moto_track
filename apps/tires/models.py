@@ -17,6 +17,7 @@ class TireType(models.TextChoices):
 class TireProduct(TimeStampedModel, UserOwnedModel):
 	manufacturer = models.CharField(max_length=80)
 	model_name = models.CharField(max_length=120)
+	image = models.ImageField(upload_to="tires/products/", null=True, blank=True)
 	tire_type = models.CharField(max_length=24, choices=TireType.choices, default=TireType.STREET)
 	width_mm = models.PositiveSmallIntegerField(null=True, blank=True)
 	aspect_ratio = models.PositiveSmallIntegerField(null=True, blank=True)

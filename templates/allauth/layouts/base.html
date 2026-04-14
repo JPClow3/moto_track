@@ -1,0 +1,86 @@
+{% load i18n %}
+{% load static %}
+{% load allauth_ui %}
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="{% allauth_ui_theme %}">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    {% block head_title %}
+    {% endblock head_title %}
+  </title>
+  {% block extra_head %}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'allauth_ui/output.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+  {% endblock extra_head %}
+</head>
+<body class="auth-allauth-body min-h-screen">
+  <a class="skip-link" href="#main-content">Pular para o conteudo principal</a>
+
+  {% block body %}
+    <main id="main-content" class="auth-allauth-main" tabindex="-1">
+      <header class="auth-allauth-header" aria-label="Identidade do aplicativo">
+        <a class="auth-allauth-brand" href="{% url 'dashboard' %}">Moto Track</a>
+        <p class="auth-allauth-subtitle">Acesso seguro para gestao da sua moto</p>
+      </header>
+
+      {% if messages %}
+        <section class="auth-allauth-messages" aria-label="Mensagens do sistema">
+          {% for message in messages %}
+            <div role="alert" class="alert auth-allauth-alert">
+              <strong>{{ message }}</strong>
+            </div>
+          {% endfor %}
+        </section>
+      {% endif %}
+
+      <section class="auth-allauth-panel" aria-label="Formulario de autenticacao">
+        {% block content %}
+        {% endblock content %}
+      </section>
+
+      <nav class="auth-allauth-links" aria-label="Links de conta">
+        {% if user.is_authenticated %}
+          {% url 'account_email' as email_url %}
+          {% if email_url %}
+            <a href="{{ email_url }}">{% trans "Alterar e-mail" %}</a>
+          {% endif %}
+          {% url 'account_change_password' as change_password_url %}
+          {% if change_password_url %}
+            <a href="{{ change_password_url }}">{% trans "Alterar senha" %}</a>
+          {% endif %}
+          {% url 'mfa_index' as mfa_url %}
+          {% if mfa_url %}
+            <a href="{{ mfa_url }}">{% trans "Autenticacao em dois fatores" %}</a>
+          {% endif %}
+          {% url 'usersessions_list' as usersessions_list_url %}
+          {% if usersessions_list_url %}
+            <a href="{{ usersessions_list_url }}">{% trans "Sessoes" %}</a>
+          {% endif %}
+          {% url 'account_logout' as logout_url %}
+          {% if logout_url %}
+            <a href="{{ logout_url }}">{% trans "Sair" %}</a>
+          {% endif %}
+        {% else %}
+          {% url 'account_login' as login_url %}
+          {% if login_url %}
+            <a href="{{ login_url }}">{% trans "Entrar" %}</a>
+          {% endif %}
+          {% url 'account_signup' as signup_url %}
+          {% if signup_url %}
+            <a href="{{ signup_url }}">{% trans "Criar conta" %}</a>
+          {% endif %}
+        {% endif %}
+      </nav>
+    </main>
+  {% endblock body %}
+
+  {% block extra_body %}
+  {% endblock extra_body %}
+</body>
+</html>

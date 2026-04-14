@@ -2,6 +2,9 @@
 
 {% block title %}Garagem - Moto Track{% endblock %}
 
+{% block topbar_eyebrow %}Garagem{% endblock %}
+{% block topbar_title %}Motos cadastradas{% endblock %}
+
 {% block content %}
 <section class="list-section" aria-labelledby="garage-list-title">
   <header class="list-header">
@@ -21,6 +24,7 @@
         <table class="doc-table">
           <thead>
             <tr>
+              <th scope="col">Foto</th>
               <th scope="col">Nome</th>
               <th scope="col">Modelo</th>
               <th scope="col">Ano</th>
@@ -32,6 +36,13 @@
           <tbody>
             {% for motorcycle in motorcycles %}
               <tr>
+                <td>
+                  {% if motorcycle.photo %}
+                    <img class="thumb thumb-bike" src="{{ motorcycle.photo.url }}" alt="Foto de {{ motorcycle.name }}" loading="lazy" />
+                  {% else %}
+                    <span class="thumb thumb-fallback" aria-hidden="true"></span>
+                  {% endif %}
+                </td>
                 <td><strong>{{ motorcycle.name }}</strong></td>
                 <td>{{ motorcycle.brand }} {{ motorcycle.model }}</td>
                 <td>{{ motorcycle.year }}</td>

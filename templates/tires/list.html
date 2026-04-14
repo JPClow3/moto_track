@@ -2,6 +2,9 @@
 
 {% block title %}Pneus - Moto Track{% endblock %}
 
+{% block topbar_eyebrow %}Monitor de pneus{% endblock %}
+{% block topbar_title %}Pneus{% endblock %}
+
 {% block content %}
 <section class="list-section" aria-labelledby="tires-list-title">
   <header class="list-header">
@@ -21,6 +24,7 @@
         <table class="doc-table">
           <thead>
             <tr>
+              <th scope="col">Foto</th>
               <th scope="col">Moto</th>
               <th scope="col">Posição</th>
               <th scope="col">Modelo</th>
@@ -33,6 +37,13 @@
           <tbody>
             {% for record in records %}
               <tr>
+                <td>
+                  {% if record.tire_product and record.tire_product.image %}
+                    <img class="thumb" src="{{ record.tire_product.image.url }}" alt="Foto do pneu {{ record.brand_model }}" loading="lazy" />
+                  {% else %}
+                    <span class="thumb thumb-fallback" aria-hidden="true"></span>
+                  {% endif %}
+                </td>
                 <td>{{ record.motorcycle.name }}</td>
                 <td>{{ record.get_position_display }}</td>
                 <td>

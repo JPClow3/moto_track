@@ -14,7 +14,7 @@
   </header>
 
   <article class="panel">
-    <form method="post" class="data-form" novalidate>
+    <form method="post" class="data-form" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
       {{ form|crispy }}
 

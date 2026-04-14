@@ -7,7 +7,7 @@ from .models import Motorcycle, MotorcycleSpec
 
 @admin.register(Motorcycle)
 class MotorcycleAdmin(UserScopedAdmin):
-	list_display = ("name", "brand", "model", "year", "current_odometer_km", "owner")
+	list_display = ("name", "brand", "model", "year", "current_odometer_km", "photo", "owner")
 	search_fields = ("name", "brand", "model", "license_plate")
 
 
