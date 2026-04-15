@@ -86,10 +86,10 @@
               {% if not forloop.last %}
                 <div class="absolute left-[3px] top-2 bottom-0 w-px bg-outline-variant/30"></div>
               {% endif %}
-              <div class="absolute left-0 top-2 w-2 h-2 rounded-full {% if (item.remaining_km is not None and item.remaining_km <= 0) or (item.remaining_days is not None and item.remaining_days <= 0) %}bg-error{% else %}bg-outline{% endif %} ring-4 ring-surface"></div>
+              <div class="absolute left-0 top-2 w-2 h-2 rounded-full {% if item.remaining_km is not None and item.remaining_km <= 0 or item.remaining_days is not None and item.remaining_days <= 0 %}bg-error{% else %}bg-outline{% endif %} ring-4 ring-surface"></div>
               <div class="space-y-1">
                 <div class="flex justify-between items-center">
-                  <p class="text-sm font-extrabold {% if (item.remaining_km is not None and item.remaining_km <= 0) or (item.remaining_days is not None and item.remaining_days <= 0) %}text-error{% else %}text-on-surface{% endif %}">
+                  <p class="text-sm font-extrabold {% if item.remaining_km is not None and item.remaining_km <= 0 or item.remaining_days is not None and item.remaining_days <= 0 %}text-error{% else %}text-on-surface{% endif %}">
                     {% if item.remaining_km is not None %}
                       {% if item.remaining_km <= 0 %}Vencido{% else %}Em breve{% endif %}
                     {% elif item.remaining_days is not None %}
