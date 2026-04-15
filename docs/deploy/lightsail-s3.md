@@ -92,7 +92,7 @@ python3 -m venv .venv
 
 ### Alternativa: Docker (mesmo servidor)
 
-Se preferir container em vez de venv + Nginx na VM, use o `Dockerfile` deste repositório e passe as mesmas variáveis (em especial `DJANGO_SECRET_KEY`, `DATABASE_URL`, `DJANGO_ALLOWED_HOSTS`, `AWS_STORAGE_BUCKET_NAME` e credenciais AWS ou IAM role). O profile Compose `web-prod` em [`docker-compose.yml`](../../docker-compose.yml) documenta variáveis típicas; em Coolify use [`docker-compose.coolify.yml`](../../docker-compose.coolify.yml) e [`deploy/coolify/README.md`](../../deploy/coolify/README.md).
+Se preferir container em vez de venv + Nginx na VM, use o `Dockerfile` deste repositório e passe as mesmas variáveis (em especial `DJANGO_SECRET_KEY`, `DATABASE_URL`, `DJANGO_ALLOWED_HOSTS`, `AWS_STORAGE_BUCKET_NAME` e credenciais AWS ou IAM role). O profile Compose `web-prod` em [`docker-compose.yml`](../../docker-compose.yml) documenta variáveis típicas para Lightsail e Coolify (veja também [`deploy/coolify/README.md`](../../deploy/coolify/README.md)).
 
 ## 5) Variáveis de ambiente (produção)
 

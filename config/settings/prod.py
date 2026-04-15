@@ -9,17 +9,24 @@ from .base import *  # noqa: F403,F401 pylint: disable=wildcard-import,unused-wi
 
 DEBUG = False
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = True
+USE_HTTPS = os.getenv("DJANGO_USE_HTTPS", "true").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
-SECURE_HSTS_SECONDS = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+SECURE_SSL_REDIRECT = USE_HTTPS
 
-SESSION_COOKIE_SECURE = True
+SECURE_HSTS_SECONDS = 31536000 if USE_HTTPS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = USE_HTTPS
+SECURE_HSTS_PRELOAD = USE_HTTPS
+
+SESSION_COOKIE_SECURE = USE_HTTPS
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 
-CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = USE_HTTPS
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"
 
@@ -87,6 +94,7 @@ ALLOWED_HOSTS = list(dict.fromkeys(_env_hosts + _railway_hosts + _fallback_hosts
 CSRF_TRUSTED_ORIGINS = list(
     dict.fromkeys(
         [f"https://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
+        + [f"http://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
         + ["http://127.0.0.1", "http://localhost"]
     )
 )

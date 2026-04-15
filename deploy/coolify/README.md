@@ -1,6 +1,6 @@
 # Coolify deployment (Docker Compose)
 
-This project is ready to run on Coolify using `docker-compose.coolify.yml`.
+This project is ready to run on Coolify using `docker-compose.yml`.
 
 ## What Coolify should manage
 
@@ -14,8 +14,9 @@ This repo's Compose file intentionally does **not** include Nginx/Caddy/Traefik.
 ## In Coolify
 
 - **New Resource**: Docker Compose
-- **Compose file**: `docker-compose.coolify.yml`
-- **Expose service**: `web`
+- **Compose file**: `docker-compose.yml`
+- **Start command / compose command**: `docker compose --profile prod up -d`
+- **Expose service**: `web-prod`
 - **Port**: `8000`
 
 ## Required environment variables (Coolify)
@@ -31,7 +32,7 @@ Optional:
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`: omit if the host uses an IAM instance profile / role with S3 access
 - `AWS_S3_ENDPOINT_URL`: usually omit on AWS; set for S3-compatible endpoints if needed
 
-`DJANGO_SETTINGS_MODULE` and `DJANGO_DEBUG` are set in `docker-compose.coolify.yml`.
+`DJANGO_SETTINGS_MODULE` and `DJANGO_DEBUG` are set in `docker-compose.yml` for `web-prod`.
 
 Example:
 

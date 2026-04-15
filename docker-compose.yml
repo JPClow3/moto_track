@@ -2,12 +2,10 @@ name: moto_track
 
 x-db: &db_common
   image: postgres:16
-  env_file:
-    - .env
   environment:
-    POSTGRES_DB: ${POSTGRES_DB}
-    POSTGRES_USER: ${POSTGRES_USER}
-    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    POSTGRES_DB: ${POSTGRES_DB:-motoapp}
+    POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set_POSTGRES_PASSWORD}
   healthcheck:
     test:
       [
@@ -26,10 +24,8 @@ x-web: &web_common
   build:
     context: .
     dockerfile: Dockerfile
-  env_file:
-    - .env
   environment:
-    DATABASE_URL: ${DATABASE_URL_DOCKER}
+    DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/motoapp}
   depends_on:
     db:
       condition: service_healthy
@@ -63,10 +59,10 @@ services:
       # (e.g. local exports or if you override storage). Safe to remove on Lightsail when using S3 only.
       - ./media:/app/media
     ports:
-      - "8001:8000"
+      - "8000:8000"
     environment:
-      DATABASE_URL: ${DATABASE_URL_DOCKER}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY_PROD}
+      DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/motoapp}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?missing_DJANGO_SECRET_KEY}
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
