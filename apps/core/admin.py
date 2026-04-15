@@ -1,7 +1,7 @@
-from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 
-class UserScopedAdmin(admin.ModelAdmin):
+class UserScopedAdmin(ModelAdmin):
     owner_lookup = "owner"
     foreign_key_scopes = {}
     many_to_many_scopes = {}

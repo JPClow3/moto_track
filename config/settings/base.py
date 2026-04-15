@@ -14,6 +14,7 @@ DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
 
 INSTALLED_APPS = [
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -21,6 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
+    "storages",
     "crispy_forms",
     "crispy_tailwind",
     "dal",
@@ -162,17 +164,6 @@ CURRENCIES = ("BRL",)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Apply secure defaults automatically in production-like environments.
-# This removes noise from `manage.py check --deploy` when running with non-debug settings,
-# while keeping local development behavior unchanged.
-if not DEBUG:
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_SSL_REDIRECT = True
-
-    # 1 year (enable HSTS only when you are confident you always serve HTTPS).
-    SECURE_HSTS_SECONDS = env.int("DJANGO_SECURE_HSTS_SECONDS", default=31536000)
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+# Production security headers (HTTPS, HSTS, secure cookies) live in `config.settings.prod`.
+# Do not gate them on `DEBUG` here: the test runner forces `DEBUG=False`, which would
+# incorrectly enable `SECURE_SSL_REDIRECT` during tests and break HTTP clients with 301s.

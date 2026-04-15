@@ -34,8 +34,7 @@ A ideia é transformar o controle da moto em algo simples, confiável e útil no
 - django-autocomplete-light para campos de busca assistida
 - django-money para valores monetários com moeda explícita
 - django-cotton para componentes de template
-- HTMX para interações rápidas
-- Alpine.js para interações leves
+- HTMX e JavaScript vanilla para interações rápidas (sem Alpine no bundle atual)
 - PostgreSQL em produção
 - Tailwind CSS na camada de estilo
 - Docker para execução local e empacotamento
@@ -70,6 +69,12 @@ python manage.py migrate
 npm run watch:css
 ```
 
+- Para builds de produção / antes de `collectstatic`, gere CSS minificado:
+
+```bash
+npm run build:css
+```
+
 - Em outro terminal, subir o servidor:
 
 ```bash
@@ -95,8 +100,13 @@ docker compose exec web python manage.py migrate
 
 ## Acesso inicial
 
-- Criar superusuário:
+- Criar superusuário (recomendado — não exige email no prompt):
 
+```bash
+python manage.py createadmin
+```
+
+- Alternativa (padrão Django):
 ```bash
 python manage.py createsuperuser
 ```
@@ -163,14 +173,19 @@ Quick actions e HTMX reduzem o atrito para registrar eventos em poucos segundos.
 
 Leia a visão funcional detalhada em [docs/funcional.md](docs/funcional.md).
 
+## Deploy (Lightsail + S3)
+
+- Guia: [docs/deploy/lightsail-s3.md](docs/deploy/lightsail-s3.md)
+
 ## Verificação
 
 Comandos úteis para validação local:
 
 ```bash
+npm run build:css
 python manage.py check
 python manage.py makemigrations --check --dry-run
-python manage.py test apps.fuel apps.maintenance apps.tires
+python manage.py test
 ```
 
 ## Observação

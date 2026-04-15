@@ -29,7 +29,7 @@ SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
@@ -42,6 +42,29 @@ MEDIA_ROOT = Path(
         os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "/data"),
     )
 ) / "media"
+
+# S3 (django-storages) - default file storage
+# Only set access keys when provided; empty strings break boto3 and block IAM instance roles.
+_aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+_aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+if _aws_access_key:
+    AWS_ACCESS_KEY_ID = _aws_access_key
+if _aws_secret_key:
+    AWS_SECRET_ACCESS_KEY = _aws_secret_key
+
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "")
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
+AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL") or None
+
+if not AWS_STORAGE_BUCKET_NAME:
+    raise ImproperlyConfigured("AWS_STORAGE_BUCKET_NAME must be set in production.")
+
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = True
+AWS_S3_OBJECT_PARAMETERS = {
+    # Cache media objects for 1 day by default; tune per your needs.
+    "CacheControl": "max-age=86400",
+}
 
 # Fail fast if an insecure SECRET_KEY is used in production.
 if SECRET_KEY.startswith("django-insecure-") or len(SECRET_KEY) < 50:  # noqa: F405

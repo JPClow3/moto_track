@@ -3,6 +3,8 @@ __pycache__/
 *.sqlite3
 .venv/
 .env
+# Mistaken copy of `.env` (never commit secrets here)
+/env
 media/
 staticfiles/
 .pytest_cache/

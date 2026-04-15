@@ -42,9 +42,14 @@ class Command(BaseCommand):
         if password:
             user.set_password(password)
         elif created:
-            generated_password = secrets.token_urlsafe(24)
-            user.set_password(generated_password)
-            self.stdout.write(self.style.WARNING(f"Using generated random password for admin: {generated_password}"))
+            user.set_password(secrets.token_urlsafe(24))
+            self.stdout.write(
+                self.style.WARNING(
+                    "New admin: a random password was set and is not logged (avoid log leaks). "
+                    f"Run `python manage.py changepassword {username}` on the host, "
+                    "or set DJANGO_BOOTSTRAP_ADMIN_PASSWORD before bootstrap for a known password."
+                )
+            )
         else:
             self.stdout.write(
                 self.style.WARNING(

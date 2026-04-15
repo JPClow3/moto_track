@@ -50,7 +50,7 @@ Use Windows-friendly commands from the project root [moto_track](.).
 - Prefer explicit migration behavior when Django rename detection is ambiguous.
 
 ## UI and Accessibility Conventions
-- Keep templates server-rendered and simple first; use HTMX/Alpine only where it reduces friction.
+- Keep templates server-rendered and simple first; use HTMX (and small vanilla JS) only where it reduces friction.
 - Preserve semantic landmarks and keyboard support patterns already present in [templates/base.html](templates/base.html).
 - Maintain visible focus states and descriptive labels for forms and interactive elements.
 
