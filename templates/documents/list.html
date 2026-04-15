@@ -98,6 +98,7 @@
               <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Documento</th>
               <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Categoria</th>
               <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Data</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Validade</th>
               <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Status</th>
               <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Ações</th>
             </tr>
@@ -114,6 +115,13 @@
                 <td><span class="inline-flex items-center rounded-full bg-surface-low px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">{{ item.get_document_type_display }}</span></td>
                 <td>{{ item.created_at|date:"d/m/Y" }}</td>
                 <td>
+                  {% if item.valid_until %}
+                    <span class="inline-flex items-center rounded-full bg-surface-low px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">{{ item.valid_until|date:"d/m/Y" }}</span>
+                  {% else %}
+                    <span class="text-xs text-on-surface-variant">—</span>
+                  {% endif %}
+                </td>
+                <td>
                   {% if item.document_type == 'insurance' %}
                     <span class="inline-flex items-center rounded-full bg-warning/15 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-warning">Revisar</span>
                   {% else %}
@@ -122,6 +130,12 @@
                 </td>
                 <td>
                   <div class="flex items-center justify-end gap-2" aria-label="Ações do documento {{ item.name }}">
+                    {% if item.valid_until %}
+                      <form method="post" action="{% url 'documents:create_reminder' item.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="h-9 w-9 grid place-items-center rounded-xl text-primary hover:bg-surface-low" aria-label="Criar lembrete de validade para {{ item.name }}"><i data-lucide="bell-plus"></i></button>
+                      </form>
+                    {% endif %}
                     <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-low" href="{{ item.file.url }}" target="_blank" rel="noopener noreferrer" aria-label="Visualizar {{ item.name }}"><i data-lucide="eye"></i></a>
                     <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-low" href="{{ item.file.url }}" target="_blank" rel="noopener noreferrer" download aria-label="Baixar {{ item.name }}"><i data-lucide="download"></i></a>
                     <form method="post" action="{% url 'documents:delete' item.pk %}">

@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -5,6 +7,7 @@ from django.urls import reverse
 
 from apps.documents.models import DocumentType, MotorcycleDocument
 from apps.garage.models import Motorcycle
+from apps.reminders.models import Reminder
 
 
 class DocumentsTests(TestCase):
@@ -59,3 +62,13 @@ class DocumentsTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertFalse(MotorcycleDocument.objects.filter(pk=document.pk).exists())
+
+    def test_create_reminder_for_document_valid_until(self):
+        self.client.force_login(self.user)
+        document = MotorcycleDocument.objects.filter(motorcycle=self.motorcycle).first()
+        document.valid_until = date(2026, 5, 1)
+        document.save()
+
+        response = self.client.post(reverse("documents:create_reminder", args=[document.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Reminder.objects.filter(motorcycle=self.motorcycle, title__icontains=document.name).exists())

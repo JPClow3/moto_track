@@ -11,6 +11,7 @@ from apps.maintenance.forms import MaintenanceRecordQuickForm
 from apps.maintenance.models import (
     MaintenancePart,
     MaintenancePartType,
+    MaintenancePlanItem,
     MaintenanceRecord,
     MaintenanceRecordPart,
     MaintenanceType,
@@ -101,3 +102,16 @@ class MaintenanceModelTests(TestCase):
 
         self.assertEqual(response.status_code, 422)
         self.assertIn("Registrar manutenção", response.content.decode())
+
+    def test_maintenance_plan_item_shows_on_list(self):
+        MaintenancePlanItem.objects.create(  # pylint: disable=no-member
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+            interval_km=1000,
+            last_done_km=0,
+            is_active=True,
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("maintenance:list"), HTTP_HOST="localhost")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Plano de manutenção")

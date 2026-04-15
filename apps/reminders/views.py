@@ -1,14 +1,18 @@
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.core.active_motorcycle import get_active_motorcycle
+from apps.core.exports import parse_date_param
 from apps.core.pagination import paginate
 
 from .forms import ReminderForm
-from .models import Reminder
+from .models import Reminder, TriggerType
 from .services import evaluate_reminder
+from .export import build_export
 
 
 @login_required
@@ -92,3 +96,54 @@ def reminder_delete_view(request, pk):
         return redirect("reminders:list")
 
     return render(request, "reminders/confirm_delete.html", {"reminder": reminder})
+
+
+@login_required
+def reminder_export_view(request):
+    fmt = (request.GET.get("format") or "csv").strip().lower()
+    if fmt not in {"csv", "xlsx"}:
+        fmt = "csv"
+    start = parse_date_param(request.GET.get("start"))
+    end = parse_date_param(request.GET.get("end"))
+    email_to = request.user.email if request.GET.get("email") == "1" else None
+    return build_export(user=request.user, start=start, end=end, fmt=fmt, email_to=email_to)
+
+
+@login_required
+def reminder_snooze_days_view(request, pk: int, days: int):
+    reminder = get_object_or_404(Reminder, pk=pk, motorcycle__owner=request.user, motorcycle__is_active=True)
+    if request.method != "POST":
+        return redirect("reminders:list")
+
+    days = max(int(days or 0), 0)
+    today = timezone.localdate()
+
+    if reminder.trigger_type in {TriggerType.BY_DATE, TriggerType.BY_INTERVAL}:
+        base = reminder.reference_date or today
+        reminder.reference_date = base + timedelta(days=days)
+        reminder.save(update_fields=["reference_date", "updated_at"])
+        messages.success(request, f"Lembrete adiado em {days} dias.")
+    else:
+        messages.info(request, "Este lembrete não é por data.")
+
+    return redirect("reminders:list")
+
+
+@login_required
+def reminder_snooze_km_view(request, pk: int, km: int):
+    reminder = get_object_or_404(Reminder, pk=pk, motorcycle__owner=request.user, motorcycle__is_active=True)
+    if request.method != "POST":
+        return redirect("reminders:list")
+
+    km = max(int(km or 0), 0)
+    current_odo = int(reminder.motorcycle.current_odometer_km or 0)
+
+    if reminder.trigger_type in {TriggerType.BY_KM, TriggerType.BY_INTERVAL}:
+        base = reminder.reference_km if reminder.reference_km is not None else current_odo
+        reminder.reference_km = int(base) + km
+        reminder.save(update_fields=["reference_km", "updated_at"])
+        messages.success(request, f"Lembrete adiado em +{km} km.")
+    else:
+        messages.info(request, "Este lembrete não é por km.")
+
+    return redirect("reminders:list")

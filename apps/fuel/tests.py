@@ -70,6 +70,49 @@ class FuelModelTests(TestCase):
         self.assertEqual(response.status_code, 422)
         self.assertIn("Adicionar abastecimento", response.content.decode())
 
+    def test_repeat_last_opens_modal_and_creates_record(self):
+        FuelRecord.objects.create(  # pylint: disable=no-member
+            motorcycle=self.motorcycle,
+            station=self.station,
+            fuel_grade=self.grade,
+            date=date(2026, 4, 1),
+            odometer_km=100,
+            liters=Decimal("10.0"),
+            total_price=Decimal("70.00"),
+            price_per_liter=Decimal("7.000"),
+            fuel_type=FuelType.PREMIUM_GASOLINE,
+            tank_full=True,
+            station_name="Posto A",
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("fuel:repeat_last"), HTTP_HX_REQUEST="true", HTTP_HOST="localhost")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Repetir abastecimento", response.content.decode())
+
+        post = self.client.post(
+            reverse("fuel:repeat_last"),
+            {
+                "motorcycle": self.motorcycle.pk,
+                "station": self.station.pk,
+                "fuel_grade": self.grade.pk,
+                "date": "2026-04-13",
+                "odometer_km": 250,
+                "liters": "8.0",
+                "total_price_0": "60.00",
+                "total_price_1": "BRL",
+                "fuel_type": FuelType.PREMIUM_GASOLINE,
+                "tank_full": True,
+                "station_name": "Posto A",
+                "notes": "",
+            },
+            HTTP_HX_REQUEST="true",
+            HTTP_HOST="localhost",
+        )
+        # HTMX redirect response
+        self.assertEqual(post.status_code, 200)
+        self.assertTrue(FuelRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=250).exists())  # pylint: disable=no-member
+
     def test_compute_average_consumption_uses_full_tank_anchors(self):
         # Full tank at 0 km
         FuelRecord.objects.create(  # pylint: disable=no-member

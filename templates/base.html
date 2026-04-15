@@ -124,6 +124,16 @@
             </h1>
           </div>
           <div class="flex items-center gap-2" aria-label="Ações do topo">
+            <button
+              type="button"
+              class="ui-icon-btn rounded-full"
+              aria-label="Adicionar"
+              hx-get="{% url 'quick_add' %}?next={{ request.path|urlencode }}"
+              hx-target="#quick-form-root"
+              hx-swap="innerHTML"
+            >
+              <i data-lucide="plus" aria-hidden="true"></i>
+            </button>
             <a class="ui-icon-btn rounded-full" href="{% url 'reminders:list' %}" aria-label="Ir para lembretes">
               <i data-lucide="bell" aria-hidden="true"></i>
             </a>

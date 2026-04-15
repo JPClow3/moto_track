@@ -15,15 +15,17 @@ class DocumentUploadForm(forms.ModelForm):
 
     class Meta:
         model = MotorcycleDocument
-        fields = ["motorcycle", "name", "document_type", "file", "notes"]
+        fields = ["motorcycle", "name", "document_type", "file", "valid_until", "notes"]
         widgets = {
+            "valid_until": forms.DateInput(attrs={"type": "date"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["motorcycle"].queryset = Motorcycle.objects.filter(owner=user).order_by("name")
+        self.fields["motorcycle"].queryset = Motorcycle.objects.filter(owner=user).order_by("name")  # pylint: disable=no-member
         self.fields["notes"].required = False
+        self.fields["valid_until"].required = False
 
     def clean_name(self):
         return sanitize_text(self.cleaned_data.get("name"))

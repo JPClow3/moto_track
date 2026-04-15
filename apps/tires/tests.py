@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.garage.models import Motorcycle
-from apps.tires.models import TirePosition, TireProduct, TireRecord, TireType
+from apps.tires.models import TirePosition, TirePressureRecord, TireProduct, TireRecord, TireType
 
 
 class TireModelTests(TestCase):
@@ -154,3 +154,20 @@ class TireViewTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertFalse(TireRecord.objects.filter(pk=self.record.pk).exists())  # pylint: disable=no-member
+
+    def test_pressure_create_creates_record(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("tires:pressure_create"),
+            {
+                "motorcycle": self.motorcycle.pk,
+                "date": "2026-04-14",
+                "psi_front": 32,
+                "psi_rear": 36,
+                "notes": "frio",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            TirePressureRecord.objects.filter(motorcycle=self.motorcycle, psi_front=32, psi_rear=36).exists()  # pylint: disable=no-member
+        )

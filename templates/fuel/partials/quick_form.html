@@ -6,10 +6,35 @@
       <div class="min-w-0">
         <h3 id="quick-fuel-title" class="text-lg font-extrabold tracking-tight">{{ title }}</h3>
         <p class="text-sm text-on-surface-variant mt-1">Registre o abastecimento e mantenha seu histórico atualizado.</p>
+        {% if repeat_summary %}
+          <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">
+            {% if repeat_summary.station_name %}
+              <span class="rounded-full bg-surface-low px-3 py-1 ring-1 ring-outline-variant/15">Posto: {{ repeat_summary.station_name }}</span>
+            {% endif %}
+            {% if repeat_summary.fuel_type %}
+              <span class="rounded-full bg-surface-low px-3 py-1 ring-1 ring-outline-variant/15">{{ repeat_summary.fuel_type }}</span>
+            {% endif %}
+          </div>
+        {% endif %}
       </div>
-      <button type="button" class="h-10 w-10 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-low" onclick="window.closeQuickFormModal?.()" aria-label="Fechar formulário">
-        <i data-lucide="x"></i>
-      </button>
+      <div class="flex items-center gap-2">
+        {% if can_prefill_last %}
+          <a
+            class="h-10 px-4 inline-flex items-center justify-center gap-2 rounded-full bg-surface-low text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60 transition"
+            hx-get="{% url 'fuel:quick_create' %}?prefill=last&next={{ next_url|urlencode }}"
+            hx-target="#quick-form-root"
+            hx-swap="innerHTML"
+            role="button"
+            aria-label="Usar dados do último abastecimento"
+          >
+            <i data-lucide="copy" class="h-4 w-4" aria-hidden="true"></i>
+            Usar último
+          </a>
+        {% endif %}
+        <button type="button" class="h-10 w-10 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-low" onclick="window.closeQuickFormModal?.()" aria-label="Fechar formulário">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
     </div>
 
     <form

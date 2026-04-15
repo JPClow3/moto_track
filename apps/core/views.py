@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from djmoney.money import Money
 
+from apps.core.exports import safe_next_url
 from apps.fuel.models import FuelRecord
 from apps.fuel.services import compute_average_consumption_km_per_liter
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
@@ -18,6 +19,8 @@ from apps.tires.models import TirePosition, TireRecord
 
 from .active_motorcycle import get_active_motorcycle, set_active_motorcycle
 from .forms import OdometerOverrideForm
+
+# pylint: disable=no-member
 
 
 @login_required
@@ -297,6 +300,16 @@ def offline_view(request):
 
 
 @login_required
+def quick_add_selector_view(request):
+    is_htmx = request.headers.get("HX-Request") == "true"
+    if not is_htmx:
+        return redirect("dashboard")
+
+    next_url = request.GET.get("next") or request.POST.get("next") or reverse("dashboard")
+    return render(request, "core/partials/quick_add_selector.html", {"next_url": next_url})
+
+
+@login_required
 def odometer_quick_update_view(request):
     motorcycle = get_active_motorcycle(request)
     is_htmx = request.headers.get("HX-Request") == "true"
@@ -316,7 +329,11 @@ def odometer_quick_update_view(request):
             messages.success(request, "Odômetro atualizado com sucesso.")
             if is_htmx:
                 response = HttpResponse()
-                response["HX-Redirect"] = request.GET.get("next") or request.POST.get("next") or reverse("dashboard")
+                response["HX-Redirect"] = safe_next_url(
+                    request=request,
+                    candidate=request.GET.get("next") or request.POST.get("next"),
+                    fallback=reverse("dashboard"),
+                )
                 return response
             return redirect(request.POST.get("next") or "dashboard")
         status = 422 if is_htmx else 200

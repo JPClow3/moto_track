@@ -85,3 +85,13 @@ def evaluate_reminder(reminder: Reminder, *, current_odometer_km: int, today: da
         return sorted(evals, key=lambda e: priority[e.status])[0]
 
     return ReminderEvaluation(status=ReminderStatus.UNKNOWN)
+
+
+def list_due_reminders(*, reminders: list[Reminder], current_odometer_km: int, today: date) -> list[Reminder]:
+    """Return reminders that are due soon or overdue, preserving input order."""
+    due: list[Reminder] = []
+    for r in reminders:
+        evaluation = evaluate_reminder(r, current_odometer_km=current_odometer_km, today=today)
+        if evaluation.status in {ReminderStatus.OVERDUE, ReminderStatus.DUE_SOON}:
+            due.append(r)
+    return due

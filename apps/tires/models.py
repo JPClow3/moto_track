@@ -63,6 +63,7 @@ class TireRecord(TimeStampedModel):
         ordering = ["-installed_at"]
 
     def __str__(self) -> str:
+        # pylint: disable=no-member
         return f"{self.motorcycle.name} - {self.get_position_display()}"
 
     def clean(self):
@@ -75,3 +76,17 @@ class TireRecord(TimeStampedModel):
             errors["purchase_price"] = "O preço de compra não pode ser negativo."
         if errors:
             raise ValidationError(errors)
+
+
+class TirePressureRecord(TimeStampedModel):
+    motorcycle = models.ForeignKey(Motorcycle, on_delete=models.CASCADE, related_name="tire_pressure_records")
+    date = models.DateField()
+    psi_front = models.PositiveSmallIntegerField()
+    psi_rear = models.PositiveSmallIntegerField()
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.motorcycle.name} - {self.date}"

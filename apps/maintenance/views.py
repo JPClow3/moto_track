@@ -11,11 +11,17 @@ from djmoney.money import Money
 
 from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.forms import configure_form_accessibility
+from apps.core.exports import parse_date_param, safe_next_url
 from apps.core.pagination import paginate
 from apps.garage.models import Motorcycle
+from apps.reminders.models import Reminder
+from apps.reminders.services import list_due_reminders
 
 from .forms import MaintenancePartForm, MaintenanceRecordQuickForm
-from .models import MaintenancePart, MaintenanceRecord, MaintenanceRecordPart, MaintenanceType
+from .models import MaintenancePart, MaintenancePlanItem, MaintenanceRecord, MaintenanceRecordPart, MaintenanceType
+from .export import build_export
+
+# pylint: disable=no-member
 
 
 class MaintenancePartAutocomplete(autocomplete.Select2QuerySetView):
@@ -175,6 +181,34 @@ def maintenance_list_view(request):
     upcoming_candidates.sort(key=_sort_key)
     upcoming_tasks = upcoming_candidates[:3]
 
+    plan_items = []
+    if selected_motorcycle:
+        plan_qs = MaintenancePlanItem.objects.filter(motorcycle=selected_motorcycle, is_active=True)  # noqa: E501
+        for item in plan_qs:
+            remaining_km = None
+            if item.interval_km and item.last_done_km is not None:
+                remaining_km = (item.last_done_km + item.interval_km) - int(current_odometer_km or 0)
+
+            remaining_days = None
+            if item.interval_days and item.last_done_date is not None:
+                due_date = item.last_done_date + timedelta(days=item.interval_days)
+                remaining_days = (due_date - today).days
+
+            status = "ok"
+            if (remaining_km is not None and remaining_km <= 0) or (remaining_days is not None and remaining_days <= 0):
+                status = "overdue"
+            elif (remaining_km is not None and remaining_km <= 200) or (remaining_days is not None and remaining_days <= 7):
+                status = "due_soon"
+
+            plan_items.append(
+                {
+                    "type_label": item.get_maintenance_type_display(),
+                    "status": status,
+                    "remaining_km": remaining_km,
+                    "remaining_days": remaining_days,
+                }
+            )
+
     paged = paginate(request, records_qs, per_page=50)
     records = paged.items
     total_cost = records_qs.aggregate(total=Sum("cost"))["total"] or Money(0, "BRL")
@@ -188,9 +222,21 @@ def maintenance_list_view(request):
         "filters": {"motorcycle": motorcycle_id or ""},
         "status_cards": status_cards,
         "upcoming_tasks": upcoming_tasks,
+        "plan_items": plan_items,
         "selected_motorcycle": selected_motorcycle,
     }
     return render(request, "maintenance/list.html", context)
+
+
+@login_required
+def maintenance_export_view(request):
+    fmt = (request.GET.get("format") or "csv").strip().lower()
+    if fmt not in {"csv", "xlsx"}:
+        fmt = "csv"
+    start = parse_date_param(request.GET.get("start"))
+    end = parse_date_param(request.GET.get("end"))
+    email_to = request.user.email if request.GET.get("email") == "1" else None
+    return build_export(user=request.user, start=start, end=end, fmt=fmt, email_to=email_to)
 
 
 @login_required
@@ -258,10 +304,25 @@ def maintenance_quick_create_view(request):
             if parts:
                 for part in parts:
                     MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
+            today = timezone.localdate()
+            due = list_due_reminders(
+                reminders=list(Reminder.objects.filter(motorcycle=record.motorcycle, is_active=True).order_by("title")[:10]),
+                current_odometer_km=int(record.motorcycle.current_odometer_km or 0),
+                today=today,
+            )
+            if due:
+                messages.info(
+                    request,
+                    f"{len(due)} lembrete(s) está(ão) vencido(s) ou em breve. Você pode revisar em Lembretes.",
+                )
             messages.success(request, f"Manutenção registrada para {record.motorcycle.name}.")
             if is_htmx:
                 response = HttpResponse()
-                response["HX-Redirect"] = request.GET.get("next") or request.POST.get("next") or "/"
+                response["HX-Redirect"] = safe_next_url(
+                    request=request,
+                    candidate=request.GET.get("next") or request.POST.get("next"),
+                    fallback="/",
+                )
                 return response
             return redirect(request.POST.get("next") or "maintenance:list")
         status = 422 if is_htmx else 200

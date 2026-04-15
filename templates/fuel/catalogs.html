@@ -18,6 +18,72 @@
     </div>
   </header>
 
+  {% if ranking_cards.cheapest or ranking_cards.consistent or ranking_cards.best_avg %}
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4" aria-label="Comparação por posto">
+      <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
+        <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Mais barato</p>
+        {% if ranking_cards.cheapest %}
+          <p class="mt-2 text-xl font-extrabold truncate">{{ ranking_cards.cheapest.label }}</p>
+          <p class="mt-1 text-sm text-on-surface-variant">{{ ranking_cards.cheapest.value }} / L • {{ ranking_cards.cheapest.meta }}</p>
+        {% else %}
+          <p class="mt-2 text-sm text-on-surface-variant">Registre 3+ abastecimentos por posto para ranquear.</p>
+        {% endif %}
+      </article>
+
+      <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
+        <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Mais consistente</p>
+        {% if ranking_cards.consistent %}
+          <p class="mt-2 text-xl font-extrabold truncate">{{ ranking_cards.consistent.label }}</p>
+          <p class="mt-1 text-sm text-on-surface-variant">{{ ranking_cards.consistent.value }} / L • {{ ranking_cards.consistent.meta }}</p>
+        {% else %}
+          <p class="mt-2 text-sm text-on-surface-variant">Sem dados suficientes para consistência.</p>
+        {% endif %}
+      </article>
+
+      <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
+        <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Melhor custo médio</p>
+        {% if ranking_cards.best_avg %}
+          <p class="mt-2 text-xl font-extrabold truncate">{{ ranking_cards.best_avg.label }}</p>
+          <p class="mt-1 text-sm text-on-surface-variant">{{ ranking_cards.best_avg.value }} / L • {{ ranking_cards.best_avg.meta }}</p>
+        {% else %}
+          <p class="mt-2 text-sm text-on-surface-variant">Sem dados suficientes para custo ponderado.</p>
+        {% endif %}
+      </article>
+    </section>
+  {% endif %}
+
+  {% if station_rankings %}
+    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15" aria-label="Ranking de postos (top 10)">
+      <div class="flex items-end justify-between gap-4">
+        <div>
+          <h3 class="text-lg font-extrabold tracking-tight">Ranking (média de preço/L)</h3>
+          <p class="text-sm text-on-surface-variant">Baseado nos seus registros mais recentes (top 10).</p>
+        </div>
+        <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">3+ amostras</span>
+      </div>
+      <div class="mt-4 overflow-x-auto">
+        <table class="min-w-[560px] w-full text-sm" aria-label="Tabela de ranking por posto">
+          <thead>
+            <tr>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Posto</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Média R$/L</th>
+              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Amostras</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in station_rankings %}
+              <tr class="border-t border-outline-variant/10">
+                <td class="py-3"><strong class="font-extrabold">{{ row.label }}</strong></td>
+                <td>{{ row.avg|default:"—" }}</td>
+                <td>{{ row.samples }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  {% endif %}
+
   <section class="grid grid-cols-1 lg:grid-cols-2 gap-8" aria-label="Catálogos de combustível">
     <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient space-y-4">
       <h3 class="text-lg font-extrabold tracking-tight">Postos</h3>

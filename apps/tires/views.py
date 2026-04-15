@@ -3,9 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.pagination import paginate
+from apps.core.exports import parse_date_param
 
-from .forms import TireRecordForm
-from .models import TirePosition, TireProduct, TireRecord
+from .forms import TirePressureRecordForm, TireRecordForm
+from .models import TirePosition, TirePressureRecord, TireProduct, TireRecord
+from .export import build_export
 
 
 @login_required
@@ -79,6 +81,14 @@ def tire_list_view(request):
 
     attention = any(t and t["status_tone"] == "warning" for t in [front_telemetry, rear_telemetry])
 
+    pressure_form = TirePressureRecordForm(user=request.user, initial_motorcycle=motorcycle_id or None)
+    pressure_records = TirePressureRecord.objects.filter(
+        motorcycle__owner=request.user, motorcycle__is_active=True
+    ).select_related("motorcycle")
+    if motorcycle_id:
+        pressure_records = pressure_records.filter(motorcycle_id=motorcycle_id)
+    pressure_recent = list(pressure_records.order_by("-date", "-created_at")[:5])
+
     paged = paginate(request, records_qs, per_page=50)
     return render(
         request,
@@ -90,8 +100,37 @@ def tire_list_view(request):
             "front": front_telemetry,
             "rear": rear_telemetry,
             "has_attention": attention,
+            "pressure_form": pressure_form,
+            "pressure_recent": pressure_recent,
         },
     )
+
+
+@login_required
+def tire_pressure_create_view(request):
+    if request.method != "POST":
+        return redirect("tires:list")
+
+    form = TirePressureRecordForm(request.POST, user=request.user)
+    if form.is_valid():
+        rec = form.save()
+        messages.success(request, "Calibragem registrada.")
+        return redirect("tires:list")
+
+    messages.error(request, "Não foi possível salvar a calibragem. Revise os campos.")
+    return redirect("tires:list")
+
+
+@login_required
+def tire_export_view(request):
+    fmt = (request.GET.get("format") or "csv").strip().lower()
+    if fmt not in {"csv", "xlsx"}:
+        fmt = "csv"
+    start = parse_date_param(request.GET.get("start"))
+    end = parse_date_param(request.GET.get("end"))
+    kind = (request.GET.get("kind") or "tires").strip().lower()
+    email_to = request.user.email if request.GET.get("email") == "1" else None
+    return build_export(user=request.user, start=start, end=end, fmt=fmt, email_to=email_to, kind=kind)
 
 
 @login_required

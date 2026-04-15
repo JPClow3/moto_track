@@ -68,6 +68,7 @@ class MaintenanceRecord(TimeStampedModel):
         ordering = ["-date", "-odometer_km"]
 
     def __str__(self) -> str:
+        # pylint: disable=no-member
         return f"{self.motorcycle.name} - {self.get_maintenance_type_display()}"
 
     @property
@@ -106,3 +107,26 @@ class MaintenanceRecordPart(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.part} x{self.quantity}"
+
+
+class MaintenancePlanItem(TimeStampedModel):
+    motorcycle = models.ForeignKey(Motorcycle, on_delete=models.CASCADE, related_name="maintenance_plan_items")
+    maintenance_type = models.CharField(max_length=32, choices=MaintenanceType.choices, default=MaintenanceType.OTHER)
+    interval_km = models.PositiveIntegerField(null=True, blank=True)
+    interval_days = models.PositiveIntegerField(null=True, blank=True)
+    last_done_km = models.PositiveIntegerField(null=True, blank=True)
+    last_done_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["maintenance_type", "-is_active", "-updated_at"]
+        unique_together = [("motorcycle", "maintenance_type")]
+
+    def clean(self):
+        errors = {}
+        if self.interval_km is not None and self.interval_km <= 0:
+            errors["interval_km"] = "O intervalo em km deve ser maior que zero."
+        if self.interval_days is not None and self.interval_days <= 0:
+            errors["interval_days"] = "O intervalo em dias deve ser maior que zero."
+        if errors:
+            raise ValidationError(errors)

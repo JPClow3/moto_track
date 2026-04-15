@@ -17,13 +17,14 @@ class MotorcycleDocument(TimeStampedModel):
     name = models.CharField(max_length=140)
     document_type = models.CharField(max_length=32, choices=DocumentType.choices, default=DocumentType.OTHER)
     file = models.FileField(upload_to="documents/%Y/%m/")
+    valid_until = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
 
     class Meta:
         ordering = ["name"]
 
-    def __str__(self):
-        return self.name
+    def __str__(self) -> str:
+        return str(self.name)
 
 
 # Create your models here.
