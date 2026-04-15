@@ -2,21 +2,71 @@
 
 {% block title %}Pneus - Moto Track{% endblock %}
 
-{% block topbar_eyebrow %}Monitor de pneus{% endblock %}
-{% block topbar_title %}Pneus{% endblock %}
+{% block topbar_eyebrow %}Segurança{% endblock %}
+{% block topbar_title %}Segurança dos pneus{% endblock %}
 
 {% block content %}
 <section class="space-y-8 pb-10" aria-labelledby="tires-list-title">
-  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-    <div class="space-y-2">
-      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Monitor de pneus</span>
-      <h2 id="tires-list-title" class="text-3xl font-extrabold tracking-tight">Pneus</h2>
-      <p class="text-on-surface-variant text-sm">Gerencie instalação, desgaste e vida útil dos pneus por moto.</p>
+  <!-- Hero editorial -->
+  <section class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div class="lg:col-span-7 flex flex-col justify-center">
+      <span class="text-[10px] font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Status atual</span>
+      <h2 id="tires-list-title" class="mt-3 text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
+        Otimizado para<br />longevidade.
+      </h2>
+      <p class="mt-4 text-on-surface-variant text-sm max-w-xl leading-relaxed">
+        Seus pneus ativos estão sendo monitorados por desgaste, pressão recomendada e projeção de troca. Mantenha a pressão consistente para aumentar a vida útil e reduzir aquecimento irregular.
+      </p>
+      <div class="mt-7 flex flex-wrap items-center gap-3">
+        <div class="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient ring-1 ring-outline-variant/15">
+          <i data-lucide="{% if has_attention %}triangle-alert{% else %}badge-check{% endif %}" class="h-4 w-4" aria-hidden="true"></i>
+          {% if has_attention %}Revisão recomendada{% else %}Check de segurança ok{% endif %}
+        </div>
+        <a class="inline-flex items-center justify-center rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'tires:create' %}">
+          Registrar pneu
+        </a>
+        <a class="inline-flex items-center justify-center rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'tires:catalogs' %}">
+          Catálogo
+        </a>
+      </div>
+      <div class="mt-8 flex gap-4">
+        <div class="w-1 h-12 bg-primary rounded-full"></div>
+        <div class="space-y-1">
+          <div class="text-[10px] font-extrabold uppercase tracking-widest text-primary">Dica de segurança</div>
+          <div class="text-sm text-on-surface-variant">Evite aceleração forte com pneus frios para reduzir desgaste irregular.</div>
+        </div>
+      </div>
     </div>
-    <a class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient" href="{% url 'tires:create' %}">Novo registro</a>
-  </header>
 
-  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+    <div class="lg:col-span-5 relative">
+      <div class="aspect-[4/3] rounded-2xl overflow-hidden bg-surface-lowest shadow-ambient ring-1 ring-outline-variant/15">
+        {% if rear and rear.image_url %}
+          <img class="w-full h-full object-cover" src="{{ rear.image_url }}" alt="Foto do pneu traseiro" loading="lazy" />
+        {% elif front and front.image_url %}
+          <img class="w-full h-full object-cover" src="{{ front.image_url }}" alt="Foto do pneu dianteiro" loading="lazy" />
+        {% else %}
+          <div class="w-full h-full grid place-items-center bg-gradient-to-br from-surface-highest to-surface-low">
+            <i data-lucide="circle-dot" class="h-10 w-10 text-on-surface-variant" aria-hidden="true"></i>
+          </div>
+        {% endif %}
+      </div>
+      <div class="absolute -bottom-6 -left-6 p-6 rounded-2xl bg-surface-lowest/80 backdrop-blur-2xl shadow-ambient ring-1 ring-outline-variant/20 max-w-[260px]">
+        <div class="flex items-center gap-3 mb-2">
+          <i data-lucide="{% if has_attention %}triangle-alert{% else %}cloud{% endif %}" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+          <span class="font-extrabold text-on-surface">{% if has_attention %}Alerta{% else %}Condição{% endif %}</span>
+        </div>
+        <p class="text-xs text-on-surface-variant leading-normal">
+          {% if has_attention %}
+            Desgaste acima do ideal em um dos pneus ativos. Agende inspeção e atualize o desgaste após rodagem.
+          {% else %}
+            Tudo em ordem. Confira pressão recomendada antes de viagens longas e após mudanças de temperatura.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
     <form method="get" class="space-y-4" aria-label="Filtros de pneus">
       <select class="w-full rounded-xl bg-surface-low border-0 focus:ring-2 focus:ring-primary/20" name="motorcycle" aria-label="Filtrar por moto">
         <option value="">Todas as motos</option>
@@ -28,7 +78,142 @@
     </form>
   </article>
 
-  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Registros de pneus">
+  <!-- Bento telemetry -->
+  <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Telemetria de pneus">
+    <!-- Front -->
+    <div class="rounded-2xl bg-surface-lowest p-8 shadow-ambient ring-1 ring-outline-variant/15 space-y-6">
+      <div class="flex items-start justify-between gap-4">
+        <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Dianteiro</span>
+        {% if front %}
+          <span class="text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 {% if front.status_tone == 'warning' %}text-warning{% elif front.status_tone == 'neutral' %}text-info{% else %}text-success{% endif %}">
+            <i data-lucide="{{ front.status_icon }}" class="h-4 w-4" aria-hidden="true"></i> {{ front.status_label }}
+          </span>
+        {% else %}
+          <span class="text-xs font-extrabold uppercase tracking-widest text-on-surface-variant">Sem pneu ativo</span>
+        {% endif %}
+      </div>
+
+      {% if front %}
+        <div class="relative w-48 h-48 mx-auto flex items-center justify-center">
+          <svg class="w-full h-full -rotate-90" viewBox="0 0 192 192" aria-hidden="true">
+            <circle class="text-surface-low" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-width="12"></circle>
+            <circle class="{{ front.ring_class }}" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor"
+                    stroke-width="12" stroke-linecap="round"
+                    style="stroke-dasharray: {{ front.circumference }}; stroke-dashoffset: {{ front.dash_offset }};"></circle>
+          </svg>
+          <div class="absolute flex flex-col items-center">
+            <span class="text-4xl font-extrabold">{{ front.wear_percent }}</span>
+            <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Desgaste %</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-xl bg-surface-low p-3">
+            <span class="block text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant mb-1">Pressão</span>
+            <span class="font-extrabold text-on-surface">{{ front.record.recommended_pressure|default:"--" }}</span>
+          </div>
+          <div class="rounded-xl bg-surface-low p-3">
+            <span class="block text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant mb-1">Troca</span>
+            <span class="font-extrabold text-on-surface">{% if front.record.estimated_change_km %}{{ front.record.estimated_change_km }} km{% else %}--{% endif %}</span>
+          </div>
+        </div>
+      {% else %}
+        <p class="text-sm text-on-surface-variant">Cadastre um pneu dianteiro ativo para ver o painel.</p>
+      {% endif %}
+    </div>
+
+    <!-- Rear -->
+    <div class="rounded-2xl bg-surface-lowest p-8 shadow-ambient ring-1 ring-outline-variant/15 space-y-6">
+      <div class="flex items-start justify-between gap-4">
+        <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Traseiro</span>
+        {% if rear %}
+          <span class="text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 {% if rear.status_tone == 'warning' %}text-warning{% elif rear.status_tone == 'neutral' %}text-info{% else %}text-success{% endif %}">
+            <i data-lucide="{{ rear.status_icon }}" class="h-4 w-4" aria-hidden="true"></i> {{ rear.status_label }}
+          </span>
+        {% else %}
+          <span class="text-xs font-extrabold uppercase tracking-widest text-on-surface-variant">Sem pneu ativo</span>
+        {% endif %}
+      </div>
+
+      {% if rear %}
+        <div class="relative w-48 h-48 mx-auto flex items-center justify-center">
+          <svg class="w-full h-full -rotate-90" viewBox="0 0 192 192" aria-hidden="true">
+            <circle class="text-surface-low" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-width="12"></circle>
+            <circle class="{{ rear.ring_class }}" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor"
+                    stroke-width="12" stroke-linecap="round"
+                    style="stroke-dasharray: {{ rear.circumference }}; stroke-dashoffset: {{ rear.dash_offset }};"></circle>
+          </svg>
+          <div class="absolute flex flex-col items-center">
+            <span class="text-4xl font-extrabold">{{ rear.wear_percent }}</span>
+            <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Desgaste %</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-xl bg-surface-low p-3">
+            <span class="block text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant mb-1">Pressão</span>
+            <span class="font-extrabold text-on-surface">{{ rear.record.recommended_pressure|default:"--" }}</span>
+          </div>
+          <div class="rounded-xl bg-surface-low p-3">
+            <span class="block text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant mb-1">Troca</span>
+            <span class="font-extrabold text-on-surface">{% if rear.record.estimated_change_km %}{{ rear.record.estimated_change_km }} km{% else %}--{% endif %}</span>
+          </div>
+        </div>
+      {% else %}
+        <p class="text-sm text-on-surface-variant">Cadastre um pneu traseiro ativo para ver o painel.</p>
+      {% endif %}
+    </div>
+
+    <!-- Insights -->
+    <div class="rounded-2xl bg-surface-low p-8 space-y-6 shadow-ambient ring-1 ring-outline-variant/15">
+      <h3 class="text-xl font-extrabold tracking-tight">Insights de segurança</h3>
+
+      <div class="space-y-5">
+        <div class="flex gap-4">
+          <div class="h-10 w-10 rounded-full bg-surface-lowest shadow-ambient grid place-items-center flex-shrink-0">
+            <i data-lucide="history" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <p class="font-extrabold text-sm">Última instalação</p>
+            <p class="text-xs text-on-surface-variant mt-1">
+              {% if rear %}{{ rear.record.installed_at|date:"d/m/Y" }}{% elif front %}{{ front.record.installed_at|date:"d/m/Y" }}{% else %}--{% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex gap-4">
+          <div class="h-10 w-10 rounded-full bg-surface-lowest shadow-ambient grid place-items-center flex-shrink-0">
+            <i data-lucide="trending-up" class="h-4 w-4 text-info" aria-hidden="true"></i>
+          </div>
+          <div>
+            <p class="font-extrabold text-sm">Projeção</p>
+            <p class="text-xs text-on-surface-variant mt-1">
+              Use o campo “Troca (km)” para estimar janela de substituição e acompanhar evolução do desgaste.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex gap-4">
+          <div class="h-10 w-10 rounded-full bg-surface-lowest shadow-ambient grid place-items-center flex-shrink-0">
+            <i data-lucide="lightbulb" class="h-4 w-4 text-primary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <p class="font-extrabold text-sm">Dica</p>
+            <p class="text-xs text-on-surface-variant mt-1">
+              Atualize o desgaste após viagens longas e revise pressão ao menos 1x por semana.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <a class="w-full inline-flex items-center justify-center rounded-xl bg-surface-lowest px-4 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant shadow-ambient hover:bg-surface-highest/60"
+         href="#tires-history">
+        Ver histórico detalhado
+      </a>
+    </div>
+  </section>
+
+  <article id="tires-history" class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15" aria-label="Registros de pneus">
     {% if records %}
       <div class="overflow-x-auto">
         <table class="min-w-[900px] w-full text-sm">

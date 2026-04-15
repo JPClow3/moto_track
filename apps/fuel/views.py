@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
@@ -14,6 +16,28 @@ from .models import FuelGrade, FuelRecord, FuelStation
 from apps.core.forms import configure_form_accessibility
 from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.pagination import paginate
+
+
+def _month_key(dt):
+	return (dt.year, dt.month)
+
+
+def _months_back(reference_date, count: int) -> list[tuple[int, int]]:
+	months: list[tuple[int, int]] = []
+	year = reference_date.year
+	month = reference_date.month
+	for _ in range(count):
+		months.append((year, month))
+		month -= 1
+		if month == 0:
+			month = 12
+			year -= 1
+	months.reverse()
+	return months
+
+
+def _format_month_label(year: int, month: int) -> str:
+	return timezone.datetime(year, month, 1).strftime("%b").upper()
 
 
 
@@ -48,7 +72,50 @@ def fuel_list_view(request):
 		total_amount = getattr(total_spend, "amount", total_spend)
 		avg_cost_per_km = round(float(total_amount) / odometer_span, 3)
 
+	avg_liters_per_100km = None
+	if odometer_span > 0 and total_liters:
+		avg_liters_per_100km = round(float(total_liters) / odometer_span * 100, 2)
+
 	last_record = records_qs.first()
+
+	# Lightweight 6-month efficiency trend (liters/100km by month).
+	months = _months_back(timezone.localdate(), 6)
+	start_year, start_month = months[0]
+	start_date = date(start_year, start_month, 1)
+	trend_buckets = {m: {"liters": 0.0, "min_odo": None, "max_odo": None} for m in months}
+	for row in records_qs.filter(date__gte=start_date).values("date", "liters", "odometer_km"):
+		key = _month_key(row["date"])
+		if key not in trend_buckets:
+			continue
+		bucket = trend_buckets[key]
+		bucket["liters"] += float(row["liters"] or 0)
+		odo = row["odometer_km"]
+		bucket["min_odo"] = odo if bucket["min_odo"] is None else min(bucket["min_odo"], odo)
+		bucket["max_odo"] = odo if bucket["max_odo"] is None else max(bucket["max_odo"], odo)
+
+	trend_points = []
+	values = []
+	for year, month in months:
+		b = trend_buckets[(year, month)]
+		span = (b["max_odo"] - b["min_odo"]) if (b["min_odo"] is not None and b["max_odo"] is not None) else 0
+		value = None
+		if span > 0 and b["liters"] > 0:
+			value = round(b["liters"] / span * 100, 2)
+			values.append(value)
+		trend_points.append({"label": _format_month_label(year, month), "value": value})
+
+	trend_max = max(values) if values else None
+
+	# "Next recommended fill-up" heuristic: average distance between last few fill-ups.
+	next_recommended_km = None
+	if len(records) >= 2:
+		pairs = list(zip(records, records[1:]))
+		deltas = [max(a.odometer_km - b.odometer_km, 0) for a, b in pairs if a.odometer_km and b.odometer_km]
+		if deltas:
+			avg_delta = int(round(sum(deltas) / len(deltas)))
+			next_recommended_km = (records[0].odometer_km or 0) + avg_delta
+
+	recent_fillups = records[:3]
 
 	context = {
 		"records": records,
@@ -58,6 +125,11 @@ def fuel_list_view(request):
 		"total_liters": total_liters,
 		"avg_cost_per_km": avg_cost_per_km,
 		"last_record": last_record,
+		"avg_liters_per_100km": avg_liters_per_100km,
+		"recent_fillups": recent_fillups,
+		"trend_points": trend_points,
+		"trend_max": trend_max,
+		"next_recommended_km": next_recommended_km,
 		"filters": {"q": q, "motorcycle": motorcycle_id or ""},
 	}
 	return render(request, "fuel/list.html", context)

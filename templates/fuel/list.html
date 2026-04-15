@@ -2,36 +2,35 @@
 
 {% block title %}Abastecimentos - Moto Track{% endblock %}
 
-{% block topbar_eyebrow %}Fluxo crítico{% endblock %}
-{% block topbar_title %}Abastecimentos{% endblock %}
+{% block topbar_eyebrow %}Utilitários{% endblock %}
+{% block topbar_title %}Combustível{% endblock %}
 
 {% block content %}
 <section class="space-y-8 pb-10" aria-labelledby="fuel-list-title">
-  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-    <div class="space-y-2">
-      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Fluxo crítico</span>
-      <h2 id="fuel-list-title" class="text-3xl font-extrabold tracking-tight">Abastecimentos</h2>
-      <p class="text-on-surface-variant text-sm">Registre consumo em poucos cliques e acompanhe os custos.</p>
+  <!-- Hero -->
+  <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
+    <div class="lg:col-span-7 space-y-4">
+      <span class="text-[10px] font-extrabold uppercase tracking-[0.2em] text-on-surface-variant">Utilitários</span>
+      <h2 id="fuel-list-title" class="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">Consumo de combustível</h2>
+      <p class="text-on-surface-variant max-w-xl text-lg leading-relaxed">
+        Monitore a eficiência da sua moto e gerencie despesas de viagem com precisão.
+      </p>
     </div>
-    <div class="flex flex-wrap gap-3" aria-label="Ações da página de abastecimentos">
+    <div class="lg:col-span-5 flex justify-end">
       <a
-        class="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient"
+        class="w-full md:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-8 py-4 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient ring-1 ring-outline-variant/15 hover:opacity-95 active:scale-[0.99] transition"
         href="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
         hx-get="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
         hx-target="#quick-form-root"
         hx-swap="innerHTML"
       >
-        <span>Novo abastecimento</span>
-        <small class="opacity-90">1 toque</small>
-      </a>
-      <a class="inline-flex items-center justify-center gap-2 rounded-2xl bg-surface-lowest px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface shadow-ambient hover:bg-surface-highest/60" href="{% url 'fuel:catalogs' %}">
-        <span>Catálogos</span>
-        <small class="text-on-surface-variant">Postos</small>
+        <i data-lucide="plus" class="h-4 w-4" aria-hidden="true"></i>
+        Registrar abastecimento
       </a>
     </div>
-  </header>
+  </section>
 
-  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
     <form method="get" class="space-y-4" aria-label="Filtros de abastecimento">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <input class="w-full rounded-xl bg-surface-low border-0 focus:ring-2 focus:ring-primary/20" type="text" name="q" value="{{ filters.q }}" placeholder="Buscar por posto ou notas" />
@@ -48,31 +47,147 @@
     </form>
   </article>
 
-  <section class="grid grid-cols-1 md:grid-cols-3 gap-5" aria-label="Resumo de abastecimento">
-    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
-      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Total acumulado</p>
-      <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ total_spend }}</p>
-      <p class="text-sm text-on-surface-variant">Todos os registros</p>
-    </article>
-    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
-      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Média de custo por km</p>
-      <p class="mt-2 text-3xl font-extrabold tracking-tight">
-        {% if avg_cost_per_km is not None %}
-          {{ avg_cost_per_km }}
-        {% else %}
-          --
-        {% endif %}
+  <!-- Bento -->
+  <section class="grid grid-cols-1 md:grid-cols-12 gap-6" aria-label="Resumo de consumo">
+    <article class="md:col-span-4 rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Consumo médio</p>
+          <p class="mt-2 text-3xl font-extrabold tracking-tight">
+            {% if avg_liters_per_100km is not None %}
+              {{ avg_liters_per_100km }}
+            {% else %}
+              --
+            {% endif %}
+          </p>
+          <p class="text-sm text-on-surface-variant">L/100km (estimado)</p>
+        </div>
+        <span class="h-10 w-10 grid place-items-center rounded-2xl bg-surface-low text-primary" aria-hidden="true">
+          <i data-lucide="droplets" class="h-5 w-5"></i>
+        </span>
+      </div>
+      <p class="mt-5 text-xs text-on-surface-variant">
+        {% if total_liters %}{{ total_liters }} L registrados{% else %}Registre abastecimentos para começar.{% endif %}
       </p>
-      <p class="text-sm text-on-surface-variant">Baseado no histórico</p>
     </article>
-    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
-      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Último abastecimento</p>
-      <p class="mt-2 text-3xl font-extrabold tracking-tight">{% if last_record %}{{ last_record.date|date:"d M" }}{% else %}--{% endif %}</p>
-      <p class="text-sm text-on-surface-variant">{% if month_total %}{{ month_total }} no mês{% else %}Sem custo no mês{% endif %}</p>
+
+    <article class="md:col-span-4 rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Gasto no mês</p>
+          <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ month_total }}</p>
+          <p class="text-sm text-on-surface-variant">Total no mês atual</p>
+        </div>
+        <span class="h-10 w-10 grid place-items-center rounded-2xl bg-surface-low text-primary" aria-hidden="true">
+          <i data-lucide="banknote" class="h-5 w-5"></i>
+        </span>
+      </div>
+      <p class="mt-5 text-xs text-on-surface-variant">Acumulado: {{ total_spend }}</p>
+    </article>
+
+    <article class="md:col-span-4 rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
+      <div class="flex items-center justify-between">
+        <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Tendência</p>
+        <span class="inline-flex items-center rounded-full bg-surface-low px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">
+          {% if last_record %}{{ last_record.get_fuel_type_display }}{% endif %}
+        </span>
+      </div>
+
+      <div class="mt-5 grid grid-cols-6 gap-2 items-end h-28" aria-label="Tendência de consumo (6 meses)">
+        {% for p in trend_points %}
+          <div class="flex flex-col items-center gap-2">
+            <div class="w-full rounded-xl bg-surface-low overflow-hidden h-20 flex items-end">
+              {% if p.value and trend_max %}
+                <div class="w-full {% if forloop.last %}bg-primary{% else %}bg-primary/25{% endif %}" style="height: {% widthratio p.value trend_max 100 %}%"></div>
+              {% else %}
+                <div class="w-full bg-surface-highest" style="height: 12%"></div>
+              {% endif %}
+            </div>
+            <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">{{ p.label }}</span>
+          </div>
+        {% endfor %}
+      </div>
     </article>
   </section>
 
-  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Registros de abastecimento">
+  <!-- Recent fill-ups + Insight card -->
+  <section class="grid grid-cols-1 lg:grid-cols-12 gap-8" aria-label="Recent fill-ups">
+    <div class="lg:col-span-8 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-extrabold tracking-tight">Abastecimentos recentes</h3>
+        <a class="text-on-surface-variant text-xs font-extrabold uppercase tracking-widest hover:text-primary" href="?q={{ filters.q }}&motorcycle={{ filters.motorcycle }}">Ver histórico</a>
+      </div>
+
+      {% if recent_fillups %}
+        <div class="rounded-2xl bg-surface-lowest shadow-ambient ring-1 ring-outline-variant/15 divide-y divide-outline-variant/10">
+          {% for record in recent_fillups %}
+            <div class="p-5 flex flex-col md:flex-row md:items-center gap-4">
+              <div class="flex items-center gap-4 flex-1 min-w-0">
+                <span class="h-11 w-11 grid place-items-center rounded-2xl bg-surface-low text-primary shrink-0" aria-hidden="true">
+                  <i data-lucide="fuel" class="h-5 w-5"></i>
+                </span>
+                <div class="min-w-0">
+                  <p class="font-extrabold truncate">{{ record.station_name|default:"Abastecimento" }}</p>
+                  <p class="text-xs text-on-surface-variant truncate">
+                    {{ record.motorcycle.name }} • {{ record.date|date:"d M, Y" }} • {{ record.odometer_km }} km
+                  </p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="font-extrabold">{{ record.total_price }}</p>
+                <p class="text-xs text-on-surface-variant">{{ record.liters }} L</p>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-on-surface-variant text-sm">Nenhum abastecimento registrado ainda.</p>
+      {% endif %}
+    </div>
+
+    <aside class="lg:col-span-4">
+      <div class="rounded-2xl bg-surface-low p-6 shadow-ambient ring-1 ring-outline-variant/15 space-y-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="space-y-1">
+            <p class="font-extrabold">Janela de rodagem</p>
+            <p class="text-sm text-on-surface-variant">
+              Um lembrete rápido com base no seu histórico recente.
+            </p>
+          </div>
+          <span class="h-10 w-10 grid place-items-center rounded-2xl bg-surface-lowest text-primary" aria-hidden="true">
+            <i data-lucide="sparkles" class="h-5 w-5"></i>
+          </span>
+        </div>
+
+        <div class="rounded-2xl bg-surface-lowest p-5 space-y-2 border border-outline-variant/10">
+          <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Próximo recomendado</p>
+          <p class="text-3xl font-extrabold tracking-tight">
+            {% if next_recommended_km %}
+              {{ next_recommended_km }}km
+            {% else %}
+              --
+            {% endif %}
+          </p>
+          <p class="text-sm text-on-surface-variant">
+            {% if avg_cost_per_km is not None %}
+              Custo médio: {{ avg_cost_per_km }} / km
+            {% else %}
+              Adicione 2+ registros para estimativas.
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="flex items-center justify-between gap-3">
+          <a class="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient hover:opacity-95 transition w-full" href="{% url 'fuel:catalogs' %}">
+            Catálogos
+          </a>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- Detailed table (kept) -->
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15" aria-label="Registros de abastecimento">
     {% if records %}
       <div class="overflow-x-auto">
         <table class="min-w-[760px] w-full text-sm" aria-label="Tabela de abastecimentos">

@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import TireRecordForm
-from .models import TireRecord
+from .models import TirePosition, TireRecord
 from .models import TireProduct
 from apps.core.pagination import paginate
 
@@ -12,6 +12,50 @@ from apps.core.pagination import paginate
 def tire_catalog_view(request):
     products = TireProduct.objects.filter(owner=request.user)  # pylint: disable=no-member
     return render(request, "tires/catalogs.html", {"products": products})
+
+
+def _build_tire_telemetry(record: TireRecord | None):
+    if not record:
+        return None
+
+    wear = int(record.wear_percent or 0)
+    wear = max(0, min(100, wear))
+
+    # SVG circle: r=88 => circumference ≈ 2πr
+    circumference = 552.92
+    dash_offset = round(circumference * (1 - (wear / 100)), 2)
+
+    if wear >= 70:
+        status_label = "Atenção"
+        status_tone = "warning"
+        ring_class = "text-warning"
+        status_icon = "triangle-alert"
+    elif wear >= 40:
+        status_label = "Monitorar"
+        status_tone = "neutral"
+        ring_class = "text-info"
+        status_icon = "activity"
+    else:
+        status_label = "Saudável"
+        status_tone = "good"
+        ring_class = "text-success"
+        status_icon = "check-circle-2"
+
+    image_url = None
+    if record.tire_product and record.tire_product.image:
+        image_url = record.tire_product.image.url
+
+    return {
+        "record": record,
+        "wear_percent": wear,
+        "circumference": circumference,
+        "dash_offset": dash_offset,
+        "status_label": status_label,
+        "status_tone": status_tone,
+        "ring_class": ring_class,
+        "status_icon": status_icon,
+        "image_url": image_url,
+    }
 
 
 @login_required
@@ -25,11 +69,36 @@ def tire_list_view(request):
     if motorcycle_id:
         records_qs = records_qs.filter(motorcycle_id=motorcycle_id)
 
+    front_active = (
+        records_qs.filter(is_active=True, position=TirePosition.FRONT)
+        .order_by("-installed_at")
+        .first()
+    )
+    rear_active = (
+        records_qs.filter(is_active=True, position=TirePosition.REAR)
+        .order_by("-installed_at")
+        .first()
+    )
+
+    front_telemetry = _build_tire_telemetry(front_active)
+    rear_telemetry = _build_tire_telemetry(rear_active)
+
+    attention = any(
+        t and t["status_tone"] == "warning" for t in [front_telemetry, rear_telemetry]
+    )
+
     paged = paginate(request, records_qs, per_page=50)
     return render(
         request,
         "tires/list.html",
-        {"records": paged.items, "page_obj": paged.page, "filters": {"motorcycle": motorcycle_id or ""}},
+        {
+            "records": paged.items,
+            "page_obj": paged.page,
+            "filters": {"motorcycle": motorcycle_id or ""},
+            "front": front_telemetry,
+            "rear": rear_telemetry,
+            "has_attention": attention,
+        },
     )
 
 

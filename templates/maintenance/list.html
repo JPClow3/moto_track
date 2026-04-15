@@ -2,18 +2,37 @@
 
 {% block title %}Manutenções - Moto Track{% endblock %}
 
-{% block topbar_eyebrow %}Fluxo crítico{% endblock %}
-{% block topbar_title %}Manutenções{% endblock %}
+{% block topbar_eyebrow %}Visão geral{% endblock %}
+{% block topbar_title %}Manutenção{% endblock %}
 
 {% block content %}
 <section class="space-y-8 pb-10" aria-labelledby="maintenance-list-title">
-  <header class="space-y-2">
-    <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Fluxo crítico</span>
-    <h2 id="maintenance-list-title" class="text-3xl font-extrabold tracking-tight">Manutenções</h2>
-    <p class="text-on-surface-variant text-sm">Histórico de serviços com custo e odômetro em uma linha do tempo única.</p>
-  </header>
+  <!-- Hero -->
+  <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
+    <div class="lg:col-span-7 space-y-4">
+      <span class="text-[10px] font-extrabold uppercase tracking-[0.2em] text-primary">Visão geral</span>
+      <h2 id="maintenance-list-title" class="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
+        Sua máquina,<br />perfeitamente ajustada.
+      </h2>
+      <p class="text-on-surface-variant max-w-xl text-lg leading-relaxed">
+        Nós acompanhamos cada fluido e cada peça para você focar na estrada. Veja o que está por vir{% if selected_motorcycle %} para {{ selected_motorcycle.name }}{% endif %}.
+      </p>
+    </div>
+    <div class="lg:col-span-5 flex justify-end">
+      <a
+        class="w-full md:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-8 py-4 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient ring-1 ring-outline-variant/15 hover:opacity-95 active:scale-[0.99] transition"
+        href="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
+        hx-get="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
+        hx-target="#quick-form-root"
+        hx-swap="innerHTML"
+      >
+        <i data-lucide="calendar-clock" class="h-4 w-4" aria-hidden="true"></i>
+        Agendar / registrar
+      </a>
+    </div>
+  </section>
 
-  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
     <form method="get" class="space-y-4" aria-label="Filtros de manutenção">
       <select class="w-full rounded-xl bg-surface-low border-0 focus:ring-2 focus:ring-primary/20" name="motorcycle" aria-label="Filtrar por moto">
         <option value="">Todas as motos</option>
@@ -25,69 +44,130 @@
     </form>
   </article>
 
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8" aria-label="Registros de manutenção">
-    <aside class="lg:col-span-4 rounded-2xl bg-surface-lowest p-6 shadow-ambient space-y-4" aria-label="Atalhos de manutenção">
-      <div>
-        <h3 class="text-lg font-extrabold tracking-tight">Nova entrada</h3>
-        <p class="text-on-surface-variant text-sm mt-1">Abra o formulário rápido para registrar o serviço com lembrete opcional.</p>
+  <!-- Bento status cards -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-6" aria-label="Painel de manutenção">
+    {% for card in status_cards %}
+      <div class="rounded-2xl bg-surface-low p-8 space-y-6 flex flex-col justify-between shadow-ambient ring-1 ring-outline-variant/15">
+        <div class="space-y-2">
+          <div class="flex items-start justify-between">
+            <span class="h-12 w-12 grid place-items-center rounded-2xl bg-surface-lowest shadow-ambient ring-1 ring-outline-variant/15" aria-hidden="true">
+              <i data-lucide="{{ card.icon }}" class="h-6 w-6 {% if card.tone == 'danger' %}text-error{% elif card.tone == 'warning' %}text-warning{% elif card.tone == 'good' %}text-success{% else %}text-on-surface-variant{% endif %}"></i>
+            </span>
+            <span class="rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest
+              {% if card.tone == 'danger' %}bg-error/10 text-error
+              {% elif card.tone == 'warning' %}bg-warning/10 text-warning
+              {% elif card.tone == 'good' %}bg-success/10 text-success
+              {% else %}bg-surface-highest text-on-surface-variant{% endif %}">
+              {{ card.badge }}
+            </span>
+          </div>
+          <h3 class="text-xl font-extrabold pt-4">{{ card.title }}</h3>
+          <p class="text-sm text-on-surface-variant">{{ card.subtitle }}</p>
+        </div>
+        <div class="pt-4 flex items-center gap-2">
+          <div class="h-1.5 flex-1 bg-surface-highest rounded-full overflow-hidden">
+            <div class="h-full {% if card.tone == 'danger' %}bg-error{% elif card.tone == 'warning' %}bg-warning{% elif card.tone == 'good' %}bg-success{% else %}bg-on-surface-variant{% endif %}" style="width: {{ card.percent }}%"></div>
+          </div>
+          <span class="text-xs font-extrabold {% if card.tone == 'danger' %}text-error{% elif card.tone == 'warning' %}text-warning{% elif card.tone == 'good' %}text-success{% else %}text-on-surface-variant{% endif %}">{{ card.percent }}%</span>
+        </div>
       </div>
-      <div class="flex flex-wrap gap-3" aria-label="Ações de manutenção">
-        <a
-          class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient"
-          href="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
-          hx-get="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
-          hx-target="#quick-form-root"
-          hx-swap="innerHTML"
-        >Registrar serviço</a>
-        <a class="inline-flex items-center justify-center rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'maintenance:catalogs' %}">Catálogo de peças</a>
+    {% endfor %}
+  </section>
+
+  <!-- Upcoming vs history -->
+  <section class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+    <div class="lg:col-span-5 space-y-8">
+      <div class="flex items-center justify-between">
+        <h3 class="text-2xl font-extrabold tracking-tight">Próximas tarefas</h3>
+        <span class="text-xs font-extrabold uppercase tracking-widest text-on-surface-variant">Intervalos</span>
       </div>
 
-      <div class="rounded-2xl bg-surface-low p-4 space-y-2" aria-live="polite">
-        <p class="text-sm"><strong class="font-extrabold">{{ records_count }}</strong> serviços registrados</p>
-        <p class="text-sm"><strong class="font-extrabold">{{ total_cost }}</strong> em custos acumulados</p>
-        {% if latest_record %}
-          <p class="text-sm text-on-surface-variant">Último serviço: {{ latest_record.get_maintenance_type_display }} em {{ latest_record.date }}</p>
-        {% else %}
-          <p class="text-sm text-on-surface-variant">Comece registrando sua primeira manutenção.</p>
-        {% endif %}
-      </div>
-    </aside>
-
-    <div class="lg:col-span-8">
-      {% if records %}
-        <div class="space-y-4" role="list" aria-label="Linha do tempo de manutenções">
-          {% for record in records %}
-            <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" role="listitem">
-              <div class="flex items-start justify-between gap-4">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-3">
-                    <span class="h-10 w-10 grid place-items-center rounded-xl bg-surface-low text-primary" aria-hidden="true"><i data-lucide="wrench"></i></span>
-                    <div class="min-w-0">
-                      <strong class="block font-extrabold truncate">{{ record.get_maintenance_type_display }}</strong>
-                      <p class="text-xs text-on-surface-variant truncate">{{ record.motorcycle.name }} • {{ record.date }} • {{ record.odometer_km }} km</p>
-                    </div>
-                  </div>
+      {% if upcoming_tasks %}
+        <div class="space-y-0">
+          {% for item in upcoming_tasks %}
+            <div class="relative pl-8 {% if not forloop.last %}pb-10{% endif %}">
+              {% if not forloop.last %}
+                <div class="absolute left-[3px] top-2 bottom-0 w-px bg-outline-variant/30"></div>
+              {% endif %}
+              <div class="absolute left-0 top-2 w-2 h-2 rounded-full {% if (item.remaining_km is not None and item.remaining_km <= 0) or (item.remaining_days is not None and item.remaining_days <= 0) %}bg-error{% else %}bg-outline{% endif %} ring-4 ring-surface"></div>
+              <div class="space-y-1">
+                <div class="flex justify-between items-center">
+                  <p class="text-sm font-extrabold {% if (item.remaining_km is not None and item.remaining_km <= 0) or (item.remaining_days is not None and item.remaining_days <= 0) %}text-error{% else %}text-on-surface{% endif %}">
+                    {% if item.remaining_km is not None %}
+                      {% if item.remaining_km <= 0 %}Vencido{% else %}Em breve{% endif %}
+                    {% elif item.remaining_days is not None %}
+                      {% if item.remaining_days <= 0 %}Vencido{% else %}Em breve{% endif %}
+                    {% else %}
+                      Em breve
+                    {% endif %}
+                  </p>
+                  <span class="text-xs text-on-surface-variant">Est. {{ item.est_cost }}</span>
                 </div>
-                <div class="text-right">
-                  <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Custo</span>
-                  <div class="font-extrabold">{{ record.cost }}</div>
-                  <span class="mt-2 inline-flex items-center rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest {% if record.cost > 0 %}bg-success/15 text-success{% else %}bg-surface-highest text-on-surface-variant{% endif %}">{% if record.cost > 0 %}Concluído{% else %}Registro{% endif %}</span>
+                <h4 class="font-extrabold text-lg">{{ item.label }}</h4>
+                <p class="text-sm text-on-surface-variant leading-relaxed">
+                  {% if item.remaining_km is not None %}
+                    {% if item.remaining_km > 0 %}{{ item.remaining_km }} km restantes{% else %}{{ item.remaining_km }} km{% endif %}
+                  {% endif %}
+                  {% if item.remaining_km is not None and item.remaining_days is not None %} • {% endif %}
+                  {% if item.remaining_days is not None %}
+                    {% if item.remaining_days > 0 %}{{ item.remaining_days }} dias restantes{% else %}{{ item.remaining_days }} dias{% endif %}
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-sm text-on-surface-variant">Nenhuma tarefa com intervalo definida. Use “intervalo km/dias” ao registrar um serviço.</p>
+      {% endif %}
+    </div>
+
+    <div class="lg:col-span-7 space-y-8">
+      <div class="flex items-center justify-between">
+        <h3 class="text-2xl font-extrabold tracking-tight">Histórico de serviço</h3>
+        <a class="text-primary text-xs font-extrabold uppercase tracking-widest hover:underline" href="{% url 'maintenance:catalogs' %}">Catálogo</a>
+      </div>
+
+      {% if records %}
+        <div class="space-y-4">
+          {% for record in records %}
+            <div class="rounded-2xl bg-surface-lowest p-6 flex flex-wrap md:flex-nowrap gap-6 items-center border border-outline-variant/10 shadow-ambient ring-1 ring-outline-variant/10 hover:bg-surface-highest/20 transition">
+              <div class="w-16 h-16 rounded-2xl bg-surface-low grid place-items-center shrink-0">
+                <i data-lucide="wrench" class="h-6 w-6 text-on-surface-variant" aria-hidden="true"></i>
+              </div>
+              <div class="flex-1 space-y-1 min-w-0">
+                <h4 class="font-extrabold text-lg truncate">{{ record.get_maintenance_type_display }}</h4>
+                <p class="text-sm text-on-surface-variant truncate">
+                  {{ record.motorcycle.name }} • {{ record.date }} • {{ record.odometer_km }} km
+                </p>
+                {% if record.description %}
+                  <p class="text-sm text-on-surface-variant">{{ record.description }}</p>
+                {% endif %}
+                <div class="flex items-center gap-3 pt-2 flex-wrap">
+                  <span class="text-xs font-semibold text-on-surface-variant bg-surface-low px-2 py-0.5 rounded-full">{{ record.date|date:"d/m/Y" }}</span>
+                  <span class="text-xs font-semibold text-on-surface-variant bg-surface-low px-2 py-0.5 rounded-full">{{ record.odometer_km }} km</span>
+                  {% if record.interval_km %}
+                    <span class="text-xs font-semibold text-on-surface-variant bg-surface-low px-2 py-0.5 rounded-full">+{{ record.interval_km }} km</span>
+                  {% endif %}
+                  {% if record.interval_days %}
+                    <span class="text-xs font-semibold text-on-surface-variant bg-surface-low px-2 py-0.5 rounded-full">+{{ record.interval_days }} dias</span>
+                  {% endif %}
                 </div>
               </div>
-                {% if record.description %}
-                  <p class="mt-3 text-sm text-on-surface-variant">{{ record.description }}</p>
-                {% endif %}
-                {% if record.parts_used %}
-                  <p class="mt-2 text-sm text-on-surface-variant">Peças: {{ record.parts_used }}</p>
-                {% endif %}
-            </article>
+              <div class="w-full md:w-auto text-right">
+                <p class="text-lg font-extrabold">{{ record.cost }}</p>
+                <span class="text-[10px] font-extrabold uppercase tracking-widest {% if record.cost.amount > 0 %}text-success{% else %}text-on-surface-variant{% endif %}">
+                  {% if record.cost.amount > 0 %}Pago{% else %}DIY / sem custo{% endif %}
+                </span>
+              </div>
+            </div>
           {% endfor %}
         </div>
       {% else %}
         <p class="text-on-surface-variant text-sm">Nenhuma manutenção registrada ainda.</p>
       {% endif %}
     </div>
-  </div>
+  </section>
 
   {% if page_obj and page_obj.paginator.num_pages > 1 %}
     <nav class="rounded-2xl bg-surface-lowest p-4 shadow-ambient" aria-label="Paginação">

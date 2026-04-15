@@ -128,11 +128,11 @@
 
   /* Botões */
   .primary-btn {
-    @apply w-full rounded-xl bg-gradient-to-br from-primary to-primary-dim px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-primary shadow-ambient hover:opacity-95;
+    @apply w-full sm:w-auto rounded-xl bg-gradient-to-br from-primary to-primary-dim px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-primary shadow-ambient hover:opacity-95;
   }
 
   .secondary-btn {
-    @apply inline-flex items-center justify-center rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60;
+    @apply w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60;
   }
 
   .action-btn {
