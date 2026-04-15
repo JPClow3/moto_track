@@ -1,3 +1,5 @@
+"""Sync and clean up reminders derived from expenses models."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -6,7 +8,11 @@ from django.db import transaction
 
 from apps.reminders.models import Reminder, TriggerType
 
-from .models import AnnualFee, AnnualFeeType, InsurancePolicy
+from .models import AnnualFee, InsurancePolicy
+
+# Pylint cannot infer Django's dynamically added model manager (`objects`) without a plugin.
+# Silence only the `objects` false-positive in this module.
+# pylint: disable=no-member
 
 
 def _fee_reminder_suffix(fee: AnnualFee) -> str | None:
@@ -94,7 +100,10 @@ def sync_fee_reminder(fee: AnnualFee) -> Reminder:
     """
     title = _fee_reminder_title(fee)
     notify_before_days = int(fee.notify_before_days or 30)
-    reference_date = _reference_date_for_due_date(due_date=fee.due_date, notify_before_days=notify_before_days)
+    reference_date = _reference_date_for_due_date(
+        due_date=fee.due_date,
+        notify_before_days=notify_before_days,
+    )
 
     reminder = _find_fee_reminder(fee)
     if reminder is None:
@@ -125,20 +134,25 @@ def sync_fee_reminder(fee: AnnualFee) -> Reminder:
 
 @transaction.atomic
 def delete_fee_reminder(fee: AnnualFee) -> int:
+    """Delete the reminder associated with the given annual fee (if any)."""
     suffix = _fee_reminder_suffix(fee)
     if suffix:
-        deleted = Reminder.objects.filter(motorcycle=fee.motorcycle, title__endswith=suffix).delete()[0]  # pylint: disable=no-member
+        deleted = Reminder.objects.filter(motorcycle=fee.motorcycle, title__endswith=suffix).delete()[0]
         if deleted:
             return deleted
     legacy_title = _legacy_fee_reminder_title(fee)
-    return Reminder.objects.filter(motorcycle=fee.motorcycle, title=legacy_title).delete()[0]  # pylint: disable=no-member
+    return Reminder.objects.filter(motorcycle=fee.motorcycle, title=legacy_title).delete()[0]
 
 
 @transaction.atomic
 def sync_policy_reminder(policy: InsurancePolicy) -> Reminder:
+    """Create/update the reminder associated with an insurance policy."""
     title = _policy_reminder_title(policy)
     notify_before_days = int(policy.notify_before_days or 30)
-    reference_date = _reference_date_for_due_date(due_date=policy.coverage_end, notify_before_days=notify_before_days)
+    reference_date = _reference_date_for_due_date(
+        due_date=policy.coverage_end,
+        notify_before_days=notify_before_days,
+    )
 
     reminder = _find_policy_reminder(policy)
     if reminder is None:
@@ -169,13 +183,10 @@ def sync_policy_reminder(policy: InsurancePolicy) -> Reminder:
 
 @transaction.atomic
 def delete_policy_reminder(policy: InsurancePolicy) -> int:
+    """Delete the reminder associated with an insurance policy (if any)."""
     stable_suffix = f"#{policy.pk}"
-    deleted = Reminder.objects.filter(motorcycle=policy.motorcycle, title__endswith=stable_suffix).delete()[
-        0
-    ]  # pylint: disable=no-member
+    deleted = Reminder.objects.filter(motorcycle=policy.motorcycle, title__endswith=stable_suffix).delete()[0]
     if deleted:
         return deleted
     legacy_title = _legacy_policy_reminder_title(policy)
-    return Reminder.objects.filter(motorcycle=policy.motorcycle, title=legacy_title).delete()[
-        0
-    ]  # pylint: disable=no-member
+    return Reminder.objects.filter(motorcycle=policy.motorcycle, title=legacy_title).delete()[0]

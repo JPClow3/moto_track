@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: motoapp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in Coolify env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DJANGO_DEBUG: "0"
+      # Coolify routes to the container port you expose; keep it explicit.
+      PORT: "8000"
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/motoapp
+
+      # Persist user uploads on a mounted volume.
+      # (The name is kept for backwards compatibility with existing prod settings.)
+      RAILWAY_VOLUME_MOUNT_PATH: /data
+    volumes:
+      - media_data:/data/media
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  media_data:
+

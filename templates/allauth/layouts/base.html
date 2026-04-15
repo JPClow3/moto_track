@@ -22,7 +22,6 @@
   <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
   <a class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-inverse-surface focus:px-4 focus:py-2 focus:text-on-primary" href="#main-content">Pular para o conteúdo principal</a>
 
-  <!-- Background decoration -->
   <div class="fixed inset-0 -z-10 overflow-hidden">
     <div class="absolute -top-24 -right-24 h-[520px] w-[520px] rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-3xl opacity-50"></div>
     <div class="absolute -bottom-28 -left-24 h-[560px] w-[560px] rounded-full bg-gradient-to-tr from-surface-highest/60 to-transparent blur-3xl opacity-60"></div>
@@ -31,7 +30,6 @@
 
   {% block body %}
     <main id="main-content" class="relative min-h-screen flex flex-col md:flex-row" tabindex="-1">
-      <!-- Brand / story -->
       <section class="hidden md:flex md:w-1/2 p-12 flex-col justify-between">
         <header aria-label="Identidade do aplicativo" class="flex items-center gap-3">
           <span class="h-11 w-11 grid place-items-center rounded-2xl bg-surface-lowest shadow-ambient text-primary" aria-hidden="true">
@@ -76,10 +74,8 @@
         </section>
       {% endif %}
 
-      <!-- Auth card -->
       <section class="flex-1 flex items-center justify-center p-6 md:p-12">
         <div class="w-full max-w-md rounded-2xl bg-surface-lowest/70 backdrop-blur-2xl p-8 md:p-10 shadow-ambient ring-1 ring-outline-variant/20">
-          <!-- Mobile logo -->
           <div class="md:hidden flex items-center justify-center gap-3 mb-8">
             <span class="h-10 w-10 grid place-items-center rounded-2xl bg-surface-lowest shadow-ambient text-primary" aria-hidden="true">
               <i data-lucide="gauge"></i>

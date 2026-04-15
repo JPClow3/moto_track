@@ -7,7 +7,6 @@
 
 {% block content %}
 <section class="space-y-8 pb-10" aria-labelledby="maintenance-list-title">
-  <!-- Hero -->
   <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
     <div class="lg:col-span-7 space-y-4">
       <span class="text-[10px] font-extrabold uppercase tracking-[0.2em] text-primary">Visão geral</span>
@@ -34,17 +33,16 @@
 
   <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
     <form method="get" class="space-y-4" aria-label="Filtros de manutenção">
-      <select class="w-full rounded-xl bg-surface-low border-0 focus:ring-2 focus:ring-primary/20" name="motorcycle" aria-label="Filtrar por moto">
+      <select class="ui-select" name="motorcycle" aria-label="Filtrar por moto">
         <option value="">Todas as motos</option>
         {% for bike in garage_motorcycles %}
           <option value="{{ bike.id }}" {% if filters.motorcycle and bike.id|stringformat:"s" == filters.motorcycle %}selected{% endif %}>{{ bike.name }}</option>
         {% endfor %}
       </select>
-      <button type="submit" class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient">Aplicar</button>
+      <button type="submit" class="ui-btn-primary">Aplicar</button>
     </form>
   </article>
 
-  <!-- Bento status cards -->
   <section class="grid grid-cols-1 md:grid-cols-3 gap-6" aria-label="Painel de manutenção">
     {% for card in status_cards %}
       <div class="rounded-2xl bg-surface-low p-8 space-y-6 flex flex-col justify-between shadow-ambient ring-1 ring-outline-variant/15">
@@ -74,7 +72,6 @@
     {% endfor %}
   </section>
 
-  <!-- Upcoming vs history -->
   <section class="grid grid-cols-1 lg:grid-cols-12 gap-12">
     <div class="lg:col-span-5 space-y-8">
       <div class="flex items-center justify-between">

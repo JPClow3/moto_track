@@ -1,3 +1,5 @@
+"""Production Django settings."""
+
 import os
 from pathlib import Path
 
@@ -34,9 +36,12 @@ STORAGES = {
     },
 }
 
-# Railway: persist user-uploaded media by mounting a volume (e.g. at /data).
-# Set RAILWAY_VOLUME_MOUNT_PATH to the mount point (defaults to /data).
-MEDIA_ROOT = Path(os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "/data")) / "media"
+MEDIA_ROOT = Path(
+    os.getenv(
+        "VOLUME_MOUNT_PATH",
+        os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "/data"),
+    )
+) / "media"
 
 # Fail fast if an insecure SECRET_KEY is used in production.
 if SECRET_KEY.startswith("django-insecure-") or len(SECRET_KEY) < 50:  # noqa: F405
@@ -49,9 +54,8 @@ def _parse_hosts(value: str) -> list[str]:
     return [h.strip() for h in value.split(",") if h.strip()]
 
 
-# Keep explicit env hosts, but auto-include Railway domains when available.
 _env_hosts = _parse_hosts(os.getenv("DJANGO_ALLOWED_HOSTS", ""))
-_railway_hosts = [h for h in [os.getenv("RAILWAY_PUBLIC_DOMAIN"), os.getenv("RAILWAY_PRIVATE_DOMAIN")] if h]
+_railway_hosts = [h for h in (os.getenv("RAILWAY_PUBLIC_DOMAIN"), os.getenv("RAILWAY_PRIVATE_DOMAIN")) if h]
 _fallback_hosts = ["127.0.0.1", "localhost"]
 
 ALLOWED_HOSTS = list(dict.fromkeys(_env_hosts + _railway_hosts + _fallback_hosts))

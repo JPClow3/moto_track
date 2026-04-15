@@ -122,11 +122,68 @@
   }
 
   .ui-h1 {
-    @apply text-lg font-extrabold tracking-tight text-on-surface;
+    @apply text-xl sm:text-2xl font-extrabold tracking-tight text-on-surface;
   }
 
   .ui-subtitle {
     @apply text-sm font-medium text-on-surface-variant;
+  }
+
+  /* Controles (inputs/selects/textarea) */
+  .ui-input {
+    @apply w-full rounded-2xl bg-surface-low px-4 py-3 border border-outline-variant/30 text-on-surface placeholder:text-on-surface-variant/70 shadow-ambient;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40;
+  }
+
+  .ui-textarea {
+    @apply ui-input min-h-[120px] resize-y;
+  }
+
+  .ui-select {
+    @apply ui-input;
+    /* Aparência do select alinhada com o app (seta custom) */
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%23566166' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    background-size: 1.15rem 1.15rem;
+    padding-right: 3rem;
+  }
+
+  .ui-icon-btn {
+    @apply h-10 w-10 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-highest/60 transition;
+  }
+
+  /* Botões */
+  .ui-btn-primary {
+    @apply inline-flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient;
+    @apply hover:opacity-95 active:scale-[0.99] transition;
+  }
+
+  .ui-btn-primary-lg {
+    @apply ui-btn-primary px-8 py-4;
+  }
+
+  .ui-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant;
+    @apply hover:bg-surface-highest/60 transition;
+  }
+
+  .ui-btn-secondary-lg {
+    @apply ui-btn-secondary px-8 py-4;
+  }
+
+  /* Back-compat aliases used in older templates */
+  .primary-btn {
+    @apply ui-btn-primary;
+  }
+
+  .secondary-btn {
+    @apply ui-btn-secondary;
+  }
+
+  .action-btn {
+    @apply inline-flex items-center gap-2 rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60;
   }
 
   /* Formulários */
@@ -152,12 +209,11 @@
   }
 
   .data-form :is(input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="url"], input[type="search"], textarea, select) {
-    @apply w-full rounded-2xl bg-surface-low px-4 py-3 border border-outline-variant/30 text-on-surface placeholder:text-on-surface-variant/70 shadow-ambient;
-    @apply focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40;
+    @apply ui-input;
   }
 
   .data-form textarea {
-    @apply min-h-[120px] resize-y;
+    @apply ui-textarea;
   }
 
   .data-form :is(input[type="checkbox"], input[type="radio"]) {
@@ -165,13 +221,7 @@
   }
 
   .data-form select {
-    /* Aparência do select alinhada com o app (seta custom) */
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%23566166' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.9rem center;
-    background-size: 1.15rem 1.15rem;
-    padding-right: 3rem;
+    @apply ui-select;
   }
 
   .data-form :is(input, select, textarea):disabled {
@@ -192,19 +242,6 @@
 
   .text-link {
     @apply font-bold text-primary hover:underline;
-  }
-
-  /* Botões */
-  .primary-btn {
-    @apply w-full sm:w-auto rounded-xl bg-gradient-to-br from-primary to-primary-dim px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-primary shadow-ambient hover:opacity-95;
-  }
-
-  .secondary-btn {
-    @apply w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60;
-  }
-
-  .action-btn {
-    @apply inline-flex items-center gap-2 rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60;
   }
 
   /* Auth (classes usadas nos templates do allauth) */
