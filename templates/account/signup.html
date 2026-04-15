@@ -1,0 +1,105 @@
+{% extends "allauth/layouts/base.html" %}
+{% load i18n %}
+{% load widget_tweaks %}
+
+{% block head_title %}{% trans "Criar conta" %} - Moto Track{% endblock %}
+
+{% block content %}
+  <header class="sr-only" aria-label="{% trans 'Criação de conta' %}">
+    <h1>{% trans "Criar conta" %}</h1>
+  </header>
+
+  {% if form.non_field_errors %}
+    <div class="mb-6 rounded-2xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert" aria-label="{% trans 'Erros do formulário' %}">
+      {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" action="{% url 'account_signup' %}" class="space-y-6" novalidate>
+    {% csrf_token %}
+
+    <div class="group">
+      <label class="block text-xs font-extrabold uppercase tracking-widest text-on-surface-variant mb-2" for="{{ form.email.id_for_label }}">
+        {% trans "E-mail" %}
+      </label>
+      <div class="relative">
+        <div class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-transparent group-focus-within:bg-primary transition-colors"></div>
+        {{ form.email|add_class:"w-full bg-surface-low border-0 rounded-lg py-3 px-4 text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary/20 transition" }}
+      </div>
+      {% if form.email.errors %}
+        <div class="mt-2 rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">
+          {% for error in form.email.errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="group">
+      <label class="block text-xs font-extrabold uppercase tracking-widest text-on-surface-variant mb-2" for="{{ form.username.id_for_label }}">
+        {% trans "Usuário" %}
+      </label>
+      <div class="relative">
+        <div class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-transparent group-focus-within:bg-primary transition-colors"></div>
+        {{ form.username|add_class:"w-full bg-surface-low border-0 rounded-lg py-3 px-4 text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary/20 transition" }}
+      </div>
+      {% if form.username.errors %}
+        <div class="mt-2 rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">
+          {% for error in form.username.errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="group">
+      <label class="block text-xs font-extrabold uppercase tracking-widest text-on-surface-variant mb-2" for="{{ form.password1.id_for_label }}">
+        {% trans "Senha" %}
+      </label>
+      <div class="relative">
+        <div class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-transparent group-focus-within:bg-primary transition-colors"></div>
+        {{ form.password1|add_class:"w-full bg-surface-low border-0 rounded-lg py-3 px-4 text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary/20 transition" }}
+      </div>
+      {% if form.password1.errors %}
+        <div class="mt-2 rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">
+          {% for error in form.password1.errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="group">
+      <label class="block text-xs font-extrabold uppercase tracking-widest text-on-surface-variant mb-2" for="{{ form.password2.id_for_label }}">
+        {% trans "Confirmar senha" %}
+      </label>
+      <div class="relative">
+        <div class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-transparent group-focus-within:bg-primary transition-colors"></div>
+        {{ form.password2|add_class:"w-full bg-surface-low border-0 rounded-lg py-3 px-4 text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary/20 transition" }}
+      </div>
+      {% if form.password2.errors %}
+        <div class="mt-2 rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">
+          {% for error in form.password2.errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    {% if redirect_field_value %}
+      <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+    {% endif %}
+
+    <button type="submit" class="w-full rounded-xl bg-gradient-to-br from-primary to-primary-dim px-6 py-4 text-xs font-extrabold uppercase tracking-widest text-on-primary shadow-ambient hover:opacity-95 active:scale-[0.99] transition">
+      <span class="inline-flex items-center justify-center gap-2">
+        <span>{% trans "Criar conta" %}</span>
+        <i data-lucide="arrow-right" aria-hidden="true"></i>
+      </span>
+    </button>
+
+    <footer class="mt-6 text-center">
+      <p class="text-sm text-on-surface-variant">
+        {% trans "Já tem conta?" %}
+        <a class="relative inline-block ml-1 font-extrabold text-on-surface" href="{% url 'account_login' %}">
+          {% trans "Entrar" %}
+          <span class="absolute -bottom-0.5 left-0 h-0.5 w-1/2 bg-primary"></span>
+        </a>
+      </p>
+    </footer>
+  </form>
+{% endblock %}
+

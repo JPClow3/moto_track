@@ -5,6 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Moto Track{% endblock %}</title>
+  <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -18,6 +19,14 @@
   <a class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-inverse-surface focus:px-4 focus:py-2 focus:text-on-primary" href="#main-content">
     Pular para o conteúdo principal
   </a>
+
+  <!-- Background decoration + grain (subtle motion) -->
+  <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div class="absolute -top-24 -right-24 h-[520px] w-[520px] rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-3xl opacity-50"></div>
+    <div class="absolute -bottom-28 -left-24 h-[560px] w-[560px] rounded-full bg-gradient-to-tr from-surface-highest/60 to-transparent blur-3xl opacity-60"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-surface-lowest/70 via-surface/90 to-surface-low"></div>
+    <div class="bg-grain"></div>
+  </div>
 
   <div class="min-h-screen lg:grid lg:grid-cols-[18rem_1fr]">
     <aside class="hidden lg:flex lg:flex-col lg:gap-2 lg:bg-surface-low lg:px-4 lg:py-5 lg:sticky lg:top-0 lg:h-screen" aria-label="Navegação principal">
@@ -68,6 +77,12 @@
             <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'reminders' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
                href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}>
               <i data-lucide="bell-ring" aria-hidden="true"></i><span>Lembretes</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'expenses' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+               href="{% url 'expenses:list' %}" {% if request.resolver_match.namespace == 'expenses' %}aria-current="page"{% endif %}>
+              <i data-lucide="shield-check" aria-hidden="true"></i><span>Taxas & Seguros</span>
             </a>
           </li>
           <li>
@@ -141,7 +156,7 @@
       </main>
 
       <nav class="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-surface/90 backdrop-blur-xl border-t border-outline-variant/20" aria-label="Navegação rápida">
-        <div class="mx-auto w-[min(1240px,93%)] py-2 grid grid-cols-5 text-[10px] font-extrabold uppercase tracking-widest">
+        <div class="mx-auto w-[min(1240px,93%)] py-2 grid grid-cols-6 text-[10px] font-extrabold uppercase tracking-widest">
           <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.url_name == 'dashboard' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
              href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a>
           <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'garage' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
@@ -152,6 +167,8 @@
              href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Manut.</span></a>
           <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'documents' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
              href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}><i data-lucide="file-text" aria-hidden="true"></i><span>Docs.</span></a>
+          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'expenses' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'expenses:list' %}" {% if request.resolver_match.namespace == 'expenses' %}aria-current="page"{% endif %}><i data-lucide="shield-check" aria-hidden="true"></i><span>Taxas</span></a>
         </div>
       </nav>
     </div>
@@ -258,6 +275,14 @@
         firstElement.focus();
       }
     });
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("{% static 'sw.js' %}").catch(() => {});
+      });
+    }
   </script>
 </body>
 </html>

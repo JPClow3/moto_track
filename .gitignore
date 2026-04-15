@@ -6,6 +6,7 @@ __pycache__/
 media/
 staticfiles/
 .pytest_cache/
+.ruff_cache/
 .vscode/
 node_modules/
 test_output.txt

@@ -2,10 +2,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import TireRecordForm
-from .models import TirePosition, TireRecord
-from .models import TireProduct
 from apps.core.pagination import paginate
+
+from .forms import TireRecordForm
+from .models import TirePosition, TireProduct, TireRecord
 
 
 @login_required
@@ -61,7 +61,9 @@ def _build_tire_telemetry(record: TireRecord | None):
 @login_required
 def tire_list_view(request):
     records_qs = (
-        TireRecord.objects.filter(motorcycle__owner=request.user)  # pylint: disable=no-member
+        TireRecord.objects.filter(
+            motorcycle__owner=request.user, motorcycle__is_active=True
+        )  # pylint: disable=no-member
         .select_related("motorcycle", "tire_product")
         .order_by("-installed_at")
     )
@@ -69,23 +71,13 @@ def tire_list_view(request):
     if motorcycle_id:
         records_qs = records_qs.filter(motorcycle_id=motorcycle_id)
 
-    front_active = (
-        records_qs.filter(is_active=True, position=TirePosition.FRONT)
-        .order_by("-installed_at")
-        .first()
-    )
-    rear_active = (
-        records_qs.filter(is_active=True, position=TirePosition.REAR)
-        .order_by("-installed_at")
-        .first()
-    )
+    front_active = records_qs.filter(is_active=True, position=TirePosition.FRONT).order_by("-installed_at").first()
+    rear_active = records_qs.filter(is_active=True, position=TirePosition.REAR).order_by("-installed_at").first()
 
     front_telemetry = _build_tire_telemetry(front_active)
     rear_telemetry = _build_tire_telemetry(rear_active)
 
-    attention = any(
-        t and t["status_tone"] == "warning" for t in [front_telemetry, rear_telemetry]
-    )
+    attention = any(t and t["status_tone"] == "warning" for t in [front_telemetry, rear_telemetry])
 
     paged = paginate(request, records_qs, per_page=50)
     return render(
@@ -123,7 +115,9 @@ def tire_create_view(request):
 
 @login_required
 def tire_update_view(request, pk):
-    record = get_object_or_404(TireRecord, pk=pk, motorcycle__owner=request.user)  # pylint: disable=no-member
+    record = get_object_or_404(
+        TireRecord, pk=pk, motorcycle__owner=request.user, motorcycle__is_active=True
+    )  # pylint: disable=no-member
 
     if request.method == "POST":
         form = TireRecordForm(request.POST, instance=record, user=request.user)
@@ -145,7 +139,9 @@ def tire_update_view(request, pk):
 
 @login_required
 def tire_delete_view(request, pk):
-    record = get_object_or_404(TireRecord, pk=pk, motorcycle__owner=request.user)  # pylint: disable=no-member
+    record = get_object_or_404(
+        TireRecord, pk=pk, motorcycle__owner=request.user, motorcycle__is_active=True
+    )  # pylint: disable=no-member
 
     if request.method == "POST":
         label = record.brand_model

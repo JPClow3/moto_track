@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Seguros{% endblock %}
+{% block topbar_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="claim-form-title">
+  <header class="list-header">
+    <div>
+      <h2 id="claim-form-title">{{ title }}</h2>
+      <p class="section-subtitle">Registre data, valor e status do sinistro.</p>
+    </div>
+    <a class="inline-cta" href="{% url 'expenses:list' %}">Voltar</a>
+  </header>
+
+  <article class="panel">
+    <form method="post" class="data-form" novalidate>
+      {% csrf_token %}
+      {{ form|crispy }}
+
+      <div class="quick-actions-row-split">
+        <a class="secondary-btn" href="{% if policy %}{% url 'expenses:policy_update' policy.pk %}{% elif claim %}{% url 'expenses:policy_update' claim.policy.pk %}{% else %}{% url 'expenses:list' %}{% endif %}">Cancelar</a>
+        <button type="submit" class="primary-btn">{{ submit_label }}</button>
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}
+

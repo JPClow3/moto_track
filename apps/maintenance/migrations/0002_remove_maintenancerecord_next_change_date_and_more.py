@@ -6,31 +6,31 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maintenance', '0001_initial'),
+        ("maintenance", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='maintenancerecord',
-            name='next_change_date',
+            model_name="maintenancerecord",
+            name="next_change_date",
         ),
         migrations.RemoveField(
-            model_name='maintenancerecord',
-            name='next_change_km',
+            model_name="maintenancerecord",
+            name="next_change_km",
         ),
         migrations.AddField(
-            model_name='maintenancerecord',
-            name='interval_days',
+            model_name="maintenancerecord",
+            name="interval_days",
             field=models.PositiveIntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='maintenancerecord',
-            name='interval_km',
+            model_name="maintenancerecord",
+            name="interval_km",
             field=models.PositiveIntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='maintenancerecord',
-            name='updated_at',
+            model_name="maintenancerecord",
+            name="updated_at",
             field=models.DateTimeField(auto_now=True),
         ),
     ]

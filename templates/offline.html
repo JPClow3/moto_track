@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Offline - Moto Track{% endblock %}
+
+{% block topbar_eyebrow %}Conexão{% endblock %}
+{% block topbar_title %}Você está offline{% endblock %}
+
+{% block content %}
+<section class="space-y-6 pb-10" aria-label="Modo offline">
+  <article class="glass-card-tight p-6">
+    <div class="glass-orb tone-orb-info"></div>
+    <div class="flex items-start justify-between gap-4">
+      <div class="min-w-0">
+        <p class="text-sm text-on-surface-variant">
+          Sem internet no momento. Você ainda pode navegar pelo app e tentar novamente quando a conexão voltar.
+        </p>
+      </div>
+      <span class="icon-chip" aria-hidden="true"><i data-lucide="wifi-off"></i></span>
+    </div>
+    <div class="mt-6 flex flex-col sm:flex-row gap-3">
+      <a class="primary-btn" href="{% url 'dashboard' %}">Tentar novamente</a>
+      <a class="secondary-btn" href="{% url 'garage:list' %}">Ir para garagem</a>
+    </div>
+  </article>
+</section>
+{% endblock %}
+

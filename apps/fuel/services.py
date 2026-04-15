@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Iterable, Optional
 
 from .models import FuelRecord
 
@@ -13,7 +13,7 @@ class ConsumptionStats:
     segments_used: int
 
 
-def compute_average_consumption_km_per_liter(records: Iterable[FuelRecord]) -> Optional[ConsumptionStats]:
+def compute_average_consumption_km_per_liter(records: Iterable[FuelRecord]) -> ConsumptionStats | None:
     """
     Compute average consumption using only intervals between full-tank events.
 
@@ -32,7 +32,7 @@ def compute_average_consumption_km_per_liter(records: Iterable[FuelRecord]) -> O
     total_liters = Decimal("0")
     segments = 0
 
-    for prev, nxt in zip(full, full[1:]):
+    for prev, nxt in zip(full, full[1:], strict=False):
         distance = nxt.odometer_km - prev.odometer_km
         if distance <= 0:
             continue
@@ -59,4 +59,3 @@ def compute_average_consumption_km_per_liter(records: Iterable[FuelRecord]) -> O
 
     km_per_liter = float(Decimal(total_distance) / total_liters)
     return ConsumptionStats(km_per_liter=round(km_per_liter, 1), segments_used=segments)
-

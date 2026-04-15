@@ -8,14 +8,24 @@ from django.urls import reverse
 
 from apps.garage.models import Motorcycle
 from apps.maintenance.forms import MaintenanceRecordQuickForm
-from apps.maintenance.models import MaintenancePart, MaintenancePartType, MaintenanceRecord, MaintenanceRecordPart, MaintenanceType
+from apps.maintenance.models import (
+    MaintenancePart,
+    MaintenancePartType,
+    MaintenanceRecord,
+    MaintenanceRecordPart,
+    MaintenanceType,
+)
 
 
 class MaintenanceModelTests(TestCase):
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user(username="maintenance-user", email="maintenance@example.com", password="pass12345")
-        self.other_user = User.objects.create_user(username="other-user", email="other@example.com", password="pass12345")
+        self.user = User.objects.create_user(
+            username="maintenance-user", email="maintenance@example.com", password="pass12345"
+        )
+        self.other_user = User.objects.create_user(
+            username="other-user", email="other@example.com", password="pass12345"
+        )
         self.motorcycle = Motorcycle.objects.create(  # pylint: disable=no-member
             owner=self.user, name="Moto 1", brand="Honda", model="CB 300F", year=2024
         )
@@ -25,7 +35,9 @@ class MaintenanceModelTests(TestCase):
         self.part = MaintenancePart.objects.create(  # pylint: disable=no-member
             owner=self.user, name="Filtro de óleo", part_type=MaintenancePartType.FILTER
         )
-        MaintenancePart.objects.create(owner=self.other_user, name="Pastilha", part_type=MaintenancePartType.BRAKE_PAD)  # pylint: disable=no-member
+        MaintenancePart.objects.create(
+            owner=self.other_user, name="Pastilha", part_type=MaintenancePartType.BRAKE_PAD
+        )  # pylint: disable=no-member
 
     def test_maintenance_record_clean_rejects_invalid_values(self):
         record = MaintenanceRecord(
@@ -64,10 +76,14 @@ class MaintenanceModelTests(TestCase):
         self.assertTrue(form.is_valid())
         record = form.save()
         for part in form.cleaned_data["parts"]:
-            MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)  # pylint: disable=no-member
+            MaintenanceRecordPart.objects.get_or_create(
+                maintenance_record=record, part=part
+            )  # pylint: disable=no-member
 
         self.assertTrue(
-            MaintenanceRecordPart.objects.filter(maintenance_record=record, part=self.part).exists()  # pylint: disable=no-member
+            MaintenanceRecordPart.objects.filter(
+                maintenance_record=record, part=self.part
+            ).exists()  # pylint: disable=no-member
         )
 
     def test_catalog_view_only_shows_owned_parts(self):
@@ -79,7 +95,9 @@ class MaintenanceModelTests(TestCase):
 
     def test_quick_create_invalid_htmx_returns_form_error_response(self):
         self.client.force_login(self.user)
-        response = self.client.post(reverse("maintenance:quick_create"), {}, HTTP_HX_REQUEST="true", HTTP_HOST="localhost")
+        response = self.client.post(
+            reverse("maintenance:quick_create"), {}, HTTP_HX_REQUEST="true", HTTP_HOST="localhost"
+        )
 
         self.assertEqual(response.status_code, 422)
         self.assertIn("Registrar manutenção", response.content.decode())

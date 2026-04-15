@@ -14,10 +14,44 @@
     <a class="rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'garage:list' %}">Voltar</a>
   </header>
 
-  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+  <article class="glass-card-tight p-6">
+    <div class="glass-orb tone-orb-primary"></div>
     <form method="post" class="space-y-4" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
-      {{ form|crispy }}
+      <div class="data-form">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {{ form.name|as_crispy_field }}
+          {{ form.year|as_crispy_field }}
+          {{ form.brand|as_crispy_field }}
+          {{ form.model|as_crispy_field }}
+          <div class="md:col-span-2">
+            {{ form.photo|as_crispy_field }}
+          </div>
+          {{ form.license_plate|as_crispy_field }}
+          {{ form.odometer_override_km|as_crispy_field }}
+        </div>
+
+        <div class="mt-8 rounded-2xl bg-surface-low/70 backdrop-blur p-5 ring-1 ring-outline-variant/20">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Informações opcionais</p>
+              <p class="mt-1 text-sm text-on-surface-variant">Ajuda a manter um histórico mais completo da moto.</p>
+            </div>
+            <span class="icon-chip" aria-hidden="true"><i data-lucide="clipboard-list"></i></span>
+          </div>
+
+          <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+            {{ form.previous_owners|as_crispy_field }}
+            {{ form.purchase_date|as_crispy_field }}
+            <div class="md:col-span-2">
+              {{ form.purchase_price|as_crispy_field }}
+            </div>
+            <div class="md:col-span-2">
+              {{ form.observations|as_crispy_field }}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
         <a class="rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60 text-center" href="{% url 'garage:list' %}">Cancelar</a>

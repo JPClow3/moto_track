@@ -9,23 +9,41 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('garage', '0001_initial'),
+        ("garage", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='MotorcycleDocument',
+            name="MotorcycleDocument",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=140)),
-                ('document_type', models.CharField(choices=[('manual', 'Manual'), ('crlv', 'CRLV'), ('insurance', 'Seguro'), ('receipt', 'Nota Fiscal'), ('other', 'Outro')], default='other', max_length=32)),
-                ('file', models.FileField(upload_to='documents/%Y/%m/')),
-                ('notes', models.TextField(blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('motorcycle', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='documents', to='garage.motorcycle')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("name", models.CharField(max_length=140)),
+                (
+                    "document_type",
+                    models.CharField(
+                        choices=[
+                            ("manual", "Manual"),
+                            ("crlv", "CRLV"),
+                            ("insurance", "Seguro"),
+                            ("receipt", "Nota Fiscal"),
+                            ("other", "Outro"),
+                        ],
+                        default="other",
+                        max_length=32,
+                    ),
+                ),
+                ("file", models.FileField(upload_to="documents/%Y/%m/")),
+                ("notes", models.TextField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "motorcycle",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="documents", to="garage.motorcycle"
+                    ),
+                ),
             ],
             options={
-                'ordering': ['name'],
+                "ordering": ["name"],
             },
         ),
     ]

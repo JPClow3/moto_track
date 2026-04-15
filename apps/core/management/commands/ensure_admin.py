@@ -14,9 +14,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if os.getenv("DJANGO_BOOTSTRAP_ENABLE", "").lower() not in {"1", "true", "yes"}:
             self.stdout.write(
-                self.style.WARNING(
-                    "Bootstrap disabled (set DJANGO_BOOTSTRAP_ENABLE=true to run ensure_admin)."
-                )
+                self.style.WARNING("Bootstrap disabled (set DJANGO_BOOTSTRAP_ENABLE=true to run ensure_admin).")
             )
             return
 

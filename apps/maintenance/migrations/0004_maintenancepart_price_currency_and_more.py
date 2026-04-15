@@ -7,38 +7,44 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maintenance', '0003_maintenancepart_maintenancerecordpart_and_more'),
+        ("maintenance", "0003_maintenancepart_maintenancerecordpart_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='maintenancepart',
-            name='price_currency',
-            field=djmoney.models.fields.CurrencyField(choices=[('BRL', 'Brazilian Real')], default='BRL', editable=False, max_length=3, null=True),
+            model_name="maintenancepart",
+            name="price_currency",
+            field=djmoney.models.fields.CurrencyField(
+                choices=[("BRL", "Brazilian Real")], default="BRL", editable=False, max_length=3, null=True
+            ),
         ),
         migrations.AddField(
-            model_name='maintenancerecord',
-            name='cost_currency',
-            field=djmoney.models.fields.CurrencyField(choices=[('BRL', 'Brazilian Real')], default='BRL', editable=False, max_length=3),
+            model_name="maintenancerecord",
+            name="cost_currency",
+            field=djmoney.models.fields.CurrencyField(
+                choices=[("BRL", "Brazilian Real")], default="BRL", editable=False, max_length=3
+            ),
         ),
         migrations.AddField(
-            model_name='maintenancerecordpart',
-            name='unit_price_currency',
-            field=djmoney.models.fields.CurrencyField(choices=[('BRL', 'Brazilian Real')], default='BRL', editable=False, max_length=3, null=True),
+            model_name="maintenancerecordpart",
+            name="unit_price_currency",
+            field=djmoney.models.fields.CurrencyField(
+                choices=[("BRL", "Brazilian Real")], default="BRL", editable=False, max_length=3, null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='maintenancepart',
-            name='price',
+            model_name="maintenancepart",
+            name="price",
             field=djmoney.models.fields.MoneyField(blank=True, decimal_places=2, max_digits=10, null=True),
         ),
         migrations.AlterField(
-            model_name='maintenancerecord',
-            name='cost',
+            model_name="maintenancerecord",
+            name="cost",
             field=djmoney.models.fields.MoneyField(decimal_places=2, max_digits=10),
         ),
         migrations.AlterField(
-            model_name='maintenancerecordpart',
-            name='unit_price',
+            model_name="maintenancerecordpart",
+            name="unit_price",
             field=djmoney.models.fields.MoneyField(blank=True, decimal_places=2, max_digits=10, null=True),
         ),
     ]

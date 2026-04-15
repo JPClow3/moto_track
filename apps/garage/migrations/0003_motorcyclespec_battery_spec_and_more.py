@@ -6,48 +6,48 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('garage', '0002_remove_motorcycle_fuel_tank_capacity_l_and_more'),
+        ("garage", "0002_remove_motorcycle_fuel_tank_capacity_l_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='motorcyclespec',
-            name='battery_spec',
+            model_name="motorcyclespec",
+            name="battery_spec",
             field=models.CharField(blank=True, max_length=80),
         ),
         migrations.AddField(
-            model_name='motorcyclespec',
-            name='chain_size',
+            model_name="motorcyclespec",
+            name="chain_size",
             field=models.CharField(blank=True, max_length=32),
         ),
         migrations.AddField(
-            model_name='motorcyclespec',
-            name='fuel_octane_min',
+            model_name="motorcyclespec",
+            name="fuel_octane_min",
             field=models.PositiveSmallIntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='motorcyclespec',
-            name='fuel_type_recommendation',
+            model_name="motorcyclespec",
+            name="fuel_type_recommendation",
             field=models.CharField(blank=True, max_length=80),
         ),
         migrations.AddField(
-            model_name='motorcyclespec',
-            name='oil_capacity_l',
+            model_name="motorcyclespec",
+            name="oil_capacity_l",
             field=models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True),
         ),
         migrations.AddField(
-            model_name='motorcyclespec',
-            name='tire_size_front',
+            model_name="motorcyclespec",
+            name="tire_size_front",
             field=models.CharField(blank=True, max_length=32),
         ),
         migrations.AddField(
-            model_name='motorcyclespec',
-            name='tire_size_rear',
+            model_name="motorcyclespec",
+            name="tire_size_rear",
             field=models.CharField(blank=True, max_length=32),
         ),
         migrations.AddField(
-            model_name='motorcyclespec',
-            name='tire_speed_rating',
+            model_name="motorcyclespec",
+            name="tire_speed_rating",
             field=models.CharField(blank=True, max_length=8),
         ),
     ]

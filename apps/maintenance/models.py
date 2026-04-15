@@ -2,7 +2,6 @@ from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.db import models
-
 from djmoney.models.fields import MoneyField
 
 from apps.core.models import TimeStampedModel, UserOwnedModel

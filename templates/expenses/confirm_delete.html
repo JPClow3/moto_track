@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar exclusão - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Confirmação{% endblock %}
+{% block topbar_title %}Excluir{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="delete-title">
+  <header class="list-header">
+    <div>
+      <h2 id="delete-title">Confirmar exclusão</h2>
+      <p class="section-subtitle">Esta ação não pode ser desfeita.</p>
+    </div>
+    <a class="inline-cta" href="{% url 'expenses:list' %}">Voltar</a>
+  </header>
+
+  <article class="panel">
+    <form method="post" class="data-form">
+      {% csrf_token %}
+      <p class="text-on-surface-variant text-sm">
+        Tem certeza que deseja excluir este {{ object_type }}?
+      </p>
+      <div class="quick-actions-row-split mt-4">
+        <a class="secondary-btn" href="{% url 'expenses:list' %}">Cancelar</a>
+        <button type="submit" class="primary-btn">Excluir</button>
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}
+

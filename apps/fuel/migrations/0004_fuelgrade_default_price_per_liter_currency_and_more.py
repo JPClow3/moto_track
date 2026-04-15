@@ -7,38 +7,44 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('fuel', '0003_alter_fuelrecord_fuel_type_fuelgrade_and_more'),
+        ("fuel", "0003_alter_fuelrecord_fuel_type_fuelgrade_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='fuelgrade',
-            name='default_price_per_liter_currency',
-            field=djmoney.models.fields.CurrencyField(choices=[('BRL', 'Brazilian Real')], default='BRL', editable=False, max_length=3, null=True),
+            model_name="fuelgrade",
+            name="default_price_per_liter_currency",
+            field=djmoney.models.fields.CurrencyField(
+                choices=[("BRL", "Brazilian Real")], default="BRL", editable=False, max_length=3, null=True
+            ),
         ),
         migrations.AddField(
-            model_name='fuelrecord',
-            name='price_per_liter_currency',
-            field=djmoney.models.fields.CurrencyField(choices=[('BRL', 'Brazilian Real')], default='BRL', editable=False, max_length=3),
+            model_name="fuelrecord",
+            name="price_per_liter_currency",
+            field=djmoney.models.fields.CurrencyField(
+                choices=[("BRL", "Brazilian Real")], default="BRL", editable=False, max_length=3
+            ),
         ),
         migrations.AddField(
-            model_name='fuelrecord',
-            name='total_price_currency',
-            field=djmoney.models.fields.CurrencyField(choices=[('BRL', 'Brazilian Real')], default='BRL', editable=False, max_length=3),
+            model_name="fuelrecord",
+            name="total_price_currency",
+            field=djmoney.models.fields.CurrencyField(
+                choices=[("BRL", "Brazilian Real")], default="BRL", editable=False, max_length=3
+            ),
         ),
         migrations.AlterField(
-            model_name='fuelgrade',
-            name='default_price_per_liter',
+            model_name="fuelgrade",
+            name="default_price_per_liter",
             field=djmoney.models.fields.MoneyField(blank=True, decimal_places=3, max_digits=8, null=True),
         ),
         migrations.AlterField(
-            model_name='fuelrecord',
-            name='price_per_liter',
+            model_name="fuelrecord",
+            name="price_per_liter",
             field=djmoney.models.fields.MoneyField(decimal_places=3, max_digits=8),
         ),
         migrations.AlterField(
-            model_name='fuelrecord',
-            name='total_price',
+            model_name="fuelrecord",
+            name="total_price",
             field=djmoney.models.fields.MoneyField(decimal_places=2, max_digits=10),
         ),
     ]

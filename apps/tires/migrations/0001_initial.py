@@ -9,28 +9,33 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('garage', '0001_initial'),
+        ("garage", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='TireRecord',
+            name="TireRecord",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('position', models.CharField(choices=[('front', 'Dianteiro'), ('rear', 'Traseiro')], max_length=16)),
-                ('brand_model', models.CharField(max_length=120)),
-                ('installed_at', models.DateField()),
-                ('installed_odometer_km', models.PositiveIntegerField()),
-                ('cost', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('recommended_pressure', models.CharField(blank=True, max_length=32)),
-                ('wear_percent', models.PositiveSmallIntegerField(default=0)),
-                ('estimated_change_km', models.PositiveIntegerField(blank=True, null=True)),
-                ('is_active', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('motorcycle', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='tire_records', to='garage.motorcycle')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("position", models.CharField(choices=[("front", "Dianteiro"), ("rear", "Traseiro")], max_length=16)),
+                ("brand_model", models.CharField(max_length=120)),
+                ("installed_at", models.DateField()),
+                ("installed_odometer_km", models.PositiveIntegerField()),
+                ("cost", models.DecimalField(decimal_places=2, max_digits=10)),
+                ("recommended_pressure", models.CharField(blank=True, max_length=32)),
+                ("wear_percent", models.PositiveSmallIntegerField(default=0)),
+                ("estimated_change_km", models.PositiveIntegerField(blank=True, null=True)),
+                ("is_active", models.BooleanField(default=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "motorcycle",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="tire_records", to="garage.motorcycle"
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-installed_at'],
+                "ordering": ["-installed_at"],
             },
         ),
     ]

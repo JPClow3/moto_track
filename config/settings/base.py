@@ -35,12 +35,13 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.accounts",
     "apps.garage",
-    "apps.fuel",
-    "apps.maintenance",
+    "apps.fuel.apps.FuelConfig",
+    "apps.maintenance.apps.MaintenanceConfig",
     "apps.tires",
     "apps.documents",
     "apps.reminders",
     "apps.reports",
+    "apps.expenses",
 ]
 
 MIDDLEWARE = [
@@ -147,3 +148,18 @@ DEFAULT_CURRENCY = "BRL"
 CURRENCIES = ("BRL",)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Apply secure defaults automatically in production-like environments.
+# This removes noise from `manage.py check --deploy` when running with non-debug settings,
+# while keeping local development behavior unchanged.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+
+    # 1 year (enable HSTS only when you are confident you always serve HTTPS).
+    SECURE_HSTS_SECONDS = env.int("DJANGO_SECURE_HSTS_SECONDS", default=31536000)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True

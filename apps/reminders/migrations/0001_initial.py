@@ -9,27 +9,45 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('garage', '0001_initial'),
+        ("garage", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Reminder',
+            name="Reminder",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=140)),
-                ('reminder_type', models.CharField(choices=[('by_km', 'Por quilometragem'), ('by_date', 'Por data'), ('by_period', 'Por periodo')], max_length=16)),
-                ('status', models.CharField(choices=[('pending', 'Pendente'), ('done', 'Concluido'), ('snoozed', 'Adiado')], default='pending', max_length=16)),
-                ('due_date', models.DateField(blank=True, null=True)),
-                ('due_km', models.PositiveIntegerField(blank=True, null=True)),
-                ('period_days', models.PositiveIntegerField(blank=True, null=True)),
-                ('send_email', models.BooleanField(default=True)),
-                ('notes', models.TextField(blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('motorcycle', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='reminders', to='garage.motorcycle')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("title", models.CharField(max_length=140)),
+                (
+                    "reminder_type",
+                    models.CharField(
+                        choices=[("by_km", "Por quilometragem"), ("by_date", "Por data"), ("by_period", "Por periodo")],
+                        max_length=16,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[("pending", "Pendente"), ("done", "Concluido"), ("snoozed", "Adiado")],
+                        default="pending",
+                        max_length=16,
+                    ),
+                ),
+                ("due_date", models.DateField(blank=True, null=True)),
+                ("due_km", models.PositiveIntegerField(blank=True, null=True)),
+                ("period_days", models.PositiveIntegerField(blank=True, null=True)),
+                ("send_email", models.BooleanField(default=True)),
+                ("notes", models.TextField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "motorcycle",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="reminders", to="garage.motorcycle"
+                    ),
+                ),
             ],
             options={
-                'ordering': ['status', 'due_date'],
+                "ordering": ["status", "due_date"],
             },
         ),
     ]

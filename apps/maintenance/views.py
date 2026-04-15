@@ -1,275 +1,282 @@
+from datetime import timedelta
+
+from dal import autocomplete
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from datetime import timedelta
-
 from django.utils import timezone
-from dal import autocomplete
-
 from djmoney.money import Money
 
-from .forms import MaintenancePartForm, MaintenanceRecordQuickForm
-from .models import MaintenancePart, MaintenanceRecord, MaintenanceRecordPart, MaintenanceType
-from apps.core.forms import configure_form_accessibility
 from apps.core.active_motorcycle import get_active_motorcycle
+from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.garage.models import Motorcycle
 
+from .forms import MaintenancePartForm, MaintenanceRecordQuickForm
+from .models import MaintenancePart, MaintenanceRecord, MaintenanceRecordPart, MaintenanceType
+
 
 class MaintenancePartAutocomplete(autocomplete.Select2QuerySetView):
-	def get_queryset(self):
-		if not self.request.user.is_authenticated:
-			return MaintenancePart.objects.none()
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return MaintenancePart.objects.none()
 
-		queryset = MaintenancePart.objects.filter(owner=self.request.user).order_by("name")
-		if self.q:
-			queryset = queryset.filter(name__icontains=self.q)
-		return queryset
-
-
-
+        queryset = MaintenancePart.objects.filter(owner=self.request.user).order_by("name")
+        if self.q:
+            queryset = queryset.filter(name__icontains=self.q)
+        return queryset
 
 
 @login_required
 def maintenance_list_view(request):
-	records_qs = (
-		MaintenanceRecord.objects.filter(motorcycle__owner=request.user)
-		.select_related("motorcycle")
-		.order_by("-date", "-odometer_km")
-	)
+    records_qs = (
+        MaintenanceRecord.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
+        .select_related("motorcycle")
+        .order_by("-date", "-odometer_km")
+    )
 
-	motorcycle_id = request.GET.get("motorcycle")
-	if motorcycle_id:
-		records_qs = records_qs.filter(motorcycle_id=motorcycle_id)
+    motorcycle_id = request.GET.get("motorcycle")
+    if motorcycle_id:
+        records_qs = records_qs.filter(motorcycle_id=motorcycle_id)
 
-	selected_motorcycle = None
-	if motorcycle_id:
-		selected_motorcycle = Motorcycle.objects.filter(owner=request.user, id=motorcycle_id).first()  # pylint: disable=no-member
-	else:
-		selected_motorcycle = get_active_motorcycle(request)
+    selected_motorcycle = None
+    if motorcycle_id:
+        selected_motorcycle = Motorcycle.objects.filter(
+            owner=request.user, id=motorcycle_id, is_active=True
+        ).first()  # pylint: disable=no-member
+    else:
+        selected_motorcycle = get_active_motorcycle(request)
 
-	current_odometer_km = selected_motorcycle.current_odometer_km_cached() if selected_motorcycle else None
-	today = timezone.localdate()
+    current_odometer_km = selected_motorcycle.current_odometer_km if selected_motorcycle else None
+    today = timezone.localdate()
 
-	def _card_from_latest(latest: MaintenanceRecord | None, *, title: str, icon: str):
-		if not latest:
-			return {
-				"title": title,
-				"icon": icon,
-				"badge": "Sem dados",
-				"tone": "neutral",
-				"subtitle": "Registre uma manutenção para começar.",
-				"percent": 0,
-			}
+    def _card_from_latest(latest: MaintenanceRecord | None, *, title: str, icon: str):
+        if not latest:
+            return {
+                "title": title,
+                "icon": icon,
+                "badge": "Sem dados",
+                "tone": "neutral",
+                "subtitle": "Registre uma manutenção para começar.",
+                "percent": 0,
+            }
 
-		remaining_km = None
-		if latest.interval_km and current_odometer_km is not None:
-			due_km = latest.odometer_km + latest.interval_km
-			remaining_km = due_km - current_odometer_km
+        remaining_km = None
+        if latest.interval_km and current_odometer_km is not None:
+            due_km = latest.odometer_km + latest.interval_km
+            remaining_km = due_km - current_odometer_km
 
-		remaining_days = None
-		if latest.interval_days:
-			due_date = latest.date + timedelta(days=latest.interval_days)
-			remaining_days = (due_date - today).days
+        remaining_days = None
+        if latest.interval_days:
+            due_date = latest.date + timedelta(days=latest.interval_days)
+            remaining_days = (due_date - today).days
 
-		status = "ok"
-		if (remaining_km is not None and remaining_km <= 0) or (remaining_days is not None and remaining_days <= 0):
-			status = "overdue"
-		elif (remaining_km is not None and remaining_km <= 200) or (remaining_days is not None and remaining_days <= 7):
-			status = "soon"
+        status = "ok"
+        if (remaining_km is not None and remaining_km <= 0) or (remaining_days is not None and remaining_days <= 0):
+            status = "overdue"
+        elif (remaining_km is not None and remaining_km <= 200) or (remaining_days is not None and remaining_days <= 7):
+            status = "soon"
 
-		if status == "overdue":
-			badge = "Ação necessária"
-			tone = "danger"
-		elif status == "soon":
-			badge = "Monitorando"
-			tone = "warning"
-		else:
-			badge = "Saudável"
-			tone = "good"
+        if status == "overdue":
+            badge = "Ação necessária"
+            tone = "danger"
+        elif status == "soon":
+            badge = "Monitorando"
+            tone = "warning"
+        else:
+            badge = "Saudável"
+            tone = "good"
 
-		percent = 0
-		if latest.interval_km and current_odometer_km is not None:
-			used = max(current_odometer_km - latest.odometer_km, 0)
-			percent = min(int(round((used / latest.interval_km) * 100)), 100)
-		elif latest.interval_days:
-			used_days = max((today - latest.date).days, 0)
-			percent = min(int(round((used_days / latest.interval_days) * 100)), 100)
+        percent = 0
+        if latest.interval_km and current_odometer_km is not None:
+            used = max(current_odometer_km - latest.odometer_km, 0)
+            percent = min(int(round((used / latest.interval_km) * 100)), 100)
+        elif latest.interval_days:
+            used_days = max((today - latest.date).days, 0)
+            percent = min(int(round((used_days / latest.interval_days) * 100)), 100)
 
-		subtitle_bits = []
-		if remaining_km is not None:
-			subtitle_bits.append(f"{remaining_km} km restantes" if remaining_km > 0 else f"{abs(remaining_km)} km vencido")
-		if remaining_days is not None:
-			subtitle_bits.append(f"{remaining_days} dias restantes" if remaining_days > 0 else f"{abs(remaining_days)} dias vencido")
-		if not subtitle_bits:
-			subtitle_bits.append("Sem intervalo definido.")
+        subtitle_bits = []
+        if remaining_km is not None:
+            subtitle_bits.append(
+                f"{remaining_km} km restantes" if remaining_km > 0 else f"{abs(remaining_km)} km vencido"
+            )
+        if remaining_days is not None:
+            subtitle_bits.append(
+                f"{remaining_days} dias restantes" if remaining_days > 0 else f"{abs(remaining_days)} dias vencido"
+            )
+        if not subtitle_bits:
+            subtitle_bits.append("Sem intervalo definido.")
 
-		return {
-			"title": title,
-			"icon": icon,
-			"badge": badge,
-			"tone": tone,
-			"subtitle": " • ".join(subtitle_bits),
-			"percent": percent,
-			"latest": latest,
-		}
+        return {
+            "title": title,
+            "icon": icon,
+            "badge": badge,
+            "tone": tone,
+            "subtitle": " • ".join(subtitle_bits),
+            "percent": percent,
+            "latest": latest,
+        }
 
-	latest_oil = records_qs.filter(maintenance_type=MaintenanceType.OIL_CHANGE).first()
-	latest_chain = records_qs.filter(maintenance_type=MaintenanceType.CHAIN_SET).first()
-	latest_brakes = records_qs.filter(maintenance_type=MaintenanceType.BRAKE_PAD).first()
+    latest_oil = records_qs.filter(maintenance_type=MaintenanceType.OIL_CHANGE).first()
+    latest_chain = records_qs.filter(maintenance_type=MaintenanceType.CHAIN_SET).first()
+    latest_brakes = records_qs.filter(maintenance_type=MaintenanceType.BRAKE_PAD).first()
 
-	status_cards = [
-		_card_from_latest(latest_oil, title="Troca de óleo", icon="droplets"),
-		_card_from_latest(latest_chain, title="Relação / corrente", icon="link"),
-		_card_from_latest(latest_brakes, title="Pastilhas de freio", icon="disc-3"),
-	]
+    status_cards = [
+        _card_from_latest(latest_oil, title="Troca de óleo", icon="droplets"),
+        _card_from_latest(latest_chain, title="Relação / corrente", icon="link"),
+        _card_from_latest(latest_brakes, title="Pastilhas de freio", icon="disc-3"),
+    ]
 
-	# Upcoming tasks should consider only the latest interval-defined record per type.
-	# Otherwise, older historical records remain perpetually overdue and crowd out the true next-due tasks.
-	latest_interval_record_by_type: dict[str, MaintenanceRecord] = {}
-	for rec in records_qs:
-		if not rec.interval_km and not rec.interval_days:
-			continue
-		if rec.maintenance_type in latest_interval_record_by_type:
-			continue
-		latest_interval_record_by_type[rec.maintenance_type] = rec
+    # Upcoming tasks should consider only the latest interval-defined record per type.
+    # Otherwise, older historical records remain perpetually overdue and crowd out the true next-due tasks.
+    latest_interval_record_by_type: dict[str, MaintenanceRecord] = {}
+    for rec in records_qs:
+        if not rec.interval_km and not rec.interval_days:
+            continue
+        if rec.maintenance_type in latest_interval_record_by_type:
+            continue
+        latest_interval_record_by_type[rec.maintenance_type] = rec
 
-	upcoming_candidates: list[dict] = []
-	for rec in latest_interval_record_by_type.values():
-		due_km = rec.odometer_km + rec.interval_km if rec.interval_km else None
-		due_date = rec.date + timedelta(days=rec.interval_days) if rec.interval_days else None
-		remaining_km = (due_km - current_odometer_km) if (due_km is not None and current_odometer_km is not None) else None
-		remaining_days = (due_date - today).days if due_date is not None else None
+    upcoming_candidates: list[dict] = []
+    for rec in latest_interval_record_by_type.values():
+        due_km = rec.odometer_km + rec.interval_km if rec.interval_km else None
+        due_date = rec.date + timedelta(days=rec.interval_days) if rec.interval_days else None
+        remaining_km = (
+            (due_km - current_odometer_km) if (due_km is not None and current_odometer_km is not None) else None
+        )
+        remaining_days = (due_date - today).days if due_date is not None else None
 
-		if remaining_km is None and remaining_days is None:
-			continue
+        if remaining_km is None and remaining_days is None:
+            continue
 
-		# include both upcoming and overdue; sorting will surface closest items
-		upcoming_candidates.append(
-			{
-				"label": rec.get_maintenance_type_display(),
-				"record": rec,
-				"due_km": due_km,
-				"due_date": due_date,
-				"remaining_km": remaining_km,
-				"remaining_days": remaining_days,
-				"est_cost": rec.cost,
-			}
-		)
+        # include both upcoming and overdue; sorting will surface closest items
+        upcoming_candidates.append(
+            {
+                "label": rec.get_maintenance_type_display(),
+                "record": rec,
+                "due_km": due_km,
+                "due_date": due_date,
+                "remaining_km": remaining_km,
+                "remaining_days": remaining_days,
+                "est_cost": rec.cost,
+            }
+        )
 
-	def _sort_key(item):
-		km = item["remaining_km"]
-		days = item["remaining_days"]
-		# overdue first (negative), then smallest positive
-		km_key = km if km is not None else 10**9
-		days_key = days if days is not None else 10**9
-		return (min(km_key, days_key), days_key, km_key)
+    def _sort_key(item):
+        km = item["remaining_km"]
+        days = item["remaining_days"]
+        # overdue first (negative), then smallest positive
+        km_key = km if km is not None else 10**9
+        days_key = days if days is not None else 10**9
+        return (min(km_key, days_key), days_key, km_key)
 
-	upcoming_candidates.sort(key=_sort_key)
-	upcoming_tasks = upcoming_candidates[:3]
+    upcoming_candidates.sort(key=_sort_key)
+    upcoming_tasks = upcoming_candidates[:3]
 
-	paged = paginate(request, records_qs, per_page=50)
-	records = paged.items
-	total_cost = records_qs.aggregate(total=Sum("cost"))["total"] or Money(0, "BRL")
-	latest_record = records[0] if records else None
-	context = {
-		"records": records,
-		"page_obj": paged.page,
-		"total_cost": total_cost,
-		"records_count": records_qs.count(),
-		"latest_record": latest_record,
-		"filters": {"motorcycle": motorcycle_id or ""},
-		"status_cards": status_cards,
-		"upcoming_tasks": upcoming_tasks,
-		"selected_motorcycle": selected_motorcycle,
-	}
-	return render(request, "maintenance/list.html", context)
+    paged = paginate(request, records_qs, per_page=50)
+    records = paged.items
+    total_cost = records_qs.aggregate(total=Sum("cost"))["total"] or Money(0, "BRL")
+    latest_record = records[0] if records else None
+    context = {
+        "records": records,
+        "page_obj": paged.page,
+        "total_cost": total_cost,
+        "records_count": records_qs.count(),
+        "latest_record": latest_record,
+        "filters": {"motorcycle": motorcycle_id or ""},
+        "status_cards": status_cards,
+        "upcoming_tasks": upcoming_tasks,
+        "selected_motorcycle": selected_motorcycle,
+    }
+    return render(request, "maintenance/list.html", context)
 
 
 @login_required
 def maintenance_catalog_view(request):
-	parts = MaintenancePart.objects.filter(owner=request.user)
-	return render(request, "maintenance/catalogs.html", {"parts": parts})
+    parts = MaintenancePart.objects.filter(owner=request.user)
+    return render(request, "maintenance/catalogs.html", {"parts": parts})
 
 
 @login_required
 def maintenance_part_create_view(request):
-	if request.method == "POST":
-		form = MaintenancePartForm(request.POST)
-		if form.is_valid():
-			part = form.save(commit=False)
-			part.owner = request.user
-			part.save()
-			messages.success(request, f"Peça {part.name} criada com sucesso.")
-			return redirect("maintenance:catalogs")
-	else:
-		form = MaintenancePartForm()
-	return render(request, "maintenance/part_form.html", {"form": form, "title": "Nova peça", "submit_label": "Salvar peça"})
+    if request.method == "POST":
+        form = MaintenancePartForm(request.POST)
+        if form.is_valid():
+            part = form.save(commit=False)
+            part.owner = request.user
+            part.save()
+            messages.success(request, f"Peça {part.name} criada com sucesso.")
+            return redirect("maintenance:catalogs")
+    else:
+        form = MaintenancePartForm()
+    return render(
+        request, "maintenance/part_form.html", {"form": form, "title": "Nova peça", "submit_label": "Salvar peça"}
+    )
 
 
 @login_required
 def maintenance_part_update_view(request, pk: int):
-	part = get_object_or_404(MaintenancePart, pk=pk, owner=request.user)
-	if request.method == "POST":
-		form = MaintenancePartForm(request.POST, instance=part)
-		if form.is_valid():
-			form.save()
-			messages.success(request, f"Peça {part.name} atualizada com sucesso.")
-			return redirect("maintenance:catalogs")
-	else:
-		form = MaintenancePartForm(instance=part)
-	return render(
-		request,
-		"maintenance/part_form.html",
-		{"form": form, "title": f"Editar {part.name}", "submit_label": "Salvar alterações", "part": part},
-	)
+    part = get_object_or_404(MaintenancePart, pk=pk, owner=request.user)
+    if request.method == "POST":
+        form = MaintenancePartForm(request.POST, instance=part)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Peça {part.name} atualizada com sucesso.")
+            return redirect("maintenance:catalogs")
+    else:
+        form = MaintenancePartForm(instance=part)
+    return render(
+        request,
+        "maintenance/part_form.html",
+        {"form": form, "title": f"Editar {part.name}", "submit_label": "Salvar alterações", "part": part},
+    )
 
 
 @login_required
 def maintenance_part_delete_view(request, pk: int):
-	part = get_object_or_404(MaintenancePart, pk=pk, owner=request.user)
-	if request.method == "POST":
-		name = part.name
-		part.delete()
-		messages.success(request, f"Peça {name} removida com sucesso.")
-		return redirect("maintenance:catalogs")
-	return render(request, "maintenance/part_confirm_delete.html", {"part": part})
+    part = get_object_or_404(MaintenancePart, pk=pk, owner=request.user)
+    if request.method == "POST":
+        name = part.name
+        part.delete()
+        messages.success(request, f"Peça {name} removida com sucesso.")
+        return redirect("maintenance:catalogs")
+    return render(request, "maintenance/part_confirm_delete.html", {"part": part})
 
 
 @login_required
 def maintenance_quick_create_view(request):
-	is_htmx = request.headers.get("HX-Request") == "true"
-	active_motorcycle = get_active_motorcycle(request)
+    is_htmx = request.headers.get("HX-Request") == "true"
+    active_motorcycle = get_active_motorcycle(request)
 
-	if request.method == "POST":
-		form = MaintenanceRecordQuickForm(request.POST, user=request.user)
-		if form.is_valid():
-			parts = form.cleaned_data.pop("parts", [])
-			record = form.save()  # parts is not a model field, so this is safe
-			if parts:
-				for part in parts:
-					MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
-			messages.success(request, f"Manutenção registrada para {record.motorcycle.name}.")
-			if is_htmx:
-				response = HttpResponse()
-				response["HX-Redirect"] = request.GET.get("next") or request.POST.get("next") or "/"
-				return response
-			return redirect(request.POST.get("next") or "maintenance:list")
-		status = 422 if is_htmx else 200
-	else:
-		initial = {"next": request.GET.get("next") or ""}
-		if active_motorcycle:
-			initial["motorcycle"] = active_motorcycle
-		form = MaintenanceRecordQuickForm(user=request.user, initial=initial)
-		status = 200
+    if request.method == "POST":
+        form = MaintenanceRecordQuickForm(request.POST, user=request.user)
+        if form.is_valid():
+            parts = form.cleaned_data.pop("parts", [])
+            record = form.save()  # parts is not a model field, so this is safe
+            if parts:
+                for part in parts:
+                    MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
+            messages.success(request, f"Manutenção registrada para {record.motorcycle.name}.")
+            if is_htmx:
+                response = HttpResponse()
+                response["HX-Redirect"] = request.GET.get("next") or request.POST.get("next") or "/"
+                return response
+            return redirect(request.POST.get("next") or "maintenance:list")
+        status = 422 if is_htmx else 200
+    else:
+        initial = {"next": request.GET.get("next") or ""}
+        if active_motorcycle:
+            initial["motorcycle"] = active_motorcycle
+        form = MaintenanceRecordQuickForm(user=request.user, initial=initial)
+        status = 200
 
-	context = {
-		"form": form,
-		"title": "Registrar manutenção",
-		"submit_label": "Salvar manutenção",
-		"next_url": request.GET.get("next") or request.POST.get("next") or "",
-	}
-	configure_form_accessibility(form)
-	return render(request, "maintenance/partials/quick_form.html", context, status=status)
+    context = {
+        "form": form,
+        "title": "Registrar manutenção",
+        "submit_label": "Salvar manutenção",
+        "next_url": request.GET.get("next") or request.POST.get("next") or "",
+    }
+    configure_form_accessibility(form)
+    return render(request, "maintenance/partials/quick_form.html", context, status=status)

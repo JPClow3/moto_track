@@ -11,7 +11,9 @@ class TireModelTests(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="tire-user", email="tire@example.com", password="pass12345")
-        self.other_user = User.objects.create_user(username="other-user", email="other@example.com", password="pass12345")
+        self.other_user = User.objects.create_user(
+            username="other-user", email="other@example.com", password="pass12345"
+        )
         self.motorcycle = Motorcycle.objects.create(  # pylint: disable=no-member
             owner=self.user, name="Moto 1", brand="Honda", model="CB 300F", year=2024
         )
@@ -72,7 +74,9 @@ class TireModelTests(TestCase):
 class TireViewTests(TestCase):
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user(username="tire-view-user", email="tire-view@example.com", password="pass12345")
+        self.user = User.objects.create_user(
+            username="tire-view-user", email="tire-view@example.com", password="pass12345"
+        )
         self.other_user = User.objects.create_user(
             username="tire-view-other", email="tire-view-other@example.com", password="pass12345"
         )
@@ -133,7 +137,9 @@ class TireViewTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertTrue(
-            TireRecord.objects.filter(motorcycle=self.motorcycle, brand_model="Novo Pneu").exists()  # pylint: disable=no-member
+            TireRecord.objects.filter(
+                motorcycle=self.motorcycle, brand_model="Novo Pneu"
+            ).exists()  # pylint: disable=no-member
         )
 
     def test_update_view_denies_other_user_record(self):

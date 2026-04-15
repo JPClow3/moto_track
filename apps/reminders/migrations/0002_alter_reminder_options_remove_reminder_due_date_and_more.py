@@ -6,77 +6,81 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('reminders', '0001_initial'),
+        ("reminders", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='reminder',
-            options={'ordering': ['-is_active', 'title']},
+            name="reminder",
+            options={"ordering": ["-is_active", "title"]},
         ),
         migrations.RemoveField(
-            model_name='reminder',
-            name='due_date',
+            model_name="reminder",
+            name="due_date",
         ),
         migrations.RemoveField(
-            model_name='reminder',
-            name='due_km',
+            model_name="reminder",
+            name="due_km",
         ),
         migrations.RemoveField(
-            model_name='reminder',
-            name='period_days',
+            model_name="reminder",
+            name="period_days",
         ),
         migrations.RemoveField(
-            model_name='reminder',
-            name='reminder_type',
+            model_name="reminder",
+            name="reminder_type",
         ),
         migrations.RemoveField(
-            model_name='reminder',
-            name='status',
+            model_name="reminder",
+            name="status",
         ),
         migrations.AddField(
-            model_name='reminder',
-            name='description',
+            model_name="reminder",
+            name="description",
             field=models.TextField(blank=True),
         ),
         migrations.AddField(
-            model_name='reminder',
-            name='is_active',
+            model_name="reminder",
+            name="is_active",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='reminder',
-            name='last_notified_at',
+            model_name="reminder",
+            name="last_notified_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='reminder',
-            name='reference_date',
+            model_name="reminder",
+            name="reference_date",
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='reminder',
-            name='reference_km',
+            model_name="reminder",
+            name="reference_km",
             field=models.PositiveIntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='reminder',
-            name='trigger_type',
-            field=models.CharField(choices=[('by_km', 'Por quilometragem'), ('by_date', 'Por data'), ('by_interval', 'Por intervalo')], default='by_km', max_length=16),
+            model_name="reminder",
+            name="trigger_type",
+            field=models.CharField(
+                choices=[("by_km", "Por quilometragem"), ("by_date", "Por data"), ("by_interval", "Por intervalo")],
+                default="by_km",
+                max_length=16,
+            ),
         ),
         migrations.AddField(
-            model_name='reminder',
-            name='trigger_value_days',
+            model_name="reminder",
+            name="trigger_value_days",
             field=models.PositiveIntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='reminder',
-            name='trigger_value_km',
+            model_name="reminder",
+            name="trigger_value_km",
             field=models.PositiveIntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='reminder',
-            name='updated_at',
+            model_name="reminder",
+            name="updated_at",
             field=models.DateTimeField(auto_now=True),
         ),
     ]

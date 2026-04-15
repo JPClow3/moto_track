@@ -8,61 +8,108 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('fuel', '0002_fuelrecord_tank_full_fuelrecord_updated_at_and_more'),
+        ("fuel", "0002_fuelrecord_tank_full_fuelrecord_updated_at_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='fuelrecord',
-            name='fuel_type',
-            field=models.CharField(choices=[('gasoline', 'Gasolina'), ('ethanol', 'Etanol'), ('premium_gasoline', 'Gasolina Aditivada'), ('premium_ethanol', 'Etanol Premium')], default='gasoline', max_length=32),
+            model_name="fuelrecord",
+            name="fuel_type",
+            field=models.CharField(
+                choices=[
+                    ("gasoline", "Gasolina"),
+                    ("ethanol", "Etanol"),
+                    ("premium_gasoline", "Gasolina Aditivada"),
+                    ("premium_ethanol", "Etanol Premium"),
+                ],
+                default="gasoline",
+                max_length=32,
+            ),
         ),
         migrations.CreateModel(
-            name='FuelGrade',
+            name="FuelGrade",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(max_length=120)),
-                ('fuel_type', models.CharField(choices=[('gasoline', 'Gasolina'), ('ethanol', 'Etanol'), ('premium_gasoline', 'Gasolina Aditivada'), ('premium_ethanol', 'Etanol Premium')], default='gasoline', max_length=32)),
-                ('octane_rating', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('ethanol_percentage', models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True)),
-                ('default_price_per_liter', models.DecimalField(blank=True, decimal_places=3, max_digits=8, null=True)),
-                ('notes', models.TextField(blank=True)),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(class)ss', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(max_length=120)),
+                (
+                    "fuel_type",
+                    models.CharField(
+                        choices=[
+                            ("gasoline", "Gasolina"),
+                            ("ethanol", "Etanol"),
+                            ("premium_gasoline", "Gasolina Aditivada"),
+                            ("premium_ethanol", "Etanol Premium"),
+                        ],
+                        default="gasoline",
+                        max_length=32,
+                    ),
+                ),
+                ("octane_rating", models.PositiveSmallIntegerField(blank=True, null=True)),
+                ("ethanol_percentage", models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True)),
+                ("default_price_per_liter", models.DecimalField(blank=True, decimal_places=3, max_digits=8, null=True)),
+                ("notes", models.TextField(blank=True)),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(class)ss",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['name'],
-                'unique_together': {('owner', 'name')},
+                "ordering": ["name"],
+                "unique_together": {("owner", "name")},
             },
         ),
         migrations.AddField(
-            model_name='fuelrecord',
-            name='fuel_grade',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='fuel_records', to='fuel.fuelgrade'),
+            model_name="fuelrecord",
+            name="fuel_grade",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="fuel_records",
+                to="fuel.fuelgrade",
+            ),
         ),
         migrations.CreateModel(
-            name='FuelStation',
+            name="FuelStation",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(max_length=120)),
-                ('brand', models.CharField(blank=True, max_length=80)),
-                ('city', models.CharField(blank=True, max_length=80)),
-                ('state', models.CharField(blank=True, max_length=2)),
-                ('notes', models.TextField(blank=True)),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(class)ss', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(max_length=120)),
+                ("brand", models.CharField(blank=True, max_length=80)),
+                ("city", models.CharField(blank=True, max_length=80)),
+                ("state", models.CharField(blank=True, max_length=2)),
+                ("notes", models.TextField(blank=True)),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(class)ss",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['name'],
-                'unique_together': {('owner', 'name')},
+                "ordering": ["name"],
+                "unique_together": {("owner", "name")},
             },
         ),
         migrations.AddField(
-            model_name='fuelrecord',
-            name='station',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='fuel_records', to='fuel.fuelstation'),
+            model_name="fuelrecord",
+            name="station",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="fuel_records",
+                to="fuel.fuelstation",
+            ),
         ),
     ]

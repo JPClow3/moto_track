@@ -8,10 +8,11 @@ def garage_context(request):
     if not request.user.is_authenticated:
         return {}
 
-    motorcycles = list(Motorcycle.objects.filter(owner=request.user).order_by("name"))  # pylint: disable=no-member
+    motorcycles = list(
+        Motorcycle.objects.filter(owner=request.user, is_active=True).order_by("name")
+    )  # pylint: disable=no-member
     active = get_active_motorcycle(request)
     return {
         "garage_motorcycles": motorcycles,
         "active_motorcycle": active,
     }
-

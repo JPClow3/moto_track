@@ -15,6 +15,35 @@
 }
 
 @layer components {
+  .bg-grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.12;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+    animation: grain-drift 14s linear infinite;
+    transform: translate3d(0, 0, 0);
+  }
+
+  @keyframes grain-drift {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(-2.5%, 1.5%, 0);
+    }
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bg-grain {
+      animation: none;
+    }
+  }
+
   /* Layout base de páginas CRUD */
   .list-section {
     @apply space-y-8 pb-10;
@@ -34,6 +63,45 @@
 
   .panel {
     @apply rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/20;
+  }
+
+  /* Glass surfaces */
+  .glass-card {
+    @apply relative overflow-hidden rounded-2xl bg-surface-lowest/70 backdrop-blur-2xl shadow-ambient ring-1 ring-outline-variant/25;
+    @apply transition will-change-transform;
+    @apply hover:-translate-y-0.5 hover:ring-primary/20;
+  }
+
+  .glass-card-tight {
+    @apply glass-card p-6;
+  }
+
+  .glass-orb {
+    @apply pointer-events-none absolute -top-12 -right-12 h-44 w-44 rounded-full blur-2xl opacity-70;
+  }
+
+  .icon-chip {
+    @apply h-10 w-10 grid place-items-center rounded-xl bg-surface-low text-primary ring-1 ring-outline-variant/20;
+  }
+
+  .tone-orb-warning {
+    @apply bg-gradient-to-br from-warning/25 to-transparent;
+  }
+
+  .tone-orb-info {
+    @apply bg-gradient-to-br from-info/25 to-transparent;
+  }
+
+  .tone-orb-success {
+    @apply bg-gradient-to-br from-success/25 to-transparent;
+  }
+
+  .tone-orb-error {
+    @apply bg-gradient-to-br from-error/25 to-transparent;
+  }
+
+  .tone-orb-primary {
+    @apply bg-gradient-to-br from-primary/25 to-transparent;
   }
 
   .inline-cta {

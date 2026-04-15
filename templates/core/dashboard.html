@@ -23,6 +23,25 @@
         {% endif %}
       </h2>
       <p class="text-on-surface-variant text-sm">Visão rápida de status, desgaste de pneus e atividade recente.</p>
+      {% if motorcycle %}
+        <div class="flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">
+          {% if motorcycle.previous_owners is not None %}
+            <span class="rounded-full bg-surface-low/70 backdrop-blur px-3 py-1 ring-1 ring-outline-variant/20">
+              {{ motorcycle.previous_owners }} dono{{ motorcycle.previous_owners|pluralize:" anterior, anteriores" }}
+            </span>
+          {% endif %}
+          {% if motorcycle.purchase_date %}
+            <span class="rounded-full bg-surface-low/70 backdrop-blur px-3 py-1 ring-1 ring-outline-variant/20">
+              Comprada em {{ motorcycle.purchase_date }}
+            </span>
+          {% endif %}
+          {% if motorcycle.purchase_price %}
+            <span class="rounded-full bg-surface-low/70 backdrop-blur px-3 py-1 ring-1 ring-outline-variant/20">
+              Valor: {{ motorcycle.purchase_price }}
+            </span>
+          {% endif %}
+        </div>
+      {% endif %}
     </div>
     <div class="rounded-full bg-surface-lowest px-4 py-2 shadow-ambient" aria-label="Moto atual">
       {% if motorcycle %}
@@ -41,7 +60,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {% for action in quick_actions %}
         <a
-          class="group rounded-2xl bg-surface-lowest px-4 py-4 shadow-ambient hover:translate-x-1 transition flex items-center gap-4"
+          class="group glass-card px-4 py-4 hover:translate-x-1 transition flex items-center gap-4"
           href="{{ action.url }}"
           {% if action.htmx_url %}
           hx-get="{{ action.htmx_url }}?next={% url 'dashboard' %}"
@@ -49,7 +68,7 @@
           hx-swap="innerHTML"
           {% endif %}
         >
-          <span class="h-10 w-10 grid place-items-center rounded-xl bg-surface-low text-primary" aria-hidden="true"><i data-lucide="{{ action.icon }}"></i></span>
+          <span class="icon-chip" aria-hidden="true"><i data-lucide="{{ action.icon }}"></i></span>
           <span class="min-w-0">
             <strong class="block font-extrabold">{{ action.label }}</strong>
             <small class="block text-sm text-on-surface-variant">{{ action.hint }}</small>
@@ -62,20 +81,7 @@
   <section aria-label="Indicadores principais">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5" role="list">
       {% for card in status_cards %}
-        <article class="relative overflow-hidden rounded-2xl bg-surface-lowest p-6 shadow-ambient" role="listitem">
-          <div class="absolute -top-10 -right-10 h-36 w-36 rounded-full bg-primary/5"></div>
-          <div class="relative flex items-start justify-between gap-4">
-            <div class="h-10 w-10 grid place-items-center rounded-xl bg-surface-low text-primary" aria-hidden="true">
-              <i data-lucide="{{ card.icon }}"></i>
-            </div>
-            <span class="rounded-full bg-surface-low px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">{{ card.badge }}</span>
-          </div>
-          <div class="relative mt-5">
-            <h3 class="text-sm font-semibold text-on-surface-variant">{{ card.title }}</h3>
-            <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ card.value }}</p>
-            <p class="mt-1 text-sm text-on-surface-variant">{{ card.meta|capfirst }}</p>
-          </div>
-        </article>
+        {% include "core/partials/status_card.html" with card=card %}
       {% endfor %}
     </div>
   </section>
@@ -85,10 +91,11 @@
       <h3 class="text-lg font-extrabold tracking-tight">Status de desgaste</h3>
       <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Monitor de pneus</span>
     </div>
-    {% if tire_cards %}
+      {% if tire_cards %}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5" role="list">
         {% for tire in tire_cards %}
-          <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient space-y-4" role="listitem">
+          <article class="glass-card-tight p-6 space-y-4" role="listitem">
+            <div class="glass-orb tone-orb-primary"></div>
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0">
                 <strong class="block font-extrabold">{{ tire.title }}</strong>
@@ -135,9 +142,9 @@
         {% if recent_fuels %}
           <div class="space-y-3" role="list" aria-label="Últimos abastecimentos">
             {% for fuel in recent_fuels %}
-              <article class="flex items-center justify-between gap-4 rounded-2xl bg-surface-lowest px-4 py-4 shadow-ambient hover:translate-x-1 transition" role="listitem">
+              <article class="glass-card px-4 py-4 hover:translate-x-1 transition flex items-center justify-between gap-4" role="listitem">
                 <div class="flex items-center gap-4 min-w-0">
-                  <div class="h-10 w-10 grid place-items-center rounded-xl bg-surface-low text-primary" aria-hidden="true"><i data-lucide="fuel"></i></div>
+                  <div class="icon-chip" aria-hidden="true"><i data-lucide="fuel"></i></div>
                   <div class="min-w-0">
                     <strong class="block font-extrabold truncate">Abastecimento</strong>
                     <p class="text-xs text-on-surface-variant truncate">{{ fuel.date }} • {{ fuel.odometer_km }} km{% if fuel.station_name %} • {{ fuel.station_name }}{% endif %}</p>
@@ -155,9 +162,9 @@
         {% if recent_maintenance %}
           <div class="space-y-3 mt-3" role="list" aria-label="Últimas manutenções">
             {% for service in recent_maintenance %}
-              <article class="flex items-center justify-between gap-4 rounded-2xl bg-surface-lowest px-4 py-4 shadow-ambient hover:translate-x-1 transition" role="listitem">
+              <article class="glass-card px-4 py-4 hover:translate-x-1 transition flex items-center justify-between gap-4" role="listitem">
                 <div class="flex items-center gap-4 min-w-0">
-                  <div class="h-10 w-10 grid place-items-center rounded-xl bg-surface-low text-primary" aria-hidden="true"><i data-lucide="wrench"></i></div>
+                  <div class="icon-chip" aria-hidden="true"><i data-lucide="wrench"></i></div>
                   <div class="min-w-0">
                     <strong class="block font-extrabold truncate">{{ service.get_maintenance_type_display }}</strong>
                     <p class="text-xs text-on-surface-variant truncate">{{ service.date }} • {{ service.odometer_km }} km</p>
@@ -178,11 +185,35 @@
       </article>
 
       <article class="lg:col-span-4 space-y-4">
-        <div class="rounded-2xl bg-surface-low p-6 space-y-6">
+        <div class="glass-card-tight p-6 space-y-6 bg-surface-low/70">
+          <div class="glass-orb tone-orb-info"></div>
           <div>
             <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Resumo mensal</p>
             <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ month_total }}</p>
             <p class="text-sm text-on-surface-variant">Gasto de combustível no mês</p>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between gap-4">
+              <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Tendência semanal</p>
+              <span class="rounded-full bg-surface-low/70 backdrop-blur px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary ring-1 ring-outline-variant/20">
+                Combustível
+              </span>
+            </div>
+            {% if weekly_sparkline_points %}
+              <svg class="mt-3 w-full h-10" viewBox="0 0 100 24" role="img" aria-label="Tendência semanal de gasto com combustível">
+                <defs>
+                  <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="currentColor" stop-opacity="0.18"></stop>
+                    <stop offset="100%" stop-color="currentColor" stop-opacity="0"></stop>
+                  </linearGradient>
+                </defs>
+                <polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary" points="{{ weekly_sparkline_points }}"></polyline>
+              </svg>
+              <p class="mt-1 text-xs text-on-surface-variant">Semanas do mês (agregado).</p>
+            {% else %}
+              <p class="mt-3 text-sm text-on-surface-variant">Sem histórico suficiente neste mês.</p>
+            {% endif %}
           </div>
 
           <div class="space-y-3">
@@ -191,7 +222,7 @@
         <ul class="space-y-3">
           {% for entry in active_reminders %}
             {% with reminder=entry.reminder evaluation=entry.evaluation %}
-            <li class="flex items-start justify-between gap-4 rounded-2xl bg-surface-lowest px-4 py-3 shadow-ambient">
+            <li class="glass-card px-4 py-3 flex items-start justify-between gap-4">
               <div class="min-w-0">
                 <strong class="block font-extrabold truncate">{{ reminder.title }}</strong>
                 <p class="text-xs text-on-surface-variant">

@@ -7,7 +7,7 @@
   <header class="list-header">
     <div>
       <h2 id="garage-delete-title">Excluir moto</h2>
-      <p class="section-subtitle">Esta ação remove a moto e seus registros relacionados.</p>
+      <p class="section-subtitle">Esta ação arquiva a moto e preserva seus registros.</p>
     </div>
     <a class="inline-cta" href="{% url 'garage:list' %}">Voltar para garagem</a>
   </header>
@@ -17,14 +17,14 @@
       <span class="alert-icon" aria-hidden="true"><i data-lucide="triangle-alert"></i></span>
       <div>
         <h3>{{ motorcycle.name }}</h3>
-        <p>Confirme para excluir esta moto permanentemente.</p>
+        <p>Confirme para arquivar esta moto. Você poderá reativar depois no admin.</p>
       </div>
     </div>
 
     <form method="post" class="inline-actions">
       {% csrf_token %}
       <a class="secondary-btn" href="{% url 'garage:list' %}">Cancelar</a>
-      <button type="submit" class="danger-btn">Excluir moto</button>
+      <button type="submit" class="danger-btn">Arquivar moto</button>
     </form>
   </article>
 </section>

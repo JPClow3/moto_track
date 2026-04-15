@@ -8,63 +8,70 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('garage', '0001_initial'),
+        ("garage", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='motorcycle',
-            name='fuel_tank_capacity_l',
+            model_name="motorcycle",
+            name="fuel_tank_capacity_l",
         ),
         migrations.RemoveField(
-            model_name='motorcycle',
-            name='odometer_current',
+            model_name="motorcycle",
+            name="odometer_current",
         ),
         migrations.RemoveField(
-            model_name='motorcycle',
-            name='oil_spec_recommendation',
+            model_name="motorcycle",
+            name="oil_spec_recommendation",
         ),
         migrations.RemoveField(
-            model_name='motorcycle',
-            name='recommended_tire_pressure_front',
+            model_name="motorcycle",
+            name="recommended_tire_pressure_front",
         ),
         migrations.RemoveField(
-            model_name='motorcycle',
-            name='recommended_tire_pressure_rear',
+            model_name="motorcycle",
+            name="recommended_tire_pressure_rear",
         ),
         migrations.AddField(
-            model_name='motorcycle',
-            name='odometer_override_at',
+            model_name="motorcycle",
+            name="odometer_override_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='motorcycle',
-            name='odometer_override_km',
+            model_name="motorcycle",
+            name="odometer_override_km",
             field=models.PositiveIntegerField(blank=True, null=True),
         ),
         migrations.AlterField(
-            model_name='motorcycle',
-            name='owner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(class)ss', to=settings.AUTH_USER_MODEL),
+            model_name="motorcycle",
+            name="owner",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, related_name="%(class)ss", to=settings.AUTH_USER_MODEL
+            ),
         ),
         migrations.CreateModel(
-            name='MotorcycleSpec',
+            name="MotorcycleSpec",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('fuel_tank_capacity_l', models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True)),
-                ('recommended_tire_pressure_front', models.CharField(blank=True, max_length=32)),
-                ('recommended_tire_pressure_rear', models.CharField(blank=True, max_length=32)),
-                ('oil_type_recommendation', models.CharField(blank=True, max_length=80)),
-                ('oil_viscosity_recommendation', models.CharField(blank=True, max_length=32)),
-                ('manual_reference', models.CharField(blank=True, max_length=120)),
-                ('motorcycle', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='spec', to='garage.motorcycle')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("fuel_tank_capacity_l", models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True)),
+                ("recommended_tire_pressure_front", models.CharField(blank=True, max_length=32)),
+                ("recommended_tire_pressure_rear", models.CharField(blank=True, max_length=32)),
+                ("oil_type_recommendation", models.CharField(blank=True, max_length=80)),
+                ("oil_viscosity_recommendation", models.CharField(blank=True, max_length=32)),
+                ("manual_reference", models.CharField(blank=True, max_length=120)),
+                (
+                    "motorcycle",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="spec", to="garage.motorcycle"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Especificação da moto',
-                'verbose_name_plural': 'Especificações da moto',
+                "verbose_name": "Especificação da moto",
+                "verbose_name_plural": "Especificações da moto",
             },
         ),
     ]

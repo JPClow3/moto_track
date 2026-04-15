@@ -16,7 +16,9 @@ class FuelModelTests(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="fuel-user", email="fuel@example.com", password="pass12345")
-        self.other_user = User.objects.create_user(username="other-user", email="other@example.com", password="pass12345")
+        self.other_user = User.objects.create_user(
+            username="other-user", email="other@example.com", password="pass12345"
+        )
         self.motorcycle = Motorcycle.objects.create(  # pylint: disable=no-member
             owner=self.user, name="Moto 1", brand="Honda", model="CB 300F", year=2024
         )
@@ -28,7 +30,9 @@ class FuelModelTests(TestCase):
         self.grade = FuelGrade.objects.create(  # pylint: disable=no-member
             owner=self.user, name="Gasolina premium", fuel_type=FuelType.PREMIUM_GASOLINE
         )
-        FuelGrade.objects.create(owner=self.other_user, name="Etanol", fuel_type=FuelType.ETHANOL)  # pylint: disable=no-member
+        FuelGrade.objects.create(
+            owner=self.other_user, name="Etanol", fuel_type=FuelType.ETHANOL
+        )  # pylint: disable=no-member
 
     def test_fuel_record_clean_rejects_invalid_values(self):
         record = FuelRecord(
@@ -99,7 +103,9 @@ class FuelModelTests(TestCase):
         )
 
         history = list(
-            FuelRecord.objects.filter(motorcycle=self.motorcycle).order_by("date", "odometer_km")  # pylint: disable=no-member
+            FuelRecord.objects.filter(motorcycle=self.motorcycle).order_by(
+                "date", "odometer_km"
+            )  # pylint: disable=no-member
         )
         stats = compute_average_consumption_km_per_liter(history)
         self.assertIsNotNone(stats)

@@ -14,20 +14,50 @@
   </header>
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-5" role="list" aria-label="Indicadores consolidados">
-    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" role="listitem">
+    <article class="glass-card-tight p-6" role="listitem">
       <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Total de combustível</p>
       <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ fuel_total }}</p>
       <p class="text-sm text-on-surface-variant">{{ fuel_records_count }} registros</p>
     </article>
-    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" role="listitem">
+    <article class="glass-card-tight p-6" role="listitem">
       <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Total de manutenção</p>
       <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ maintenance_total }}</p>
       <p class="text-sm text-on-surface-variant">{{ maintenance_records_count }} registros</p>
     </article>
-    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" role="listitem">
-      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Média do odômetro</p>
-      <p class="mt-2 text-3xl font-extrabold tracking-tight">{% if avg_odometer_km %}{{ avg_odometer_km|floatformat:0 }} km{% else %}-{% endif %}</p>
-      <p class="text-sm text-on-surface-variant">Média dos registros de abastecimento</p>
+    <article class="glass-card-tight p-6" role="listitem">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Custo por km (CPK)</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">
+        {% if cpk %}R$ {{ cpk }}{% else %}-{% endif %}
+      </p>
+      <p class="text-sm text-on-surface-variant">
+        {% if total_km %}{{ total_km }} km considerados{% else %}Sem distância suficiente{% endif %}
+      </p>
+    </article>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5" role="list" aria-label="Custos anuais">
+    <article class="glass-card-tight p-6" role="listitem">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Total de taxas anuais</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ annual_fees_total }}</p>
+      <p class="text-sm text-on-surface-variant">{{ annual_fees_count }} registros</p>
+    </article>
+    <article class="glass-card-tight p-6" role="listitem">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Total de prêmios de seguro</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ insurance_premiums_total }}</p>
+      <p class="text-sm text-on-surface-variant">{{ insurance_policies_count }} apólices</p>
+    </article>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5" role="list" aria-label="Custos de pneus">
+    <article class="glass-card-tight p-6" role="listitem">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Total de pneus</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ tires_total }}</p>
+      <p class="text-sm text-on-surface-variant">{{ tires_records_count }} registros</p>
+    </article>
+    <article class="glass-card-tight p-6" role="listitem">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Custo total consolidado</p>
+      <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ total_cost }}</p>
+      <p class="text-sm text-on-surface-variant">Combustível + manutenção + pneus + taxas + seguros</p>
     </article>
   </div>
 
@@ -44,6 +74,10 @@
       <a class="rounded-2xl bg-surface-lowest px-4 py-4 shadow-ambient hover:bg-surface-highest/60" href="{% url 'maintenance:list' %}">
         <strong class="block font-extrabold">Manutenções</strong>
         <small class="block text-sm text-on-surface-variant">Histórico, peças e serviços</small>
+      </a>
+      <a class="rounded-2xl bg-surface-lowest px-4 py-4 shadow-ambient hover:bg-surface-highest/60" href="{% url 'expenses:list' %}">
+        <strong class="block font-extrabold">Taxas & Seguros</strong>
+        <small class="block text-sm text-on-surface-variant">IPVA, DPVAT, licenciamento e renovação</small>
       </a>
     </div>
   </article>

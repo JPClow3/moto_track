@@ -1,8 +1,9 @@
 import os
+from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403,F401 pylint: disable=wildcard-import,unused-wildcard-import
-
-from pathlib import Path
 
 DEBUG = False
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -25,17 +26,23 @@ X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 STORAGES = {
-	"default": {
-		"BACKEND": "django.core.files.storage.FileSystemStorage",
-	},
-	"staticfiles": {
-		"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
-	},
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
 }
 
 # Railway: persist user-uploaded media by mounting a volume (e.g. at /data).
 # Set RAILWAY_VOLUME_MOUNT_PATH to the mount point (defaults to /data).
 MEDIA_ROOT = Path(os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "/data")) / "media"
+
+# Fail fast if an insecure SECRET_KEY is used in production.
+if SECRET_KEY.startswith("django-insecure-") or len(SECRET_KEY) < 50:  # noqa: F405
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be a long, random value (>= 50 chars) in production."
+    )
 
 
 def _parse_hosts(value: str) -> list[str]:
