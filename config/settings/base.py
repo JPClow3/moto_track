@@ -118,6 +118,13 @@ LOGOUT_REDIRECT_URL = "account_login"
 
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@motoapp.local")
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
 
 SITE_ID = env.int("DJANGO_SITE_ID", default=1)
 
@@ -131,7 +138,13 @@ CRISPY_TEMPLATE_PACK = "tailwind"
 
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
-ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_VERIFICATION = env("ACCOUNT_EMAIL_VERIFICATION", default="mandatory")
+ACCOUNT_CONFIRM_EMAIL_ON_GET = env.bool("ACCOUNT_CONFIRM_EMAIL_ON_GET", default=True)
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = env(
+    "ACCOUNT_DEFAULT_HTTP_PROTOCOL",
+    default="http" if DEBUG else "https",
+)
 ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_RATE_LIMITS = {
     "login_failed": "5/m",
