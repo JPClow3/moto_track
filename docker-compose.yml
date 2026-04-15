@@ -45,7 +45,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: ${DATABASE_URL_DOCKER}
+      DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/motoapp}
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DJANGO_DEBUG: "1"
 
