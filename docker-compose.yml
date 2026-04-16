@@ -25,7 +25,7 @@ x-web: &web_common
     context: .
     dockerfile: Dockerfile
   environment:
-    DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/motoapp}
+    DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}
   depends_on:
     db:
       condition: service_healthy
@@ -45,7 +45,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/motoapp}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DJANGO_DEBUG: "1"
 
@@ -60,10 +60,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/motoapp}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?missing_DJANGO_SECRET_KEY}
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
+      DJANGO_USE_HTTPS: ${DJANGO_USE_HTTPS:-false}
+      ACCOUNT_EMAIL_VERIFICATION: "mandatory"
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:?missing_AWS_STORAGE_BUCKET_NAME}
       AWS_S3_REGION_NAME: ${AWS_S3_REGION_NAME:-us-east-1}
