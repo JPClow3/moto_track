@@ -68,8 +68,11 @@ class MaintenanceRecord(TimeStampedModel):
         ordering = ["-date", "-odometer_km"]
 
     def __str__(self) -> str:
-        # pylint: disable=no-member
-        return f"{self.motorcycle.name} - {self.get_maintenance_type_display()}"
+        try:
+            maintenance_label = MaintenanceType(self.maintenance_type).label
+        except ValueError:
+            maintenance_label = self.maintenance_type
+        return f"{self.motorcycle.name} - {maintenance_label}"
 
     @property
     def computed_next_change_km(self):
