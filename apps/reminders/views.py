@@ -8,6 +8,7 @@ from django.utils import timezone
 from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.exports import parse_date_param
 from apps.core.pagination import paginate
+from apps.core.ui import get_density, per_page_for_density
 
 from .forms import ReminderForm
 from .models import Reminder, TriggerType
@@ -26,7 +27,8 @@ def reminder_list_view(request):
         .select_related("motorcycle")
         .order_by("reference_date", "reference_km")
     )
-    paged = paginate(request, active_qs, per_page=50)
+    density = get_density(request)
+    paged = paginate(request, active_qs, per_page=per_page_for_density(density))
     active_reminders = list(paged.items)
     inactive_reminders = Reminder.objects.filter(
         motorcycle__owner=request.user, motorcycle__is_active=True, is_active=False
@@ -40,6 +42,7 @@ def reminder_list_view(request):
         "active_reminders": active_with_status,
         "page_obj": paged.page,
         "inactive_reminders": inactive_reminders,
+        "density": density,
     }
     return render(request, "reminders/list.html", context)
 

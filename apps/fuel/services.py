@@ -4,10 +4,11 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
 
+from django.utils import timezone
 from django.db.models import QuerySet
 from djmoney.money import Money
 
-from .models import FuelRecord
+from .models import FuelPreference, FuelRecord
 
 
 @dataclass(frozen=True)
@@ -203,3 +204,41 @@ def compute_station_rankings(records: Iterable[FuelRecord]) -> list[StationRanki
 
 
 ## NOTE: Station ranking helpers are defined once above.
+
+
+def best_fuel_preference(*, user, motorcycle=None) -> FuelPreference | None:
+    qs = FuelPreference.objects.filter(owner=user).order_by("-use_count", "-last_used_at", "-updated_at")
+    if motorcycle:
+        qs = qs.filter(motorcycle__in=[motorcycle, None])
+    return qs.first()
+
+
+def remember_fuel_preference(record: FuelRecord) -> FuelPreference:
+    station_name = record.station_name or (record.station.name if record.station else "")
+    preference = (
+        FuelPreference.objects.filter(
+            owner=record.motorcycle.owner,
+            motorcycle=record.motorcycle,
+            station=record.station,
+            fuel_grade=record.fuel_grade,
+            fuel_type=record.fuel_type,
+            station_name=station_name,
+        )
+        .order_by("-updated_at")
+        .first()
+    )
+    if preference is None:
+        preference = FuelPreference(
+            owner=record.motorcycle.owner,
+            motorcycle=record.motorcycle,
+            station=record.station,
+            fuel_grade=record.fuel_grade,
+            fuel_type=record.fuel_type,
+            station_name=station_name,
+        )
+    preference.price_per_liter = record.price_per_liter
+    preference.tank_full = record.tank_full
+    preference.use_count = int(preference.use_count or 0) + 1
+    preference.last_used_at = timezone.now()
+    preference.save()
+    return preference

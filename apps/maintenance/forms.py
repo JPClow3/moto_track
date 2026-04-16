@@ -5,6 +5,7 @@ from django import forms
 from django.utils import timezone
 
 from apps.core.sanitizers import sanitize_text
+from apps.core.validation import add_form_errors, validate_not_future, validate_odometer_sequence
 from apps.garage.models import Motorcycle
 
 from .models import MaintenancePart, MaintenanceRecord
@@ -33,6 +34,10 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
         ]
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
+            "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "cost": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
+            "interval_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "interval_days": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "description": forms.Textarea(attrs={"rows": 2}),
             "parts_used": forms.Textarea(attrs={"rows": 2}),
         }
@@ -60,9 +65,27 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
     def clean_parts_used(self):
         return sanitize_text(self.cleaned_data.get("parts_used"))
 
+    def clean(self):
+        cleaned_data = super().clean()
+        add_form_errors(self, validate_not_future(field_name="date", value=cleaned_data.get("date")))
+        add_form_errors(
+            self,
+            validate_odometer_sequence(
+                motorcycle=cleaned_data.get("motorcycle"),
+                event_date=cleaned_data.get("date"),
+                odometer_km=cleaned_data.get("odometer_km"),
+                exclude_model="maintenance.MaintenanceRecord",
+                exclude_pk=self.instance.pk,
+            ),
+        )
+        return cleaned_data
+
 
 class MaintenancePartForm(forms.ModelForm):
     class Meta:
         model = MaintenancePart
         fields = ["name", "manufacturer", "part_type", "sku", "price", "notes"]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+        widgets = {
+            "price": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
+            "notes": forms.Textarea(attrs={"rows": 2}),
+        }

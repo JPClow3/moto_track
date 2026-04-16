@@ -5,6 +5,7 @@ from apps.garage.models import Motorcycle
 from django.utils import timezone
 
 from apps.core.sanitizers import sanitize_text
+from apps.core.validation import add_form_errors, validate_not_future, validate_odometer_sequence
 
 from .models import TirePressureRecord, TireProduct, TireRecord
 
@@ -28,6 +29,11 @@ class TireRecordForm(forms.ModelForm):
         ]
         widgets = {
             "installed_at": forms.DateInput(attrs={"type": "date"}),
+            "installed_odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "cost": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
+            "purchase_price": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
+            "wear_percent": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "estimated_change_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
         }
 
     def __init__(self, *args, user=None, **kwargs):
@@ -45,12 +51,32 @@ class TireRecordForm(forms.ModelForm):
             if field.field.required:
                 field.field.widget.attrs["aria-required"] = "true"
 
+    def clean(self):
+        cleaned_data = super().clean()
+        add_form_errors(self, validate_not_future(field_name="installed_at", value=cleaned_data.get("installed_at")))
+        errors = validate_odometer_sequence(
+            motorcycle=cleaned_data.get("motorcycle"),
+            event_date=cleaned_data.get("installed_at"),
+            odometer_km=cleaned_data.get("installed_odometer_km"),
+            exclude_model="tires.TireRecord",
+            exclude_pk=self.instance.pk,
+        )
+        if "odometer_km" in errors:
+            errors["installed_odometer_km"] = errors.pop("odometer_km")
+        add_form_errors(self, errors)
+        return cleaned_data
+
 
 class TirePressureRecordForm(forms.ModelForm):
     class Meta:
         model = TirePressureRecord
         fields = ["motorcycle", "date", "psi_front", "psi_rear", "notes"]
-        widgets = {"date": forms.DateInput(attrs={"type": "date"}), "notes": forms.Textarea(attrs={"rows": 2})}
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date"}),
+            "psi_front": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "psi_rear": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "notes": forms.Textarea(attrs={"rows": 2}),
+        }
 
     def __init__(self, *args, user=None, initial_motorcycle=None, **kwargs):
         super().__init__(*args, **kwargs)

@@ -78,3 +78,28 @@ class FuelRecord(TimeStampedModel):
             errors["price_per_liter"] = "O preço por litro deve ser maior que zero."
         if errors:
             raise ValidationError(errors)
+
+
+class FuelPreference(TimeStampedModel, UserOwnedModel):
+    motorcycle = models.ForeignKey(
+        Motorcycle, on_delete=models.CASCADE, null=True, blank=True, related_name="fuel_preferences"
+    )
+    station = models.ForeignKey(
+        FuelStation, on_delete=models.SET_NULL, null=True, blank=True, related_name="fuel_preferences"
+    )
+    fuel_grade = models.ForeignKey(
+        FuelGrade, on_delete=models.SET_NULL, null=True, blank=True, related_name="fuel_preferences"
+    )
+    fuel_type = models.CharField(max_length=32, choices=FuelType.choices, default=FuelType.GASOLINE)
+    station_name = models.CharField(max_length=120, blank=True)
+    price_per_liter = MoneyField(max_digits=8, decimal_places=3, null=True, blank=True)
+    tank_full = models.BooleanField(default=True)
+    use_count = models.PositiveIntegerField(default=0)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-last_used_at", "-use_count", "-updated_at"]
+
+    def __str__(self) -> str:
+        label = self.station.name if self.station else self.station_name or self.get_fuel_type_display()
+        return f"{self.owner} - {label}"

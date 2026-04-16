@@ -5,6 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.core.ui import get_density, per_page_for_density
+
 from .forms import AnnualFeeForm, InsuranceClaimForm, InsurancePolicyForm
 from .models import AnnualFee, InsuranceClaim, InsurancePolicy
 from .services import (
@@ -19,6 +21,8 @@ from .services import (
 def expenses_list_view(request):
     q = (request.GET.get("q") or "").strip()
     motorcycle_id = request.GET.get("motorcycle") or ""
+    density = get_density(request)
+    limit = per_page_for_density(density)
 
     fees_qs = (
         AnnualFee.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
@@ -42,9 +46,10 @@ def expenses_list_view(request):
         )
 
     context = {
-        "fees": list(fees_qs[:50]),
-        "policies": list(policies_qs[:50]),
+        "fees": list(fees_qs[:limit]),
+        "policies": list(policies_qs[:limit]),
         "filters": {"q": q, "motorcycle": motorcycle_id},
+        "density": density,
     }
     return render(request, "expenses/list.html", context)
 

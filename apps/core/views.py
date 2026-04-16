@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -9,11 +10,13 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from djmoney.money import Money
 
-from .forms import OdometerOverrideForm
+from .forms import OdometerOverrideForm, OnboardingForm
 from .active_motorcycle import get_active_motorcycle, set_active_motorcycle
 from apps.core.exports import safe_next_url
+from apps.core.undo import consume_undo_token
 from apps.fuel.models import FuelRecord
 from apps.fuel.services import compute_average_consumption_km_per_liter
+from apps.garage.models import Motorcycle
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.reminders.models import Reminder
 from apps.reminders.services import evaluate_reminder
@@ -33,6 +36,8 @@ def dashboard_view(request):
 		)
 
 	motorcycle = get_active_motorcycle(request)
+	if not motorcycle:
+		return redirect("onboarding")
 
 	if not motorcycle:
 		context = {
@@ -369,3 +374,89 @@ def quick_add_selector_view(request):
 @login_required
 def offline_view(request):
 	return render(request, "offline.html")
+
+
+@login_required
+def undo_action_view(request, token: str):
+	if request.method != "POST":
+		return redirect("dashboard")
+
+	obj, error = consume_undo_token(request, token=token)
+	if error:
+		messages.error(request, error)
+		return redirect(request.POST.get("next") or "dashboard")
+
+	if obj is None:
+		messages.error(request, "Registro não encontrado para desfazer.")
+		return redirect(request.POST.get("next") or "dashboard")
+
+	owner = getattr(getattr(obj, "motorcycle", None), "owner", None)
+	if owner != request.user:
+		messages.error(request, "Você não pode desfazer este registro.")
+		return redirect("dashboard")
+
+	label = str(obj)
+	obj.delete()
+	messages.success(request, f"Ação desfeita: {label}.")
+	return redirect(request.POST.get("next") or "dashboard")
+
+
+@login_required
+def onboarding_view(request):
+	if get_active_motorcycle(request):
+		return redirect("dashboard")
+
+	if request.method == "POST":
+		form = OnboardingForm(request.POST)
+		if form.is_valid():
+			data = form.cleaned_data
+			motorcycle = Motorcycle.objects.create(
+				owner=request.user,
+				name=data["motorcycle_name"],
+				brand=data["brand"],
+				model=data["model"],
+				year=data["year"],
+				odometer_override_km=data["current_odometer_km"],
+				odometer_override_at=timezone.now(),
+				current_odometer_km=data["current_odometer_km"],
+				current_odometer_updated_at=timezone.now(),
+				riding_profile=data.get("riding_profile") or "auto",
+			)
+			price_per_liter = Decimal("0")
+			if data["fuel_liters"]:
+				price_per_liter = (data["fuel_total_price"] / data["fuel_liters"]).quantize(Decimal("0.001"))
+			FuelRecord.objects.create(
+				motorcycle=motorcycle,
+				date=data["fuel_date"],
+				odometer_km=data["fuel_odometer_km"],
+				liters=data["fuel_liters"],
+				total_price=data["fuel_total_price"],
+				price_per_liter=price_per_liter,
+				tank_full=True,
+			)
+			MaintenanceRecord.objects.create(
+				motorcycle=motorcycle,
+				maintenance_type=MaintenanceType.REVIEW,
+				date=data["service_date"],
+				odometer_km=data["service_odometer_km"],
+				cost=data["service_cost"],
+				description="Serviço inicial registrado no onboarding.",
+			)
+			for position, label in [(TirePosition.FRONT, data["front_tire"]), (TirePosition.REAR, data["rear_tire"])]:
+				TireRecord.objects.create(
+					motorcycle=motorcycle,
+					position=position,
+					brand_model=label,
+					installed_at=data["tire_installed_at"],
+					installed_odometer_km=data["tire_odometer_km"],
+					cost=Decimal("0"),
+					wear_percent=0,
+					is_active=True,
+				)
+			set_active_motorcycle(request, motorcycle.id)
+			messages.success(request, "Onboarding concluído. Sua moto já está pronta para acompanhar.")
+			return redirect("dashboard")
+	else:
+		form = OnboardingForm()
+
+	return render(request, "core/onboarding.html", {"form": form})

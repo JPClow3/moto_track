@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.core.pagination import paginate
 from apps.core.exports import parse_date_param
+from apps.core.ui import get_density, per_page_for_density
 from apps.reminders.models import Reminder, TriggerType
 
 from .forms import DocumentUploadForm
@@ -31,7 +32,8 @@ def list_documents(request):
         form = DocumentUploadForm(user=request.user)
 
     documents = documents_qs.order_by("-created_at", "name")
-    paged = paginate(request, documents, per_page=50)
+    density = get_density(request)
+    paged = paginate(request, documents, per_page=per_page_for_density(density))
     pinned_manual = documents_qs.filter(document_type=DocumentType.MANUAL).order_by("-created_at").first()
     insurance_alert = documents_qs.filter(document_type=DocumentType.INSURANCE).order_by("-created_at").first()
     category_counts = dict(
@@ -72,6 +74,7 @@ def list_documents(request):
         "insurance_alert": insurance_alert,
         "category_counts": category_counts,
         "category_cards": category_cards,
+        "density": density,
     }
     return render(request, "documents/list.html", context)
 

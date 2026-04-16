@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.pagination import paginate
 from apps.core.exports import parse_date_param
+from apps.core.ui import get_density, per_page_for_density
 
 from .forms import TirePressureRecordForm, TireRecordForm
 from .models import TirePosition, TirePressureRecord, TireProduct, TireRecord
@@ -89,7 +90,8 @@ def tire_list_view(request):
         pressure_records = pressure_records.filter(motorcycle_id=motorcycle_id)
     pressure_recent = list(pressure_records.order_by("-date", "-created_at")[:5])
 
-    paged = paginate(request, records_qs, per_page=50)
+    density = get_density(request)
+    paged = paginate(request, records_qs, per_page=per_page_for_density(density))
     return render(
         request,
         "tires/list.html",
@@ -102,6 +104,7 @@ def tire_list_view(request):
             "has_attention": attention,
             "pressure_form": pressure_form,
             "pressure_recent": pressure_recent,
+            "density": density,
         },
     )
 

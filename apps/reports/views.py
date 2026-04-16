@@ -1,76 +1,107 @@
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Max, Min, Sum
-from django.shortcuts import render
-from djmoney.money import Money
+from django.shortcuts import redirect, render
 
-from apps.expenses.models import AnnualFee, InsurancePolicy
-from apps.fuel.models import FuelRecord
-from apps.maintenance.models import MaintenanceRecord
-from apps.tires.models import TireRecord
-
-
-def _amount_to_float(value) -> float:
-	amount = getattr(value, "amount", value)
-	try:
-		return float(amount or 0)
-	except (TypeError, ValueError):
-		return 0.0
+from apps.core.active_motorcycle import get_active_motorcycle
+from apps.core.exports import parse_date_param
+from apps.core.pagination import paginate
+from apps.core.severity import SEVERITY_LABELS
+from apps.core.ui import get_density, per_page_for_density
+from apps.reports.export import detailed_csv_response, sale_pdf_response
+from apps.reports.services import (
+    cost_summary,
+    health_score,
+    intelligent_alerts,
+    maintenance_recommendations,
+    monthly_real_costs,
+    period_comparisons,
+    timeline_events,
+)
 
 
 @login_required
 def report_overview_view(request):
-	fuel_qs = FuelRecord.objects.filter(
-		motorcycle__owner=request.user, motorcycle__is_active=True
-	)  # pylint: disable=no-member
-	maintenance_qs = MaintenanceRecord.objects.filter(
-		motorcycle__owner=request.user, motorcycle__is_active=True
-	)  # pylint: disable=no-member
-	tires_qs = TireRecord.objects.filter(
-		motorcycle__owner=request.user, motorcycle__is_active=True
-	)  # pylint: disable=no-member
-	fees_qs = AnnualFee.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
-	policies_qs = InsurancePolicy.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
+    motorcycle = get_active_motorcycle(request)
+    if not motorcycle:
+        return redirect("onboarding")
 
-	fuel_total = fuel_qs.aggregate(total=Sum("total_price"))["total"] or Money(0, "BRL")
-	maintenance_total = maintenance_qs.aggregate(total=Sum("cost"))["total"] or Money(0, "BRL")
-	tires_total = tires_qs.aggregate(total=Sum("cost"))["total"] or Money(0, "BRL")
-	annual_fees_total = fees_qs.aggregate(total=Sum("amount"))["total"] or Money(0, "BRL")
-	insurance_premiums_total = policies_qs.aggregate(total=Sum("premium"))["total"] or Money(0, "BRL")
+    summary = cost_summary(user=request.user, motorcycle=motorcycle)
+    comparisons = period_comparisons(user=request.user, motorcycle=motorcycle)
+    health = health_score(motorcycle=motorcycle)
+    alerts = intelligent_alerts(user=request.user, motorcycle=motorcycle)[:6]
+    monthly_costs = monthly_real_costs(user=request.user, motorcycle=motorcycle)
+    recommendations = maintenance_recommendations(motorcycle=motorcycle)
 
-	spans = fuel_qs.values("motorcycle_id").annotate(min_odo=Min("odometer_km"), max_odo=Max("odometer_km"))
-	total_km = 0
-	for row in spans:
-		if row["min_odo"] is None or row["max_odo"] is None:
-			continue
-		total_km += max(int(row["max_odo"]) - int(row["min_odo"]), 0)
+    context = {
+        "summary": summary,
+        "documents_total": summary.annual_fees + summary.insurance,
+        "comparisons": comparisons,
+        "health": health,
+        "alerts": alerts,
+        "monthly_costs": monthly_costs,
+        "recommendations": recommendations,
+        "severity_labels": SEVERITY_LABELS,
+        # Backwards-compatible context used by existing tests/templates.
+        "fuel_total": summary.fuel,
+        "maintenance_total": summary.maintenance,
+        "tires_total": summary.tires,
+        "annual_fees_total": summary.annual_fees,
+        "insurance_premiums_total": summary.insurance,
+        "total_cost": summary.total,
+        "total_km": summary.distance_km,
+        "cpk": summary.cost_per_km,
+        "fuel_records_count": motorcycle.fuel_records.count(),
+        "maintenance_records_count": motorcycle.maintenance_records.count(),
+        "tires_records_count": motorcycle.tire_records.count(),
+        "annual_fees_count": motorcycle.annual_fees.count(),
+        "insurance_policies_count": motorcycle.insurance_policies.count(),
+    }
+    return render(request, "reports/overview.html", context)
 
-	currency = getattr(fuel_total, "currency", "BRL")
-	total_cost_amount = (
-		_amount_to_float(fuel_total)
-		+ _amount_to_float(maintenance_total)
-		+ _amount_to_float(tires_total)
-		+ _amount_to_float(annual_fees_total)
-		+ _amount_to_float(insurance_premiums_total)
-	)
-	total_cost = Money(total_cost_amount, currency)
-	cpk = None
-	if total_km > 0:
-		cpk = round(float(total_cost.amount) / total_km, 3)
 
-	context = {
-		"fuel_total": fuel_total,
-		"maintenance_total": maintenance_total,
-		"tires_total": tires_total,
-		"annual_fees_total": annual_fees_total,
-		"insurance_premiums_total": insurance_premiums_total,
-		"total_cost": total_cost,
-		"total_km": total_km,
-		"cpk": cpk,
-		"avg_odometer_km": fuel_qs.aggregate(avg=Avg("odometer_km"))["avg"],
-		"fuel_records_count": fuel_qs.count(),
-		"maintenance_records_count": maintenance_qs.count(),
-		"tires_records_count": tires_qs.count(),
-		"annual_fees_count": fees_qs.count(),
-		"insurance_policies_count": policies_qs.count(),
-	}
-	return render(request, "reports/overview.html", context)
+@login_required
+def report_timeline_view(request):
+    motorcycle = get_active_motorcycle(request)
+    if not motorcycle:
+        return redirect("onboarding")
+
+    start = parse_date_param(request.GET.get("start"))
+    end = parse_date_param(request.GET.get("end"))
+    source = (request.GET.get("source") or "").strip()
+    severity = (request.GET.get("severity") or "").strip()
+    density = get_density(request)
+    events = timeline_events(
+        user=request.user,
+        motorcycle=motorcycle,
+        start=start,
+        end=end,
+        source=source,
+        severity=severity,
+    )
+    paged = paginate(request, events, per_page=per_page_for_density(density))
+    return render(
+        request,
+        "reports/timeline.html",
+        {
+            "events": paged.items,
+            "page_obj": paged.page,
+            "filters": {"start": request.GET.get("start") or "", "end": request.GET.get("end") or "", "source": source, "severity": severity},
+            "density": density,
+        },
+    )
+
+
+@login_required
+def detailed_export_view(request):
+    return detailed_csv_response(
+        user=request.user,
+        start=parse_date_param(request.GET.get("start")),
+        end=parse_date_param(request.GET.get("end")),
+    )
+
+
+@login_required
+def sale_pdf_export_view(request):
+    motorcycle = get_active_motorcycle(request)
+    if not motorcycle:
+        return redirect("onboarding")
+    return sale_pdf_response(motorcycle=motorcycle)

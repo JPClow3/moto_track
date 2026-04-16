@@ -54,7 +54,12 @@
           {% endfor %}
         </select>
       </div>
-      <button type="submit" class="ui-btn-primary">Aplicar</button>
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" class="ui-btn-primary">Aplicar</button>
+        <a class="ui-btn-secondary" href="?density={% if density == 'compact' %}comfortable{% else %}compact{% endif %}&q={{ filters.q }}&motorcycle={{ filters.motorcycle }}">
+          {% if density == 'compact' %}Modo conforto{% else %}Modo compacto{% endif %}
+        </a>
+      </div>
     </form>
   </article>
 
@@ -257,7 +262,7 @@
           <tbody>
             {% for record in records %}
               <tr class="border-t border-outline-variant/10">
-                <td class="py-3"><strong class="font-extrabold">{{ record.date|date:"d/m/Y" }}</strong></td>
+                <td class="{% if density == 'compact' %}py-2{% else %}py-3{% endif %}"><strong class="font-extrabold">{{ record.date|date:"d/m/Y" }}</strong></td>
                 <td>{{ record.motorcycle.name }}</td>
                 <td>{{ record.odometer_km }} km</td>
                 <td>{{ record.liters }} L</td>

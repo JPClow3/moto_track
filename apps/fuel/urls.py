@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
 	fuel_catalog_view,
+	fuel_defaults_view,
 	fuel_export_view,
 	fuel_grade_create_view,
 	fuel_grade_delete_view,
@@ -19,6 +20,7 @@ app_name = "fuel"
 urlpatterns = [
 	path("", fuel_list_view, name="list"),
 	path("export/", fuel_export_view, name="export"),
+	path("defaults/", fuel_defaults_view, name="defaults"),
 	path("catalogs/", fuel_catalog_view, name="catalogs"),
 	path("stations/new/", fuel_station_create_view, name="station_create"),
 	path("stations/<int:pk>/edit/", fuel_station_update_view, name="station_update"),

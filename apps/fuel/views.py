@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from djmoney.money import Money
@@ -13,10 +13,12 @@ from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.forms import configure_form_accessibility
 from apps.core.exports import parse_date_param, safe_next_url
 from apps.core.pagination import paginate
+from apps.core.ui import get_density, per_page_for_density
+from apps.core.undo import create_undo_token
 
 from .forms import FuelGradeForm, FuelRecordQuickForm, FuelRecordRepeatForm, FuelStationForm
-from .models import FuelGrade, FuelRecord, FuelStation
-from .services import compute_station_rankings, detect_fuel_anomalies
+from .models import FuelGrade, FuelPreference, FuelRecord, FuelStation
+from .services import best_fuel_preference, compute_station_rankings, detect_fuel_anomalies, remember_fuel_preference
 from apps.reminders.models import Reminder
 from apps.reminders.services import list_due_reminders
 from .export import build_export
@@ -60,7 +62,8 @@ def fuel_list_view(request):
     if q:
         records_qs = records_qs.filter(Q(station_name__icontains=q) | Q(notes__icontains=q))
 
-    paged = paginate(request, records_qs, per_page=50)
+    density = get_density(request)
+    paged = paginate(request, records_qs, per_page=per_page_for_density(density))
     records = paged.items
     now = timezone.now()
     month_total = records_qs.filter(date__year=now.year, date__month=now.month).aggregate(total=Sum("total_price"))[
@@ -168,6 +171,7 @@ def fuel_list_view(request):
         "cost_ma_last": cost_ma[-1] if cost_ma else None,
         "next_recommended_km": next_recommended_km,
         "filters": {"q": q, "motorcycle": motorcycle_id or ""},
+        "density": density,
     }
     return render(request, "fuel/list.html", context)
 
@@ -371,6 +375,13 @@ def fuel_quick_create_view(request):
                 if warnings:
                     messages.warning(request, " • ".join(warnings))
             record = form.save()
+            remember_fuel_preference(record)
+            create_undo_token(
+                request,
+                model_label="fuel.FuelRecord",
+                object_id=record.pk,
+                label="Desfazer abastecimento",
+            )
             today = timezone.localdate()
             due = list_due_reminders(
                 reminders=list(Reminder.objects.filter(motorcycle=record.motorcycle, is_active=True).order_by("title")[:10]),
@@ -403,6 +414,18 @@ def fuel_quick_create_view(request):
         initial = {"next": request.GET.get("next") or ""}
         if active_motorcycle:
             initial["motorcycle"] = active_motorcycle
+            pref = best_fuel_preference(user=request.user, motorcycle=active_motorcycle)
+            if pref:
+                initial.update(
+                    {
+                        "station": pref.station,
+                        "fuel_grade": pref.fuel_grade,
+                        "fuel_type": pref.fuel_type,
+                        "tank_full": pref.tank_full,
+                        "station_name": pref.station_name,
+                        "price_per_liter": pref.price_per_liter,
+                    }
+                )
             if prefill == "last":
                 last = (
                     FuelRecord.objects.filter(motorcycle=active_motorcycle)
@@ -487,6 +510,13 @@ def fuel_repeat_last_view(request):
                 if warnings:
                     messages.warning(request, " • ".join(warnings))
             record = form.save()
+            remember_fuel_preference(record)
+            create_undo_token(
+                request,
+                model_label="fuel.FuelRecord",
+                object_id=record.pk,
+                label="Desfazer abastecimento",
+            )
             today = timezone.localdate()
             due = list_due_reminders(
                 reminders=list(Reminder.objects.filter(motorcycle=record.motorcycle, is_active=True).order_by("title")[:10]),
@@ -542,3 +572,27 @@ def fuel_repeat_last_view(request):
     }
     configure_form_accessibility(form)
     return render(request, "fuel/partials/quick_form.html", context, status=status)
+
+
+@login_required
+def fuel_defaults_view(request):
+    station_id = request.GET.get("station") or None
+    fuel_grade_id = request.GET.get("fuel_grade") or None
+    fuel_type = request.GET.get("fuel_type") or ""
+    qs = FuelPreference.objects.filter(owner=request.user)
+    if station_id:
+        qs = qs.filter(station_id=station_id)
+    if fuel_grade_id:
+        qs = qs.filter(fuel_grade_id=fuel_grade_id)
+    if fuel_type:
+        qs = qs.filter(fuel_type=fuel_type)
+    pref = qs.order_by("-use_count", "-last_used_at", "-updated_at").first()
+    if not pref:
+        return JsonResponse({})
+    return JsonResponse(
+        {
+            "price_per_liter": str(pref.price_per_liter.amount) if pref.price_per_liter else "",
+            "tank_full": pref.tank_full,
+            "station_name": pref.station_name,
+        }
+    )

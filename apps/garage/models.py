@@ -8,6 +8,14 @@ from djmoney.models.fields import MoneyField
 from apps.core.models import TimeStampedModel, UserOwnedModel
 
 
+class RidingProfile(models.TextChoices):
+    AUTO = "auto", "Automático"
+    URBAN = "urban", "Urbano"
+    MIXED = "mixed", "Misto"
+    HIGHWAY = "highway", "Estrada"
+    SEVERE = "severe", "Uso severo"
+
+
 class Motorcycle(TimeStampedModel, UserOwnedModel):
     name = models.CharField(max_length=120)
     brand = models.CharField(max_length=80)
@@ -28,6 +36,7 @@ class Motorcycle(TimeStampedModel, UserOwnedModel):
     current_odometer_updated_at = models.DateTimeField(null=True, blank=True)
 
     previous_owners = models.PositiveSmallIntegerField(null=True, blank=True)
+    riding_profile = models.CharField(max_length=16, choices=RidingProfile.choices, default=RidingProfile.AUTO)
     purchase_price = MoneyField(
         max_digits=12,
         decimal_places=2,

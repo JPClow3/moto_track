@@ -53,5 +53,31 @@
         <button type="submit" class="primary-btn">{{ submit_label }}</button>
       </div>
     </form>
+    <script>
+      (() => {
+        const root = document.currentScript.closest('[role="document"]');
+        if (!root) return;
+        const station = root.querySelector("#id_station");
+        const grade = root.querySelector("#id_fuel_grade");
+        const type = root.querySelector("#id_fuel_type");
+        const price = root.querySelector("#id_price_per_liter_0, #id_price_per_liter");
+        const tankFull = root.querySelector("#id_tank_full");
+        const stationName = root.querySelector("#id_station_name");
+        async function loadDefaults() {
+          const params = new URLSearchParams();
+          if (station && station.value) params.set("station", station.value);
+          if (grade && grade.value) params.set("fuel_grade", grade.value);
+          if (type && type.value) params.set("fuel_type", type.value);
+          if (!params.toString()) return;
+          const response = await fetch("{% url 'fuel:defaults' %}?" + params.toString(), {headers: {"Accept": "application/json"}});
+          if (!response.ok) return;
+          const data = await response.json();
+          if (price && data.price_per_liter && !price.value) price.value = data.price_per_liter;
+          if (tankFull && typeof data.tank_full === "boolean") tankFull.checked = data.tank_full;
+          if (stationName && data.station_name && !stationName.value) stationName.value = data.station_name;
+        }
+        [station, grade, type].forEach((element) => element && element.addEventListener("change", loadDefaults));
+      })();
+    </script>
   </div>
 </div>

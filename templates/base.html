@@ -152,14 +152,6 @@
       </header>
 
       <main id="main-content" class="mx-auto w-[min(1240px,93%)] pt-6" tabindex="-1">
-        {% if messages %}
-          <section aria-label="Mensagens do sistema" class="space-y-2">
-            {% for message in messages %}
-              <div class="rounded-xl bg-surface-lowest px-4 py-3 text-sm font-semibold text-on-surface shadow-ambient">{{ message }}</div>
-            {% endfor %}
-          </section>
-        {% endif %}
-
         {% block content %}{% endblock %}
       </main>
 
@@ -183,6 +175,24 @@
   </div>
 
   <div id="quick-form-root" aria-live="polite"></div>
+  {% if messages %}
+    <div class="snackbar flex items-center justify-between gap-3" role="status" aria-live="polite">
+      <div class="min-w-0">
+        {% for message in messages %}
+          <p class="truncate">{{ message }}</p>
+        {% endfor %}
+      </div>
+      {% if snackbar_undo %}
+        <form method="post" action="{% url 'undo_action' snackbar_undo.token %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}" />
+          <button class="rounded-xl bg-on-primary px-3 py-2 text-[10px] font-extrabold uppercase tracking-widest text-inverse-surface" type="submit">
+            Desfazer
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
   <script>
     let previousFocusedElement = null;
 

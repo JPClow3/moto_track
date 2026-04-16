@@ -1,0 +1,3 @@
+<span class="severity-badge severity-{{ severity|default:'neutral' }}">
+  {% if label %}{{ label }}{% else %}{{ severity|default:"Info" }}{% endif %}
+</span>

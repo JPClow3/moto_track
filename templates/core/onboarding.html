@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Onboarding - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Primeiro uso{% endblock %}
+{% block topbar_title %}Configuração guiada{% endblock %}
+
+{% block content %}
+<section class="space-y-8 pb-10" aria-labelledby="onboarding-title">
+  <header class="space-y-2">
+    <span class="severity-badge severity-info">2 minutos</span>
+    <h2 id="onboarding-title" class="text-3xl font-extrabold tracking-tight">Vamos deixar sua moto pronta</h2>
+    <p class="text-sm text-on-surface-variant">Informe o essencial para ativar custos, alertas e histórico desde o primeiro uso.</p>
+  </header>
+
+  <form method="post" class="data-form rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
+    {% csrf_token %}
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {{ form.motorcycle_name|as_crispy_field }}
+      {{ form.current_odometer_km|as_crispy_field }}
+      {{ form.brand|as_crispy_field }}
+      {{ form.model|as_crispy_field }}
+      {{ form.year|as_crispy_field }}
+      {{ form.riding_profile|as_crispy_field }}
+    </section>
+
+    <section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="md:col-span-2">
+        <h3 class="text-lg font-extrabold tracking-tight">Último abastecimento</h3>
+      </div>
+      {{ form.fuel_date|as_crispy_field }}
+      {{ form.fuel_odometer_km|as_crispy_field }}
+      {{ form.fuel_liters|as_crispy_field }}
+      {{ form.fuel_total_price|as_crispy_field }}
+    </section>
+
+    <section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="md:col-span-2">
+        <h3 class="text-lg font-extrabold tracking-tight">Último serviço e pneus</h3>
+      </div>
+      {{ form.service_date|as_crispy_field }}
+      {{ form.service_odometer_km|as_crispy_field }}
+      {{ form.service_cost|as_crispy_field }}
+      {{ form.tire_installed_at|as_crispy_field }}
+      {{ form.tire_odometer_km|as_crispy_field }}
+      {{ form.front_tire|as_crispy_field }}
+      {{ form.rear_tire|as_crispy_field }}
+    </section>
+
+    <div class="quick-actions-row-split">
+      <span class="text-xs font-semibold text-on-surface-variant">Você poderá editar tudo depois.</span>
+      <button type="submit" class="ui-btn-primary">Concluir onboarding</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

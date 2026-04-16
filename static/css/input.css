@@ -186,6 +186,38 @@
     @apply inline-flex items-center gap-2 rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60;
   }
 
+  .severity-badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest;
+  }
+
+  .severity-critical {
+    @apply bg-error/15 text-error;
+  }
+
+  .severity-warning {
+    @apply bg-warning/15 text-warning;
+  }
+
+  .severity-info {
+    @apply bg-info/15 text-info;
+  }
+
+  .severity-success {
+    @apply bg-success/15 text-success;
+  }
+
+  .severity-neutral {
+    @apply bg-surface-highest text-on-surface-variant;
+  }
+
+  .snackbar {
+    @apply fixed left-1/2 bottom-24 z-[60] w-[min(92vw,560px)] -translate-x-1/2 rounded-2xl bg-inverse-surface px-4 py-3 text-sm font-semibold text-on-primary shadow-ambient;
+  }
+
+  .compact-row {
+    @apply py-2;
+  }
+
   /* Formulários */
   .data-form {
     @apply space-y-5;

@@ -16,6 +16,7 @@ class MotorcycleForm(forms.ModelForm):
             "photo",
             "license_plate",
             "odometer_override_km",
+            "riding_profile",
             "previous_owners",
             "purchase_price",
             "purchase_date",
@@ -24,6 +25,8 @@ class MotorcycleForm(forms.ModelForm):
         widgets = {
             "license_plate": forms.TextInput(attrs={"placeholder": "ABC1D23"}),
             "previous_owners": forms.NumberInput(attrs={"placeholder": "0"}),
+            "odometer_override_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "year": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "purchase_date": forms.DateInput(attrs={"type": "date"}),
             "observations": forms.Textarea(
                 attrs={"placeholder": "Ex.: revisões feitas, detalhes do estado, mods, etc."}
@@ -40,6 +43,7 @@ class MotorcycleForm(forms.ModelForm):
         self.fields["license_plate"].required = False
         self.fields["odometer_override_km"].required = False
         self.fields["previous_owners"].required = False
+        self.fields["riding_profile"].required = False
         self.fields["purchase_price"].required = False
         self.fields["purchase_date"].required = False
         self.fields["observations"].required = False

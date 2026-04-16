@@ -13,6 +13,8 @@ from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.forms import configure_form_accessibility
 from apps.core.exports import parse_date_param, safe_next_url
 from apps.core.pagination import paginate
+from apps.core.ui import get_density, per_page_for_density
+from apps.core.undo import create_undo_token
 from apps.garage.models import Motorcycle
 from apps.reminders.models import Reminder
 from apps.reminders.services import list_due_reminders
@@ -209,7 +211,8 @@ def maintenance_list_view(request):
                 }
             )
 
-    paged = paginate(request, records_qs, per_page=50)
+    density = get_density(request)
+    paged = paginate(request, records_qs, per_page=per_page_for_density(density))
     records = paged.items
     total_cost = records_qs.aggregate(total=Sum("cost"))["total"] or Money(0, "BRL")
     latest_record = records[0] if records else None
@@ -224,6 +227,7 @@ def maintenance_list_view(request):
         "upcoming_tasks": upcoming_tasks,
         "plan_items": plan_items,
         "selected_motorcycle": selected_motorcycle,
+        "density": density,
     }
     return render(request, "maintenance/list.html", context)
 
@@ -304,6 +308,12 @@ def maintenance_quick_create_view(request):
             if parts:
                 for part in parts:
                     MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
+            create_undo_token(
+                request,
+                model_label="maintenance.MaintenanceRecord",
+                object_id=record.pk,
+                label="Desfazer manutenção",
+            )
             today = timezone.localdate()
             due = list_due_reminders(
                 reminders=list(Reminder.objects.filter(motorcycle=record.motorcycle, is_active=True).order_by("title")[:10]),
