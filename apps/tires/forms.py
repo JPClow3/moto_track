@@ -1,11 +1,9 @@
 from django import forms
-
-from apps.garage.models import Motorcycle
-
 from django.utils import timezone
 
 from apps.core.sanitizers import sanitize_text
 from apps.core.validation import add_form_errors, validate_not_future, validate_odometer_sequence
+from apps.garage.models import Motorcycle
 
 from .models import TirePressureRecord, TireProduct, TireRecord
 

@@ -8,8 +8,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from apps.core.forms import configure_form_accessibility
 from apps.core.ui import get_density, per_page_for_density
 
-from .forms import AnnualFeeForm, InsuranceClaimForm, InsurancePolicyForm
 from .export import build_export
+from .forms import AnnualFeeForm, InsuranceClaimForm, InsurancePolicyForm
 from .models import AnnualFee, InsuranceClaim, InsurancePolicy
 from .services import (
     delete_fee_reminder,

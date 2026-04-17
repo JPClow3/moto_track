@@ -211,6 +211,31 @@
     @apply inline-flex items-center justify-center rounded-2xl bg-error px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient hover:opacity-95 active:scale-[0.99] transition;
   }
 
+  .inline-actions {
+    @apply flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .danger-banner {
+    @apply rounded-2xl bg-error/10 p-4 text-error ring-1 ring-error/20;
+  }
+
+  .alert-banner-main {
+    @apply rounded-2xl bg-warning/10 p-4 text-warning ring-1 ring-warning/20;
+  }
+
+  .alert-body {
+    @apply flex items-start gap-3;
+  }
+
+  .alert-icon {
+    @apply mt-0.5 h-10 w-10 shrink-0 grid place-items-center rounded-xl;
+    background-color: color-mix(in srgb, currentColor 10%, transparent);
+  }
+
+  .danger-btn {
+    @apply inline-flex items-center justify-center rounded-2xl bg-error px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient hover:opacity-95 active:scale-[0.99] transition;
+  }
+
   .severity-badge {
     @apply inline-flex items-center rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest;
   }

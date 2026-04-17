@@ -2,14 +2,14 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.core.exports import parse_date_param
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
-from apps.core.exports import parse_date_param
 from apps.core.ui import get_density, per_page_for_density
 
+from .export import build_export
 from .forms import TirePressureRecordForm, TireRecordForm
 from .models import TirePosition, TirePressureRecord, TireProduct, TireRecord
-from .export import build_export
 
 
 @login_required
@@ -118,7 +118,7 @@ def tire_pressure_create_view(request):
 
     form = TirePressureRecordForm(request.POST, user=request.user)
     if form.is_valid():
-        rec = form.save()
+        form.save()
         messages.success(request, "Calibragem registrada.")
         return redirect("tires:list")
 

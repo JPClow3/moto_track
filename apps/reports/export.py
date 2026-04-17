@@ -14,7 +14,6 @@ from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, S
 from apps.core.exports import build_csv_bytes, export_response
 from apps.reports.services import sale_report_data, timeline_events
 
-
 DETAILED_COLUMNS = [
     ("date", "Data"),
     ("source", "Área"),
@@ -45,7 +44,7 @@ def detailed_csv_response(*, user, start: date | None, end: date | None) -> Http
 
 
 def _p(value) -> str:
-    return escape(str(value or ""))
+    return escape("" if value is None else str(value))
 
 
 def _money(value) -> str:
@@ -69,7 +68,18 @@ def _body(text: str, styles) -> Paragraph:
 
 
 def _table(rows, *, col_widths=None, repeat_rows: int = 1) -> Table:
-    table = Table(rows, hAlign="LEFT", colWidths=col_widths, repeatRows=repeat_rows)
+    body_style = ParagraphStyle("PdfTableBody", fontName="Helvetica", fontSize=8, leading=10)
+    header_style = ParagraphStyle(
+        "PdfTableHeader",
+        parent=body_style,
+        fontName="Helvetica-Bold",
+        textColor=colors.HexColor("#0f172a"),
+    )
+    wrapped_rows = [
+        [Paragraph(_p(cell), header_style if row_index < repeat_rows else body_style) for cell in row]
+        for row_index, row in enumerate(rows)
+    ]
+    table = Table(wrapped_rows, hAlign="LEFT", colWidths=col_widths, repeatRows=repeat_rows)
     table.setStyle(
         TableStyle(
             [

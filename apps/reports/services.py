@@ -9,7 +9,7 @@ from django.db.models import Max, Min, Sum
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.core.severity import Alert, Severity, SEVERITY_PRIORITY
+from apps.core.severity import SEVERITY_PRIORITY, Alert, Severity
 from apps.core.validation import money_amount
 from apps.documents.models import MotorcycleDocument
 from apps.expenses.models import AnnualFee, InsurancePolicy
@@ -18,8 +18,7 @@ from apps.fuel.services import compute_average_consumption_km_per_liter, detect_
 from apps.maintenance.models import MaintenancePlanItem, MaintenanceRecord
 from apps.reminders.models import Reminder
 from apps.reminders.services import ReminderStatus, evaluate_reminder
-from apps.tires.models import TirePosition, TirePressureRecord, TireRecord
-
+from apps.tires.models import TirePressureRecord, TireRecord
 
 PERIODS = (30, 90, 365)
 
