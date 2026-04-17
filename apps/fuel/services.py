@@ -24,39 +24,35 @@ def compute_average_consumption_km_per_liter(records: Iterable[FuelRecord]) -> C
     We use `tank_full=True` as anchors; partial fills between anchors are included.
     If there are fewer than 2 full anchors, returns None.
     """
-    all_records = list(records)
-    full = [r for r in all_records if r.tank_full]
-    if len(full) < 2:
+    all_records = sorted(records, key=lambda r: (r.date, r.odometer_km, r.pk or 0))
+    if sum(1 for r in all_records if r.tank_full) < 2:
         return None
-
-    # Ensure chronological order
-    full.sort(key=lambda r: (r.date, r.odometer_km))
 
     total_distance = 0
     total_liters = Decimal("0")
     segments = 0
+    previous_full: FuelRecord | None = None
+    segment_liters = Decimal("0")
 
-    for prev, nxt in zip(full, full[1:], strict=False):
-        distance = nxt.odometer_km - prev.odometer_km
-        if distance <= 0:
+    for record in all_records:
+        if previous_full is None:
+            if record.tank_full:
+                previous_full = record
+                segment_liters = Decimal("0")
             continue
 
-        # Liters purchased AFTER the previous full up to and including the next full.
-        segment_liters = sum(
-            (
-                r.liters
-                for r in all_records
-                if (r.date, r.odometer_km) > (prev.date, prev.odometer_km)
-                and (r.date, r.odometer_km) <= (nxt.date, nxt.odometer_km)
-            ),
-            Decimal("0"),
-        )
-        if segment_liters <= 0:
+        segment_liters += Decimal(record.liters or 0)
+        if not record.tank_full:
             continue
 
-        total_distance += distance
-        total_liters += segment_liters
-        segments += 1
+        distance = record.odometer_km - previous_full.odometer_km
+        if distance > 0 and segment_liters > 0:
+            total_distance += distance
+            total_liters += segment_liters
+            segments += 1
+
+        previous_full = record
+        segment_liters = Decimal("0")
 
     if segments == 0 or total_liters <= 0 or total_distance <= 0:
         return None

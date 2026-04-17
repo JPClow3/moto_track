@@ -3,7 +3,7 @@ from django.contrib import admin
 from apps.core.admin import UserScopedAdmin
 from apps.garage.models import Motorcycle
 
-from .models import FuelGrade, FuelRecord, FuelStation
+from .models import FuelGrade, FuelPreference, FuelRecord, FuelStation
 
 
 @admin.register(FuelStation)
@@ -41,6 +41,13 @@ class FuelRecordAdmin(UserScopedAdmin):
     )
     list_filter = ("fuel_type", "date")
     search_fields = ("station_name", "motorcycle__name", "station__name", "fuel_grade__name")
+
+
+@admin.register(FuelPreference)
+class FuelPreferenceAdmin(UserScopedAdmin):
+    list_display = ("owner", "motorcycle", "station", "fuel_grade", "fuel_type", "price_per_liter", "use_count")
+    list_filter = ("fuel_type", "tank_full")
+    search_fields = ("station_name", "station__name", "fuel_grade__name")
 
 
 # Register your models here.

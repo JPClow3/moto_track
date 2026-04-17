@@ -6,6 +6,7 @@ from .views import (
     offline_view,
     onboarding_view,
     quick_add_selector_view,
+    service_worker_view,
     undo_action_view,
 )
 
@@ -16,4 +17,5 @@ urlpatterns = [
     path("onboarding/", onboarding_view, name="onboarding"),
     path("undo/<str:token>/", undo_action_view, name="undo_action"),
     path("offline/", offline_view, name="offline"),
+    path("sw.js", service_worker_view, name="service_worker"),
 ]

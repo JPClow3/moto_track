@@ -30,8 +30,6 @@ class TireRecordForm(forms.ModelForm):
         widgets = {
             "installed_at": forms.DateInput(attrs={"type": "date"}),
             "installed_odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
-            "cost": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
-            "purchase_price": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
             "wear_percent": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "estimated_change_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
         }
@@ -46,6 +44,10 @@ class TireRecordForm(forms.ModelForm):
         self.fields["purchase_price"].required = False
         self.fields["recommended_pressure"].required = False
         self.fields["estimated_change_km"].required = False
+        for name in ["cost", "purchase_price"]:
+            widget = self.fields[name].widget
+            for subwidget in getattr(widget, "widgets", [widget]):
+                subwidget.attrs.setdefault("inputmode", "decimal")
 
         for field in self.visible_fields():
             if field.field.required:

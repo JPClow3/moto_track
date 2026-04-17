@@ -13,6 +13,9 @@
       <p class="text-on-surface-variant text-sm">Registre IPVA/DPVAT/licenciamento e acompanhe renovação de seguros.</p>
     </div>
     <div class="flex flex-wrap gap-2">
+      <a class="rounded-2xl bg-surface-low px-5 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'expenses:export_csv' %}">
+        Exportar CSV
+      </a>
       <a class="rounded-2xl bg-surface-lowest px-5 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface shadow-ambient hover:bg-surface-highest/60" href="{% url 'expenses:policy_create' %}">
         Novo seguro
       </a>

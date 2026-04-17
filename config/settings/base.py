@@ -145,6 +145,8 @@ _account_email_verification_raw = env("ACCOUNT_EMAIL_VERIFICATION", default="man
 ACCOUNT_EMAIL_VERIFICATION = _account_email_verification_raw.split("#", 1)[0].strip().lower() or "mandatory"
 if ACCOUNT_EMAIL_VERIFICATION not in {"mandatory", "optional", "none"}:
     ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+
+APP_BUILD_ID = env("APP_BUILD_ID", default="dev")
 ACCOUNT_CONFIRM_EMAIL_ON_GET = env.bool("ACCOUNT_CONFIRM_EMAIL_ON_GET", default=True)
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = env(
     "ACCOUNT_DEFAULT_HTTP_PROTOCOL",

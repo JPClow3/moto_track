@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.fuel.models import FuelRecord
-from apps.garage.models import Motorcycle
+from apps.garage.models import Motorcycle, MotorcycleSpec
 from apps.maintenance.models import MaintenanceRecord
 
 
@@ -115,3 +115,53 @@ class GarageViewTests(TestCase):
         self.assertTrue(Motorcycle.objects.filter(pk=self.motorcycle.pk).exists())
         self.assertFalse(Motorcycle.objects.get(pk=self.motorcycle.pk).is_active)
         self.assertTrue(Motorcycle.objects.filter(pk=self.other_motorcycle.pk).exists())
+
+    def test_spec_update_creates_and_updates_motorcycle_spec(self):
+        self.client.force_login(self.user)
+
+        create_response = self.client.post(
+            reverse("garage:spec_update", args=[self.motorcycle.pk]),
+            {
+                "fuel_tank_capacity_l": "14.50",
+                "fuel_type_recommendation": "Gasolina aditivada",
+                "fuel_octane_min": "95",
+                "oil_capacity_l": "1.80",
+                "oil_type_recommendation": "Sintético",
+                "oil_viscosity_recommendation": "10W-40",
+                "tire_size_front": "110/70R17",
+                "tire_size_rear": "150/60R17",
+                "tire_speed_rating": "H",
+                "recommended_tire_pressure_front": "29 psi",
+                "recommended_tire_pressure_rear": "33 psi",
+                "battery_spec": "12V 7Ah",
+                "chain_size": "520",
+                "manual_reference": "Manual",
+            },
+        )
+
+        self.assertEqual(create_response.status_code, 302)
+        spec = MotorcycleSpec.objects.get(motorcycle=self.motorcycle)
+        self.assertEqual(spec.fuel_tank_capacity_l, Decimal("14.50"))
+        self.assertEqual(spec.oil_type_recommendation, "Sintético")
+
+        update_response = self.client.post(
+            reverse("garage:spec_update", args=[self.motorcycle.pk]),
+            {
+                "fuel_tank_capacity_l": "16.00",
+                "oil_type_recommendation": "Mineral",
+                "manual_reference": "Manual revisado",
+            },
+        )
+
+        self.assertEqual(update_response.status_code, 302)
+        self.assertEqual(MotorcycleSpec.objects.filter(motorcycle=self.motorcycle).count(), 1)
+        spec.refresh_from_db()
+        self.assertEqual(spec.fuel_tank_capacity_l, Decimal("16.00"))
+        self.assertEqual(spec.oil_type_recommendation, "Mineral")
+        self.assertEqual(spec.manual_reference, "Manual revisado")
+
+    def test_spec_update_denies_other_user_motorcycle(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("garage:spec_update", args=[self.other_motorcycle.pk]))
+
+        self.assertEqual(response.status_code, 404)

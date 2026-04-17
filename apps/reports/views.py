@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.db.models import Avg
 from django.shortcuts import redirect, render
 
 from apps.core.active_motorcycle import get_active_motorcycle
@@ -54,6 +55,7 @@ def report_overview_view(request):
         "tires_records_count": motorcycle.tire_records.count(),
         "annual_fees_count": motorcycle.annual_fees.count(),
         "insurance_policies_count": motorcycle.insurance_policies.count(),
+        "avg_odometer_km": motorcycle.fuel_records.aggregate(avg=Avg("odometer_km"))["avg"],
     }
     return render(request, "reports/overview.html", context)
 

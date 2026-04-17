@@ -1,9 +1,12 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.core import mail
+from django.core.management import call_command
+from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.garage.models import Motorcycle
 from apps.reminders.forms import ReminderForm
@@ -171,3 +174,126 @@ class ReminderViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.reminder.refresh_from_db()
         self.assertEqual(self.reminder.reference_date, date(2026, 4, 16))
+
+    def test_list_evaluates_reminders_with_each_motorcycle_odometer(self):
+        second_motorcycle = Motorcycle.objects.create(
+            owner=self.user,
+            name="Moto Z",
+            brand="Honda",
+            model="ADV",
+            year=2024,
+            odometer_override_km=5000,
+        )
+        reminder = Reminder.objects.create(
+            motorcycle=second_motorcycle,
+            title="Lembrete da segunda moto",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=500,
+            reference_km=4500,
+            is_active=True,
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("reminders:list"))
+        entry = next(item for item in response.context["active_reminders"] if item["reminder"] == reminder)
+
+        self.assertEqual(entry["evaluation"].status, "overdue")
+
+    def test_inactive_reminders_are_ordered_limited_and_scoped(self):
+        base_time = timezone.now()
+        for index in range(55):
+            reminder = Reminder.objects.create(
+                motorcycle=self.motorcycle,
+                title=f"Inativo {index:02d}",
+                trigger_type=TriggerType.BY_KM,
+                trigger_value_km=1000,
+                reference_km=10000,
+                is_active=False,
+            )
+            Reminder.objects.filter(pk=reminder.pk).update(updated_at=base_time + timedelta(minutes=index))
+        other = Reminder.objects.create(
+            motorcycle=self.other_motorcycle,
+            title="Inativo de outro usuário",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=1000,
+            reference_km=10000,
+            is_active=False,
+        )
+        Reminder.objects.filter(pk=other.pk).update(updated_at=base_time + timedelta(days=1))
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("reminders:list"))
+        inactive = list(response.context["inactive_reminders"])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(inactive), 50)
+        self.assertEqual(inactive[0].title, "Inativo 54")
+        self.assertEqual(inactive[-1].title, "Inativo 05")
+        self.assertNotIn("Inativo 04", [reminder.title for reminder in inactive])
+        self.assertNotIn("Inativo de outro usuário", [reminder.title for reminder in inactive])
+
+
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    DEFAULT_FROM_EMAIL="noreply@mototrack.local",
+)
+class ReminderCommandTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username="rem-command-user",
+            email="rem-command@example.com",
+            password="pass12345",
+        )
+        self.motorcycle = Motorcycle.objects.create(
+            owner=self.user,
+            name="Moto Comando",
+            brand="Honda",
+            model="CB",
+            year=2024,
+            odometer_override_km=1000,
+        )
+        mail.outbox = []
+
+    def test_process_reminders_sends_email_and_marks_only_sent_reminders(self):
+        should_email = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Com email",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=True,
+        )
+        no_email = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Sem email",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=False,
+        )
+
+        call_command("process_reminders")
+
+        should_email.refresh_from_db()
+        no_email.refresh_from_db()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Com email", mail.outbox[0].subject)
+        self.assertIsNotNone(should_email.last_notified_at)
+        self.assertIsNone(no_email.last_notified_at)
+
+    def test_process_reminders_mark_notified_marks_without_email(self):
+        reminder = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Marcar sem email",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=False,
+        )
+
+        call_command("process_reminders", mark_notified=True)
+
+        reminder.refresh_from_db()
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertIsNotNone(reminder.last_notified_at)

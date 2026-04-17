@@ -7,6 +7,7 @@ from .views import (
     claim_create_view,
     claim_delete_view,
     claim_update_view,
+    expenses_export_view,
     expenses_list_view,
     policy_create_view,
     policy_delete_view,
@@ -17,6 +18,7 @@ app_name = "expenses"
 
 urlpatterns = [
     path("", expenses_list_view, name="list"),
+    path("export.csv", expenses_export_view, name="export_csv"),
     path("fees/new/", annual_fee_create_view, name="fee_create"),
     path("fees/<int:pk>/edit/", annual_fee_update_view, name="fee_update"),
     path("fees/<int:pk>/delete/", annual_fee_delete_view, name="fee_delete"),

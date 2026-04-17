@@ -1,6 +1,6 @@
 /* Minimal app-shell service worker (cache-first for navigation fallback). */
 
-const CACHE_NAME = ["moto-track-shell", self.registration.scope, self.location.href].join("-");
+const CACHE_NAME = "moto-track-shell-{{ build_id|escapejs }}";
 const OFFLINE_URL = "/offline/";
 
 const PRECACHE = [
@@ -32,10 +32,8 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
 
-  // Only handle GET.
   if (req.method !== "GET") return;
 
-  // Navigation requests: try network first, fallback to offline page.
   if (req.mode === "navigate") {
     event.respondWith(
       (async () => {
@@ -50,7 +48,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static assets: cache-first.
   if (req.url.includes("/static/")) {
     event.respondWith(
       (async () => {
@@ -64,4 +61,3 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
-

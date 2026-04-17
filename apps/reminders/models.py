@@ -28,6 +28,10 @@ class Reminder(TimeStampedModel):
 
     class Meta:
         ordering = ["-is_active", "title"]
+        indexes = [
+            models.Index(fields=["is_active"], name="reminder_active_idx"),
+            models.Index(fields=["motorcycle", "is_active"], name="reminder_moto_active_idx"),
+        ]
 
     def __str__(self):
         return self.title

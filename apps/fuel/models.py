@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.conf import settings
 from django.db import models
 from djmoney.models.fields import MoneyField
 
@@ -14,6 +15,7 @@ class FuelType(models.TextChoices):
 
 
 class FuelStation(TimeStampedModel, UserOwnedModel):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="fuel_stations")
     name = models.CharField(max_length=120)
     brand = models.CharField(max_length=80, blank=True)
     city = models.CharField(max_length=80, blank=True)
@@ -29,6 +31,7 @@ class FuelStation(TimeStampedModel, UserOwnedModel):
 
 
 class FuelGrade(TimeStampedModel, UserOwnedModel):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="fuel_grades")
     name = models.CharField(max_length=120)
     fuel_type = models.CharField(max_length=32, choices=FuelType.choices, default=FuelType.GASOLINE)
     octane_rating = models.PositiveSmallIntegerField(null=True, blank=True)
@@ -64,6 +67,10 @@ class FuelRecord(TimeStampedModel):
 
     class Meta:
         ordering = ["-date", "-odometer_km"]
+        indexes = [
+            models.Index(fields=["date"], name="fuel_record_date_idx"),
+            models.Index(fields=["motorcycle", "date"], name="fuel_record_moto_date_idx"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.motorcycle.name} - {self.date} - {self.total_price}"
@@ -81,6 +88,7 @@ class FuelRecord(TimeStampedModel):
 
 
 class FuelPreference(TimeStampedModel, UserOwnedModel):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="fuel_preferences")
     motorcycle = models.ForeignKey(
         Motorcycle, on_delete=models.CASCADE, null=True, blank=True, related_name="fuel_preferences"
     )

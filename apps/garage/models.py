@@ -17,6 +17,7 @@ class RidingProfile(models.TextChoices):
 
 
 class Motorcycle(TimeStampedModel, UserOwnedModel):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="motorcycles")
     name = models.CharField(max_length=120)
     brand = models.CharField(max_length=80)
     model = models.CharField(max_length=120)
@@ -74,7 +75,7 @@ class Motorcycle(TimeStampedModel, UserOwnedModel):
             self.current_odometer_km = override
             self.current_odometer_updated_at = timezone.now()
             if update_fields is not None:
-                kwargs["update_fields"] = set(update_fields) | {"current_odometer_km", "current_odometer_updated_at"}
+                kwargs["update_fields"] = list(set(update_fields) | {"current_odometer_km", "current_odometer_updated_at"})
         return super().save(*args, **kwargs)
 
 

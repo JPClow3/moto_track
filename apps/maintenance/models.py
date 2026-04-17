@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from djmoney.models.fields import MoneyField
@@ -34,6 +35,7 @@ class MaintenancePartType(models.TextChoices):
 
 
 class MaintenancePart(TimeStampedModel, UserOwnedModel):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="maintenance_parts")
     name = models.CharField(max_length=140)
     manufacturer = models.CharField(max_length=80, blank=True)
     part_type = models.CharField(max_length=24, choices=MaintenancePartType.choices, default=MaintenancePartType.OTHER)
@@ -59,13 +61,17 @@ class MaintenanceRecord(TimeStampedModel):
     odometer_km = models.PositiveIntegerField()
     description = models.TextField(blank=True)
     parts_used = models.TextField(blank=True)
-    cost = MoneyField(max_digits=10, decimal_places=2)
+    cost = MoneyField(max_digits=10, decimal_places=2, default=0)
     workshop = models.CharField(max_length=120, blank=True)
     interval_km = models.PositiveIntegerField(null=True, blank=True)
     interval_days = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["-date", "-odometer_km"]
+        indexes = [
+            models.Index(fields=["date"], name="maint_record_date_idx"),
+            models.Index(fields=["maintenance_type"], name="maint_record_type_idx"),
+        ]
 
     def __str__(self) -> str:
         try:

@@ -39,7 +39,12 @@
           <option value="{{ bike.id }}" {% if filters.motorcycle and bike.id|stringformat:"s" == filters.motorcycle %}selected{% endif %}>{{ bike.name }}</option>
         {% endfor %}
       </select>
-      <button type="submit" class="ui-btn-primary">Aplicar</button>
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" class="ui-btn-primary">Aplicar</button>
+        <a class="ui-btn-secondary" href="?density={% if density == 'compact' %}comfortable{% else %}compact{% endif %}&motorcycle={{ filters.motorcycle }}">
+          {% if density == 'compact' %}Modo conforto{% else %}Modo compacto{% endif %}
+        </a>
+      </div>
     </form>
   </article>
 
@@ -162,7 +167,7 @@
       {% if records %}
         <div class="space-y-4">
           {% for record in records %}
-            <div class="rounded-2xl bg-surface-lowest p-6 flex flex-wrap md:flex-nowrap gap-6 items-center border border-outline-variant/10 shadow-ambient ring-1 ring-outline-variant/10 hover:bg-surface-highest/20 transition">
+            <div class="rounded-2xl bg-surface-lowest {% if density == 'compact' %}p-3{% else %}p-6{% endif %} flex flex-wrap md:flex-nowrap gap-6 items-center border border-outline-variant/10 shadow-ambient ring-1 ring-outline-variant/10 hover:bg-surface-highest/20 transition">
               <div class="w-16 h-16 rounded-2xl bg-surface-low grid place-items-center shrink-0">
                 <i data-lucide="wrench" class="h-6 w-6 text-on-surface-variant" aria-hidden="true"></i>
               </div>

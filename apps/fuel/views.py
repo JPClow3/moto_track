@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum
+from django.db.models.functions import TruncMonth
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -103,6 +104,17 @@ def fuel_list_view(request):
         bucket["min_odo"] = odo if bucket["min_odo"] is None else min(bucket["min_odo"], odo)
         bucket["max_odo"] = odo if bucket["max_odo"] is None else max(bucket["max_odo"], odo)
 
+    monthly_totals = {
+        _month_key(row["month"]): row["total"] or Money(0, "BRL")
+        for row in (
+            records_qs.filter(date__gte=start_date)
+            .annotate(month=TruncMonth("date"))
+            .values("month")
+            .annotate(total=Sum("total_price"))
+        )
+        if row["month"]
+    }
+
     trend_points = []
     values = []
     cost_points = []
@@ -117,10 +129,7 @@ def fuel_list_view(request):
         trend_points.append({"label": _format_month_label(year, month), "value": value})
 
         # Cost per km by month (R$/km) using same odometer span heuristic.
-        month_total_value = (
-            records_qs.filter(date__year=year, date__month=month).aggregate(total=Sum("total_price"))["total"]
-            or Money(0, "BRL")
-        )
+        month_total_value = monthly_totals.get((year, month), Money(0, "BRL"))
         month_amount = float(getattr(month_total_value, "amount", month_total_value) or 0)
         cost_value = None
         if span > 0 and month_amount > 0:
@@ -193,7 +202,7 @@ def fuel_catalog_view(request):
     grades = FuelGrade.objects.filter(owner=request.user)
     recent_records = (
         FuelRecord.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
-        .select_related("station")
+        .select_related("station", "fuel_grade", "motorcycle")
         .order_by("-date", "-odometer_km")[:300]
     )
     ranking_rows = compute_station_rankings(recent_records)

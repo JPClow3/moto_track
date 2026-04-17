@@ -35,7 +35,6 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
             "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
-            "cost": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
             "interval_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "interval_days": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "description": forms.Textarea(attrs={"rows": 2}),
@@ -55,6 +54,11 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
         self.fields["parts_used"].required = False
         self.fields["interval_km"].required = False
         self.fields["interval_days"].required = False
+        self.fields["cost"].initial = self.initial.get("cost", self.fields["cost"].initial or 0)
+        self.fields["cost"].help_text = "Use 0 para manutenção DIY/gratuita."
+        widget = self.fields["cost"].widget
+        for subwidget in getattr(widget, "widgets", [widget]):
+            subwidget.attrs.setdefault("inputmode", "decimal")
 
     def clean_workshop(self):
         return sanitize_text(self.cleaned_data.get("workshop"))
@@ -86,6 +90,5 @@ class MaintenancePartForm(forms.ModelForm):
         model = MaintenancePart
         fields = ["name", "manufacturer", "part_type", "sku", "price", "notes"]
         widgets = {
-            "price": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }

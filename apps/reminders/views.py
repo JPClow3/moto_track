@@ -5,7 +5,6 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.exports import parse_date_param
 from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
@@ -18,8 +17,6 @@ from .export import build_export
 
 @login_required
 def reminder_list_view(request):
-    active_motorcycle = get_active_motorcycle(request)
-    current_odometer = active_motorcycle.current_odometer_km if active_motorcycle else 0
     today = timezone.localdate()
 
     active_qs = (
@@ -30,12 +27,14 @@ def reminder_list_view(request):
     density = get_density(request)
     paged = paginate(request, active_qs, per_page=per_page_for_density(density))
     active_reminders = list(paged.items)
-    inactive_reminders = Reminder.objects.filter(
-        motorcycle__owner=request.user, motorcycle__is_active=True, is_active=False
+    inactive_reminders = (
+        Reminder.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True, is_active=False)
+        .select_related("motorcycle")
+        .order_by("-updated_at")[:50]
     )
 
     active_with_status = [
-        {"reminder": r, "evaluation": evaluate_reminder(r, current_odometer_km=current_odometer, today=today)}
+        {"reminder": r, "evaluation": evaluate_reminder(r, current_odometer_km=r.motorcycle.current_odometer_km, today=today)}
         for r in active_reminders
     ]
     context = {

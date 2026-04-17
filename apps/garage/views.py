@@ -2,8 +2,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import MotorcycleForm
-from .models import Motorcycle
+from .forms import MotorcycleForm, MotorcycleSpecForm
+from .models import Motorcycle, MotorcycleSpec
 
 
 @login_required
@@ -55,6 +55,32 @@ def garage_update_view(request, pk):
         "motorcycle": motorcycle,
     }
     return render(request, "garage/form.html", context)
+
+
+@login_required
+def garage_spec_update_view(request, pk):
+    motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user, is_active=True)
+    spec, _ = MotorcycleSpec.objects.get_or_create(motorcycle=motorcycle)
+
+    if request.method == "POST":
+        form = MotorcycleSpecForm(request.POST, instance=spec)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Especificações de {motorcycle.name} atualizadas com sucesso.")
+            return redirect("garage:list")
+    else:
+        form = MotorcycleSpecForm(instance=spec)
+
+    return render(
+        request,
+        "garage/spec_form.html",
+        {
+            "form": form,
+            "motorcycle": motorcycle,
+            "title": f"Especificações de {motorcycle.name}",
+            "submit_label": "Salvar especificações",
+        },
+    )
 
 
 @login_required

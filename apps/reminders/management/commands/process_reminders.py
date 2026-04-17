@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from django.conf import settings
+from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
@@ -19,7 +21,7 @@ class Command(BaseCommand):
 
         qs = (
             Reminder.objects.filter(is_active=True, motorcycle__is_active=True)
-            .select_related("motorcycle")
+            .select_related("motorcycle", "motorcycle__owner")
             .order_by("motorcycle__name", "title")
         )
 
@@ -33,7 +35,25 @@ class Command(BaseCommand):
             due += 1
             self.stdout.write(f"[{evaluation.status}] {reminder.motorcycle.name} :: {reminder.title}")
 
-            if mark:
+            notified = False
+            owner = reminder.motorcycle.owner
+            if reminder.send_email and owner.email:
+                subject = f"Moto Track: {reminder.title}"
+                message = (
+                    f"{reminder.motorcycle.name}: {reminder.title}\n"
+                    f"Status: {evaluation.status}\n\n"
+                    f"{reminder.description or reminder.notes or 'Revise este lembrete no Moto Track.'}"
+                )
+                sent = send_mail(
+                    subject,
+                    message,
+                    getattr(settings, "DEFAULT_FROM_EMAIL", None),
+                    [owner.email],
+                    fail_silently=False,
+                )
+                notified = sent > 0
+
+            if mark or notified:
                 reminder.last_notified_at = timezone.now()
                 reminder.save(update_fields=["last_notified_at"])
 

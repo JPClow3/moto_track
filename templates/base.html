@@ -298,7 +298,7 @@
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("{% static 'sw.js' %}").catch(() => {});
+        navigator.serviceWorker.register("{% url 'service_worker' %}").catch(() => {});
       });
     }
   </script>

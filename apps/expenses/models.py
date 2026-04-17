@@ -28,6 +28,7 @@ class AnnualFee(TimeStampedModel):
     class Meta:
         ordering = ["-due_date"]
         unique_together = [("motorcycle", "fee_type", "year")]
+        indexes = [models.Index(fields=["due_date"], name="annual_fee_due_date_idx")]
 
     def __str__(self) -> str:
         return f"{self.get_fee_type_display()} {self.year} - {self.motorcycle.name}"  # pylint: disable=no-member

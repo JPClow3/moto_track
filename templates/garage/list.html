@@ -51,6 +51,7 @@
                 <td>
                   <div class="flex items-center justify-end gap-2" role="group" aria-label="Ações da moto {{ motorcycle.name }}">
                     <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-low" href="{% url 'garage:update' motorcycle.pk %}" aria-label="Editar moto {{ motorcycle.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                    <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-low" href="{% url 'garage:spec_update' motorcycle.pk %}" aria-label="Editar especificações {{ motorcycle.name }}"><i data-lucide="settings" aria-hidden="true"></i></a>
                     <a class="h-9 w-9 grid place-items-center rounded-xl text-error hover:bg-error/10" href="{% url 'garage:delete' motorcycle.pk %}" aria-label="Excluir moto {{ motorcycle.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
                   </div>
                 </td>

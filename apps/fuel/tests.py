@@ -9,8 +9,8 @@ from django.urls import reverse
 from typing import Any, cast
 
 from apps.fuel.forms import FuelRecordQuickForm
-from apps.fuel.models import FuelGrade, FuelRecord, FuelStation, FuelType
-from apps.fuel.services import compute_average_consumption_km_per_liter
+from apps.fuel.models import FuelGrade, FuelPreference, FuelRecord, FuelStation, FuelType
+from apps.fuel.services import compute_average_consumption_km_per_liter, remember_fuel_preference
 from apps.garage.models import Motorcycle
 
 
@@ -58,6 +58,83 @@ class FuelModelTests(TestCase):
 		self.assertEqual(list(motorcycle_field.queryset), [self.motorcycle])
 		self.assertEqual(list(station_field.queryset), [self.station])
 		self.assertEqual(list(fuel_grade_field.queryset), [self.grade])
+
+	def test_quick_form_blocks_duplicate_fill_up(self):
+		FuelRecord.objects.create(  # pylint: disable=no-member
+			motorcycle=self.motorcycle,
+			station=self.station,
+			fuel_grade=self.grade,
+			date=date(2026, 4, 13),
+			odometer_km=1000,
+			liters=Decimal("10.000"),
+			total_price=Decimal("70.00"),
+			price_per_liter=Decimal("7.000"),
+			fuel_type=FuelType.PREMIUM_GASOLINE,
+			station_name="Posto A",
+		)
+		form = FuelRecordQuickForm(
+			data={
+				"motorcycle": self.motorcycle.pk,
+				"station": self.station.pk,
+				"fuel_grade": self.grade.pk,
+				"date": "2026-04-13",
+				"odometer_km": 1000,
+				"liters": "10.000",
+				"total_price_0": "70.00",
+				"total_price_1": "BRL",
+				"price_per_liter_0": "7.000",
+				"price_per_liter_1": "BRL",
+				"fuel_type": FuelType.PREMIUM_GASOLINE,
+				"station_name": "Posto A",
+			},
+			user=self.user,
+		)
+		self.assertFalse(form.is_valid())
+		self.assertIn("duplicado", str(form.errors))
+
+	def test_quick_form_blocks_odometer_regression(self):
+		FuelRecord.objects.create(  # pylint: disable=no-member
+			motorcycle=self.motorcycle,
+			date=date(2026, 4, 10),
+			odometer_km=2000,
+			liters=Decimal("10.000"),
+			total_price=Decimal("70.00"),
+			price_per_liter=Decimal("7.000"),
+		)
+		form = FuelRecordQuickForm(
+			data={
+				"motorcycle": self.motorcycle.pk,
+				"date": "2026-04-12",
+				"odometer_km": 1500,
+				"liters": "8.000",
+				"total_price_0": "56.00",
+				"total_price_1": "BRL",
+				"price_per_liter_0": "7.000",
+				"price_per_liter_1": "BRL",
+				"fuel_type": FuelType.GASOLINE,
+			},
+			user=self.user,
+		)
+		self.assertFalse(form.is_valid())
+		self.assertIn("odômetro", str(form.errors).lower())
+
+	def test_remember_fuel_preference_updates_last_pattern(self):
+		record = FuelRecord.objects.create(  # pylint: disable=no-member
+			motorcycle=self.motorcycle,
+			station=self.station,
+			fuel_grade=self.grade,
+			date=date(2026, 4, 13),
+			odometer_km=1000,
+			liters=Decimal("10.000"),
+			total_price=Decimal("70.00"),
+			price_per_liter=Decimal("7.000"),
+			fuel_type=FuelType.PREMIUM_GASOLINE,
+			tank_full=True,
+			station_name="Posto A",
+		)
+		preference = remember_fuel_preference(record)
+		self.assertEqual(preference.use_count, 1)
+		self.assertTrue(FuelPreference.objects.filter(owner=self.user, station=self.station).exists())
 
 	def test_catalog_view_only_shows_owned_catalogs(self):
 		self.client.force_login(self.user)

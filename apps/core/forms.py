@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Max
 from django.utils import timezone
 
 from apps.garage.services import recompute_motorcycle_odometer
@@ -6,16 +7,35 @@ from apps.garage.models import RidingProfile
 
 
 class OdometerOverrideForm(forms.Form):
-    odometer_override_km = forms.IntegerField(min_value=1, label="Odômetro atual (km)")
+    odometer_override_km = forms.IntegerField(min_value=0, label="Odômetro atual (km)")
 
     def __init__(self, *args, motorcycle=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.motorcycle = motorcycle
+        field = self.fields["odometer_override_km"]
+        field.label = "Odômetro atual (km)"
+        field.widget.attrs["min"] = "0"
+        field.widget.attrs.setdefault("inputmode", "numeric")
+        field.help_text = (
+            "Pode corrigir um override digitado alto, mas não pode ficar abaixo do maior km já registrado "
+            "em abastecimentos, manutenções ou pneus."
+        )
 
     def clean_odometer_override_km(self):
         value = self.cleaned_data["odometer_override_km"]
-        if self.motorcycle and value < int(self.motorcycle.current_odometer_km or 0):
-            raise forms.ValidationError("O valor informado não pode ser menor que o odômetro atual.")
+        if self.motorcycle:
+            fuel_max = self.motorcycle.fuel_records.aggregate(max_odometer=Max("odometer_km"))["max_odometer"] or 0
+            maintenance_max = (
+                self.motorcycle.maintenance_records.aggregate(max_odometer=Max("odometer_km"))["max_odometer"] or 0
+            )
+            tire_max = (
+                self.motorcycle.tire_records.aggregate(max_odometer=Max("installed_odometer_km"))["max_odometer"] or 0
+            )
+            record_max = max(int(fuel_max or 0), int(maintenance_max or 0), int(tire_max or 0))
+            if value < record_max:
+                raise forms.ValidationError(
+                    f"O valor informado não pode ser menor que o maior km registrado ({record_max} km)."
+                )
         return value
 
     def save(self):

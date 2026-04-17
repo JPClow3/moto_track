@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from djmoney.models.fields import MoneyField
@@ -16,6 +17,7 @@ class TireType(models.TextChoices):
 
 
 class TireProduct(TimeStampedModel, UserOwnedModel):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tire_products")
     manufacturer = models.CharField(max_length=80)
     model_name = models.CharField(max_length=120)
     image = models.ImageField(upload_to="tires/products/", null=True, blank=True)
@@ -61,6 +63,10 @@ class TireRecord(TimeStampedModel):
 
     class Meta:
         ordering = ["-installed_at"]
+        indexes = [
+            models.Index(fields=["is_active"], name="tire_record_active_idx"),
+            models.Index(fields=["installed_at"], name="tire_record_installed_idx"),
+        ]
 
     def __str__(self) -> str:
         # pylint: disable=no-member

@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from apps.core.ui import get_density, per_page_for_density
 
 from .forms import AnnualFeeForm, InsuranceClaimForm, InsurancePolicyForm
+from .export import build_export
 from .models import AnnualFee, InsuranceClaim, InsurancePolicy
 from .services import (
     delete_fee_reminder,
@@ -52,6 +53,11 @@ def expenses_list_view(request):
         "density": density,
     }
     return render(request, "expenses/list.html", context)
+
+
+@login_required
+def expenses_export_view(request):
+    return build_export(user=request.user)
 
 
 @login_required

@@ -2,7 +2,7 @@ from django import forms
 
 from apps.core.sanitizers import sanitize_text
 
-from .models import Motorcycle
+from .models import Motorcycle, MotorcycleSpec
 
 
 class MotorcycleForm(forms.ModelForm):
@@ -62,3 +62,35 @@ class MotorcycleForm(forms.ModelForm):
 
     def clean_observations(self):
         return sanitize_text(self.cleaned_data.get("observations"))
+
+
+class MotorcycleSpecForm(forms.ModelForm):
+    class Meta:
+        model = MotorcycleSpec
+        exclude = ["motorcycle"]
+        widgets = {
+            "fuel_tank_capacity_l": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
+            "fuel_octane_min": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "oil_capacity_l": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.required = False
+            field.widget.attrs.setdefault("autocomplete", "off")
+
+    def clean_fuel_type_recommendation(self):
+        return sanitize_text(self.cleaned_data.get("fuel_type_recommendation"))
+
+    def clean_tire_size_front(self):
+        return sanitize_text(self.cleaned_data.get("tire_size_front"))
+
+    def clean_tire_size_rear(self):
+        return sanitize_text(self.cleaned_data.get("tire_size_rear"))
+
+    def clean_oil_type_recommendation(self):
+        return sanitize_text(self.cleaned_data.get("oil_type_recommendation"))
+
+    def clean_manual_reference(self):
+        return sanitize_text(self.cleaned_data.get("manual_reference"))

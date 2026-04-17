@@ -88,7 +88,7 @@ class Command(BaseCommand):
 				"default_price_per_liter": Decimal("6.890"),
 			},
 		)
-		FuelRecord.objects.get_or_create(
+		FuelRecord.objects.update_or_create(
 			motorcycle=motorcycle,
 			date=timezone.localdate(),
 			odometer_km=12500,

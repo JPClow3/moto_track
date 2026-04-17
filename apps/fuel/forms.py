@@ -11,7 +11,7 @@ from apps.garage.models import Motorcycle
 from .models import FuelGrade, FuelRecord, FuelStation
 
 
-class FuelRecordQuickForm(forms.ModelForm):
+class FuelRecordBaseForm(forms.ModelForm):
     class Meta:
         model = FuelRecord
         fields = [
@@ -32,8 +32,6 @@ class FuelRecordQuickForm(forms.ModelForm):
             "date": forms.DateInput(attrs={"type": "date"}),
             "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "liters": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.001"}),
-            "total_price": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
-            "price_per_liter": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.001"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
 
@@ -52,16 +50,27 @@ class FuelRecordQuickForm(forms.ModelForm):
         self.fields["price_per_liter"].required = False
         self.fields["station_name"].required = False
         self.fields["notes"].required = False
+        self.fields["tank_full"].help_text = (
+            "Marque quando completar o tanque. O consumo médio precisa de pelo menos dois tanques cheios."
+        )
+        for name in ["total_price", "price_per_liter"]:
+            widget = self.fields[name].widget
+            for subwidget in getattr(widget, "widgets", [widget]):
+                subwidget.attrs.setdefault("inputmode", "decimal")
 
     def clean(self):
         cleaned_data = super().clean()
         liters = cleaned_data.get("liters")
         total_price = cleaned_data.get("total_price")
         price_per_liter = cleaned_data.get("price_per_liter")
+        total_amount = getattr(total_price, "amount", total_price) if total_price is not None else None
+
+        if liters and total_amount is not None and Decimal(total_amount) <= 0:
+            self.add_error("total_price", "Informe um valor total maior que zero para calcular o preço por litro.")
+            return cleaned_data
 
         if liters and total_price is not None and not price_per_liter:
             try:
-                total_amount = getattr(total_price, "amount", total_price)
                 cleaned_data["price_per_liter"] = (Decimal(total_amount) / Decimal(liters)).quantize(Decimal("0.001"))
             except (InvalidOperation, ZeroDivisionError):
                 self.add_error("price_per_liter", "Informe um preço por litro válido.")
@@ -116,19 +125,22 @@ class FuelRecordQuickForm(forms.ModelForm):
         return sanitize_text(self.cleaned_data.get("notes"))
 
 
-class FuelRecordRepeatForm(FuelRecordQuickForm):
+class FuelRecordQuickForm(FuelRecordBaseForm):
+    """Default quick-entry form for fuel records."""
+
+
+class FuelRecordRepeatForm(FuelRecordBaseForm):
     """
     Minimal repeat form: duplicates the last fill-up and asks only for the new numbers.
 
     Catalog-ish fields are passed as hidden inputs to keep the 1-click flow.
     """
 
-    class Meta(FuelRecordQuickForm.Meta):
+    class Meta(FuelRecordBaseForm.Meta):
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
             "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "liters": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.001"}),
-            "total_price": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
             "station": forms.HiddenInput(),
             "fuel_grade": forms.HiddenInput(),
             "price_per_liter": forms.HiddenInput(),
@@ -159,6 +171,5 @@ class FuelGradeForm(forms.ModelForm):
         widgets = {
             "octane_rating": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "ethanol_percentage": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
-            "default_price_per_liter": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.001"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
