@@ -127,7 +127,7 @@ Esse comando cria, de forma idempotente:
 - usuário demo
 - moto demo
 - especificações da moto
-- posto e grade de combustível
+- posto e combustível cadastrado
 - abastecimento exemplo
 - peça de manutenção e manutenção exemplo
 - pneu e instalação exemplo
@@ -140,7 +140,7 @@ O projeto é organizado em apps por domínio:
 
 - `apps/core`: modelos base, dashboard e utilidades compartilhadas
 - `apps/garage`: motocicleta e especificações estruturadas
-- `apps/fuel`: abastecimentos, postos e grades de combustível
+- `apps/fuel`: abastecimentos, postos e combustíveis cadastrados
 - `apps/maintenance`: manutenções, peças e itens recorrentes
 - `apps/tires`: pneus estruturados e histórico de instalação
 - `apps/documents`: documentos e arquivos da moto

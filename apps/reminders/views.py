@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from apps.core.forms import configure_form_accessibility
 from apps.core.exports import parse_date_param
 from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
@@ -56,6 +57,7 @@ def reminder_create_view(request):
             return redirect("reminders:list")
     else:
         form = ReminderForm(user=request.user)
+    configure_form_accessibility(form)
 
     context = {
         "form": form,
@@ -77,6 +79,7 @@ def reminder_update_view(request, pk):
             return redirect("reminders:list")
     else:
         form = ReminderForm(instance=reminder, user=request.user)
+    configure_form_accessibility(form)
 
     context = {
         "form": form,

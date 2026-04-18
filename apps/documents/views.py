@@ -6,6 +6,7 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.core.exports import parse_date_param
 from apps.core.ui import get_density, per_page_for_density
@@ -65,6 +66,7 @@ def list_documents(request):
             "icon": "receipt",
         },
     ]
+    configure_form_accessibility(form)
 
     context = {
         "documents": paged.items,

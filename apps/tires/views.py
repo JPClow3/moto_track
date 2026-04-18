@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.core.exports import parse_date_param
 from apps.core.ui import get_density, per_page_for_density
@@ -83,6 +84,7 @@ def tire_list_view(request):
     attention = any(t and t["status_tone"] == "warning" for t in [front_telemetry, rear_telemetry])
 
     pressure_form = TirePressureRecordForm(user=request.user, initial_motorcycle=motorcycle_id or None)
+    configure_form_accessibility(pressure_form)
     pressure_records = TirePressureRecord.objects.filter(
         motorcycle__owner=request.user, motorcycle__is_active=True
     ).select_related("motorcycle")
@@ -146,6 +148,7 @@ def tire_create_view(request):
             return redirect("tires:list")
     else:
         form = TireRecordForm(user=request.user)
+    configure_form_accessibility(form)
 
     context = {
         "form": form,
@@ -169,6 +172,7 @@ def tire_update_view(request, pk):
             return redirect("tires:list")
     else:
         form = TireRecordForm(instance=record, user=request.user)
+    configure_form_accessibility(form)
 
     context = {
         "form": form,

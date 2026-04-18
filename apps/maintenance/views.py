@@ -261,6 +261,7 @@ def maintenance_part_create_view(request):
             return redirect("maintenance:catalogs")
     else:
         form = MaintenancePartForm()
+    configure_form_accessibility(form)
     return render(
         request, "maintenance/part_form.html", {"form": form, "title": "Nova peça", "submit_label": "Salvar peça"}
     )
@@ -277,6 +278,7 @@ def maintenance_part_update_view(request, pk: int):
             return redirect("maintenance:catalogs")
     else:
         form = MaintenancePartForm(instance=part)
+    configure_form_accessibility(form)
     return render(
         request,
         "maintenance/part_form.html",

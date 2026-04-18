@@ -4,59 +4,55 @@
 {% block title %}{{ title }} - Moto Track{% endblock %}
 
 {% block content %}
-<section class="space-y-8 pb-10" aria-labelledby="garage-form-title">
-  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-    <div class="space-y-2">
-      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Garagem</span>
-      <h2 id="garage-form-title" class="text-3xl font-extrabold tracking-tight">{{ title }}</h2>
-      <p class="text-on-surface-variant text-sm">Preencha os dados da moto para manter os registros organizados.</p>
+<section class="list-section" aria-labelledby="garage-form-title">
+  <header class="list-header">
+    <div>
+      <h2 id="garage-form-title">{{ title }}</h2>
+      <p class="section-subtitle">Preencha os dados da moto para manter os registros organizados.</p>
     </div>
-    <a class="rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'garage:list' %}">Voltar</a>
+    <a class="inline-cta" href="{% url 'garage:list' %}">Voltar para garagem</a>
   </header>
 
-  <article class="glass-card-tight p-6">
-    <div class="glass-orb tone-orb-primary"></div>
-    <form method="post" class="space-y-4" enctype="multipart/form-data" novalidate>
+  <article class="panel">
+    <form method="post" class="data-form" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
-      <div class="data-form">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {{ form.name|as_crispy_field }}
-          {{ form.year|as_crispy_field }}
-          {{ form.brand|as_crispy_field }}
-          {{ form.model|as_crispy_field }}
-          <div class="md:col-span-2">
-            {{ form.photo|as_crispy_field }}
-          </div>
-          {{ form.license_plate|as_crispy_field }}
-          {{ form.odometer_override_km|as_crispy_field }}
-          {{ form.riding_profile|as_crispy_field }}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {{ form.name|as_crispy_field }}
+        {{ form.year|as_crispy_field }}
+        {{ form.brand|as_crispy_field }}
+        {{ form.model|as_crispy_field }}
+        <div class="md:col-span-2">
+          {{ form.photo|as_crispy_field }}
         </div>
-
-        <div class="mt-8 rounded-2xl bg-surface-low/70 backdrop-blur p-5 ring-1 ring-outline-variant/20">
-          <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0">
-              <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Informações opcionais</p>
-              <p class="mt-1 text-sm text-on-surface-variant">Ajuda a manter um histórico mais completo da moto.</p>
-            </div>
-            <span class="icon-chip" aria-hidden="true"><i data-lucide="clipboard-list"></i></span>
-          </div>
-
-          <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5">
-            {{ form.previous_owners|as_crispy_field }}
-            {{ form.purchase_date|as_crispy_field }}
-            <div class="md:col-span-2">
-              {{ form.purchase_price|as_crispy_field }}
-            </div>
-            <div class="md:col-span-2">
-              {{ form.observations|as_crispy_field }}
-            </div>
-          </div>
-        </div>
+        {{ form.license_plate|as_crispy_field }}
+        {{ form.odometer_override_km|as_crispy_field }}
+        {{ form.riding_profile|as_crispy_field }}
       </div>
 
-      <div class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
-        <a class="rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60 text-center" href="{% url 'garage:list' %}">Cancelar</a>
-        <button type="submit" class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient">{{ submit_label }}</button>
+      <section class="rounded-2xl bg-surface-low/70 p-5 ring-1 ring-outline-variant/20" aria-label="Informações opcionais">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Informações opcionais</p>
+            <p class="mt-1 text-sm text-on-surface-variant">Ajuda a manter um histórico mais completo da moto.</p>
+          </div>
+          <span class="icon-chip" aria-hidden="true"><i data-lucide="clipboard-list"></i></span>
+        </div>
+
+        <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+          {{ form.previous_owners|as_crispy_field }}
+          {{ form.purchase_date|as_crispy_field }}
+          <div class="md:col-span-2">
+            {{ form.purchase_price|as_crispy_field }}
+          </div>
+          <div class="md:col-span-2">
+            {{ form.observations|as_crispy_field }}
+          </div>
+        </div>
+      </section>
+
+      <div class="quick-actions-row-split">
+        <a class="secondary-btn" href="{% url 'garage:list' %}">Cancelar</a>
+        <button type="submit" class="primary-btn">{{ submit_label }}</button>
       </div>
     </form>
   </article>

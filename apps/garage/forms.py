@@ -22,6 +22,20 @@ class MotorcycleForm(forms.ModelForm):
             "purchase_date",
             "observations",
         ]
+        labels = {
+            "name": "Nome da moto",
+            "brand": "Marca",
+            "model": "Modelo",
+            "year": "Ano",
+            "photo": "Foto",
+            "license_plate": "Placa",
+            "odometer_override_km": "Odômetro atual (km)",
+            "riding_profile": "Perfil de condução",
+            "previous_owners": "Proprietários anteriores",
+            "purchase_price": "Valor de compra",
+            "purchase_date": "Data de compra",
+            "observations": "Observações",
+        }
         widgets = {
             "license_plate": forms.TextInput(attrs={"placeholder": "ABC1D23"}),
             "previous_owners": forms.NumberInput(attrs={"placeholder": "0"}),
@@ -68,6 +82,22 @@ class MotorcycleSpecForm(forms.ModelForm):
     class Meta:
         model = MotorcycleSpec
         exclude = ["motorcycle"]
+        labels = {
+            "fuel_tank_capacity_l": "Capacidade do tanque (L)",
+            "fuel_type_recommendation": "Combustível recomendado",
+            "fuel_octane_min": "Octanagem mínima",
+            "oil_capacity_l": "Capacidade de óleo (L)",
+            "tire_size_front": "Medida do pneu dianteiro",
+            "tire_size_rear": "Medida do pneu traseiro",
+            "tire_speed_rating": "Índice de velocidade",
+            "battery_spec": "Especificação da bateria",
+            "chain_size": "Medida da relação/corrente",
+            "recommended_tire_pressure_front": "Pressão dianteira recomendada",
+            "recommended_tire_pressure_rear": "Pressão traseira recomendada",
+            "oil_type_recommendation": "Óleo recomendado",
+            "oil_viscosity_recommendation": "Viscosidade do óleo",
+            "manual_reference": "Referência do manual",
+        }
         widgets = {
             "fuel_tank_capacity_l": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
             "fuel_octane_min": forms.NumberInput(attrs={"inputmode": "numeric"}),

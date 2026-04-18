@@ -10,21 +10,18 @@
       <h2 id="part-form-title">{{ title }}</h2>
       <p class="section-subtitle">Cadastre peças e insumos para reaproveitar em manutenções.</p>
     </div>
-    <a class="action-btn" href="{% url 'maintenance:catalogs' %}">
-      <span>Voltar ao catálogo</span>
-      <small>Peças</small>
-    </a>
+    <a class="inline-cta" href="{% url 'maintenance:catalogs' %}">Voltar ao catálogo</a>
   </header>
 
   <article class="panel">
-    <form method="post" class="data-form">
+    <form method="post" class="data-form" novalidate>
       {% csrf_token %}
       {{ form|crispy }}
-      <div class="quick-actions-row">
+      <div class="quick-actions-row-split">
+        <a class="secondary-btn" href="{% url 'maintenance:catalogs' %}">Cancelar</a>
         <button type="submit" class="primary-btn">{{ submit_label }}</button>
       </div>
     </form>
   </article>
 </section>
 {% endblock %}
-

@@ -32,6 +32,19 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
             "interval_km",
             "interval_days",
         ]
+        labels = {
+            "motorcycle": "Moto",
+            "maintenance_type": "Tipo de manutenção",
+            "date": "Data",
+            "odometer_km": "Odômetro (km)",
+            "cost": "Custo",
+            "workshop": "Oficina",
+            "description": "Descrição",
+            "parts_used": "Peças usadas",
+            "interval_km": "Intervalo em km",
+            "interval_days": "Intervalo em dias",
+            "parts": "Peças do catálogo",
+        }
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
             "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
@@ -89,6 +102,14 @@ class MaintenancePartForm(forms.ModelForm):
     class Meta:
         model = MaintenancePart
         fields = ["name", "manufacturer", "part_type", "sku", "price", "notes"]
+        labels = {
+            "name": "Nome",
+            "manufacturer": "Fabricante",
+            "part_type": "Tipo de peça",
+            "sku": "Código/SKU",
+            "price": "Preço",
+            "notes": "Observações",
+        }
         widgets = {
             "notes": forms.Textarea(attrs={"rows": 2}),
         }

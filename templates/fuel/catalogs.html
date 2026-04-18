@@ -10,11 +10,11 @@
     <div class="space-y-2">
       <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Catálogos</span>
       <h2 id="fuel-catalog-title" class="text-3xl font-extrabold tracking-tight">Catálogos de combustível</h2>
-      <p class="text-on-surface-variant text-sm">Postos, grades e referências reutilizáveis para abastecimento rápido.</p>
+      <p class="text-on-surface-variant text-sm">Postos, combustíveis e referências reutilizáveis para abastecimento rápido.</p>
     </div>
     <div class="flex flex-wrap gap-3">
       <a class="rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'fuel:station_create' %}">Novo posto</a>
-      <a class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient" href="{% url 'fuel:grade_create' %}">Nova grade</a>
+      <a class="ui-btn-primary" href="{% url 'fuel:grade_create' %}">Novo combustível</a>
     </div>
   </header>
 
@@ -108,7 +108,7 @@
     </article>
 
     <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient space-y-4">
-      <h3 class="text-lg font-extrabold tracking-tight">Grades de combustível</h3>
+      <h3 class="text-lg font-extrabold tracking-tight">Combustíveis cadastrados</h3>
       {% if grades %}
         <ul class="space-y-3">
           {% for grade in grades %}
@@ -117,15 +117,15 @@
                 <strong class="block font-extrabold truncate">{{ grade.name }}</strong>
                 <p class="text-xs text-on-surface-variant">{{ grade.get_fuel_type_display }}{% if grade.octane_rating %} • {{ grade.octane_rating }} octanas{% endif %}</p>
               </div>
-              <div class="flex items-center gap-2" role="group" aria-label="Ações da grade {{ grade.name }}">
-                <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'fuel:grade_update' grade.pk %}" aria-label="Editar grade {{ grade.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                <a class="h-9 w-9 grid place-items-center rounded-xl text-error hover:bg-error/10" href="{% url 'fuel:grade_delete' grade.pk %}" aria-label="Excluir grade {{ grade.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+              <div class="flex items-center gap-2" role="group" aria-label="Ações do combustível {{ grade.name }}">
+                <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'fuel:grade_update' grade.pk %}" aria-label="Editar combustível {{ grade.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                <a class="h-9 w-9 grid place-items-center rounded-xl text-error hover:bg-error/10" href="{% url 'fuel:grade_delete' grade.pk %}" aria-label="Excluir combustível {{ grade.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
               </div>
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <p class="text-on-surface-variant text-sm">Nenhuma grade cadastrada.</p>
+        <p class="text-on-surface-variant text-sm">Nenhum combustível cadastrado.</p>
       {% endif %}
     </article>
   </section>

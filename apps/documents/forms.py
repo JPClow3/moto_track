@@ -16,6 +16,14 @@ class DocumentUploadForm(forms.ModelForm):
     class Meta:
         model = MotorcycleDocument
         fields = ["motorcycle", "name", "document_type", "file", "valid_until", "notes"]
+        labels = {
+            "motorcycle": "Moto",
+            "name": "Nome",
+            "document_type": "Tipo de documento",
+            "file": "Arquivo",
+            "valid_until": "Validade",
+            "notes": "Observações",
+        }
         widgets = {
             "valid_until": forms.DateInput(attrs={"type": "date"}),
             "notes": forms.Textarea(attrs={"rows": 2}),

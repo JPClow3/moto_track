@@ -18,7 +18,7 @@ from apps.fuel.services import compute_average_consumption_km_per_liter, detect_
 from apps.maintenance.models import MaintenancePlanItem, MaintenanceRecord
 from apps.reminders.models import Reminder
 from apps.reminders.services import ReminderStatus, evaluate_reminder
-from apps.tires.models import TirePosition, TireRecord
+from apps.tires.models import TirePosition, TirePressureRecord, TireRecord
 
 
 PERIODS = (30, 90, 365)
@@ -72,6 +72,84 @@ class HealthScore:
     documents: int
     data_quality: int
     notes: list[str]
+
+
+@dataclass(frozen=True)
+class StationUsage:
+    label: str
+    fillups_count: int
+    liters: Decimal
+    total_spend: Decimal
+
+
+@dataclass(frozen=True)
+class FuelUsageSummary:
+    fillups_count: int
+    liters_total: Decimal
+    total_spend: Decimal
+    average_km_between_fillups: int | None
+    most_used_station: StationUsage | None
+
+
+@dataclass(frozen=True)
+class MaintenanceHistoryRow:
+    date: date
+    type_label: str
+    odometer_km: int
+    cost: Decimal
+    workshop: str
+    description: str
+    parts_used: str
+    next_change_km: int | None
+    next_change_date: date | None
+
+
+@dataclass(frozen=True)
+class MaintenanceTypeSummaryRow:
+    type_label: str
+    count: int
+    total_cost: Decimal
+    latest_date: date
+
+
+@dataclass(frozen=True)
+class TireHistoryRow:
+    installed_at: date
+    position_label: str
+    brand_model: str
+    installed_odometer_km: int
+    cost: Decimal
+    wear_percent: int
+    is_active: bool
+
+
+@dataclass(frozen=True)
+class TirePressureHistoryRow:
+    date: date
+    psi_front: int
+    psi_rear: int
+    notes: str
+
+
+@dataclass(frozen=True)
+class DocumentSummaryRow:
+    name: str
+    type_label: str
+    valid_until: date | None
+
+
+@dataclass(frozen=True)
+class SaleReportData:
+    motorcycle: Any
+    summary: CostSummary
+    health: HealthScore
+    fuel_summary: FuelUsageSummary
+    maintenance_by_type: list[MaintenanceTypeSummaryRow]
+    maintenance_history: list[MaintenanceHistoryRow]
+    tire_history: list[TireHistoryRow]
+    pressure_history: list[TirePressureHistoryRow]
+    documents: list[DocumentSummaryRow]
+    recent_events: list[TimelineEvent]
 
 
 def _amount_sum(qs, field: str) -> Decimal:
@@ -189,6 +267,162 @@ def monthly_real_costs(*, user, motorcycle=None, months: int = 6, today: date | 
         summary = cost_summary(user=user, motorcycle=motorcycle, start=start, end=min(end, today))
         rows.append({"label": start.strftime("%b").upper(), "summary": summary})
     return rows
+
+
+def _average_km_between_fillups(records: list[FuelRecord]) -> int | None:
+    ordered = sorted(records, key=lambda record: (record.date, int(record.odometer_km or 0), record.pk or 0))
+    deltas = [
+        int(current.odometer_km or 0) - int(previous.odometer_km or 0)
+        for previous, current in zip(ordered, ordered[1:], strict=False)
+    ]
+    deltas = [delta for delta in deltas if delta > 0]
+    if not deltas:
+        return None
+    return int(round(sum(deltas) / len(deltas)))
+
+
+def _station_label(record: FuelRecord) -> str:
+    if record.station and getattr(record.station, "name", None):
+        return str(record.station.name).strip()
+    return str(record.station_name or "").strip()
+
+
+def _most_used_station(records: list[FuelRecord]) -> StationUsage | None:
+    buckets: dict[str, dict[str, Decimal | int]] = {}
+    for record in records:
+        label = _station_label(record)
+        if not label:
+            continue
+        bucket = buckets.setdefault(label, {"fillups_count": 0, "liters": Decimal("0"), "total_spend": Decimal("0")})
+        bucket["fillups_count"] = int(bucket["fillups_count"]) + 1
+        bucket["liters"] = Decimal(bucket["liters"]) + Decimal(record.liters or 0)
+        bucket["total_spend"] = Decimal(bucket["total_spend"]) + (money_amount(record.total_price) or Decimal("0"))
+
+    rows = [
+        StationUsage(
+            label=label,
+            fillups_count=int(values["fillups_count"]),
+            liters=Decimal(values["liters"]),
+            total_spend=Decimal(values["total_spend"]),
+        )
+        for label, values in buckets.items()
+    ]
+    if not rows:
+        return None
+    return sorted(rows, key=lambda row: (-row.fillups_count, -row.liters, -row.total_spend, row.label))[0]
+
+
+def _fuel_usage_summary(*, motorcycle) -> FuelUsageSummary:
+    records = list(
+        FuelRecord.objects.filter(motorcycle=motorcycle)
+        .select_related("station", "fuel_grade")
+        .order_by("date", "odometer_km", "pk")
+    )
+    liters_total = sum((Decimal(record.liters or 0) for record in records), Decimal("0"))
+    total_spend = sum((money_amount(record.total_price) or Decimal("0") for record in records), Decimal("0"))
+    return FuelUsageSummary(
+        fillups_count=len(records),
+        liters_total=liters_total,
+        total_spend=total_spend,
+        average_km_between_fillups=_average_km_between_fillups(records),
+        most_used_station=_most_used_station(records),
+    )
+
+
+def _maintenance_history(*, motorcycle) -> list[MaintenanceHistoryRow]:
+    return [
+        MaintenanceHistoryRow(
+            date=record.date,
+            type_label=record.get_maintenance_type_display(),
+            odometer_km=int(record.odometer_km or 0),
+            cost=money_amount(record.cost) or Decimal("0"),
+            workshop=record.workshop,
+            description=record.description,
+            parts_used=record.parts_used,
+            next_change_km=record.computed_next_change_km,
+            next_change_date=record.computed_next_change_date,
+        )
+        for record in MaintenanceRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km")
+    ]
+
+
+def _maintenance_by_type(rows: list[MaintenanceHistoryRow]) -> list[MaintenanceTypeSummaryRow]:
+    buckets: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        bucket = buckets.setdefault(
+            row.type_label,
+            {"count": 0, "total_cost": Decimal("0"), "latest_date": row.date},
+        )
+        bucket["count"] += 1
+        bucket["total_cost"] += row.cost
+        bucket["latest_date"] = max(bucket["latest_date"], row.date)
+
+    return sorted(
+        (
+            MaintenanceTypeSummaryRow(
+                type_label=label,
+                count=int(values["count"]),
+                total_cost=Decimal(values["total_cost"]),
+                latest_date=values["latest_date"],
+            )
+            for label, values in buckets.items()
+        ),
+        key=lambda row: (-row.total_cost, row.type_label),
+    )
+
+
+def _tire_history(*, motorcycle) -> list[TireHistoryRow]:
+    return [
+        TireHistoryRow(
+            installed_at=record.installed_at,
+            position_label=record.get_position_display(),
+            brand_model=record.brand_model,
+            installed_odometer_km=int(record.installed_odometer_km or 0),
+            cost=money_amount(record.cost) or Decimal("0"),
+            wear_percent=int(record.wear_percent or 0),
+            is_active=bool(record.is_active),
+        )
+        for record in TireRecord.objects.filter(motorcycle=motorcycle).order_by("-installed_at", "-created_at")
+    ]
+
+
+def _pressure_history(*, motorcycle) -> list[TirePressureHistoryRow]:
+    return [
+        TirePressureHistoryRow(
+            date=record.date,
+            psi_front=int(record.psi_front or 0),
+            psi_rear=int(record.psi_rear or 0),
+            notes=record.notes,
+        )
+        for record in TirePressureRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-created_at")[:12]
+    ]
+
+
+def _document_summary(*, motorcycle) -> list[DocumentSummaryRow]:
+    return [
+        DocumentSummaryRow(
+            name=document.name,
+            type_label=document.get_document_type_display(),
+            valid_until=document.valid_until,
+        )
+        for document in MotorcycleDocument.objects.filter(motorcycle=motorcycle).order_by("name")
+    ]
+
+
+def sale_report_data(*, motorcycle) -> SaleReportData:
+    maintenance_history = _maintenance_history(motorcycle=motorcycle)
+    return SaleReportData(
+        motorcycle=motorcycle,
+        summary=cost_summary(user=motorcycle.owner, motorcycle=motorcycle),
+        health=health_score(motorcycle=motorcycle),
+        fuel_summary=_fuel_usage_summary(motorcycle=motorcycle),
+        maintenance_by_type=_maintenance_by_type(maintenance_history),
+        maintenance_history=maintenance_history,
+        tire_history=_tire_history(motorcycle=motorcycle),
+        pressure_history=_pressure_history(motorcycle=motorcycle),
+        documents=_document_summary(motorcycle=motorcycle),
+        recent_events=timeline_events(user=motorcycle.owner, motorcycle=motorcycle)[:12],
+    )
 
 
 def infer_riding_profile(*, motorcycle, today: date | None = None) -> str:
