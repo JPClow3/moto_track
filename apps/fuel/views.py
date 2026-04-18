@@ -11,18 +11,18 @@ from django.utils import timezone
 from djmoney.money import Money
 
 from apps.core.active_motorcycle import get_active_motorcycle
-from apps.core.forms import configure_form_accessibility
 from apps.core.exports import parse_date_param, safe_next_url
+from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
 from apps.core.undo import create_undo_token
+from apps.reminders.models import Reminder
+from apps.reminders.services import list_due_reminders
 
+from .export import build_export
 from .forms import FuelGradeForm, FuelRecordQuickForm, FuelRecordRepeatForm, FuelStationForm
 from .models import FuelGrade, FuelPreference, FuelRecord, FuelStation
 from .services import best_fuel_preference, compute_station_rankings, detect_fuel_anomalies, remember_fuel_preference
-from apps.reminders.models import Reminder
-from apps.reminders.services import list_due_reminders
-from .export import build_export
 
 
 def _month_key(dt):
@@ -282,6 +282,7 @@ def fuel_station_create_view(request):
             return redirect("fuel:catalogs")
     else:
         form = FuelStationForm()
+    configure_form_accessibility(form)
 
     return render(
         request, "fuel/station_form.html", {"form": form, "title": "Novo posto", "submit_label": "Salvar posto"}
@@ -299,6 +300,7 @@ def fuel_station_update_view(request, pk: int):
             return redirect("fuel:catalogs")
     else:
         form = FuelStationForm(instance=station)
+    configure_form_accessibility(form)
 
     return render(
         request,
@@ -326,12 +328,13 @@ def fuel_grade_create_view(request):
             grade = form.save(commit=False)
             grade.owner = request.user
             grade.save()
-            messages.success(request, f"Grade {grade.name} criada com sucesso.")
+            messages.success(request, f"Combustível {grade.name} criado com sucesso.")
             return redirect("fuel:catalogs")
     else:
         form = FuelGradeForm()
+    configure_form_accessibility(form)
     return render(
-        request, "fuel/grade_form.html", {"form": form, "title": "Nova grade", "submit_label": "Salvar grade"}
+        request, "fuel/grade_form.html", {"form": form, "title": "Novo combustível", "submit_label": "Salvar combustível"}
     )
 
 
@@ -342,10 +345,11 @@ def fuel_grade_update_view(request, pk: int):
         form = FuelGradeForm(request.POST, instance=grade)
         if form.is_valid():
             form.save()
-            messages.success(request, f"Grade {grade.name} atualizada com sucesso.")
+            messages.success(request, f"Combustível {grade.name} atualizado com sucesso.")
             return redirect("fuel:catalogs")
     else:
         form = FuelGradeForm(instance=grade)
+    configure_form_accessibility(form)
     return render(
         request,
         "fuel/grade_form.html",
@@ -359,7 +363,7 @@ def fuel_grade_delete_view(request, pk: int):
     if request.method == "POST":
         name = grade.name
         grade.delete()
-        messages.success(request, f"Grade {name} removida com sucesso.")
+        messages.success(request, f"Combustível {name} removido com sucesso.")
         return redirect("fuel:catalogs")
     return render(request, "fuel/grade_confirm_delete.html", {"grade": grade})
 

@@ -56,7 +56,7 @@ class Command(BaseCommand):
             )
         except IntegrityError as exc:
             raise CommandError(
-                "Could not create user (unique constraint?). Try a different username or email."
+                "Não foi possível criar o usuário (restrição de unicidade?). Tente outro usuário ou e-mail."
             ) from exc
 
         user.email = email

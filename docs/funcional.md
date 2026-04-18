@@ -124,7 +124,7 @@ O sistema usa catálogos para reduzir digitação repetida e tornar os registros
 
 Catálogos principais:
 
-- postos e grades de combustível
+- postos e combustíveis cadastrados
 - peças e insumos de manutenção
 - pneus estruturados
 
@@ -142,7 +142,7 @@ Ele cria, de forma idempotente:
 - usuário demo
 - moto demo
 - especificações da moto
-- posto e grade de combustível
+- posto e combustível cadastrado
 - abastecimento exemplo
 - item de manutenção e manutenção exemplo
 - pneu e instalação exemplo

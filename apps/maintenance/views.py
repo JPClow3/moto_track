@@ -10,8 +10,8 @@ from django.utils import timezone
 from djmoney.money import Money
 
 from apps.core.active_motorcycle import get_active_motorcycle
-from apps.core.forms import configure_form_accessibility
 from apps.core.exports import parse_date_param, safe_next_url
+from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
 from apps.core.undo import create_undo_token
@@ -19,9 +19,9 @@ from apps.garage.models import Motorcycle
 from apps.reminders.models import Reminder
 from apps.reminders.services import list_due_reminders
 
+from .export import build_export
 from .forms import MaintenancePartForm, MaintenanceRecordQuickForm
 from .models import MaintenancePart, MaintenancePlanItem, MaintenanceRecord, MaintenanceRecordPart, MaintenanceType
-from .export import build_export
 
 # pylint: disable=no-member
 
@@ -261,6 +261,7 @@ def maintenance_part_create_view(request):
             return redirect("maintenance:catalogs")
     else:
         form = MaintenancePartForm()
+    configure_form_accessibility(form)
     return render(
         request, "maintenance/part_form.html", {"form": form, "title": "Nova peça", "submit_label": "Salvar peça"}
     )
@@ -277,6 +278,7 @@ def maintenance_part_update_view(request, pk: int):
             return redirect("maintenance:catalogs")
     else:
         form = MaintenancePartForm(instance=part)
+    configure_form_accessibility(form)
     return render(
         request,
         "maintenance/part_form.html",

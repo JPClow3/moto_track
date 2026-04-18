@@ -1,11 +1,9 @@
 from django import forms
-
-from apps.garage.models import Motorcycle
-
 from django.utils import timezone
 
 from apps.core.sanitizers import sanitize_text
 from apps.core.validation import add_form_errors, validate_not_future, validate_odometer_sequence
+from apps.garage.models import Motorcycle
 
 from .models import TirePressureRecord, TireProduct, TireRecord
 
@@ -27,6 +25,20 @@ class TireRecordForm(forms.ModelForm):
             "estimated_change_km",
             "is_active",
         ]
+        labels = {
+            "motorcycle": "Moto",
+            "tire_product": "Pneu do catálogo",
+            "position": "Posição",
+            "brand_model": "Marca e modelo",
+            "installed_at": "Data de instalação",
+            "installed_odometer_km": "Odômetro na instalação (km)",
+            "cost": "Custo instalado",
+            "purchase_price": "Preço de compra",
+            "recommended_pressure": "Pressão recomendada",
+            "wear_percent": "Desgaste (%)",
+            "estimated_change_km": "Troca estimada em km",
+            "is_active": "Pneu ativo",
+        }
         widgets = {
             "installed_at": forms.DateInput(attrs={"type": "date"}),
             "installed_odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
@@ -73,6 +85,13 @@ class TirePressureRecordForm(forms.ModelForm):
     class Meta:
         model = TirePressureRecord
         fields = ["motorcycle", "date", "psi_front", "psi_rear", "notes"]
+        labels = {
+            "motorcycle": "Moto",
+            "date": "Data",
+            "psi_front": "PSI dianteiro",
+            "psi_rear": "PSI traseiro",
+            "notes": "Observações",
+        }
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
             "psi_front": forms.NumberInput(attrs={"inputmode": "numeric"}),

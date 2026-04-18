@@ -68,16 +68,16 @@
     </article>
   </section>
 
-  <article id="documents-upload-form" class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Envio de documento">
+  <article id="documents-upload-form" class="panel" aria-label="Envio de documento">
     <h3 class="text-lg font-extrabold tracking-tight">Envio de documento</h3>
-    <form method="post" enctype="multipart/form-data" class="mt-4 space-y-4">
+    <form method="post" enctype="multipart/form-data" class="mt-4 data-form" novalidate>
       {% csrf_token %}
       {% for field in upload_form.visible_fields %}
-        <div class="space-y-1">
-          <label class="text-sm font-bold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <div class="form-field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
           {{ field }}
           {% if field.errors %}
-            <div class="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" aria-live="polite">
+            <div class="field-error" aria-live="polite">
               {% for error in field.errors %}
                 <p>{{ error }}</p>
               {% endfor %}
@@ -85,7 +85,9 @@
           {% endif %}
         </div>
       {% endfor %}
-      <button type="submit" class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient">Enviar documento</button>
+      <div class="quick-actions-row">
+        <button type="submit" class="primary-btn">Enviar documento</button>
+      </div>
     </form>
   </article>
 

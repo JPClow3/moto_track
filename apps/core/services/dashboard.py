@@ -244,7 +244,7 @@ def get_quick_actions() -> list[dict]:
 
 def get_catalog_links() -> list[dict]:
     return [
-        {"label": "Catálogos de combustível", "hint": "Postos e grades", "url": reverse("fuel:catalogs")},
+        {"label": "Catálogos de combustível", "hint": "Postos e combustíveis", "url": reverse("fuel:catalogs")},
         {"label": "Catálogos de manutenção", "hint": "Peças e insumos", "url": reverse("maintenance:catalogs")},
         {"label": "Catálogos de pneus", "hint": "Produtos e especificações", "url": reverse("tires:catalogs")},
     ]

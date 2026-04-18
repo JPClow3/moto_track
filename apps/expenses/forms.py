@@ -21,6 +21,16 @@ class AnnualFeeForm(forms.ModelForm):
             "notify_before_days",
             "notes",
         ]
+        labels = {
+            "motorcycle": "Moto",
+            "fee_type": "Tipo de taxa",
+            "year": "Ano",
+            "due_date": "Vencimento",
+            "paid_date": "Data de pagamento",
+            "amount": "Valor",
+            "notify_before_days": "Avisar com antecedência (dias)",
+            "notes": "Observações",
+        }
         widgets = {
             "due_date": forms.DateInput(attrs={"type": "date"}),
             "paid_date": forms.DateInput(attrs={"type": "date"}),
@@ -56,6 +66,16 @@ class InsurancePolicyForm(forms.ModelForm):
             "notify_before_days",
             "notes",
         ]
+        labels = {
+            "motorcycle": "Moto",
+            "provider": "Seguradora",
+            "policy_number": "Número da apólice",
+            "coverage_start": "Início da vigência",
+            "coverage_end": "Fim da vigência",
+            "premium": "Prêmio",
+            "notify_before_days": "Avisar com antecedência (dias)",
+            "notes": "Observações",
+        }
         widgets = {
             "coverage_start": forms.DateInput(attrs={"type": "date"}),
             "coverage_end": forms.DateInput(attrs={"type": "date"}),
@@ -82,6 +102,12 @@ class InsuranceClaimForm(forms.ModelForm):
     class Meta:
         model = InsuranceClaim
         fields = ["claim_date", "status", "amount", "description"]
+        labels = {
+            "claim_date": "Data do sinistro",
+            "status": "Status",
+            "amount": "Valor",
+            "description": "Descrição",
+        }
         widgets = {
             "claim_date": forms.DateInput(attrs={"type": "date"}),
             "description": forms.Textarea(attrs={"rows": 3}),

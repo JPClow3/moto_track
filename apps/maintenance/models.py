@@ -10,15 +10,15 @@ from apps.garage.models import Motorcycle
 
 
 class MaintenanceType(models.TextChoices):
-    OIL_CHANGE = "oil_change", "Troca de oleo"
-    OIL_FILTER = "oil_filter", "Filtro de oleo"
+    OIL_CHANGE = "oil_change", "Troca de óleo"
+    OIL_FILTER = "oil_filter", "Filtro de óleo"
     AIR_FILTER = "air_filter", "Filtro de ar"
-    CHAIN_SET = "chain_set", "Relacao"
+    CHAIN_SET = "chain_set", "Relação"
     BRAKE_PAD = "brake_pad", "Pastilha de freio"
     SPARK_PLUG = "spark_plug", "Vela"
     BATTERY = "battery", "Bateria"
-    REVIEW = "review", "Revisao"
-    LABOR = "labor", "Mao de obra"
+    REVIEW = "review", "Revisão"
+    LABOR = "labor", "Mão de obra"
     OTHER = "other", "Outro"
 
 
