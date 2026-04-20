@@ -5,10 +5,11 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.core.forms import configure_form_accessibility
 from apps.core.ui import get_density, per_page_for_density
 
-from .forms import AnnualFeeForm, InsuranceClaimForm, InsurancePolicyForm
 from .export import build_export
+from .forms import AnnualFeeForm, InsuranceClaimForm, InsurancePolicyForm
 from .models import AnnualFee, InsuranceClaim, InsurancePolicy
 from .services import (
     delete_fee_reminder,
@@ -71,6 +72,7 @@ def annual_fee_create_view(request):
             return redirect("expenses:list")
     else:
         form = AnnualFeeForm(user=request.user)
+    configure_form_accessibility(form)
 
     return render(
         request,
@@ -91,6 +93,7 @@ def annual_fee_update_view(request, pk: int):
             return redirect("expenses:list")
     else:
         form = AnnualFeeForm(instance=fee, user=request.user)
+    configure_form_accessibility(form)
 
     return render(
         request,
@@ -127,6 +130,7 @@ def policy_create_view(request):
             return redirect("expenses:list")
     else:
         form = InsurancePolicyForm(user=request.user)
+    configure_form_accessibility(form)
 
     return render(
         request,
@@ -148,6 +152,7 @@ def policy_update_view(request, pk: int):
             return redirect("expenses:list")
     else:
         form = InsurancePolicyForm(instance=policy, user=request.user)
+    configure_form_accessibility(form)
 
     return render(
         request,
@@ -187,6 +192,7 @@ def claim_create_view(request, policy_pk: int):
             return redirect("expenses:policy_update", pk=policy.pk)
     else:
         form = InsuranceClaimForm()
+    configure_form_accessibility(form)
 
     return render(
         request,
@@ -213,6 +219,7 @@ def claim_update_view(request, pk: int):
             return redirect("expenses:policy_update", pk=claim.policy.pk)
     else:
         form = InsuranceClaimForm(instance=claim)
+    configure_form_accessibility(form)
 
     return render(
         request,

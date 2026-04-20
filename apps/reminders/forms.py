@@ -22,6 +22,19 @@ class ReminderForm(forms.ModelForm):
             "send_email",
             "notes",
         ]
+        labels = {
+            "motorcycle": "Moto",
+            "title": "Título",
+            "description": "Descrição",
+            "trigger_type": "Tipo de gatilho",
+            "trigger_value_km": "Valor do gatilho em km",
+            "trigger_value_days": "Valor do gatilho em dias",
+            "reference_km": "Km de referência",
+            "reference_date": "Data de referência",
+            "is_active": "Ativo",
+            "send_email": "Enviar e-mail",
+            "notes": "Observações",
+        }
         widgets = {
             "description": forms.Textarea(attrs={"rows": 2}),
             "notes": forms.Textarea(attrs={"rows": 2}),

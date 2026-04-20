@@ -4,10 +4,12 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.fuel.models import FuelRecord
+from apps.expenses.models import AnnualFee, InsurancePolicy
+from apps.fuel.models import FuelRecord, FuelStation
 from apps.garage.models import Motorcycle
-from apps.maintenance.models import MaintenanceRecord
-from apps.reports.services import cost_summary, health_score, period_comparisons, timeline_events
+from apps.maintenance.models import MaintenanceRecord, MaintenanceType
+from apps.reports.services import cost_summary, health_score, period_comparisons, sale_report_data, timeline_events
+from apps.tires.models import TirePosition, TirePressureRecord, TireRecord
 
 
 class ReportOverviewTests(TestCase):
@@ -97,3 +99,105 @@ class ReportOverviewTests(TestCase):
         self.assertEqual(csv_response["Content-Type"], "text/csv; charset=utf-8")
         self.assertEqual(pdf_response.status_code, 200)
         self.assertEqual(pdf_response["Content-Type"], "application/pdf")
+
+    def test_sale_report_data_calculates_commercial_summary(self):
+        preferred_station = FuelStation.objects.create(owner=self.user, name="Posto Alpha")
+        other_station = FuelStation.objects.create(owner=self.user, name="Posto Beta")
+
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            station=preferred_station,
+            station_name="Posto Alpha",
+            date="2026-04-14",
+            odometer_km=10200,
+            liters=Decimal("10.000"),
+            total_price=Decimal("70.00"),
+            price_per_liter=Decimal("7.000"),
+        )
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            station=preferred_station,
+            station_name="Posto Alpha",
+            date="2026-04-15",
+            odometer_km=10550,
+            liters=Decimal("12.000"),
+            total_price=Decimal("84.00"),
+            price_per_liter=Decimal("7.000"),
+        )
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            station=other_station,
+            station_name="Posto Beta",
+            date="2026-04-16",
+            odometer_km=10900,
+            liters=Decimal("9.000"),
+            total_price=Decimal("63.00"),
+            price_per_liter=Decimal("7.000"),
+        )
+        MaintenanceRecord.objects.create(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+            date="2026-04-17",
+            odometer_km=10950,
+            cost=Decimal("200.00"),
+            workshop="Oficina Central",
+        )
+        TireRecord.objects.create(
+            motorcycle=self.motorcycle,
+            position=TirePosition.REAR,
+            brand_model="Pirelli Angel GT",
+            installed_at="2026-04-11",
+            installed_odometer_km=9900,
+            cost=Decimal("800.00"),
+            wear_percent=20,
+            is_active=True,
+        )
+        TirePressureRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date="2026-04-12",
+            psi_front=32,
+            psi_rear=36,
+        )
+        AnnualFee.objects.create(
+            motorcycle=self.motorcycle,
+            fee_type="ipva",
+            year=2026,
+            due_date="2026-05-01",
+            amount=Decimal("300.00"),
+        )
+        InsurancePolicy.objects.create(
+            motorcycle=self.motorcycle,
+            provider="Seguradora Boa",
+            coverage_start="2026-01-01",
+            coverage_end="2026-12-31",
+            premium=Decimal("1200.00"),
+        )
+
+        data = sale_report_data(motorcycle=self.motorcycle)
+
+        self.assertEqual(data.motorcycle, self.motorcycle)
+        self.assertEqual(data.fuel_summary.most_used_station.label, "Posto Alpha")
+        self.assertEqual(data.fuel_summary.most_used_station.fillups_count, 2)
+        self.assertEqual(data.fuel_summary.average_km_between_fillups, 300)
+        self.assertEqual(data.summary.fuel, Decimal("287"))
+        self.assertEqual(data.summary.maintenance, Decimal("350"))
+        self.assertEqual(data.summary.tires, Decimal("800"))
+        self.assertEqual(data.summary.annual_fees, Decimal("300"))
+        self.assertEqual(data.summary.insurance, Decimal("1200"))
+        self.assertTrue(any(row.type_label == "Troca de óleo" for row in data.maintenance_history))
+        self.assertEqual(data.tire_history[0].brand_model, "Pirelli Angel GT")
+        self.assertEqual(data.pressure_history[0].psi_front, 32)
+
+    def test_sale_report_data_has_empty_state_for_sparse_records(self):
+        empty_motorcycle = Motorcycle.objects.create(
+            owner=self.user, name="Moto vazia", brand="Honda", model="Biz", year=2020
+        )
+
+        data = sale_report_data(motorcycle=empty_motorcycle)
+
+        self.assertIsNone(data.fuel_summary.most_used_station)
+        self.assertIsNone(data.fuel_summary.average_km_between_fillups)
+        self.assertEqual(data.fuel_summary.fillups_count, 0)
+        self.assertEqual(data.summary.total, Decimal("0"))
+        self.assertEqual(data.maintenance_history, [])
+        self.assertEqual(data.tire_history, [])

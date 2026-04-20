@@ -29,6 +29,20 @@ class FuelRecordBaseForm(forms.ModelForm):
             "station_name",
             "notes",
         ]
+        labels = {
+            "motorcycle": "Moto",
+            "station": "Posto cadastrado",
+            "fuel_grade": "Combustível cadastrado",
+            "date": "Data",
+            "odometer_km": "Odômetro (km)",
+            "liters": "Litros",
+            "total_price": "Valor total",
+            "price_per_liter": "Preço por litro",
+            "fuel_type": "Tipo de combustível",
+            "tank_full": "Tanque cheio",
+            "station_name": "Nome do posto",
+            "notes": "Observações",
+        }
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
             "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
@@ -164,6 +178,13 @@ class FuelStationForm(forms.ModelForm):
     class Meta:
         model = FuelStation
         fields = ["name", "brand", "city", "state", "notes"]
+        labels = {
+            "name": "Nome",
+            "brand": "Bandeira",
+            "city": "Cidade",
+            "state": "UF",
+            "notes": "Observações",
+        }
         widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
 
 
@@ -171,6 +192,14 @@ class FuelGradeForm(forms.ModelForm):
     class Meta:
         model = FuelGrade
         fields = ["name", "fuel_type", "octane_rating", "ethanol_percentage", "default_price_per_liter", "notes"]
+        labels = {
+            "name": "Nome",
+            "fuel_type": "Tipo de combustível",
+            "octane_rating": "Octanagem",
+            "ethanol_percentage": "Percentual de etanol",
+            "default_price_per_liter": "Preço padrão por litro",
+            "notes": "Observações",
+        }
         widgets = {
             "octane_rating": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "ethanol_percentage": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),

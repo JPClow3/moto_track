@@ -2,6 +2,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.core.forms import configure_form_accessibility
+
 from .forms import MotorcycleForm, MotorcycleSpecForm
 from .models import Motorcycle, MotorcycleSpec
 
@@ -26,6 +28,7 @@ def garage_create_view(request):
             return redirect("garage:list")
     else:
         form = MotorcycleForm()
+    configure_form_accessibility(form)
 
     context = {
         "form": form,
@@ -47,6 +50,7 @@ def garage_update_view(request, pk):
             return redirect("garage:list")
     else:
         form = MotorcycleForm(instance=motorcycle)
+    configure_form_accessibility(form)
 
     context = {
         "form": form,
@@ -70,6 +74,7 @@ def garage_spec_update_view(request, pk):
             return redirect("garage:list")
     else:
         form = MotorcycleSpecForm(instance=spec)
+    configure_form_accessibility(form)
 
     return render(
         request,
