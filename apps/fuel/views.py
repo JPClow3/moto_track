@@ -11,18 +11,26 @@ from django.utils import timezone
 from djmoney.money import Money
 
 from apps.core.active_motorcycle import get_active_motorcycle
-from apps.core.forms import configure_form_accessibility
 from apps.core.exports import parse_date_param, safe_next_url
+from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
 from apps.core.undo import create_undo_token
-
-from .forms import FuelGradeForm, FuelRecordQuickForm, FuelRecordRepeatForm, FuelStationForm
-from .models import FuelGrade, FuelPreference, FuelRecord, FuelStation
-from .services import best_fuel_preference, compute_station_rankings, detect_fuel_anomalies, remember_fuel_preference
 from apps.reminders.models import Reminder
 from apps.reminders.services import list_due_reminders
+
 from .export import build_export
+from .forms import FuelGradeForm, FuelRecordQuickForm, FuelRecordRepeatForm, FuelReviewPreferenceForm, FuelStationForm
+from .models import FuelGrade, FuelPreference, FuelRecord, FuelReviewPreference, FuelStation, FuelType
+from .services import (
+    best_fuel_preference,
+    build_fuel_period_summary,
+    compute_station_rankings,
+    detect_fuel_anomalies,
+    filter_fuel_records_for_user,
+    remember_fuel_preference,
+    review_suggestion_for_motorcycle,
+)
 
 
 def _month_key(dt):
@@ -49,15 +57,19 @@ def _format_month_label(year: int, month: int) -> str:
 
 @login_required
 def fuel_list_view(request):
-    records_qs = (
-        FuelRecord.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
-        .select_related("motorcycle")
-        .order_by("-date", "-odometer_km")
+    start = parse_date_param(request.GET.get("start"))
+    end = parse_date_param(request.GET.get("end"))
+    motorcycle_id = request.GET.get("motorcycle") or ""
+    station_id = request.GET.get("station") or ""
+    fuel_type = request.GET.get("fuel_type") or ""
+    records_qs = filter_fuel_records_for_user(
+        user=request.user,
+        start=start,
+        end=end,
+        motorcycle_id=motorcycle_id,
+        station_id=station_id,
+        fuel_type=fuel_type,
     )
-
-    motorcycle_id = request.GET.get("motorcycle")
-    if motorcycle_id:
-        records_qs = records_qs.filter(motorcycle_id=motorcycle_id)
 
     q = (request.GET.get("q") or "").strip()
     if q:
@@ -83,9 +95,8 @@ def fuel_list_view(request):
         total_amount = getattr(total_spend, "amount", total_spend)
         avg_cost_per_km = round(float(total_amount) / odometer_span, 3)
 
-    avg_liters_per_100km = None
-    if odometer_span > 0 and total_liters:
-        avg_liters_per_100km = round(float(total_liters) / odometer_span * 100, 2)
+    period_summary = build_fuel_period_summary(records_qs)
+    avg_liters_per_100km = period_summary.official_liters_per_100km
 
     last_record = records_qs.first()
 
@@ -151,16 +162,25 @@ def fuel_list_view(request):
     trend_ma = _moving_average([p["value"] for p in trend_points], 3)
     cost_ma = _moving_average([p["value"] for p in cost_points], 3)
 
-    # "Next recommended fill-up" heuristic: average distance between last few fill-ups.
-    next_recommended_km = None
-    if len(records) >= 2:
-        pairs = list(zip(records, records[1:], strict=False))
-        deltas = [max(a.odometer_km - b.odometer_km, 0) for a, b in pairs if a.odometer_km and b.odometer_km]
-        if deltas:
-            avg_delta = int(round(sum(deltas) / len(deltas)))
-            next_recommended_km = (records[0].odometer_km or 0) + avg_delta
+    next_fill_up = period_summary.next_fill_up
 
     recent_fillups = records[:3]
+    selected_motorcycle = None
+    if motorcycle_id:
+        from apps.garage.models import Motorcycle
+
+        selected_motorcycle = Motorcycle.objects.filter(owner=request.user, id=motorcycle_id, is_active=True).first()
+    selected_motorcycle = selected_motorcycle or get_active_motorcycle(request)
+    review_form = None
+    review_suggestion = None
+    if selected_motorcycle:
+        try:
+            review_preference = selected_motorcycle.fuel_review_preference
+        except FuelReviewPreference.DoesNotExist:
+            review_preference = FuelReviewPreference(motorcycle=selected_motorcycle)
+        review_form = FuelReviewPreferenceForm(instance=review_preference)
+        configure_form_accessibility(review_form)
+        review_suggestion = review_suggestion_for_motorcycle(selected_motorcycle)
 
     context = {
         "records": records,
@@ -178,8 +198,22 @@ def fuel_list_view(request):
         "cost_max": cost_max,
         "trend_ma_last": trend_ma[-1] if trend_ma else None,
         "cost_ma_last": cost_ma[-1] if cost_ma else None,
-        "next_recommended_km": next_recommended_km,
-        "filters": {"q": q, "motorcycle": motorcycle_id or ""},
+        "next_recommended_km": next_fill_up.recommended_odometer_km if next_fill_up else None,
+        "next_fill_up": next_fill_up,
+        "period_summary": period_summary,
+        "review_form": review_form,
+        "review_suggestion": review_suggestion,
+        "selected_motorcycle": selected_motorcycle,
+        "fuel_stations": FuelStation.objects.filter(owner=request.user),
+        "fuel_types": FuelType.choices,
+        "filters": {
+            "q": q,
+            "motorcycle": motorcycle_id or "",
+            "station": station_id or "",
+            "fuel_type": fuel_type,
+            "start": request.GET.get("start") or "",
+            "end": request.GET.get("end") or "",
+        },
         "density": density,
     }
     return render(request, "fuel/list.html", context)
@@ -188,12 +222,21 @@ def fuel_list_view(request):
 @login_required
 def fuel_export_view(request):
     fmt = (request.GET.get("format") or "csv").strip().lower()
-    if fmt not in {"csv", "xlsx"}:
+    if fmt not in {"csv", "xlsx", "pdf"}:
         fmt = "csv"
     start = parse_date_param(request.GET.get("start"))
     end = parse_date_param(request.GET.get("end"))
     email_to = request.user.email if request.GET.get("email") == "1" else None
-    return build_export(user=request.user, start=start, end=end, fmt=fmt, email_to=email_to)
+    return build_export(
+        user=request.user,
+        start=start,
+        end=end,
+        fmt=fmt,
+        email_to=email_to,
+        motorcycle_id=request.GET.get("motorcycle") or None,
+        station_id=request.GET.get("station") or None,
+        fuel_type=request.GET.get("fuel_type") or "",
+    )
 
 
 @login_required
@@ -364,6 +407,77 @@ def fuel_grade_delete_view(request, pk: int):
     return render(request, "fuel/grade_confirm_delete.html", {"grade": grade})
 
 
+def _add_fuel_save_alerts(request, record: FuelRecord) -> None:
+    from apps.reports.services import intelligent_alerts
+
+    fuel_alerts = [
+        alert
+        for alert in intelligent_alerts(user=request.user, motorcycle=record.motorcycle)
+        if alert.source in {"fuel", "maintenance"}
+    ][:2]
+    for alert in fuel_alerts:
+        messages.info(request, alert.message)
+
+
+@login_required
+def fuel_record_update_view(request, pk: int):
+    record = get_object_or_404(FuelRecord, pk=pk, motorcycle__owner=request.user)
+    if request.method == "POST":
+        form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user, instance=record)
+        if form.is_valid():
+            updated = form.save()
+            remember_fuel_preference(updated)
+            _add_fuel_save_alerts(request, updated)
+            messages.success(request, f"Abastecimento de {updated.motorcycle.name} atualizado com sucesso.")
+            return redirect("fuel:list")
+    else:
+        form = FuelRecordQuickForm(user=request.user, instance=record)
+
+    configure_form_accessibility(form)
+    return render(
+        request,
+        "fuel/record_form.html",
+        {
+            "form": form,
+            "record": record,
+            "title": "Editar abastecimento",
+            "submit_label": "Salvar alterações",
+        },
+    )
+
+
+@login_required
+def fuel_record_delete_view(request, pk: int):
+    record = get_object_or_404(FuelRecord, pk=pk, motorcycle__owner=request.user)
+    if request.method == "POST":
+        motorcycle_name = record.motorcycle.name
+        record.delete()
+        messages.success(request, f"Abastecimento de {motorcycle_name} removido com sucesso.")
+        return redirect("fuel:list")
+    return render(request, "fuel/record_confirm_delete.html", {"record": record})
+
+
+@login_required
+def fuel_review_settings_view(request):
+    if request.method != "POST":
+        return redirect("fuel:list")
+
+    active_motorcycle = get_active_motorcycle(request)
+    motorcycle_id = request.POST.get("motorcycle") or (active_motorcycle.pk if active_motorcycle else None)
+    from apps.garage.models import Motorcycle
+
+    motorcycle = get_object_or_404(Motorcycle, pk=motorcycle_id, owner=request.user, is_active=True)
+    preference, _ = FuelReviewPreference.objects.get_or_create(motorcycle=motorcycle)
+    form = FuelReviewPreferenceForm(request.POST, instance=preference)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Regra de revisão por abastecimentos atualizada com sucesso.")
+    else:
+        messages.error(request, "Revise a regra de revisão por abastecimentos.")
+
+    return redirect(safe_next_url(request=request, candidate=request.POST.get("next"), fallback="fuel:list"))
+
+
 @login_required
 def fuel_quick_create_view(request):
     is_htmx = request.headers.get("HX-Request") == "true"
@@ -371,7 +485,7 @@ def fuel_quick_create_view(request):
     prefill = (request.GET.get("prefill") or "").strip().lower()
 
     if request.method == "POST":
-        form = FuelRecordQuickForm(request.POST, user=request.user)
+        form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             moto = form.cleaned_data.get("motorcycle")
             if moto:
@@ -402,6 +516,7 @@ def fuel_quick_create_view(request):
                     request,
                     f"{len(due)} lembrete(s) está(ão) vencido(s) ou em breve. Você pode revisar em Lembretes.",
                 )
+            _add_fuel_save_alerts(request, record)
             messages.success(request, f"Abastecimento registrado para {record.motorcycle.name}.")
             if is_htmx:
                 response = HttpResponse()
@@ -506,7 +621,7 @@ def fuel_repeat_last_view(request):
         )
 
     if request.method == "POST":
-        form = FuelRecordRepeatForm(request.POST, user=request.user)
+        form = FuelRecordRepeatForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             moto = form.cleaned_data.get("motorcycle")
             if moto:
@@ -537,6 +652,7 @@ def fuel_repeat_last_view(request):
                     request,
                     f"{len(due)} lembrete(s) está(ão) vencido(s) ou em breve. Você pode revisar em Lembretes.",
                 )
+            _add_fuel_save_alerts(request, record)
             messages.success(request, f"Abastecimento repetido para {record.motorcycle.name}.")
             if is_htmx:
                 response = HttpResponse()

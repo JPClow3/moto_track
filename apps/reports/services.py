@@ -9,17 +9,21 @@ from django.db.models import Max, Min, Sum
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.core.severity import Alert, Severity, SEVERITY_PRIORITY
+from apps.core.severity import SEVERITY_PRIORITY, Alert, Severity
 from apps.core.validation import money_amount
 from apps.documents.models import MotorcycleDocument
 from apps.expenses.models import AnnualFee, InsurancePolicy
 from apps.fuel.models import FuelRecord
-from apps.fuel.services import compute_average_consumption_km_per_liter, detect_fuel_anomalies
+from apps.fuel.services import (
+    compute_average_consumption_km_per_liter,
+    detect_fuel_anomalies,
+    estimate_next_fill_up,
+    review_suggestion_for_motorcycle,
+)
 from apps.maintenance.models import MaintenancePlanItem, MaintenanceRecord
 from apps.reminders.models import Reminder
 from apps.reminders.services import ReminderStatus, evaluate_reminder
-from apps.tires.models import TirePosition, TireRecord
-
+from apps.tires.models import TireRecord
 
 PERIODS = (30, 90, 365)
 
@@ -278,6 +282,33 @@ def intelligent_alerts(*, user, motorcycle=None, severity: str | None = None) ->
             )
             for warning in warnings:
                 alerts.append(Alert("Qualidade do abastecimento", warning, Severity.INFO, "fuel", rec.date))
+
+        fuel_history = FuelRecord.objects.filter(motorcycle=bike).order_by("date", "odometer_km")
+        next_fill = estimate_next_fill_up(fuel_history)
+        if next_fill and next_fill.remaining_km <= 200:
+            alerts.append(
+                Alert(
+                    "Próximo abastecimento",
+                    f"Próximo abastecimento recomendado em {next_fill.recommended_odometer_km} km.",
+                    Severity.WARNING if next_fill.remaining_km <= 50 else Severity.INFO,
+                    "fuel",
+                    None,
+                    reverse("fuel:list"),
+                )
+            )
+
+        review = review_suggestion_for_motorcycle(bike)
+        if review.is_due:
+            alerts.append(
+                Alert(
+                    "Revisão sugerida",
+                    f"Sugerir revisão: {review.fillups_since_review} abastecimentos desde a última revisão.",
+                    Severity.WARNING,
+                    "maintenance",
+                    None,
+                    reverse("maintenance:list"),
+                )
+            )
 
         for tire in TireRecord.objects.filter(motorcycle=bike, is_active=True):
             if int(tire.wear_percent or 0) >= 85:

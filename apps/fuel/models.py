@@ -1,5 +1,5 @@
-from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from djmoney.models.fields import MoneyField
 
@@ -12,6 +12,20 @@ class FuelType(models.TextChoices):
     ETHANOL = "ethanol", "Etanol"
     PREMIUM_GASOLINE = "premium_gasoline", "Gasolina Aditivada"
     PREMIUM_ETHANOL = "premium_ethanol", "Etanol Premium"
+
+
+def validate_receipt_file(file_obj):
+    if not file_obj:
+        return
+
+    max_size = 10 * 1024 * 1024
+    if file_obj.size and file_obj.size > max_size:
+        raise ValidationError("O comprovante deve ter no máximo 10 MB.")
+
+    name = (file_obj.name or "").lower()
+    allowed_extensions = (".jpg", ".jpeg", ".png", ".webp", ".pdf", ".heic")
+    if not name.endswith(allowed_extensions):
+        raise ValidationError("Envie um comprovante em imagem ou PDF.")
 
 
 class FuelStation(TimeStampedModel, UserOwnedModel):
@@ -62,6 +76,11 @@ class FuelRecord(TimeStampedModel):
     price_per_liter = MoneyField(max_digits=8, decimal_places=3)
     fuel_type = models.CharField(max_length=32, choices=FuelType.choices, default=FuelType.GASOLINE)
     tank_full = models.BooleanField(default=False)
+    receipt_file = models.FileField(
+        upload_to="fuel/receipts/%Y/%m/",
+        blank=True,
+        validators=[validate_receipt_file],
+    )
     station_name = models.CharField(max_length=120, blank=True)
     notes = models.TextField(blank=True)
 
@@ -111,3 +130,20 @@ class FuelPreference(TimeStampedModel, UserOwnedModel):
     def __str__(self) -> str:
         label = self.station.name if self.station else self.station_name or self.get_fuel_type_display()
         return f"{self.owner} - {label}"
+
+
+class FuelReviewPreference(TimeStampedModel):
+    motorcycle = models.OneToOneField(Motorcycle, on_delete=models.CASCADE, related_name="fuel_review_preference")
+    fillups_interval = models.PositiveSmallIntegerField(default=10)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Regra de revisão por abastecimento"
+        verbose_name_plural = "Regras de revisão por abastecimento"
+
+    def __str__(self) -> str:
+        return f"{self.motorcycle.name} - revisão a cada {self.fillups_interval} abastecimentos"
+
+    def clean(self):
+        if self.fillups_interval <= 0:
+            raise ValidationError({"fillups_interval": "O intervalo deve ser maior que zero."})

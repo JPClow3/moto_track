@@ -3,7 +3,7 @@ from django.contrib import admin
 from apps.core.admin import UserScopedAdmin
 from apps.garage.models import Motorcycle
 
-from .models import FuelGrade, FuelPreference, FuelRecord, FuelStation
+from .models import FuelGrade, FuelPreference, FuelRecord, FuelReviewPreference, FuelStation
 
 
 @admin.register(FuelStation)
@@ -38,6 +38,7 @@ class FuelRecordAdmin(UserScopedAdmin):
         "total_price",
         "fuel_type",
         "tank_full",
+        "receipt_file",
     )
     list_filter = ("fuel_type", "date")
     search_fields = ("station_name", "motorcycle__name", "station__name", "fuel_grade__name")
@@ -50,4 +51,11 @@ class FuelPreferenceAdmin(UserScopedAdmin):
     search_fields = ("station_name", "station__name", "fuel_grade__name")
 
 
-# Register your models here.
+@admin.register(FuelReviewPreference)
+class FuelReviewPreferenceAdmin(UserScopedAdmin):
+    owner_lookup = "motorcycle__owner"
+    foreign_key_scopes = {
+        "motorcycle": lambda user: Motorcycle.objects.filter(owner=user),
+    }
+    list_display = ("motorcycle", "fillups_interval", "is_active")
+    list_filter = ("is_active",)

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} - Moto Track{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="fuel-record-form-title">
+  <header class="list-header">
+    <div>
+      <h2 id="fuel-record-form-title">{{ title }}</h2>
+      <p class="section-subtitle">Atualize os dados do abastecimento mantendo o histórico da moto consistente.</p>
+    </div>
+    <a class="action-btn" href="{% url 'fuel:list' %}">
+      <span>Voltar ao histÃ³rico</span>
+      <small>Abastecimentos</small>
+    </a>
+  </header>
+
+  <article class="panel">
+    <form method="post" class="data-form" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form|crispy }}
+      <div class="quick-actions-row-split">
+        <a class="secondary-btn" href="{% url 'fuel:list' %}">Cancelar</a>
+        <button type="submit" class="primary-btn">{{ submit_label }}</button>
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}

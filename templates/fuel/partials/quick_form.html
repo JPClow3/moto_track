@@ -40,13 +40,92 @@
     <form
       method="post"
       class="mt-6 data-form"
+      enctype="multipart/form-data"
       hx-post="{% url 'fuel:quick_create' %}"
+      hx-encoding="multipart/form-data"
       hx-target="#quick-form-root"
       hx-swap="innerHTML"
     >
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ next_url }}" />
-      {{ form|crispy }}
+      {% if form.non_field_errors %}
+        <div class="form-errors">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="form-field">
+          {{ form.motorcycle.label_tag }}
+          {{ form.motorcycle }}
+          {% if form.motorcycle.errors %}<div id="{{ form.motorcycle.id_for_label }}_error" class="field-error">{{ form.motorcycle.errors }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+          {{ form.date.label_tag }}
+          {{ form.date }}
+          {% if form.date.errors %}<div id="{{ form.date.id_for_label }}_error" class="field-error">{{ form.date.errors }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+          {{ form.odometer_km.label_tag }}
+          {{ form.odometer_km }}
+          {% if form.odometer_km.errors %}<div id="{{ form.odometer_km.id_for_label }}_error" class="field-error">{{ form.odometer_km.errors }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+          {{ form.liters.label_tag }}
+          {{ form.liters }}
+          {% if form.liters.errors %}<div id="{{ form.liters.id_for_label }}_error" class="field-error">{{ form.liters.errors }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+          {{ form.total_price.label_tag }}
+          {{ form.total_price }}
+          {% if form.total_price.errors %}<div id="{{ form.total_price.id_for_label }}_error" class="field-error">{{ form.total_price.errors }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+          {{ form.receipt_file.label_tag }}
+          {{ form.receipt_file }}
+          {% if form.receipt_file.errors %}<div id="{{ form.receipt_file.id_for_label }}_error" class="field-error">{{ form.receipt_file.errors }}</div>{% endif %}
+        </div>
+        <label class="md:col-span-2 flex items-center gap-3 rounded-2xl bg-surface-low px-4 py-3 text-sm font-bold text-on-surface-variant">
+          {{ form.tank_full }}
+          <span>Tanque cheio</span>
+        </label>
+      </div>
+
+      <details class="rounded-2xl bg-surface-low p-4">
+        <summary class="cursor-pointer text-xs font-extrabold uppercase tracking-widest text-on-surface-variant">
+          Detalhes do posto e combustível
+        </summary>
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-field">
+            {{ form.station.label_tag }}
+            {{ form.station }}
+            {% if form.station.errors %}<div id="{{ form.station.id_for_label }}_error" class="field-error">{{ form.station.errors }}</div>{% endif %}
+          </div>
+          <div class="form-field">
+            {{ form.fuel_grade.label_tag }}
+            {{ form.fuel_grade }}
+            {% if form.fuel_grade.errors %}<div id="{{ form.fuel_grade.id_for_label }}_error" class="field-error">{{ form.fuel_grade.errors }}</div>{% endif %}
+          </div>
+          <div class="form-field">
+            {{ form.fuel_type.label_tag }}
+            {{ form.fuel_type }}
+            {% if form.fuel_type.errors %}<div id="{{ form.fuel_type.id_for_label }}_error" class="field-error">{{ form.fuel_type.errors }}</div>{% endif %}
+          </div>
+          <div class="form-field">
+            {{ form.price_per_liter.label_tag }}
+            {{ form.price_per_liter }}
+            {% if form.price_per_liter.errors %}<div id="{{ form.price_per_liter.id_for_label }}_error" class="field-error">{{ form.price_per_liter.errors }}</div>{% endif %}
+          </div>
+          <div class="form-field">
+            {{ form.station_name.label_tag }}
+            {{ form.station_name }}
+            {% if form.station_name.errors %}<div id="{{ form.station_name.id_for_label }}_error" class="field-error">{{ form.station_name.errors }}</div>{% endif %}
+          </div>
+          <div class="form-field">
+            {{ form.notes.label_tag }}
+            {{ form.notes }}
+            {% if form.notes.errors %}<div id="{{ form.notes.id_for_label }}_error" class="field-error">{{ form.notes.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </details>
 
       <div class="quick-actions-row-split">
         <button type="button" class="secondary-btn" onclick="window.closeQuickFormModal?.()">Cancelar</button>

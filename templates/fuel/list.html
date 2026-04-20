@@ -43,8 +43,10 @@
 
   <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
     <form method="get" class="space-y-4" aria-label="Filtros de abastecimento">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <input class="ui-input" type="text" name="q" value="{{ filters.q }}" placeholder="Buscar por posto ou notas" />
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input class="ui-input" type="text" name="q" value="{{ filters.q }}" placeholder="Buscar por posto ou notas" aria-label="Buscar por posto ou notas" />
+        <input class="ui-input" type="date" name="start" value="{{ filters.start }}" aria-label="Data inicial" />
+        <input class="ui-input" type="date" name="end" value="{{ filters.end }}" aria-label="Data final" />
         <select class="ui-select" name="motorcycle" aria-label="Filtrar por moto">
           <option value="">Todas as motos</option>
           {% for bike in garage_motorcycles %}
@@ -53,12 +55,26 @@
             </option>
           {% endfor %}
         </select>
+        <select class="ui-select" name="station" aria-label="Filtrar por posto">
+          <option value="">Todos os postos</option>
+          {% for station in fuel_stations %}
+            <option value="{{ station.id }}" {% if filters.station and station.id|stringformat:"s" == filters.station %}selected{% endif %}>{{ station.name }}</option>
+          {% endfor %}
+        </select>
+        <select class="ui-select" name="fuel_type" aria-label="Filtrar por combustível">
+          <option value="">Todos os combustíveis</option>
+          {% for value,label in fuel_types %}
+            <option value="{{ value }}" {% if filters.fuel_type == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="flex flex-wrap gap-2">
         <button type="submit" class="ui-btn-primary">Aplicar</button>
-        <a class="ui-btn-secondary" href="?density={% if density == 'compact' %}comfortable{% else %}compact{% endif %}&q={{ filters.q }}&motorcycle={{ filters.motorcycle }}">
+        <a class="ui-btn-secondary" href="?density={% if density == 'compact' %}comfortable{% else %}compact{% endif %}&q={{ filters.q }}&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">
           {% if density == 'compact' %}Modo conforto{% else %}Modo compacto{% endif %}
         </a>
+        <a class="ui-btn-secondary" href="{% url 'fuel:export' %}?format=csv&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">CSV</a>
+        <a class="ui-btn-secondary" href="{% url 'fuel:export' %}?format=pdf&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">PDF</a>
       </div>
     </form>
   </article>
@@ -227,7 +243,9 @@
             {% endif %}
           </p>
           <p class="text-sm text-on-surface-variant">
-            {% if avg_cost_per_km is not None %}
+            {% if next_fill_up %}
+              Faltam {{ next_fill_up.remaining_km }} km pela média de tanques cheios.
+            {% elif avg_cost_per_km is not None %}
               Custo médio: {{ avg_cost_per_km }} / km
             {% else %}
               Adicione 2+ registros para estimativas.
@@ -244,6 +262,36 @@
     </aside>
   </section>
 
+  {% if review_form %}
+    <section class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15" aria-label="Revisão por abastecimentos">
+      <form method="post" action="{% url 'fuel:review_settings' %}" class="data-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+        <input type="hidden" name="motorcycle" value="{{ selected_motorcycle.id }}" />
+        <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 md:items-end">
+          <div>
+            <h3 class="text-lg font-extrabold tracking-tight">Revisão por abastecimentos</h3>
+            <p class="text-sm text-on-surface-variant">
+              {% if review_suggestion.is_due %}
+                Revisão sugerida: {{ review_suggestion.fillups_since_review }} abastecimentos desde a última revisão.
+              {% else %}
+                Faltam {{ review_suggestion.remaining_fillups }} abastecimento(s) para sugerir revisão.
+              {% endif %}
+            </p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-[12rem_auto_auto] gap-3">
+            {{ review_form.fillups_interval }}
+            <label class="inline-flex items-center gap-2 rounded-2xl bg-surface-low px-4 py-3 text-sm font-bold text-on-surface-variant">
+              {{ review_form.is_active }}
+              Ativo
+            </label>
+            <button class="ui-btn-primary" type="submit">Salvar regra</button>
+          </div>
+        </div>
+      </form>
+    </section>
+  {% endif %}
+
   <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15" aria-label="Registros de abastecimento">
     {% if records %}
       <div class="overflow-x-auto">
@@ -257,6 +305,7 @@
               <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Preço/L</th>
               <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Total</th>
               <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Posto</th>
+              <th class="text-right text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -270,6 +319,21 @@
                 <td><strong>{{ record.total_price }}</strong></td>
                 <td>
                   <span class="inline-flex items-center rounded-full bg-surface-low px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">{{ record.station_name|default:"Sem posto" }}</span>
+                </td>
+                <td class="text-right">
+                  <div class="inline-flex items-center justify-end gap-1">
+                    {% if record.receipt_file %}
+                      <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-highest/60" href="{{ record.receipt_file.url }}" aria-label="Abrir comprovante de {{ record.motorcycle.name }} em {{ record.date|date:'d/m/Y' }}">
+                        <i data-lucide="paperclip" aria-hidden="true"></i>
+                      </a>
+                    {% endif %}
+                    <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'fuel:update' record.pk %}" aria-label="Editar abastecimento de {{ record.motorcycle.name }} em {{ record.date|date:'d/m/Y' }}">
+                      <i data-lucide="pencil" aria-hidden="true"></i>
+                    </a>
+                    <a class="h-9 w-9 grid place-items-center rounded-xl text-error hover:bg-error/10" href="{% url 'fuel:delete' record.pk %}" aria-label="Excluir abastecimento de {{ record.motorcycle.name }} em {{ record.date|date:'d/m/Y' }}">
+                      <i data-lucide="trash-2" aria-hidden="true"></i>
+                    </a>
+                  </div>
                 </td>
               </tr>
             {% endfor %}

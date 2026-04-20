@@ -8,7 +8,7 @@ from apps.core.sanitizers import sanitize_text
 from apps.core.validation import add_form_errors, money_amount, validate_not_future, validate_odometer_sequence
 from apps.garage.models import Motorcycle
 
-from .models import FuelGrade, FuelRecord, FuelStation
+from .models import FuelGrade, FuelRecord, FuelReviewPreference, FuelStation
 
 
 class FuelRecordBaseForm(forms.ModelForm):
@@ -25,6 +25,7 @@ class FuelRecordBaseForm(forms.ModelForm):
             "price_per_liter",
             "fuel_type",
             "tank_full",
+            "receipt_file",
             "station_name",
             "notes",
         ]
@@ -32,6 +33,7 @@ class FuelRecordBaseForm(forms.ModelForm):
             "date": forms.DateInput(attrs={"type": "date"}),
             "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "liters": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.001"}),
+            "receipt_file": forms.ClearableFileInput(attrs={"accept": "image/*,.pdf"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
 
@@ -48,6 +50,7 @@ class FuelRecordBaseForm(forms.ModelForm):
         self.fields["station"].required = False
         self.fields["fuel_grade"].required = False
         self.fields["price_per_liter"].required = False
+        self.fields["receipt_file"].required = False
         self.fields["station_name"].required = False
         self.fields["notes"].required = False
         self.fields["tank_full"].help_text = (
@@ -173,3 +176,23 @@ class FuelGradeForm(forms.ModelForm):
             "ethanol_percentage": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
+
+
+class FuelReviewPreferenceForm(forms.ModelForm):
+    class Meta:
+        model = FuelReviewPreference
+        fields = ["fillups_interval", "is_active"]
+        labels = {
+            "fillups_interval": "Sugerir revisão a cada",
+            "is_active": "Ativar sugestão automática",
+        }
+        help_texts = {
+            "fillups_interval": "Número de abastecimentos desde a última revisão para exibir o alerta.",
+        }
+        widgets = {
+            "fillups_interval": forms.NumberInput(attrs={"min": "1", "inputmode": "numeric"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["fillups_interval"].widget.attrs["min"] = "1"

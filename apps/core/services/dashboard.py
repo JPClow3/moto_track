@@ -8,7 +8,7 @@ from django.utils import timezone
 from djmoney.money import Money
 
 from apps.fuel.models import FuelRecord
-from apps.fuel.services import compute_average_consumption_km_per_liter
+from apps.fuel.services import compute_average_consumption_km_per_liter, estimate_next_fill_up
 from apps.garage.models import Motorcycle
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.reminders.models import Reminder
@@ -108,6 +108,7 @@ def get_status_cards(motorcycle: Motorcycle, current_odometer: int, active_remin
     history = FuelRecord.objects.filter(motorcycle=motorcycle).order_by("date", "odometer_km")
     consumption_stats = compute_average_consumption_km_per_liter(history)
     average_consumption = consumption_stats.km_per_liter if consumption_stats else None
+    next_fill = estimate_next_fill_up(history)
     pending_alerts = len([e for e in active_reminders if e["evaluation"].status in {"overdue", "due_soon"}])
 
     return [
@@ -126,6 +127,14 @@ def get_status_cards(motorcycle: Motorcycle, current_odometer: int, active_remin
             "title": "Média de consumo",
             "value": f"{average_consumption} km/L" if average_consumption is not None else "Sem dados",
             "meta": "Histórico de abastecimentos",
+        },
+        {
+            "icon": "fuel",
+            "tone": "info",
+            "badge": "Combustível",
+            "title": "Próximo abastecimento",
+            "value": f"{next_fill.recommended_odometer_km} km" if next_fill else "Sem previsão",
+            "meta": f"{next_fill.remaining_km} km restantes" if next_fill else "Registre tanques cheios",
         },
         {
             "icon": "calendar-clock",

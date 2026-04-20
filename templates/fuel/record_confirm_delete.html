@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir abastecimento - Moto Track{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="delete-fuel-record-title">
+  <header class="list-header">
+    <div>
+      <h2 id="delete-fuel-record-title">Excluir abastecimento</h2>
+      <p class="section-subtitle">Esta ação não pode ser desfeita.</p>
+    </div>
+  </header>
+
+  <article class="panel">
+    <p>
+      Tem certeza que deseja excluir o abastecimento de
+      <strong>{{ record.motorcycle.name }}</strong>
+      em <strong>{{ record.date|date:"d/m/Y" }}</strong>?
+    </p>
+    <form method="post" class="data-form">
+      {% csrf_token %}
+      <div class="quick-actions-row-split">
+        <a class="secondary-btn" href="{% url 'fuel:list' %}">Cancelar</a>
+        <button type="submit" class="primary-btn">Excluir</button>
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}
