@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Moto Track{% endblock %}
+{% block topbar_eyebrow %}ManutenÃ§Ã£o{% endblock %}
+{% block topbar_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="maintenance-plan-form-title">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Plano</p>
+      <h2 id="maintenance-plan-form-title">{{ title }}</h2>
+    </div>
+  </div>
+
+  <form method="post" class="form-card" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <div class="field-group">
+        {{ field.label_tag }}
+        {{ field }}
+        {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+        {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+      </div>
+    {% endfor %}
+    <div class="form-actions">
+      <a class="secondary-btn" href="{% url 'maintenance:list' %}">Cancelar</a>
+      <button type="submit" class="primary-btn">{{ submit_label }}</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

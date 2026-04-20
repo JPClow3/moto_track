@@ -277,7 +277,7 @@ class FuelModelTests(TestCase):
     def test_list_view_only_shows_owned_records_and_filters_by_motorcycle(self):
         other_motorcycle = Motorcycle.objects.get(owner=self.other_user)
         other_station = FuelStation.objects.get(owner=self.other_user)
-        self._create_record(station_name="Posto visivel", odometer_km=1000)
+        visible = self._create_record(station_name="Posto visivel", odometer_km=1000)
         self._create_record(station_name="Posto filtrado", odometer_km=1200, date=date(2026, 4, 14))
         FuelRecord.objects.create(  # pylint: disable=no-member
             motorcycle=other_motorcycle,
@@ -297,6 +297,8 @@ class FuelModelTests(TestCase):
         self.assertContains(response, "Posto visivel")
         self.assertContains(response, "Posto filtrado")
         self.assertNotContains(response, "Posto secreto")
+        self.assertContains(response, reverse("fuel:update", args=[visible.pk]))
+        self.assertContains(response, reverse("fuel:delete", args=[visible.pk]))
 
     def test_list_view_filters_by_period_station_and_fuel_type(self):
         other_station = FuelStation.objects.create(owner=self.user, name="Posto C")  # pylint: disable=no-member
@@ -702,3 +704,37 @@ class FuelModelTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertTrue(response.content.startswith(b"%PDF"))
+
+    def test_fuel_import_preview_validates_without_creating_records(self):
+        self.client.force_login(self.user)
+        csv_file = SimpleUploadedFile(
+            "fuel.csv",
+            (
+                b"date,odometer_km,liters,total_price,price_per_liter,fuel_type,tank_full,station_name\n"
+                b"2026-04-20,1500,8.000,56.00,7.000,gasoline,true,Posto CSV\n"
+            ),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(reverse("fuel:import_preview"), {"motorcycle": self.motorcycle.pk, "file": csv_file})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Posto CSV")
+        self.assertFalse(FuelRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=1500).exists())
+
+    def test_fuel_import_confirm_creates_previewed_rows(self):
+        self.client.force_login(self.user)
+        csv_file = SimpleUploadedFile(
+            "fuel.csv",
+            (
+                b"date,odometer_km,liters,total_price,price_per_liter,fuel_type,tank_full,station_name\n"
+                b"2026-04-20,1500,8.000,56.00,7.000,gasoline,true,Posto CSV\n"
+            ),
+            content_type="text/csv",
+        )
+        preview = self.client.post(reverse("fuel:import_preview"), {"motorcycle": self.motorcycle.pk, "file": csv_file})
+
+        response = self.client.post(reverse("fuel:import_confirm"), {"import_token": preview.context["import_token"]})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(FuelRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=1500).exists())

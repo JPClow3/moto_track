@@ -89,6 +89,7 @@ class FuelRecord(TimeStampedModel):
         indexes = [
             models.Index(fields=["date"], name="fuel_record_date_idx"),
             models.Index(fields=["motorcycle", "date"], name="fuel_record_moto_date_idx"),
+            models.Index(fields=["motorcycle", "date", "odometer_km"], name="fuel_moto_date_odo_idx"),
         ]
 
     def __str__(self) -> str:

@@ -109,3 +109,48 @@ class TirePressureRecordForm(forms.ModelForm):
 
     def clean_notes(self):
         return sanitize_text(self.cleaned_data.get("notes"))
+
+
+class TireProductForm(forms.ModelForm):
+    class Meta:
+        model = TireProduct
+        fields = [
+            "manufacturer",
+            "model_name",
+            "image",
+            "tire_type",
+            "width_mm",
+            "aspect_ratio",
+            "rim_diameter_in",
+            "load_index",
+            "speed_rating",
+            "max_speed_kmh",
+            "price",
+            "notes",
+        ]
+        labels = {
+            "manufacturer": "Fabricante",
+            "model_name": "Modelo",
+            "image": "Imagem",
+            "tire_type": "Tipo",
+            "width_mm": "Largura (mm)",
+            "aspect_ratio": "Perfil",
+            "rim_diameter_in": "Aro (pol.)",
+            "load_index": "Ãndice de carga",
+            "speed_rating": "Ãndice de velocidade",
+            "max_speed_kmh": "Velocidade mÃ¡xima (km/h)",
+            "price": "PreÃ§o",
+            "notes": "ObservaÃ§Ãµes",
+        }
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 2}),
+            "image": forms.ClearableFileInput(attrs={"accept": "image/*"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ["width_mm", "aspect_ratio", "rim_diameter_in", "max_speed_kmh", "price", "notes"]:
+            self.fields[name].required = False
+
+    def clean_notes(self):
+        return sanitize_text(self.cleaned_data.get("notes"))

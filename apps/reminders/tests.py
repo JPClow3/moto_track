@@ -1,8 +1,8 @@
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from django.core import mail
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -231,6 +231,38 @@ class ReminderViewTests(TestCase):
         self.assertEqual(inactive[-1].title, "Inativo 05")
         self.assertNotIn("Inativo 04", [reminder.title for reminder in inactive])
         self.assertNotIn("Inativo de outro usuário", [reminder.title for reminder in inactive])
+    def test_list_filters_by_search_status_and_motorcycle(self):
+        second_motorcycle = Motorcycle.objects.create(
+            owner=self.user, name="Moto Filtro", brand="Honda", model="ADV", year=2024
+        )
+        Reminder.objects.create(
+            motorcycle=second_motorcycle,
+            title="Documento pendente",
+            trigger_type=TriggerType.BY_DATE,
+            trigger_value_days=1,
+            reference_date=date(2026, 4, 1),
+            is_active=True,
+        )
+        Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Lembrete arquivado",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=1000,
+            reference_km=10000,
+            is_active=False,
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse("reminders:list"),
+            {"q": "Documento", "status": "active", "motorcycle": second_motorcycle.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Documento pendente")
+        self.assertNotContains(response, "Troca de Ã³leo")
+        self.assertNotContains(response, "Lembrete arquivado")
+        self.assertEqual(response.context["filters"]["q"], "Documento")
 
 
 @override_settings(

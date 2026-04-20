@@ -20,7 +20,7 @@ from apps.reminders.models import Reminder
 from apps.reminders.services import list_due_reminders
 
 from .export import build_export
-from .forms import MaintenancePartForm, MaintenanceRecordQuickForm
+from .forms import MaintenancePartForm, MaintenancePlanItemForm, MaintenanceRecordQuickForm
 from .models import MaintenancePart, MaintenancePlanItem, MaintenanceRecord, MaintenanceRecordPart, MaintenanceType
 
 # pylint: disable=no-member
@@ -205,6 +205,7 @@ def maintenance_list_view(request):
             plan_items.append(
                 {
                     "type_label": item.get_maintenance_type_display(),
+                    "pk": item.pk,
                     "status": status,
                     "remaining_km": remaining_km,
                     "remaining_days": remaining_days,
@@ -295,6 +296,54 @@ def maintenance_part_delete_view(request, pk: int):
         messages.success(request, f"Peça {name} removida com sucesso.")
         return redirect("maintenance:catalogs")
     return render(request, "maintenance/part_confirm_delete.html", {"part": part})
+
+
+@login_required
+def maintenance_plan_create_view(request):
+    if request.method == "POST":
+        form = MaintenancePlanItemForm(request.POST, user=request.user)
+        if form.is_valid():
+            item = form.save()
+            messages.success(request, f"Plano de {item.get_maintenance_type_display()} criado com sucesso.")
+            return redirect("maintenance:list")
+    else:
+        form = MaintenancePlanItemForm(user=request.user)
+    configure_form_accessibility(form)
+    return render(
+        request,
+        "maintenance/plan_form.html",
+        {"form": form, "title": "Novo plano de manutenÃ§Ã£o", "submit_label": "Salvar plano"},
+    )
+
+
+@login_required
+def maintenance_plan_update_view(request, pk: int):
+    item = get_object_or_404(MaintenancePlanItem, pk=pk, motorcycle__owner=request.user, motorcycle__is_active=True)
+    if request.method == "POST":
+        form = MaintenancePlanItemForm(request.POST, instance=item, user=request.user)
+        if form.is_valid():
+            item = form.save()
+            messages.success(request, f"Plano de {item.get_maintenance_type_display()} atualizado com sucesso.")
+            return redirect("maintenance:list")
+    else:
+        form = MaintenancePlanItemForm(instance=item, user=request.user)
+    configure_form_accessibility(form)
+    return render(
+        request,
+        "maintenance/plan_form.html",
+        {"form": form, "title": f"Editar plano {item.get_maintenance_type_display()}", "submit_label": "Salvar alteraÃ§Ãµes", "item": item},
+    )
+
+
+@login_required
+def maintenance_plan_delete_view(request, pk: int):
+    item = get_object_or_404(MaintenancePlanItem, pk=pk, motorcycle__owner=request.user, motorcycle__is_active=True)
+    if request.method == "POST":
+        label = item.get_maintenance_type_display()
+        item.delete()
+        messages.success(request, f"Plano de {label} removido com sucesso.")
+        return redirect("maintenance:list")
+    return render(request, "maintenance/plan_confirm_delete.html", {"item": item})
 
 
 @login_required

@@ -1,15 +1,15 @@
 from datetime import date
 from decimal import Decimal
+from typing import cast
 
-from django.contrib.auth import get_user_model
 from django import forms
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
-from typing import cast
 
 from apps.garage.models import Motorcycle
-from apps.maintenance.forms import MaintenanceRecordQuickForm
+from apps.maintenance.forms import MaintenancePlanItemForm, MaintenanceRecordQuickForm
 from apps.maintenance.models import (
 	MaintenancePart,
 	MaintenancePartType,
@@ -119,3 +119,48 @@ class MaintenanceModelTests(TestCase):
 		response = self.client.get(reverse("maintenance:list"), HTTP_HOST="localhost")
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, "Plano de manutenção")
+
+	def test_plan_item_form_limits_motorcycles_to_owner(self):
+		form = MaintenancePlanItemForm(user=self.user)
+		motorcycle_field = cast(forms.ModelChoiceField, form.fields["motorcycle"])
+
+		self.assertEqual(list(motorcycle_field.queryset), [self.motorcycle])
+
+	def test_plan_item_crud_is_owner_scoped(self):
+		self.client.force_login(self.user)
+		response = self.client.post(
+			reverse("maintenance:plan_create"),
+			{
+				"motorcycle": self.motorcycle.pk,
+				"maintenance_type": MaintenanceType.OIL_FILTER,
+				"interval_km": 5000,
+				"interval_days": 180,
+				"last_done_km": 1000,
+				"last_done_date": "2026-01-01",
+				"is_active": True,
+			},
+		)
+
+		self.assertEqual(response.status_code, 302)
+		item = MaintenancePlanItem.objects.get(motorcycle=self.motorcycle, maintenance_type=MaintenanceType.OIL_FILTER)
+		self.assertEqual(item.interval_km, 5000)
+
+		response = self.client.post(
+			reverse("maintenance:plan_update", args=[item.pk]),
+			{
+				"motorcycle": self.motorcycle.pk,
+				"maintenance_type": MaintenanceType.OIL_FILTER,
+				"interval_km": 6000,
+				"interval_days": 180,
+				"last_done_km": 1000,
+				"last_done_date": "2026-01-01",
+				"is_active": True,
+			},
+		)
+		self.assertEqual(response.status_code, 302)
+		item.refresh_from_db()
+		self.assertEqual(item.interval_km, 6000)
+
+		response = self.client.post(reverse("maintenance:plan_delete", args=[item.pk]))
+		self.assertEqual(response.status_code, 302)
+		self.assertFalse(MaintenancePlanItem.objects.filter(pk=item.pk).exists())

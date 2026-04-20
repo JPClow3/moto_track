@@ -11,6 +11,9 @@ urlpatterns = [
     path("parts/new/", views.maintenance_part_create_view, name="part_create"),
     path("parts/<int:pk>/edit/", views.maintenance_part_update_view, name="part_update"),
     path("parts/<int:pk>/delete/", views.maintenance_part_delete_view, name="part_delete"),
+    path("plans/new/", views.maintenance_plan_create_view, name="plan_create"),
+    path("plans/<int:pk>/edit/", views.maintenance_plan_update_view, name="plan_update"),
+    path("plans/<int:pk>/delete/", views.maintenance_plan_delete_view, name="plan_delete"),
     path("quick-create/", views.maintenance_quick_create_view, name="quick_create"),
     path("parts-autocomplete/", views.MaintenancePartAutocomplete.as_view(), name="part_autocomplete"),
 ]

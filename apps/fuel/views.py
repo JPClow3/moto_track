@@ -1,3 +1,4 @@
+import secrets
 from datetime import date
 from decimal import Decimal
 
@@ -21,6 +22,7 @@ from apps.reminders.services import list_due_reminders
 
 from .export import build_export
 from .forms import FuelGradeForm, FuelRecordQuickForm, FuelRecordRepeatForm, FuelReviewPreferenceForm, FuelStationForm
+from .imports import create_fuel_records_from_rows, preview_fuel_csv
 from .models import FuelGrade, FuelPreference, FuelRecord, FuelReviewPreference, FuelStation, FuelType
 from .services import (
     best_fuel_preference,
@@ -240,6 +242,60 @@ def fuel_export_view(request):
 
 
 @login_required
+def fuel_import_preview_view(request):
+    from apps.garage.models import Motorcycle
+
+    motorcycles = Motorcycle.objects.filter(owner=request.user, is_active=True).order_by("name")
+    preview_rows = []
+    import_token = ""
+    selected_motorcycle = None
+    if request.method == "POST":
+        selected_motorcycle = get_object_or_404(motorcycles, pk=request.POST.get("motorcycle"))
+        upload = request.FILES.get("file")
+        if not upload:
+            messages.error(request, "Selecione um CSV para importar.")
+        else:
+            preview_rows = preview_fuel_csv(file_obj=upload.file, motorcycle=selected_motorcycle)
+            valid_rows = [row.data for row in preview_rows if row.is_valid]
+            import_token = secrets.token_urlsafe(12)
+            imports = request.session.get("fuel_imports", {})
+            imports[import_token] = {"motorcycle_id": selected_motorcycle.pk, "rows": valid_rows}
+            request.session["fuel_imports"] = imports
+            request.session.modified = True
+    return render(
+        request,
+        "fuel/import_preview.html",
+        {
+            "motorcycles": motorcycles,
+            "selected_motorcycle": selected_motorcycle,
+            "preview_rows": preview_rows,
+            "import_token": import_token,
+        },
+    )
+
+
+@login_required
+def fuel_import_confirm_view(request):
+    from apps.garage.models import Motorcycle
+
+    if request.method != "POST":
+        return redirect("fuel:import_preview")
+    token = request.POST.get("import_token") or ""
+    imports = request.session.get("fuel_imports", {})
+    payload = imports.get(token)
+    if not payload:
+        messages.error(request, "PrÃ©via de importaÃ§Ã£o expirada.")
+        return redirect("fuel:import_preview")
+    motorcycle = get_object_or_404(Motorcycle, pk=payload["motorcycle_id"], owner=request.user, is_active=True)
+    created = create_fuel_records_from_rows(motorcycle=motorcycle, rows=payload["rows"])
+    imports.pop(token, None)
+    request.session["fuel_imports"] = imports
+    request.session.modified = True
+    messages.success(request, f"{created} abastecimento(s) importado(s) com sucesso.")
+    return redirect("fuel:list")
+
+
+@login_required
 def fuel_catalog_view(request):
     stations = FuelStation.objects.filter(owner=request.user)
     grades = FuelGrade.objects.filter(owner=request.user)
@@ -412,6 +468,7 @@ def fuel_grade_delete_view(request, pk: int):
 
 
 def _add_fuel_save_alerts(request, record: FuelRecord) -> None:
+    from apps.core.services.notifications import notification_alerts_for_motorcycle
     from apps.reports.services import intelligent_alerts
 
     fuel_alerts = [
@@ -421,6 +478,9 @@ def _add_fuel_save_alerts(request, record: FuelRecord) -> None:
     ][:2]
     for alert in fuel_alerts:
         messages.info(request, alert.message)
+    for alert in notification_alerts_for_motorcycle(record.motorcycle, limit=3):
+        if alert.source in {"maintenance", "documents", "reminder", "tires"}:
+            messages.info(request, alert.message)
 
 
 @login_required

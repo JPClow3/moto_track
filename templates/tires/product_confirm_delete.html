@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir produto de pneu - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Pneus{% endblock %}
+{% block topbar_title %}Excluir produto{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="delete-tire-product-title">
+  <div class="form-card">
+    <h2 id="delete-tire-product-title">Excluir produto de pneu</h2>
+    <p>Confirme a remoÃ§Ã£o de {{ product }}.</p>
+    <form method="post" class="form-actions">
+      {% csrf_token %}
+      <a class="secondary-btn" href="{% url 'tires:catalogs' %}">Cancelar</a>
+      <button type="submit" class="primary-btn">Excluir</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

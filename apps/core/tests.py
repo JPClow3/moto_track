@@ -2,11 +2,14 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from djmoney.money import Money
 
+from apps.core.models import ApiToken, RecordAttachment
 from apps.core.services.dashboard import get_status_cards, get_tire_cards, get_weekly_sparkline_points
+from apps.core.services.notifications import notification_alerts_for_motorcycle
 from apps.fuel.models import FuelRecord
 from apps.garage.models import Motorcycle
 from apps.maintenance.models import MaintenanceRecord
@@ -123,6 +126,74 @@ class CoreViewsTests(TestCase):
 
         self.assertEqual(undo.status_code, 302)
         self.assertFalse(FuelRecord.objects.filter(pk=created.pk).exists())
+
+    def test_record_attachment_upload_and_delete_is_owner_scoped(self):
+        self.client.force_login(self.user)
+        record = FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date="2026-04-15",
+            odometer_km=10200,
+            liters=Decimal("5.000"),
+            total_price=Decimal("35.00"),
+            price_per_liter=Decimal("7.000"),
+        )
+        response = self.client.post(
+            reverse("attachments:create", args=["fuel", "fuelrecord", record.pk]),
+            {"file": SimpleUploadedFile("nota.pdf", b"%PDF-1.4", content_type="application/pdf"), "label": "Nota"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        attachment = RecordAttachment.objects.get(object_id=record.pk)
+        self.assertEqual(attachment.owner, self.user)
+
+        response = self.client.post(reverse("attachments:delete", args=[attachment.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(RecordAttachment.objects.filter(pk=attachment.pk).exists())
+
+    def test_api_token_lists_only_owner_fuel_records(self):
+        other = get_user_model().objects.create_user(username="api-other", email="api-other@example.com")
+        other_motorcycle = Motorcycle.objects.create(owner=other, name="Outra", brand="Yamaha", model="MT", year=2024)
+        FuelRecord.objects.create(
+            motorcycle=other_motorcycle,
+            date="2026-04-15",
+            odometer_km=500,
+            liters=Decimal("5.000"),
+            total_price=Decimal("35.00"),
+            price_per_liter=Decimal("7.000"),
+        )
+        token = ApiToken.objects.create(owner=self.user, name="Integração", scopes="fuel:read")
+
+        response = self.client.get(reverse("api_v1:fuel_records"), HTTP_AUTHORIZATION=f"Token {token.key}")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload["results"]), 1)
+        self.assertEqual(payload["results"][0]["motorcycle"], self.motorcycle.name)
+
+    def test_notification_service_includes_documents_reminders_and_tires(self):
+        Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Revisão",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=9900,
+            is_active=True,
+        )
+        TireRecord.objects.create(
+            motorcycle=self.motorcycle,
+            position=TirePosition.REAR,
+            brand_model="Pneu gasto",
+            installed_at=date(2026, 4, 1),
+            installed_odometer_km=9900,
+            cost=Decimal("500.00"),
+            wear_percent=80,
+            is_active=True,
+        )
+
+        alerts = notification_alerts_for_motorcycle(self.motorcycle)
+
+        self.assertTrue(any(alert.source == "reminder" for alert in alerts))
+        self.assertTrue(any(alert.source == "tires" for alert in alerts))
 
 
 class OnboardingTests(TestCase):

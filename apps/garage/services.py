@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.db import transaction
 from django.db.models import Max
+from django.utils import timezone
 
 from apps.garage.models import Motorcycle
 
@@ -23,3 +24,20 @@ def recompute_motorcycle_odometer(motorcycle_id: int) -> int:
 
     motorcycle.set_current_odometer(effective)
     return effective
+
+
+def bump_motorcycle_odometer(motorcycle_id: int, odometer_km: int | None) -> int:
+    if odometer_km is None:
+        return 0
+    try:
+        value = int(odometer_km)
+    except (TypeError, ValueError):
+        return 0
+    if value <= 0:
+        return 0
+
+    updated = Motorcycle.objects.filter(id=motorcycle_id, current_odometer_km__lt=value).update(
+        current_odometer_km=value,
+        current_odometer_updated_at=timezone.now(),
+    )
+    return value if updated else 0

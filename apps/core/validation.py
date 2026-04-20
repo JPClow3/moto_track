@@ -33,8 +33,7 @@ def validate_odometer_sequence(
     """
     Block deterministic odometer regressions across dated motorcycle events.
 
-    If an older event has a higher odometer, or a newer event has a lower odometer,
-    the new/edited event would make the timeline physically inconsistent.
+    Uses targeted EXISTS queries instead of loading the full event history.
     """
     if not motorcycle or not event_date or odometer_km in (None, ""):
         return {}
@@ -44,21 +43,22 @@ def validate_odometer_sequence(
     except (TypeError, ValueError):
         return {}
 
-    events: list[tuple[str, date, int, int]] = []
+    from apps.fuel.models import FuelRecord
+    from apps.maintenance.models import MaintenanceRecord
+    from apps.tires.models import TireRecord
 
-    for record in motorcycle.fuel_records.all().only("id", "date", "odometer_km"):
-        events.append(("fuel.FuelRecord", record.date, int(record.odometer_km or 0), record.pk))
-    for record in motorcycle.maintenance_records.all().only("id", "date", "odometer_km"):
-        events.append(("maintenance.MaintenanceRecord", record.date, int(record.odometer_km or 0), record.pk))
-    for record in motorcycle.tire_records.all().only("id", "installed_at", "installed_odometer_km"):
-        events.append(("tires.TireRecord", record.installed_at, int(record.installed_odometer_km or 0), record.pk))
+    checks = [
+        ("fuel.FuelRecord", FuelRecord.objects.filter(motorcycle=motorcycle), "date", "odometer_km"),
+        ("maintenance.MaintenanceRecord", MaintenanceRecord.objects.filter(motorcycle=motorcycle), "date", "odometer_km"),
+        ("tires.TireRecord", TireRecord.objects.filter(motorcycle=motorcycle), "installed_at", "installed_odometer_km"),
+    ]
 
-    for model_label, other_date, other_odometer, other_pk in events:
-        if exclude_model == model_label and exclude_pk and int(exclude_pk) == int(other_pk):
-            continue
-        if other_date < event_date and other_odometer > odometer:
+    for model_label, qs, date_field, odometer_field in checks:
+        if exclude_model == model_label and exclude_pk:
+            qs = qs.exclude(pk=exclude_pk)
+        if qs.filter(**{f"{date_field}__lt": event_date, f"{odometer_field}__gt": odometer}).exists():
             return {"odometer_km": "Existe um evento anterior com odômetro maior que este valor."}
-        if other_date > event_date and other_odometer < odometer:
+        if qs.filter(**{f"{date_field}__gt": event_date, f"{odometer_field}__lt": odometer}).exists():
             return {"odometer_km": "Existe um evento posterior com odômetro menor que este valor."}
 
     return {}

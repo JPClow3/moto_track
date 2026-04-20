@@ -17,6 +17,27 @@
     </a>
   </header>
 
+  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
+    <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-3" aria-label="Filtros de lembretes">
+      <input class="ui-input md:col-span-2" type="search" name="q" value="{{ filters.q }}" placeholder="Buscar por tÃ­tulo ou descriÃ§Ã£o" aria-label="Buscar lembretes" />
+      <select class="ui-select" name="motorcycle" aria-label="Filtrar por moto">
+        <option value="">Todas as motos</option>
+        {% for bike in garage_motorcycles %}
+          <option value="{{ bike.id }}" {% if filters.motorcycle and bike.id|stringformat:"s" == filters.motorcycle %}selected{% endif %}>{{ bike.name }}</option>
+        {% endfor %}
+      </select>
+      <select class="ui-select" name="status" aria-label="Filtrar por status">
+        <option value="" {% if not filters.status %}selected{% endif %}>Todos os status</option>
+        <option value="active" {% if filters.status == "active" %}selected{% endif %}>Ativos</option>
+        <option value="inactive" {% if filters.status == "inactive" %}selected{% endif %}>Inativos</option>
+      </select>
+      <div class="md:col-span-4 flex flex-wrap gap-2">
+        <button class="ui-btn-primary" type="submit">Aplicar filtros</button>
+        <a class="ui-btn-secondary" href="{% url 'reminders:list' %}">Limpar</a>
+      </div>
+    </form>
+  </article>
+
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient space-y-4">
       <h3 class="text-lg font-extrabold tracking-tight">Ativos</h3>

@@ -12,9 +12,12 @@
       <h2 id="tires-catalog-title" class="text-3xl font-extrabold tracking-tight">Catálogos de pneus</h2>
       <p class="text-on-surface-variant text-sm">Produtos estruturados com fabricante, tipo e especificações técnicas.</p>
     </div>
-    <a class="rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'tires:list' %}">
-      Ir para pneus
-    </a>
+    <div class="flex flex-wrap gap-2">
+      <a class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient" href="{% url 'tires:product_create' %}">Novo produto</a>
+      <a class="rounded-2xl bg-surface-low px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'tires:list' %}">
+        Ir para pneus
+      </a>
+    </div>
   </header>
 
   <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient space-y-4" aria-label="Pneus estruturados">

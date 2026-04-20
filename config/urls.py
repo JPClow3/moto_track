@@ -31,6 +31,8 @@ urlpatterns = [
     path("reminders/", include("apps.reminders.urls")),
     path("expenses/", include("apps.expenses.urls")),
     path("reports/", include("apps.reports.urls")),
+    path("attachments/", include("apps.core.attachment_urls", namespace="attachments")),
+    path("api/v1/", include("apps.api.urls", namespace="api_v1")),
     path("accounts/login/", allauth_views.LoginView.as_view(), name="login"),
     path("accounts/logout/", allauth_views.LogoutView.as_view(), name="logout"),
     path("accounts/", include("allauth.urls")),

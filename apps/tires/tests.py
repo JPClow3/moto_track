@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.garage.models import Motorcycle
+from apps.tires.forms import TireProductForm
 from apps.tires.models import TirePosition, TirePressureRecord, TireProduct, TireRecord, TireType
 
 
@@ -41,6 +42,26 @@ class TireModelTests(TestCase):
     def test_owner_scoped_products_are_usable_in_queryset(self):
         self.assertEqual(TireProduct.objects.filter(owner=self.user).count(), 1)  # pylint: disable=no-member
         self.assertEqual(TireProduct.objects.filter(owner=self.other_user).count(), 1)  # pylint: disable=no-member
+
+    def test_tire_product_form_accepts_catalog_fields(self):
+        form = TireProductForm(
+            data={
+                "manufacturer": "Metzeler",
+                "model_name": "Roadtec",
+                "tire_type": TireType.TOURING,
+                "width_mm": 150,
+                "aspect_ratio": 70,
+                "rim_diameter_in": 17,
+                "load_index": "69",
+                "speed_rating": "W",
+                "max_speed_kmh": 270,
+                "price_0": "900.00",
+                "price_1": "BRL",
+                "notes": "Uso estrada",
+            }
+        )
+
+        self.assertTrue(form.is_valid())
 
     def test_tire_record_clean_rejects_wear_over_100(self):
         record = TireRecord(
@@ -171,3 +192,43 @@ class TireViewTests(TestCase):
         self.assertTrue(
             TirePressureRecord.objects.filter(motorcycle=self.motorcycle, psi_front=32, psi_rear=36).exists()  # pylint: disable=no-member
         )
+
+    def test_product_crud_is_owner_scoped(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("tires:product_create"),
+            {
+                "manufacturer": "Metzeler",
+                "model_name": "Roadtec",
+                "tire_type": TireType.TOURING,
+                "width_mm": 150,
+                "aspect_ratio": 70,
+                "rim_diameter_in": 17,
+                "price_0": "900.00",
+                "price_1": "BRL",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        product = TireProduct.objects.get(owner=self.user, manufacturer="Metzeler")
+
+        response = self.client.post(
+            reverse("tires:product_update", args=[product.pk]),
+            {
+                "manufacturer": "Metzeler",
+                "model_name": "Roadtec 02",
+                "tire_type": TireType.TOURING,
+                "width_mm": 150,
+                "aspect_ratio": 70,
+                "rim_diameter_in": 17,
+                "price_0": "950.00",
+                "price_1": "BRL",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        product.refresh_from_db()
+        self.assertEqual(product.model_name, "Roadtec 02")
+
+        response = self.client.post(reverse("tires:product_delete", args=[product.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(TireProduct.objects.filter(pk=product.pk).exists())

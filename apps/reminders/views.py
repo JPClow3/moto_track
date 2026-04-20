@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -19,20 +20,32 @@ from .services import evaluate_reminder
 @login_required
 def reminder_list_view(request):
     today = timezone.localdate()
+    q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "").strip().lower()
+    motorcycle_id = request.GET.get("motorcycle") or ""
 
     active_qs = (
         Reminder.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True, is_active=True)
         .select_related("motorcycle")
         .order_by("reference_date", "reference_km")
     )
+    inactive_base_qs = Reminder.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True, is_active=False)
+    if motorcycle_id:
+        active_qs = active_qs.filter(motorcycle_id=motorcycle_id)
+        inactive_base_qs = inactive_base_qs.filter(motorcycle_id=motorcycle_id)
+    if q:
+        query = Q(title__icontains=q) | Q(description__icontains=q)
+        active_qs = active_qs.filter(query)
+        inactive_base_qs = inactive_base_qs.filter(query)
+    if status == "inactive":
+        active_qs = active_qs.none()
+    elif status == "active":
+        inactive_base_qs = inactive_base_qs.none()
+
     density = get_density(request)
     paged = paginate(request, active_qs, per_page=per_page_for_density(density))
     active_reminders = list(paged.items)
-    inactive_reminders = (
-        Reminder.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True, is_active=False)
-        .select_related("motorcycle")
-        .order_by("-updated_at")[:50]
-    )
+    inactive_reminders = inactive_base_qs.select_related("motorcycle").order_by("-updated_at")[:50]
 
     active_with_status = [
         {"reminder": r, "evaluation": evaluate_reminder(r, current_odometer_km=r.motorcycle.current_odometer_km, today=today)}
@@ -43,6 +56,7 @@ def reminder_list_view(request):
         "page_obj": paged.page,
         "inactive_reminders": inactive_reminders,
         "density": density,
+        "filters": {"q": q, "status": status, "motorcycle": motorcycle_id},
     }
     return render(request, "reminders/list.html", context)
 

@@ -7,6 +7,8 @@ from .views import (
 	fuel_grade_create_view,
 	fuel_grade_delete_view,
 	fuel_grade_update_view,
+	fuel_import_confirm_view,
+	fuel_import_preview_view,
 	fuel_list_view,
 	fuel_quick_create_view,
 	fuel_record_delete_view,
@@ -23,6 +25,8 @@ app_name = "fuel"
 urlpatterns = [
 	path("", fuel_list_view, name="list"),
 	path("export/", fuel_export_view, name="export"),
+	path("import/", fuel_import_preview_view, name="import_preview"),
+	path("import/confirm/", fuel_import_confirm_view, name="import_confirm"),
 	path("defaults/", fuel_defaults_view, name="defaults"),
 	path("catalogs/", fuel_catalog_view, name="catalogs"),
 	path("records/<int:pk>/edit/", fuel_record_update_view, name="update"),

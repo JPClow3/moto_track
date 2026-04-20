@@ -5,10 +5,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from apps.core.exports import parse_date_param
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
+from apps.core.services.notifications import notification_alerts_for_motorcycle
 from apps.core.ui import get_density, per_page_for_density
 
 from .export import build_export
-from .forms import TirePressureRecordForm, TireRecordForm
+from .forms import TirePressureRecordForm, TireProductForm, TireRecordForm
 from .models import TirePosition, TirePressureRecord, TireProduct, TireRecord
 
 
@@ -144,6 +145,8 @@ def tire_create_view(request):
         form = TireRecordForm(request.POST, user=request.user)
         if form.is_valid():
             record = form.save()
+            for alert in notification_alerts_for_motorcycle(record.motorcycle, limit=3):
+                messages.info(request, alert.message)
             messages.success(request, f"Pneu {record.brand_model} registrado com sucesso.")
             return redirect("tires:list")
     else:
@@ -196,3 +199,55 @@ def tire_delete_view(request, pk):
         return redirect("tires:list")
 
     return render(request, "tires/confirm_delete.html", {"record": record})
+
+
+@login_required
+def tire_product_create_view(request):
+    if request.method == "POST":
+        form = TireProductForm(request.POST, request.FILES)
+        if form.is_valid():
+            product = form.save(commit=False)
+            product.owner = request.user
+            product.save()
+            messages.success(request, f"Pneu {product} criado com sucesso.")
+            return redirect("tires:catalogs")
+    else:
+        form = TireProductForm()
+    configure_form_accessibility(form)
+    return render(
+        request,
+        "tires/product_form.html",
+        {"form": form, "title": "Novo produto de pneu", "submit_label": "Salvar produto"},
+    )
+
+
+@login_required
+def tire_product_update_view(request, pk: int):
+    product = get_object_or_404(TireProduct, pk=pk, owner=request.user)
+    if request.method == "POST":
+        form = TireProductForm(request.POST, request.FILES, instance=product)
+        if form.is_valid():
+            product = form.save()
+            messages.success(request, f"Pneu {product} atualizado com sucesso.")
+            return redirect("tires:catalogs")
+    else:
+        form = TireProductForm(instance=product)
+    configure_form_accessibility(form)
+    return render(
+        request,
+        "tires/product_form.html",
+        {"form": form, "title": f"Editar {product}", "submit_label": "Salvar alteraÃ§Ãµes", "product": product},
+    )
+
+
+@login_required
+def tire_product_delete_view(request, pk: int):
+    product = get_object_or_404(TireProduct, pk=pk, owner=request.user)
+    if request.method == "POST":
+        label = str(product)
+        if product.image:
+            product.image.delete(save=False)
+        product.delete()
+        messages.success(request, f"Pneu {label} removido com sucesso.")
+        return redirect("tires:catalogs")
+    return render(request, "tires/product_confirm_delete.html", {"product": product})

@@ -71,6 +71,7 @@ class MaintenanceRecord(TimeStampedModel):
         indexes = [
             models.Index(fields=["date"], name="maint_record_date_idx"),
             models.Index(fields=["maintenance_type"], name="maint_record_type_idx"),
+            models.Index(fields=["motorcycle", "date", "odometer_km"], name="maint_moto_date_odo_idx"),
         ]
 
     def __str__(self) -> str:

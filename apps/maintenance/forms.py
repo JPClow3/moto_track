@@ -8,7 +8,7 @@ from apps.core.sanitizers import sanitize_text
 from apps.core.validation import add_form_errors, validate_not_future, validate_odometer_sequence
 from apps.garage.models import Motorcycle
 
-from .models import MaintenancePart, MaintenanceRecord
+from .models import MaintenancePart, MaintenancePlanItem, MaintenanceRecord
 
 
 class MaintenanceRecordQuickForm(forms.ModelForm):
@@ -113,3 +113,38 @@ class MaintenancePartForm(forms.ModelForm):
         widgets = {
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
+
+
+class MaintenancePlanItemForm(forms.ModelForm):
+    class Meta:
+        model = MaintenancePlanItem
+        fields = [
+            "motorcycle",
+            "maintenance_type",
+            "interval_km",
+            "interval_days",
+            "last_done_km",
+            "last_done_date",
+            "is_active",
+        ]
+        labels = {
+            "motorcycle": "Moto",
+            "maintenance_type": "Tipo de manutenÃ§Ã£o",
+            "interval_km": "Intervalo em km",
+            "interval_days": "Intervalo em dias",
+            "last_done_km": "Ãšltima execuÃ§Ã£o (km)",
+            "last_done_date": "Ãšltima execuÃ§Ã£o (data)",
+            "is_active": "Plano ativo",
+        }
+        widgets = {
+            "interval_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "interval_days": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "last_done_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
+            "last_done_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["motorcycle"].queryset = Motorcycle.objects.filter(owner=user).order_by("name")
+        for name in ["interval_km", "interval_days", "last_done_km", "last_done_date"]:
+            self.fields[name].required = False

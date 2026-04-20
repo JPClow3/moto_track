@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Pneus{% endblock %}
+{% block topbar_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="tire-product-form-title">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">CatÃ¡logo</p>
+      <h2 id="tire-product-form-title">{{ title }}</h2>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="form-card" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <div class="field-group">
+        {{ field.label_tag }}
+        {{ field }}
+        {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+        {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+      </div>
+    {% endfor %}
+    <div class="form-actions">
+      <a class="secondary-btn" href="{% url 'tires:catalogs' %}">Cancelar</a>
+      <button type="submit" class="primary-btn">{{ submit_label }}</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -66,6 +66,7 @@ class TireRecord(TimeStampedModel):
         indexes = [
             models.Index(fields=["is_active"], name="tire_record_active_idx"),
             models.Index(fields=["installed_at"], name="tire_record_installed_idx"),
+            models.Index(fields=["motorcycle", "installed_at", "installed_odometer_km"], name="tire_moto_date_odo_idx"),
         ]
 
     def __str__(self) -> str:
