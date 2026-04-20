@@ -136,11 +136,11 @@ class TireProductForm(forms.ModelForm):
             "width_mm": "Largura (mm)",
             "aspect_ratio": "Perfil",
             "rim_diameter_in": "Aro (pol.)",
-            "load_index": "Ãndice de carga",
-            "speed_rating": "Ãndice de velocidade",
-            "max_speed_kmh": "Velocidade mÃ¡xima (km/h)",
-            "price": "PreÃ§o",
-            "notes": "ObservaÃ§Ãµes",
+            "load_index": "Índice de carga",
+            "speed_rating": "Índice de velocidade",
+            "max_speed_kmh": "Velocidade máxima (km/h)",
+            "price": "Preço",
+            "notes": "Observações",
         }
         widgets = {
             "notes": forms.Textarea(attrs={"rows": 2}),

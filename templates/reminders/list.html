@@ -19,7 +19,7 @@
 
   <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient">
     <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-3" aria-label="Filtros de lembretes">
-      <input class="ui-input md:col-span-2" type="search" name="q" value="{{ filters.q }}" placeholder="Buscar por tÃ­tulo ou descriÃ§Ã£o" aria-label="Buscar lembretes" />
+      <input class="ui-input md:col-span-2" type="search" name="q" value="{{ filters.q }}" placeholder="Buscar por título ou descrição" aria-label="Buscar lembretes" />
       <select class="ui-select" name="motorcycle" aria-label="Filtrar por moto">
         <option value="">Todas as motos</option>
         {% for bike in garage_motorcycles %}

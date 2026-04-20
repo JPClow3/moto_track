@@ -27,7 +27,7 @@ def validate_attachment_file(file_obj):
 
     max_size = 15 * 1024 * 1024
     if file_obj.size and file_obj.size > max_size:
-        raise ValidationError("O anexo deve ter no mÃ¡ximo 15 MB.")
+        raise ValidationError("O anexo deve ter no máximo 15 MB.")
 
     name = (file_obj.name or "").lower()
     allowed_extensions = (".jpg", ".jpeg", ".png", ".webp", ".pdf", ".heic", ".doc", ".docx")
@@ -61,7 +61,7 @@ class ApiToken(TimeStampedModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="api_tokens")
     name = models.CharField(max_length=120)
     key = models.CharField(max_length=64, unique=True, default=_generate_api_key)
-    scopes = models.CharField(max_length=240, blank=True, help_text="Escopos separados por espaÃ§o, ex: fuel:read")
+    scopes = models.CharField(max_length=240, blank=True, help_text="Escopos separados por espaço, ex: fuel:read")
     is_active = models.BooleanField(default=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
 

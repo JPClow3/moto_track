@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
 {% block title %}Excluir plano - Moto Track{% endblock %}
-{% block topbar_eyebrow %}ManutenÃ§Ã£o{% endblock %}
+{% block topbar_eyebrow %}Manutenção{% endblock %}
 {% block topbar_title %}Excluir plano{% endblock %}
 
 {% block content %}
 <section class="list-section" aria-labelledby="delete-plan-title">
   <div class="form-card">
-    <h2 id="delete-plan-title">Excluir plano de manutenÃ§Ã£o</h2>
-    <p>Confirme a remoÃ§Ã£o do plano de {{ item.get_maintenance_type_display }}.</p>
+    <h2 id="delete-plan-title">Excluir plano de manutenção</h2>
+    <p>Confirme a remoção do plano de {{ item.get_maintenance_type_display }}.</p>
     <form method="post" class="form-actions">
       {% csrf_token %}
       <a class="secondary-btn" href="{% url 'maintenance:list' %}">Cancelar</a>

@@ -236,7 +236,7 @@ def tire_product_update_view(request, pk: int):
     return render(
         request,
         "tires/product_form.html",
-        {"form": form, "title": f"Editar {product}", "submit_label": "Salvar alteraÃ§Ãµes", "product": product},
+        {"form": form, "title": f"Editar {product}", "submit_label": "Salvar alterações", "product": product},
     )
 
 

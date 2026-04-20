@@ -284,7 +284,7 @@ def fuel_import_confirm_view(request):
     imports = request.session.get("fuel_imports", {})
     payload = imports.get(token)
     if not payload:
-        messages.error(request, "PrÃ©via de importaÃ§Ã£o expirada.")
+        messages.error(request, "Prévia de importação expirada.")
         return redirect("fuel:import_preview")
     motorcycle = get_object_or_404(Motorcycle, pk=payload["motorcycle_id"], owner=request.user, is_active=True)
     created = create_fuel_records_from_rows(motorcycle=motorcycle, rows=payload["rows"])

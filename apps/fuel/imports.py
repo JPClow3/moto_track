@@ -27,7 +27,7 @@ def _decimal(value: str, field: str, errors: list[str]) -> Decimal:
     try:
         return Decimal(str(value).strip())
     except (InvalidOperation, ValueError):
-        errors.append(f"{field} invÃ¡lido.")
+        errors.append(f"{field} inválido.")
         return Decimal("0")
 
 
@@ -39,18 +39,18 @@ def preview_fuel_csv(*, file_obj, motorcycle: Motorcycle) -> list[FuelImportRow]
         errors: list[str] = []
         parsed_date = parse_date((raw.get("date") or "").strip())
         if parsed_date is None:
-            errors.append("Data invÃ¡lida.")
+            errors.append("Data inválida.")
         try:
             odometer_km = int((raw.get("odometer_km") or "").strip())
         except ValueError:
-            errors.append("OdÃ´metro invÃ¡lido.")
+            errors.append("Odômetro inválido.")
             odometer_km = 0
         liters = _decimal(raw.get("liters") or "", "Litros", errors)
         total_price = _decimal(raw.get("total_price") or "", "Valor total", errors)
-        price_per_liter = _decimal(raw.get("price_per_liter") or "", "PreÃ§o por litro", errors)
+        price_per_liter = _decimal(raw.get("price_per_liter") or "", "Preço por litro", errors)
         fuel_type = (raw.get("fuel_type") or FuelType.GASOLINE).strip()
         if fuel_type not in FuelType.values:
-            errors.append("Tipo de combustÃ­vel invÃ¡lido.")
+            errors.append("Tipo de combustível inválido.")
         station_name = (raw.get("station_name") or "").strip()
         tank_full = (raw.get("tank_full") or "").strip().lower() in {"1", "true", "sim", "yes"}
         duplicate = False

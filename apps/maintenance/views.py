@@ -312,7 +312,7 @@ def maintenance_plan_create_view(request):
     return render(
         request,
         "maintenance/plan_form.html",
-        {"form": form, "title": "Novo plano de manutenÃ§Ã£o", "submit_label": "Salvar plano"},
+        {"form": form, "title": "Novo plano de manutenção", "submit_label": "Salvar plano"},
     )
 
 
@@ -331,7 +331,7 @@ def maintenance_plan_update_view(request, pk: int):
     return render(
         request,
         "maintenance/plan_form.html",
-        {"form": form, "title": f"Editar plano {item.get_maintenance_type_display()}", "submit_label": "Salvar alteraÃ§Ãµes", "item": item},
+        {"form": form, "title": f"Editar plano {item.get_maintenance_type_display()}", "submit_label": "Salvar alterações", "item": item},
     )
 
 

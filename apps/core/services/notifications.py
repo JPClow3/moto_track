@@ -43,9 +43,9 @@ def notification_alerts_for_motorcycle(motorcycle: Motorcycle, *, limit: int = 6
         due_by_km = bool(item.interval_km and item.last_done_km is not None and item.last_done_km + item.interval_km <= current_odometer)
         due_by_date = bool(item.interval_days and item.last_done_date and item.last_done_date + timedelta(days=item.interval_days) <= today)
         if due_by_km or due_by_date:
-            alerts.append(NotificationAlert(source="maintenance", tone="warning", message=f"ManutenÃ§Ã£o pendente: {item.get_maintenance_type_display()}"))
+            alerts.append(NotificationAlert(source="maintenance", tone="warning", message=f"Manutenção pendente: {item.get_maintenance_type_display()}"))
 
     for tire in TireRecord.objects.filter(motorcycle=motorcycle, is_active=True, wear_percent__gte=70).order_by("-wear_percent"):
-        alerts.append(NotificationAlert(source="tires", tone="warning", message=f"Pneu em atenÃ§Ã£o: {tire.get_position_display()}"))
+        alerts.append(NotificationAlert(source="tires", tone="warning", message=f"Pneu em atenção: {tire.get_position_display()}"))
 
     return alerts[:limit]

@@ -129,11 +129,11 @@ class MaintenancePlanItemForm(forms.ModelForm):
         ]
         labels = {
             "motorcycle": "Moto",
-            "maintenance_type": "Tipo de manutenÃ§Ã£o",
+            "maintenance_type": "Tipo de manutenção",
             "interval_km": "Intervalo em km",
             "interval_days": "Intervalo em dias",
-            "last_done_km": "Ãšltima execuÃ§Ã£o (km)",
-            "last_done_date": "Ãšltima execuÃ§Ã£o (data)",
+            "last_done_km": "Última execução (km)",
+            "last_done_date": "Última execução (data)",
             "is_active": "Plano ativo",
         }
         widgets = {

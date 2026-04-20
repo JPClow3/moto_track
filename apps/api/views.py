@@ -26,9 +26,9 @@ def _token_from_request(request):
 def _require_token(request, scope: str):
     token = _token_from_request(request)
     if not token:
-        return None, JsonResponse({"detail": "Token ausente ou invÃ¡lido."}, status=401)
+        return None, JsonResponse({"detail": "Token ausente ou inválido."}, status=401)
     if not token.has_scope(scope):
-        return None, JsonResponse({"detail": "Token sem permissÃ£o para este recurso."}, status=403)
+        return None, JsonResponse({"detail": "Token sem permissão para este recurso."}, status=403)
     return token, None
 
 

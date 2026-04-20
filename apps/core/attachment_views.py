@@ -27,7 +27,7 @@ def attachment_create_view(request, app_label: str, model: str, object_id: int):
     content_type = get_object_or_404(ContentType, app_label=app_label, model=model)
     obj = get_object_or_404(content_type.model_class(), pk=object_id)
     if _object_owner(obj) != request.user:
-        messages.error(request, "VocÃª nÃ£o pode anexar arquivos a este registro.")
+        messages.error(request, "Você não pode anexar arquivos a este registro.")
         return redirect("dashboard")
 
     upload = request.FILES.get("file")
