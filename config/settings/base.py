@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
+    "django.contrib.sitemaps",
     "storages",
     "crispy_forms",
     "crispy_tailwind",
@@ -31,6 +32,8 @@ INSTALLED_APPS = [
     "widget_tweaks",
     "allauth",
     "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "djmoney",
     "django_bleach",
     "django_cotton",
@@ -158,6 +161,18 @@ ACCOUNT_RATE_LIMITS = {
     "login_failed": "5/m",
 }
 ALLAUTH_UI_THEME = "light"
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "APP": {
+            "client_id": env("GOOGLE_CLIENT_ID", default=""),
+            "secret": env("GOOGLE_CLIENT_SECRET", default=""),
+            "key": "",
+        },
+    }
+}
 
 BLEACH_ALLOWED_TAGS = []
 BLEACH_ALLOWED_ATTRIBUTES = {}

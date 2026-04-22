@@ -154,14 +154,18 @@ async function syncRequests() {
     const requests = await getRequests();
     for (const req of requests) {
         try {
-            await fetch(req.url, {
+            const response = await fetch(req.url, {
                 method: req.method,
                 headers: req.headers,
                 body: req.body,
             });
-            await deleteRequest(req.id);
+            if (response.ok) {
+                await deleteRequest(req.id);
+            } else {
+                console.warn('Sync server error for request', req.id, response.status);
+            }
         } catch (e) {
-            console.error('Sync failed for request', req.id, e);
+            console.error('Sync network error for request', req.id, e);
         }
     }
 }

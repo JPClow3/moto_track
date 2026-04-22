@@ -138,11 +138,11 @@ class Command(BaseCommand):
         for data in templates_data:
             # Loop through every single year and create a distinct template for that year
             for year in range(data["year_from"], data["year_to"] + 1):
-                template, created = MotorcycleTemplate.objects.get_or_create(
+                template, created = MotorcycleTemplate.objects.update_or_create(
                     brand=data["brand"],
                     model=data["model"],
                     year_from=year,
-                    year_to=year,  # Explicitly setting year_to to match year_from
+                    year_to=year,
                     defaults={"engine_cc": data["engine_cc"]}
                 )
                 

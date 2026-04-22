@@ -282,31 +282,44 @@ def get_chart_spending_distribution(motorcycle: Motorcycle) -> dict:
 
 
 def get_chart_consumption_trend(motorcycle: Motorcycle) -> dict:
+    """Return 6-month consumption trend using a single DB query."""
+    from collections import defaultdict
+
     today = timezone.localdate()
+
+    # Build the ordered list of (year, month) for the last 6 months.
+    months: list[tuple[int, int]] = []
+    for i in range(5, -1, -1):
+        m = today.month - i
+        y = today.year
+        if m <= 0:
+            m += 12
+            y -= 1
+        months.append((y, m))
+
+    # Single query covering the full 6-month window.
+    start_date = datetime.date(months[0][0], months[0][1], 1)
+    records = list(
+        FuelRecord.objects.filter(
+            motorcycle=motorcycle,
+            date__gte=start_date,
+        ).order_by("date", "odometer_km")
+    )
+
+    # Group records by (year, month) in Python.
+    by_month: dict[tuple[int, int], list] = defaultdict(list)
+    for rec in records:
+        by_month[(rec.date.year, rec.date.month)].append(rec)
+
     labels = []
     values = []
-    
-    for i in range(5, -1, -1):
-        target_month = today.month - i
-        target_year = today.year
-        if target_month <= 0:
-            target_month += 12
-            target_year -= 1
-            
-        month_label = datetime.date(target_year, target_month, 1).strftime("%b/%Y")
-        labels.append(month_label)
-        
-        qs = FuelRecord.objects.filter(
-            motorcycle=motorcycle, 
-            date__year=target_year, 
-            date__month=target_month
-        ).order_by("date", "odometer_km")
-        
-        stats = compute_average_consumption_km_per_liter(qs)
-        val = stats.km_per_liter if stats else 0
-        values.append(val)
-        
+    for y, m in months:
+        labels.append(datetime.date(y, m, 1).strftime("%b/%Y"))
+        month_records = by_month.get((y, m), [])
+        stats = compute_average_consumption_km_per_liter(month_records)
+        values.append(stats.km_per_liter if stats else 0)
+
     return {
         "labels": labels,
-        "values": values
+        "values": values,
     }
