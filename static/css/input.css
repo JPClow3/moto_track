@@ -5,6 +5,52 @@
 /* Arquivo de entrada do Tailwind. Saída gerada: static/css/tailwind.generated.css */
 
 @layer base {
+  :root {
+    --color-surface: 246 248 252;
+    --color-surface-low: 237 242 251;
+    --color-surface-lowest: 255 255 255;
+    --color-surface-high: 223 232 246;
+    --color-surface-highest: 207 220 240;
+    --color-surface-variant: 207 220 240;
+    --color-inverse-surface: 11 18 32;
+    --color-on-surface: 15 23 42;
+    --color-on-surface-variant: 71 85 105;
+    --color-primary: 37 99 235;
+    --color-primary-dim: 29 78 216;
+    --color-on-primary: 255 255 255;
+    --color-outline: 100 116 139;
+    --color-outline-variant: 203 213 225;
+    --color-error: 220 38 38;
+    --color-on-error: 255 255 255;
+    --color-success: 22 163 74;
+    --color-warning: 245 158 11;
+    --color-info: 6 182 212;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-surface: 15 23 42;
+      --color-surface-low: 11 18 32;
+      --color-surface-lowest: 2 6 23;
+      --color-surface-high: 30 41 59;
+      --color-surface-highest: 51 65 85;
+      --color-surface-variant: 51 65 85;
+      --color-inverse-surface: 248 250 252;
+      --color-on-surface: 248 250 252;
+      --color-on-surface-variant: 148 163 184;
+      --color-primary: 59 130 246;
+      --color-primary-dim: 37 99 235;
+      --color-on-primary: 255 255 255;
+      --color-outline: 100 116 139;
+      --color-outline-variant: 51 65 85;
+      --color-error: 239 68 68;
+      --color-on-error: 255 255 255;
+      --color-success: 34 197 94;
+      --color-warning: 245 158 11;
+      --color-info: 6 182 212;
+    }
+  }
+
   html {
     font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, "Segoe UI", Tahoma, sans-serif;
   }

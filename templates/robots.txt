@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://moto-track.net/sitemap.xml

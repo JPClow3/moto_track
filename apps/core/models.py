@@ -74,3 +74,15 @@ class ApiToken(TimeStampedModel):
     def has_scope(self, scope: str) -> bool:
         configured = {part.strip() for part in self.scopes.split() if part.strip()}
         return "*" in configured or scope in configured
+
+class PushSubscription(TimeStampedModel):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="push_subscriptions")
+    endpoint = models.URLField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=200)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"Subscription for {self.owner} ({self.created_at.date()})"

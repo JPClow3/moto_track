@@ -29,3 +29,13 @@ class UserScopedAdmin(ModelAdmin):
         if not request.user.is_superuser and db_field.name in self.many_to_many_scopes:
             kwargs["queryset"] = self._resolve_scoped_queryset(self.many_to_many_scopes[db_field.name], request.user)
         return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+from django.contrib import admin
+
+from .models import PushSubscription
+
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(UserScopedAdmin):
+    list_display = ("owner", "endpoint", "created_at")
+    search_fields = ("owner__username", "owner__email", "endpoint")

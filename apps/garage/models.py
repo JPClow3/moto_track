@@ -89,6 +89,7 @@ class MotorcycleTemplateSpec(TimeStampedModel):
     oil_type_recommendation = models.CharField(max_length=80, blank=True)
     oil_viscosity_recommendation = models.CharField(max_length=32, blank=True)
     manual_url = models.CharField(max_length=500, blank=True)
+    consumption_avg_km_l = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     class Meta:
         verbose_name = "Especificacao do template"
@@ -273,6 +274,7 @@ class MotorcycleSpec(TimeStampedModel):
     oil_type_recommendation = models.CharField(max_length=80, blank=True)
     oil_viscosity_recommendation = models.CharField(max_length=32, blank=True)
     manual_reference = models.CharField(max_length=120, blank=True)
+    consumption_avg_km_l = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     class Meta:
         verbose_name = "Especificação da moto"
