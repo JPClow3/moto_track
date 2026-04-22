@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
   <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 </head>
 <body class="min-h-full overflow-x-hidden">
   <a class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-inverse-surface focus:px-4 focus:py-2 focus:text-on-primary" href="#main-content">
@@ -132,6 +133,9 @@
               hx-swap="innerHTML"
             >
               <i data-lucide="plus" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="ui-icon-btn rounded-full" onclick="subscribeToPush()" aria-label="Ativar Notificações" title="Ativar Notificações">
+              <i data-lucide="radio" aria-hidden="true"></i>
             </button>
             <a class="ui-icon-btn rounded-full" href="{% url 'reminders:list' %}" aria-label="Ir para lembretes">
               <i data-lucide="bell" aria-hidden="true"></i>
@@ -300,6 +304,31 @@
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("{% url 'service_worker' %}").catch(() => {});
       });
+    }
+
+    async function subscribeToPush() {
+        if (!('serviceWorker' in navigator)) return;
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                // In a real app with VAPID, you would pass applicationServerKey here.
+                const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true });
+                
+                await fetch('/api/push/subscribe/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(subscription)
+                });
+                alert('Notificações ativadas com sucesso!');
+            }
+        } catch (e) {
+            console.error('Push subscription failed:', e);
+            alert('Não foi possível ativar as notificações no momento.');
+        }
     }
   </script>
 </body>

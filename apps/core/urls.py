@@ -10,6 +10,7 @@ from .views import (
     quick_add_selector_view,
     service_worker_view,
     undo_action_view,
+    push_subscribe_view,
 )
 
 urlpatterns = [
@@ -26,4 +27,5 @@ urlpatterns = [
     path("undo/<str:token>/", undo_action_view, name="undo_action"),
     path("offline/", offline_view, name="offline"),
     path("sw.js", service_worker_view, name="service_worker"),
+    path("api/push/subscribe/", push_subscribe_view, name="push_subscribe"),
 ]

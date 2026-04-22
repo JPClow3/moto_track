@@ -1,11 +1,8 @@
 import os
 import secrets
-from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
-
-from apps.garage.models import Motorcycle, MotorcycleSpec
 
 
 class Command(BaseCommand):
@@ -59,41 +56,5 @@ class Command(BaseCommand):
 
         user.save()
 
-        motorcycle, motorcycle_created = Motorcycle.objects.get_or_create(
-            owner=user,
-            name="KTM 200 Duke 2017",
-            defaults={
-                "brand": "KTM",
-                "model": "200 Duke",
-                "year": 2017,
-                "license_plate": "",
-            },
-        )
-        if not motorcycle_created:
-            motorcycle.brand = "KTM"
-            motorcycle.model = "200 Duke"
-            motorcycle.year = 2017
-            motorcycle.save(update_fields=["brand", "model", "year"])
-
-        spec_defaults = {
-            "fuel_tank_capacity_l": Decimal("11.00"),
-            "fuel_type_recommendation": "Gasolina",
-            "oil_capacity_l": Decimal("1.50"),
-            "tire_size_front": "110/70R17",
-            "tire_size_rear": "150/60R17",
-            "chain_size": "Cadeia",
-            "manual_reference": "A2 | 26HP@10000rpm | torque@8000rpm | bore 72mm | stroke 49mm",
-        }
-        spec, spec_created = MotorcycleSpec.objects.get_or_create(
-            motorcycle=motorcycle,
-            defaults=spec_defaults,
-        )
-        if not spec_created:
-            for field, value in spec_defaults.items():
-                setattr(spec, field, value)
-            spec.save(update_fields=list(spec_defaults.keys()))
-
         action = "created" if created else "updated"
-        bike_action = "created" if motorcycle_created else "updated"
         self.stdout.write(self.style.SUCCESS(f"Admin user {action}: {username}"))
-        self.stdout.write(self.style.SUCCESS(f"First bike {bike_action}: {motorcycle.name}"))

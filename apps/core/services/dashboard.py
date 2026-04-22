@@ -14,6 +14,7 @@ from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.reminders.models import Reminder
 from apps.reminders.services import evaluate_reminder
 from apps.tires.models import TirePosition, TireRecord
+from apps.expenses.models import AnnualFee, InsurancePolicy
 
 
 def _money_zero(currency="BRL") -> Money:
@@ -257,3 +258,55 @@ def get_catalog_links() -> list[dict]:
         {"label": "Catálogos de manutenção", "hint": "Peças e insumos", "url": reverse("maintenance:catalogs")},
         {"label": "Catálogos de pneus", "hint": "Produtos e especificações", "url": reverse("tires:catalogs")},
     ]
+
+
+def get_chart_spending_distribution(motorcycle: Motorcycle) -> dict:
+    fuel_total = FuelRecord.objects.filter(motorcycle=motorcycle).aggregate(t=Sum("total_price"))["t"] or _money_zero()
+    fuel_val = float(getattr(fuel_total, "amount", fuel_total) or 0)
+
+    maint_total = MaintenanceRecord.objects.filter(motorcycle=motorcycle).aggregate(t=Sum("cost"))["t"] or _money_zero()
+    maint_val = float(getattr(maint_total, "amount", maint_total) or 0)
+
+    fees_total = AnnualFee.objects.filter(motorcycle=motorcycle).aggregate(t=Sum("amount"))["t"] or _money_zero()
+    fees_val = float(getattr(fees_total, "amount", fees_total) or 0)
+
+    ins_total = InsurancePolicy.objects.filter(motorcycle=motorcycle).aggregate(t=Sum("premium"))["t"] or _money_zero()
+    ins_val = float(getattr(ins_total, "amount", ins_total) or 0)
+    
+    taxes_val = fees_val + ins_val
+
+    return {
+        "labels": ["Combustível", "Manutenção", "Taxas & Seguros"],
+        "values": [fuel_val, maint_val, taxes_val]
+    }
+
+
+def get_chart_consumption_trend(motorcycle: Motorcycle) -> dict:
+    today = timezone.localdate()
+    labels = []
+    values = []
+    
+    for i in range(5, -1, -1):
+        target_month = today.month - i
+        target_year = today.year
+        if target_month <= 0:
+            target_month += 12
+            target_year -= 1
+            
+        month_label = datetime.date(target_year, target_month, 1).strftime("%b/%Y")
+        labels.append(month_label)
+        
+        qs = FuelRecord.objects.filter(
+            motorcycle=motorcycle, 
+            date__year=target_year, 
+            date__month=target_month
+        ).order_by("date", "odometer_km")
+        
+        stats = compute_average_consumption_km_per_liter(qs)
+        val = stats.km_per_liter if stats else 0
+        values.append(val)
+        
+    return {
+        "labels": labels,
+        "values": values
+    }

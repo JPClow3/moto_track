@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 from dal import autocomplete
@@ -7,11 +8,12 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
+from django.views.decorators.http import require_POST
 
 from apps.core.active_motorcycle import get_active_motorcycle, set_active_motorcycle
 from apps.core.exports import safe_next_url
@@ -24,7 +26,10 @@ from apps.core.services.dashboard import (
     get_quick_actions,
     get_status_cards,
     get_tire_cards,
+    get_chart_spending_distribution,
+    get_chart_consumption_trend,
 )
+from apps.reports.services import health_score, timeline_events
 from apps.core.undo import consume_undo_token
 from apps.fuel.models import FuelRecord
 from apps.garage.models import Motorcycle, MotorcycleTemplate
@@ -130,15 +135,14 @@ def dashboard_view(request):
         "tire_cards": get_tire_cards(motorcycle),
         "quick_actions": get_quick_actions(),
         "catalog_links": get_catalog_links(),
-        "recent_fuels": list(FuelRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km")[:3]),
-        "recent_maintenance": list(
-            MaintenanceRecord.objects.filter(motorcycle=motorcycle).order_by("-date", "-odometer_km")[:3]
-        ),
         "active_reminders": active_reminders,
         "month_total": monthly["month_total"],
-        "weekly_sparkline_points": monthly["weekly_sparkline_points"],
         "pending_alerts": pending_alerts,
         "cards": get_dashboard_cards(motorcycle, current_odometer_km, monthly["month_total"], pending_alerts),
+        "chart_spending_distribution": get_chart_spending_distribution(motorcycle),
+        "chart_consumption_trend": get_chart_consumption_trend(motorcycle),
+        "health": health_score(motorcycle=motorcycle),
+        "recent_events": timeline_events(user=request.user, motorcycle=motorcycle)[:5],
     }
     return render(request, "core/dashboard.html", context)
 
@@ -320,3 +324,30 @@ def onboarding_view(request):
         "spec_fields": [form[field_name] for field_name in OnboardingForm.SPEC_FIELD_NAMES],
     }
     return render(request, "core/onboarding.html", context)
+
+
+
+@login_required
+@require_POST
+def push_subscribe_view(request):
+    try:
+        data = json.loads(request.body)
+        endpoint = data.get("endpoint")
+        p256dh = data.get("keys", {}).get("p256dh")
+        auth = data.get("keys", {}).get("auth")
+
+        if not endpoint or not p256dh or not auth:
+            return JsonResponse({"error": "Invalid subscription data"}, status=400)
+
+        from apps.core.models import PushSubscription
+        sub, created = PushSubscription.objects.update_or_create(
+            endpoint=endpoint,
+            defaults={
+                "owner": request.user,
+                "p256dh": p256dh,
+                "auth": auth
+            }
+        )
+        return JsonResponse({"status": "ok", "created": created})
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)

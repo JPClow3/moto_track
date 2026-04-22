@@ -1,185 +1,129 @@
 # Moto Track
 
-Moto Track é uma plataforma pessoal de gestão de motocicleta criada para centralizar uso, custos, manutenção e documentação em um único lugar.
+Plataforma pessoal de gestão de motocicleta criada para centralizar uso, custos, manutenção e documentação em um único lugar.
 
-A ideia é transformar o controle da moto em algo simples, confiável e útil no dia a dia, sem exigir planilhas soltas, anotações dispersas ou ferramentas complexas.
+A proposta é transformar o controle da moto em algo simples, confiável e útil no dia a dia, sem planilhas soltas, anotações dispersas ou ferramentas complexas.
 
-## O que o sistema cobre
-
-- registro de abastecimentos
-- acompanhamento de consumo e gastos
-- controle de manutenções preventivas e corretivas
-- monitoramento de pneus, óleo e filtros
-- armazenamento de documentos e manual da moto
-- lembretes por data ou quilometragem
-- painel com visão rápida do estado atual da moto
+---
 
 ## Módulos
 
-- Painel principal: resumo da situação atual, últimos eventos e alertas
-- Abastecimentos: histórico, custos e dados de consumo
-- Manutenções: serviços realizados, peças usadas e intervalos
-- Pneus: catálogo estruturado e histórico de instalação/uso
-- Documentos: arquivos, metadados e acesso rápido
-- Lembretes: alertas por data, km ou intervalo
-- Relatórios: evolução de custos e uso ao longo do tempo
+| Módulo | O que faz |
+|---|---|
+| **Painel** | Resumo da situação atual, últimos eventos e alertas |
+| **Abastecimentos** | Histórico de reabastecimentos, consumo e gastos |
+| **Manutenções** | Serviços realizados, peças usadas e intervalos preventivos |
+| **Pneus** | Catálogo estruturado e histórico de instalação/desgaste |
+| **Documentos** | Arquivos, metadados e acesso rápido (CRLV, seguro, manual) |
+| **Lembretes** | Alertas por data, km ou intervalo |
+| **Relatórios** | Evolução de custos e uso ao longo do tempo |
+
+---
 
 ## Stack
 
-- Django com templates server-rendered
-- django-crispy-forms com crispy-tailwind para padronização de formulários
-- django-allauth e django-allauth-ui para autenticação
-- django-environ para configuração por ambiente
-- django-bleach para sanitização de texto
-- django-autocomplete-light para campos de busca assistida
-- django-money para valores monetários com moeda explícita
-- django-cotton para componentes de template
-- HTMX e JavaScript vanilla para interações rápidas (sem Alpine no bundle atual)
-- PostgreSQL em produção
-- Tailwind CSS na camada de estilo
-- Docker para execução local e empacotamento
+- **Backend**: Django (monolith), django-environ, django-money, django-bleach, django-autocomplete-light
+- **Auth**: django-allauth + django-allauth-ui
+- **Forms**: django-crispy-forms + crispy-tailwind
+- **Templates**: django-cotton, HTMX, JavaScript vanilla
+- **Frontend**: Tailwind CSS, Chart.js
+- **Banco**: SQLite (dev) · PostgreSQL (prod)
+- **Infraestrutura**: Docker, Gunicorn, Nginx, S3 (media)
+
+---
 
 ## Como rodar localmente
 
 ### Sem Docker
 
-- Criar e ativar a virtualenv.
-- Instalar dependências Python:
-
 ```bash
+# 1. Instalar dependências Python
 pip install -r requirements/dev.txt
-```
 
-- Copiar `.env.example` para `.env` e ajustar quando necessário.
-- Instalar dependências de frontend:
+# 2. Copiar e ajustar variáveis de ambiente
+cp .env.example .env
 
-```bash
+# 3. Instalar dependências de frontend
 npm install
-```
 
-- Aplicar migrações:
-
-```bash
+# 4. Aplicar migrações
 python manage.py migrate
-```
 
-- Em um terminal, compilar CSS em modo observação:
-
-```bash
+# 5. Em um terminal: compilar CSS em modo observação
 npm run watch:css
-```
 
-- Para builds de produção / antes de `collectstatic`, gere CSS minificado:
-
-```bash
-npm run build:css
-```
-
-- Em outro terminal, subir o servidor:
-
-```bash
+# 6. Em outro terminal: subir o servidor
 python manage.py runserver
 ```
 
+> Para builds de produção ou antes de `collectstatic`, use `npm run build:css`.
+
 ### Com Docker
 
-- Copiar `.env.example` para `.env`.
-- Subir o ambiente:
-
 ```bash
+cp .env.example .env
 docker compose up --build
-```
 
-- Em outro terminal, aplicar migrações:
-
-```bash
+# Em outro terminal, aplicar migrações
 docker compose exec web python manage.py migrate
 ```
 
-- Abrir o sistema em `http://localhost:8000`.
+Acesse em `http://localhost:8000`.
+
+---
 
 ## Acesso inicial
 
-- Criar superusuário (recomendado — não exige email no prompt):
-
 ```bash
+# Criar superusuário sem prompt de e-mail (recomendado)
 python manage.py createadmin
-```
 
-- Alternativa (padrão Django):
-```bash
+# Alternativa padrão Django
 python manage.py createsuperuser
 ```
 
-- Entrar em `/accounts/login/`.
-- Acessar `/admin/` para gerenciamento interno.
+Entre em `/accounts/login/` · Admin em `/admin/`.
+
+---
 
 ## Dados de demonstração
-
-Existe um comando de seed para popular o banco com um conjunto inicial de dados demo.
 
 ```bash
 python manage.py seed_demo_data
 ```
 
-Esse comando cria, de forma idempotente:
+Cria, de forma idempotente: usuário demo, moto, especificações, posto, combustível, abastecimento, manutenção, pneu, lembrete e documento manual.
 
-- usuário demo
-- moto demo
-- especificações da moto
-- posto e combustível cadastrado
-- abastecimento exemplo
-- peça de manutenção e manutenção exemplo
-- pneu e instalação exemplo
-- lembrete exemplo
-- documento de manual exemplo
+---
 
-## Estrutura funcional dos dados
+## Estrutura do projeto
 
-O projeto é organizado em apps por domínio:
+```
+apps/
+  core/        — modelos base, dashboard e utilitários compartilhados
+  garage/      — motocicleta e especificações estruturadas
+  fuel/        — abastecimentos, postos e combustíveis
+  maintenance/ — manutenções, peças e itens recorrentes
+  tires/       — pneus e histórico de instalação
+  documents/   — documentos e arquivos da moto
+  reminders/   — lembretes por gatilho
+  reports/     — agregações e indicadores
+```
 
-- `apps/core`: modelos base, dashboard e utilidades compartilhadas
-- `apps/garage`: motocicleta e especificações estruturadas
-- `apps/fuel`: abastecimentos, postos e combustíveis cadastrados
-- `apps/maintenance`: manutenções, peças e itens recorrentes
-- `apps/tires`: pneus estruturados e histórico de instalação
-- `apps/documents`: documentos e arquivos da moto
-- `apps/reminders`: lembretes por gatilho
-- `apps/reports`: agregações e indicadores
+---
 
-## Regras de negócio importantes
+## Regras de negócio
 
-- Todo dado do usuário é associado ao dono.
-- O odômetro é derivado do histórico, com override manual opcional.
-- Abastecimentos usam quilometragem, litros, valor total e preço por litro.
-- Manutenções trabalham com intervalos em km e dias.
-- Lembretes usam gatilhos explícitos por tipo.
-- Catálogos estruturados reduzem digitação repetida e aceleram o uso.
+- Todo dado é associado ao usuário dono (owner-scoped).
+- O odômetro é derivado do histórico; override manual é opcional (`odometer_override_km`).
+- Abastecimentos exigem quilometragem, litros, valor total e flag `tank_full`.
+- Manutenções trabalham com intervalos em km e dias (`interval_km`, `interval_days`).
+- Lembretes usam gatilhos explícitos por tipo (data, km, intervalo).
+- Catálogos (postos, peças, pneus) são reutilizáveis e reduzem digitação repetida.
 
-## Experiência de uso
-
-O app foi desenhado para ser:
-
-- moderno
-- responsivo
-- direto
-- funcional
-- limpo visualmente
-- rápido no celular e no desktop
-
-Quick actions e HTMX reduzem o atrito para registrar eventos em poucos segundos.
-
-## Documentação funcional
-
-Leia a visão funcional detalhada em [docs/funcional.md](docs/funcional.md).
-
-## Deploy (Lightsail + S3)
-
-- Guia: [docs/deploy/lightsail-s3.md](docs/deploy/lightsail-s3.md)
+---
 
 ## Verificação
-
-Comandos úteis para validação local:
 
 ```bash
 npm run build:css
@@ -188,6 +132,36 @@ python manage.py makemigrations --check --dry-run
 python manage.py test
 ```
 
-## Observação
+---
 
-A interface foi construída com acessibilidade em mente, mas ainda vale revisão manual com teclado, leitor de tela e ferramentas como Accessibility Insights.
+## Deploy
+
+Guia completo (Lightsail VM + Nginx + Gunicorn + S3): [docs/deploy/lightsail-s3.md](docs/deploy/lightsail-s3.md)
+
+---
+
+## Roadmap — funcionalidades planejadas
+
+Itens abaixo estão documentados como planejados. Nenhum está implementado ainda.
+
+### 🔍 OCR de Recibos de Combustível
+
+Aproveitar o campo `receipt_file` já existente no modelo de abastecimento para integrar uma API de OCR (ex: Google Vision API ou AWS Textract). Com uma foto do cupom fiscal, o sistema extrairia automaticamente o posto, a quantidade de litros e o valor total, eliminando a digitação manual.
+
+### 🔗 Dossiê Público / Link Compartilhável
+
+Além da exportação em PDF, gerar uma URL temporária e pública (ex: `mototrack.app/view/abc-123`) para o proprietário compartilhar o histórico completo da moto com um mecânico ou comprador em potencial, sem precisar expor credenciais.
+
+### 🤖 Predição de Manutenção com IA
+
+Usar a média de rodagem mensal do usuário — já calculável a partir do histórico de abastecimentos — para prever a data aproximada da próxima revisão. Em vez de apenas mostrar "próxima troca em X km", o sistema diria: _"Com base no seu uso, sua próxima troca de óleo deve ocorrer em meados de julho."_
+
+### 🛒 Catálogo de Peças Integrado
+
+Vincular itens de manutenção recomendados a buscas em marketplaces (Amazon, Mercado Livre) ou manuais de peças oficiais, facilitando a compra das peças corretas direto do histórico de manutenção.
+
+---
+
+## Acessibilidade
+
+A interface mantém foco visível, landmarks semânticos e labels descritivos. Desenhada para uso confortável por teclado e leitores de tela. Revisão manual periódica ainda recomendada.
