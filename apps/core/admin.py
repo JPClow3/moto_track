@@ -31,9 +31,11 @@ class UserScopedAdmin(ModelAdmin):
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 from django.contrib import admin
+
 from .models import PushSubscription
 
+
 @admin.register(PushSubscription)
-class PushSubscriptionAdmin(ModelAdmin):
+class PushSubscriptionAdmin(UserScopedAdmin):
     list_display = ("owner", "endpoint", "created_at")
     search_fields = ("owner__username", "owner__email", "endpoint")
