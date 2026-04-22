@@ -1,16 +1,21 @@
 from decimal import Decimal
 
+from dal import autocomplete
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escape
 
 from apps.core.active_motorcycle import get_active_motorcycle, set_active_motorcycle
 from apps.core.exports import safe_next_url
-from apps.core.forms import OdometerOverrideForm, OnboardingForm
+from apps.core.forms import OdometerOverrideForm, OnboardingForm, configure_form_accessibility
 from apps.core.services.dashboard import (
     get_active_reminders,
     get_catalog_links,
@@ -22,9 +27,84 @@ from apps.core.services.dashboard import (
 )
 from apps.core.undo import consume_undo_token
 from apps.fuel.models import FuelRecord
-from apps.garage.models import Motorcycle
+from apps.garage.models import Motorcycle, MotorcycleTemplate
+from apps.garage.services import apply_template_to_motorcycle, variant_observation_text
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.tires.models import TirePosition, TireRecord
+
+
+class OnboardingTemplateAutocomplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return MotorcycleTemplate.objects.none()
+
+        queryset = MotorcycleTemplate.objects.order_by("brand", "model", "year_from")
+        query = (self.q or "").strip()
+        if not query:
+            return queryset
+
+        filters = (
+            Q(brand__icontains=query)
+            | Q(model__icontains=query)
+            | Q(variant__icontains=query)
+            | Q(country_code__icontains=query)
+        )
+        if query.isdigit():
+            year = int(query)
+            filters |= Q(year_from__lte=year, year_to__isnull=True)
+            filters |= Q(year_from__lte=year, year_to__gte=year)
+        return queryset.filter(filters)
+
+    def get_result_label(self, item):
+        variant = f" {item.variant}" if item.variant else ""
+        if item.year_to:
+            year_label = f"{item.year_from}-{item.year_to}"
+        else:
+            year_label = f"{item.year_from}+"
+        return f"{item.brand} {item.model}{variant} ({year_label})"
+
+    def get_selected_result_label(self, item):
+        return self.get_result_label(item)
+
+
+@login_required
+def onboarding_template_preview_view(request):
+    template_id = request.GET.get("template") or request.GET.get("template_id")
+    if not template_id:
+        return HttpResponse("")
+
+    template = MotorcycleTemplate.objects.select_related("spec").filter(pk=template_id).first()
+    if not template:
+        return HttpResponse("")
+
+    spec = getattr(template, "spec", None)
+    fuel = escape(spec.fuel_type_recommendation) if spec and spec.fuel_type_recommendation else "-"
+    oil = escape(spec.oil_type_recommendation) if spec and spec.oil_type_recommendation else "-"
+    variant = f" {escape(template.variant)}" if template.variant else ""
+    year_label = f"{template.year_from}-{template.year_to}" if template.year_to else f"{template.year_from}+"
+    html = f"""
+<article class="space-y-3" aria-label="Preview do template selecionado">
+  <header class="flex items-start justify-between gap-3">
+    <div>
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Template selecionado</p>
+      <h4 class="text-lg font-extrabold tracking-tight">{escape(template.brand)} {escape(template.model)}{variant}</h4>
+      <p class="text-xs text-on-surface-variant">{year_label} &bull; {template.engine_cc} cc &bull; {escape(template.country_code)}</p>
+    </div>
+    <span class="severity-badge severity-success">Catálogo</span>
+  </header>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="rounded-xl bg-surface-lowest p-3 ring-1 ring-outline-variant/20">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Combustível</p>
+      <p class="text-sm font-semibold text-on-surface">{fuel}</p>
+    </div>
+    <div class="rounded-xl bg-surface-lowest p-3 ring-1 ring-outline-variant/20">
+      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Óleo</p>
+      <p class="text-sm font-semibold text-on-surface">{oil}</p>
+    </div>
+  </div>
+</article>
+"""
+    return HttpResponse(html)
 
 
 @login_required
@@ -69,7 +149,7 @@ def odometer_quick_update_view(request):
     is_htmx = request.headers.get("HX-Request") == "true"
 
     if not motorcycle:
-        messages.error(request, "Cadastre uma moto antes de atualizar o odômetro.")
+        messages.error(request, "Cadastre uma moto antes de atualizar o odometro.")
         if is_htmx:
             response = HttpResponse()
             response["HX-Redirect"] = reverse("dashboard")
@@ -82,7 +162,7 @@ def odometer_quick_update_view(request):
         form = OdometerOverrideForm(request.POST, motorcycle=motorcycle)
         if form.is_valid():
             form.save()
-            messages.success(request, "Odômetro atualizado com sucesso.")
+            messages.success(request, "Odometro atualizado com sucesso.")
             if is_htmx:
                 response = HttpResponse()
                 response["HX-Redirect"] = safe_next_url(
@@ -104,8 +184,8 @@ def odometer_quick_update_view(request):
 
     context = {
         "form": form,
-        "title": "Atualizar odômetro",
-        "submit_label": "Salvar odômetro",
+        "title": "Atualizar odometro",
+        "submit_label": "Salvar odometro",
         "next_url": safe_next_url(
             request=request,
             candidate=request.GET.get("next") or request.POST.get("next"),
@@ -145,17 +225,17 @@ def undo_action_view(request, token: str):
         return redirect(request.POST.get("next") or "dashboard")
 
     if obj is None:
-        messages.error(request, "Registro não encontrado para desfazer.")
+        messages.error(request, "Registro nao encontrado para desfazer.")
         return redirect(request.POST.get("next") or "dashboard")
 
     owner = getattr(getattr(obj, "motorcycle", None), "owner", None)
     if owner != request.user:
-        messages.error(request, "Você não pode desfazer este registro.")
+        messages.error(request, "Voce nao pode desfazer este registro.")
         return redirect("dashboard")
 
     label = str(obj)
     obj.delete()
-    messages.success(request, f"Ação desfeita: {label}.")
+    messages.success(request, f"Acao desfeita: {label}.")
     return redirect(request.POST.get("next") or "dashboard")
 
 
@@ -168,53 +248,75 @@ def onboarding_view(request):
         form = OnboardingForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            motorcycle = Motorcycle.objects.create(
-                owner=request.user,
-                name=data["motorcycle_name"],
-                brand=data["brand"],
-                model=data["model"],
-                year=data["year"],
-                odometer_override_km=data["current_odometer_km"],
-                odometer_override_at=timezone.now(),
-                current_odometer_km=data["current_odometer_km"],
-                current_odometer_updated_at=timezone.now(),
-                riding_profile=data.get("riding_profile") or "auto",
-            )
-            price_per_liter = Decimal("0")
-            if data["fuel_liters"]:
-                price_per_liter = (data["fuel_total_price"] / data["fuel_liters"]).quantize(Decimal("0.001"))
-            FuelRecord.objects.create(
-                motorcycle=motorcycle,
-                date=data["fuel_date"],
-                odometer_km=data["fuel_odometer_km"],
-                liters=data["fuel_liters"],
-                total_price=data["fuel_total_price"],
-                price_per_liter=price_per_liter,
-                tank_full=True,
-            )
-            MaintenanceRecord.objects.create(
-                motorcycle=motorcycle,
-                maintenance_type=MaintenanceType.REVIEW,
-                date=data["service_date"],
-                odometer_km=data["service_odometer_km"],
-                cost=data["service_cost"],
-                description="Serviço inicial registrado no onboarding.",
-            )
-            for position, label in [(TirePosition.FRONT, data["front_tire"]), (TirePosition.REAR, data["rear_tire"])]:
-                TireRecord.objects.create(
-                    motorcycle=motorcycle,
-                    position=position,
-                    brand_model=label,
-                    installed_at=data["tire_installed_at"],
-                    installed_odometer_km=data["tire_odometer_km"],
-                    cost=Decimal("0"),
-                    wear_percent=0,
-                    is_active=True,
+            template = data.get("template")
+            now = timezone.now()
+            with transaction.atomic():
+                motorcycle = Motorcycle.objects.create(
+                    owner=request.user,
+                    name=data["motorcycle_name"],
+                    brand=data["brand"],
+                    model=data["model"],
+                    year=data["year"],
+                    source_template=template,
+                    observations=variant_observation_text(data.get("template_variant", "")),
+                    odometer_override_km=data["current_odometer_km"],
+                    odometer_override_at=now,
+                    current_odometer_km=data["current_odometer_km"],
+                    current_odometer_updated_at=now,
+                    riding_profile=data.get("riding_profile") or "auto",
                 )
+
+                warnings = apply_template_to_motorcycle(
+                    motorcycle=motorcycle,
+                    owner=request.user,
+                    template=template,
+                    spec_payload=form.spec_payload(),
+                )
+
+                price_per_liter = Decimal("0")
+                if data["fuel_liters"]:
+                    price_per_liter = (data["fuel_total_price"] / data["fuel_liters"]).quantize(Decimal("0.001"))
+                FuelRecord.objects.create(
+                    motorcycle=motorcycle,
+                    date=data["fuel_date"],
+                    odometer_km=data["fuel_odometer_km"],
+                    liters=data["fuel_liters"],
+                    total_price=data["fuel_total_price"],
+                    price_per_liter=price_per_liter,
+                    tank_full=True,
+                )
+                MaintenanceRecord.objects.create(
+                    motorcycle=motorcycle,
+                    maintenance_type=MaintenanceType.REVIEW,
+                    date=data["service_date"],
+                    odometer_km=data["service_odometer_km"],
+                    cost=data["service_cost"],
+                    description="Serviço inicial registrado no onboarding.",
+                )
+                for position, label in [(TirePosition.FRONT, data["front_tire"]), (TirePosition.REAR, data["rear_tire"])]:
+                    TireRecord.objects.create(
+                        motorcycle=motorcycle,
+                        position=position,
+                        brand_model=label,
+                        installed_at=data["tire_installed_at"],
+                        installed_odometer_km=data["tire_odometer_km"],
+                        cost=Decimal("0"),
+                        wear_percent=0,
+                        is_active=True,
+                    )
+
+            for warning in warnings:
+                messages.warning(request, warning)
             set_active_motorcycle(request, motorcycle.id)
             messages.success(request, "Onboarding concluído. Sua moto já está pronta para acompanhar.")
             return redirect("dashboard")
     else:
         form = OnboardingForm()
 
-    return render(request, "core/onboarding.html", {"form": form})
+    configure_form_accessibility(form)
+    context = {
+        "form": form,
+        "selected_template": form.selected_template,
+        "spec_fields": [form[field_name] for field_name in OnboardingForm.SPEC_FIELD_NAMES],
+    }
+    return render(request, "core/onboarding.html", context)

@@ -126,11 +126,13 @@ class MaintenancePlanItem(TimeStampedModel):
     interval_days = models.PositiveIntegerField(null=True, blank=True)
     last_done_km = models.PositiveIntegerField(null=True, blank=True)
     last_done_date = models.DateField(null=True, blank=True)
+    is_severe_duty_override = models.BooleanField(default=False)
+    notes = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["maintenance_type", "-is_active", "-updated_at"]
-        unique_together = [("motorcycle", "maintenance_type")]
+        ordering = ["maintenance_type", "is_severe_duty_override", "-is_active", "-updated_at"]
+        unique_together = [("motorcycle", "maintenance_type", "is_severe_duty_override")]
 
     def clean(self):
         errors = {}

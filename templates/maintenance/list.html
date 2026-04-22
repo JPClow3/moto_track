@@ -66,6 +66,9 @@
           <div class="rounded-2xl bg-surface-low px-4 py-4 flex items-start justify-between gap-4">
             <div class="min-w-0">
               <strong class="block font-extrabold truncate">{{ item.type_label }}</strong>
+              {% if item.is_severe_duty_override %}
+                <span class="inline-flex items-center rounded-full bg-warning/15 px-2 py-1 text-[10px] font-extrabold uppercase tracking-widest text-warning mt-1">Uso severo</span>
+              {% endif %}
               <p class="text-xs text-on-surface-variant mt-1">
                 {% if item.remaining_km is not None %}
                   {% if item.remaining_km > 0 %}{{ item.remaining_km }} km restantes{% else %}{{ item.remaining_km }} km{% endif %}

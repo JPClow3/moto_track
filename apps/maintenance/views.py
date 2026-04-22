@@ -205,6 +205,7 @@ def maintenance_list_view(request):
             plan_items.append(
                 {
                     "type_label": item.get_maintenance_type_display(),
+                    "is_severe_duty_override": item.is_severe_duty_override,
                     "pk": item.pk,
                     "status": status,
                     "remaining_km": remaining_km,

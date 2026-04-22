@@ -1,14 +1,68 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from apps.core.admin import UserScopedAdmin
 
-from .models import Motorcycle, MotorcycleSpec
+from .models import (
+    Motorcycle,
+    MotorcycleSpec,
+    MotorcycleTemplate,
+    MotorcycleTemplateMaintenanceInterval,
+    MotorcycleTemplateRecommendedPart,
+    MotorcycleTemplateSpec,
+)
+
+
+class MotorcycleTemplateSpecInline(admin.StackedInline):
+    model = MotorcycleTemplateSpec
+    extra = 0
+    max_num = 1
+
+
+class MotorcycleTemplateMaintenanceIntervalInline(admin.TabularInline):
+    model = MotorcycleTemplateMaintenanceInterval
+    extra = 0
+
+
+class MotorcycleTemplateRecommendedPartInline(admin.TabularInline):
+    model = MotorcycleTemplateRecommendedPart
+    extra = 0
+
+
+@admin.register(MotorcycleTemplate)
+class MotorcycleTemplateAdmin(ModelAdmin):
+    list_display = (
+        "brand",
+        "model",
+        "variant",
+        "year_from",
+        "year_to",
+        "engine_cc",
+        "country_code",
+    )
+    list_filter = ("brand", "country_code")
+    search_fields = ("brand", "model", "variant")
+    inlines = [
+        MotorcycleTemplateSpecInline,
+        MotorcycleTemplateMaintenanceIntervalInline,
+        MotorcycleTemplateRecommendedPartInline,
+    ]
 
 
 @admin.register(Motorcycle)
 class MotorcycleAdmin(UserScopedAdmin):
-    list_display = ("name", "brand", "model", "year", "riding_profile", "current_odometer_km", "photo", "owner")
-    list_filter = ("riding_profile",)
+    list_display = (
+        "name",
+        "brand",
+        "model",
+        "year",
+        "source_template",
+        "riding_profile",
+        "current_odometer_km",
+        "photo",
+        "owner",
+    )
+    list_filter = ("riding_profile", "source_template")
     search_fields = ("name", "brand", "model", "license_plate")
 
 
@@ -24,6 +78,3 @@ class MotorcycleSpecAdmin(UserScopedAdmin):
         "recommended_tire_pressure_rear",
     )
     search_fields = ("motorcycle__name", "motorcycle__brand", "motorcycle__model")
-
-
-# Register your models here.

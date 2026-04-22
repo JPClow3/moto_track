@@ -34,16 +34,16 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
         ]
         labels = {
             "motorcycle": "Moto",
-            "maintenance_type": "Tipo de manutenção",
+            "maintenance_type": "Tipo de manutencao",
             "date": "Data",
-            "odometer_km": "Odômetro (km)",
+            "odometer_km": "Odometro (km)",
             "cost": "Custo",
             "workshop": "Oficina",
-            "description": "Descrição",
-            "parts_used": "Peças usadas",
+            "description": "Descricao",
+            "parts_used": "Pecas usadas",
             "interval_km": "Intervalo em km",
             "interval_days": "Intervalo em dias",
-            "parts": "Peças do catálogo",
+            "parts": "Pecas do catalogo",
         }
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
@@ -68,7 +68,7 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
         self.fields["interval_km"].required = False
         self.fields["interval_days"].required = False
         self.fields["cost"].initial = self.initial.get("cost", self.fields["cost"].initial or 0)
-        self.fields["cost"].help_text = "Use 0 para manutenção DIY/gratuita."
+        self.fields["cost"].help_text = "Use 0 para manutencao DIY/gratuita."
         widget = self.fields["cost"].widget
         for subwidget in getattr(widget, "widgets", [widget]):
             subwidget.attrs.setdefault("inputmode", "decimal")
@@ -105,10 +105,10 @@ class MaintenancePartForm(forms.ModelForm):
         labels = {
             "name": "Nome",
             "manufacturer": "Fabricante",
-            "part_type": "Tipo de peça",
-            "sku": "Código/SKU",
-            "price": "Preço",
-            "notes": "Observações",
+            "part_type": "Tipo de peca",
+            "sku": "Codigo/SKU",
+            "price": "Preco",
+            "notes": "Observacoes",
         }
         widgets = {
             "notes": forms.Textarea(attrs={"rows": 2}),
@@ -125,15 +125,19 @@ class MaintenancePlanItemForm(forms.ModelForm):
             "interval_days",
             "last_done_km",
             "last_done_date",
+            "is_severe_duty_override",
+            "notes",
             "is_active",
         ]
         labels = {
             "motorcycle": "Moto",
-            "maintenance_type": "Tipo de manutenção",
+            "maintenance_type": "Tipo de manutencao",
             "interval_km": "Intervalo em km",
             "interval_days": "Intervalo em dias",
-            "last_done_km": "Última execução (km)",
-            "last_done_date": "Última execução (data)",
+            "last_done_km": "Ultima execucao (km)",
+            "last_done_date": "Ultima execucao (data)",
+            "is_severe_duty_override": "Uso severo",
+            "notes": "Observacoes",
             "is_active": "Plano ativo",
         }
         widgets = {
@@ -141,10 +145,11 @@ class MaintenancePlanItemForm(forms.ModelForm):
             "interval_days": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "last_done_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "last_done_date": forms.DateInput(attrs={"type": "date"}),
+            "notes": forms.Textarea(attrs={"rows": 2}),
         }
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["motorcycle"].queryset = Motorcycle.objects.filter(owner=user).order_by("name")
-        for name in ["interval_km", "interval_days", "last_done_km", "last_done_date"]:
+        for name in ["interval_km", "interval_days", "last_done_km", "last_done_date", "notes"]:
             self.fields[name].required = False

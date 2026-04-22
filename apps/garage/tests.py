@@ -1,11 +1,18 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
 from apps.fuel.models import FuelRecord
-from apps.garage.models import Motorcycle, MotorcycleSpec
+from apps.garage.models import (
+    Motorcycle,
+    MotorcycleSpec,
+    MotorcycleTemplate,
+    MotorcycleTemplateMaintenanceInterval,
+    MotorcycleTemplateSpec,
+)
 from apps.maintenance.models import MaintenanceRecord
 
 
@@ -165,3 +172,91 @@ class GarageViewTests(TestCase):
         response = self.client.get(reverse("garage:spec_update", args=[self.other_motorcycle.pk]))
 
         self.assertEqual(response.status_code, 404)
+
+
+class MotorcycleTemplateModelTests(TestCase):
+    def test_template_rejects_invalid_year_range(self):
+        template = MotorcycleTemplate(
+            brand="KTM",
+            model="200 Duke",
+            year_from=2020,
+            year_to=2019,
+            engine_cc=200,
+            country_code="BR",
+        )
+        with self.assertRaises(ValidationError):
+            template.full_clean()
+
+    def test_template_interval_requires_km_or_days(self):
+        template = MotorcycleTemplate.objects.create(
+            brand="KTM",
+            model="200 Duke",
+            year_from=2012,
+            year_to=2019,
+            engine_cc=200,
+            country_code="BR",
+        )
+        interval = MotorcycleTemplateMaintenanceInterval(
+            template=template,
+            maintenance_type="oil_change",
+        )
+        with self.assertRaises(ValidationError):
+            interval.full_clean()
+
+    def test_template_spec_rejects_non_positive_capacity(self):
+        template = MotorcycleTemplate.objects.create(
+            brand="Kawasaki",
+            model="Z400",
+            year_from=2019,
+            year_to=None,
+            engine_cc=400,
+            country_code="BR",
+        )
+        spec = MotorcycleTemplateSpec(
+            template=template,
+            fuel_tank_capacity_l=Decimal("0.00"),
+        )
+        with self.assertRaises(ValidationError):
+            spec.full_clean()
+
+    def test_template_spec_rejects_invalid_manual_source(self):
+        template = MotorcycleTemplate.objects.create(
+            brand="Kawasaki",
+            model="Z400",
+            year_from=2019,
+            year_to=None,
+            engine_cc=400,
+            country_code="BR",
+        )
+        spec = MotorcycleTemplateSpec(
+            template=template,
+            manual_url="ftp://example.com/manual.pdf",
+        )
+
+        with self.assertRaises(ValidationError) as ctx:
+            spec.full_clean()
+
+        self.assertIn("manual_url", ctx.exception.message_dict)
+
+    def test_template_spec_accepts_supported_manual_sources(self):
+        template = MotorcycleTemplate.objects.create(
+            brand="Kawasaki",
+            model="Z400",
+            year_from=2019,
+            year_to=None,
+            engine_cc=400,
+            country_code="BR",
+        )
+        samples = [
+            "https://example.com/manual.pdf",
+            "file:///tmp/manual.pdf",
+            "manuals/z400-manual.pdf",
+            r"C:\\manuals\\z400-manual.pdf",
+        ]
+
+        for manual_source in samples:
+            spec = MotorcycleTemplateSpec(
+                template=template,
+                manual_url=manual_source,
+            )
+            spec.full_clean()

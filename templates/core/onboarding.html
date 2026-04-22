@@ -8,25 +8,110 @@
 {% block content %}
 <section class="space-y-8 pb-10" aria-labelledby="onboarding-title">
   <header class="space-y-2">
-    <span class="severity-badge severity-info">2 minutos</span>
+    <span class="severity-badge severity-info">Fluxo guiado</span>
     <h2 id="onboarding-title" class="text-3xl font-extrabold tracking-tight">Vamos deixar sua moto pronta</h2>
-    <p class="text-sm text-on-surface-variant">Informe o essencial para ativar custos, alertas e histórico desde o primeiro uso.</p>
+    <p class="text-sm text-on-surface-variant">Escolha um template de catálogo (opcional), revise as especificações e conclua com seu histórico inicial.</p>
   </header>
 
   <form method="post" class="data-form rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
     {% csrf_token %}
-    <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
-      {{ form.motorcycle_name|as_crispy_field }}
-      {{ form.current_odometer_km|as_crispy_field }}
-      {{ form.brand|as_crispy_field }}
-      {{ form.model|as_crispy_field }}
-      {{ form.year|as_crispy_field }}
-      {{ form.riding_profile|as_crispy_field }}
+    {{ form.media }}
+
+    {% if form.non_field_errors %}
+      <div class="form-errors" role="alert" aria-live="polite">
+        {% for error in form.non_field_errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <section class="space-y-4" aria-label="Passo 1 - seleção da moto">
+      <div class="flex items-center justify-between gap-3">
+        <h3 class="text-lg font-extrabold tracking-tight">Passo 1 - Seleção da moto</h3>
+        <span class="severity-badge severity-neutral">Catálogo</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {{ form.template|as_crispy_field }}
+        {{ form.template_not_listed|as_crispy_field }}
+      </div>
+      <div id="template-preview" class="rounded-2xl bg-surface-low p-4 ring-1 ring-outline-variant/20" aria-live="polite">
+        {% if selected_template %}
+          <article class="space-y-3" aria-label="Preview do template selecionado">
+            <header class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Template selecionado</p>
+                <h4 class="text-lg font-extrabold tracking-tight">{{ selected_template.brand }} {{ selected_template.model }}{% if selected_template.variant %} {{ selected_template.variant }}{% endif %}</h4>
+                <p class="text-xs text-on-surface-variant">{{ selected_template.year_from }}{% if selected_template.year_to %} - {{ selected_template.year_to }}{% else %}+{% endif %} &bull; {{ selected_template.engine_cc }} cc &bull; {{ selected_template.country_code }}</p>
+              </div>
+              <span class="severity-badge severity-success">Catálogo</span>
+            </header>
+            {% if selected_template.spec %}
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="rounded-xl bg-surface-lowest p-3 ring-1 ring-outline-variant/20">
+                  <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Combustível</p>
+                  <p class="text-sm font-semibold text-on-surface">{{ selected_template.spec.fuel_type_recommendation|default:"-" }}</p>
+                </div>
+                <div class="rounded-xl bg-surface-lowest p-3 ring-1 ring-outline-variant/20">
+                  <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Óleo</p>
+                  <p class="text-sm font-semibold text-on-surface">{{ selected_template.spec.oil_type_recommendation|default:"-" }}</p>
+                </div>
+              </div>
+            {% endif %}
+          </article>
+        {% else %}
+          <p class="text-sm text-on-surface-variant">Selecione uma moto no catálogo para visualizar as especificações base.</p>
+        {% endif %}
+      </div>
     </section>
 
-    <section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5">
+    <section class="space-y-4" aria-label="Passo 2 - confirmação do exemplar">
+      <div class="flex items-center justify-between gap-3">
+        <h3 class="text-lg font-extrabold tracking-tight">Passo 2 - Confirmação e ajuste</h3>
+        <span class="severity-badge severity-neutral">Exemplar</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {{ form.motorcycle_name|as_crispy_field }}
+        {{ form.current_odometer_km|as_crispy_field }}
+        {{ form.brand|as_crispy_field }}
+        {{ form.model|as_crispy_field }}
+        {{ form.year|as_crispy_field }}
+        {{ form.template_variant|as_crispy_field }}
+        {{ form.riding_profile|as_crispy_field }}
+      </div>
+    </section>
+
+    <section class="space-y-4" aria-label="Passo 3 - revisão de specs">
+      <div class="flex items-center justify-between gap-3">
+        <h3 class="text-lg font-extrabold tracking-tight">Passo 3 - Revisão das specs</h3>
+        <span class="severity-badge severity-neutral">Pré-preenchimento</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {% for field in spec_fields %}
+          <div class="form-field onboarding-spec-field">
+            <div class="flex items-center justify-between gap-2">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              <span class="severity-badge severity-info hidden" data-prefilled-badge>Pré-preenchido pelo catálogo</span>
+              <span class="severity-badge severity-warning hidden" data-override-badge>Override</span>
+            </div>
+            {{ field }}
+            {% if field.help_text %}
+              <p id="{{ field.id_for_label }}_help" class="text-xs text-on-surface-variant">{{ field.help_text }}</p>
+            {% endif %}
+            {% if field.errors %}
+              <div class="field-error" id="{{ field.id_for_label }}_error" aria-live="polite">
+                {% for error in field.errors %}
+                  <p>{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5" aria-label="Passo 4 - último abastecimento">
       <div class="md:col-span-2">
-        <h3 class="text-lg font-extrabold tracking-tight">Último abastecimento</h3>
+        <h3 class="text-lg font-extrabold tracking-tight">Passo 4 - Último abastecimento</h3>
       </div>
       {{ form.fuel_date|as_crispy_field }}
       {{ form.fuel_odometer_km|as_crispy_field }}
@@ -34,9 +119,9 @@
       {{ form.fuel_total_price|as_crispy_field }}
     </section>
 
-    <section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5">
+    <section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5" aria-label="Histórico inicial de serviço e pneus">
       <div class="md:col-span-2">
-        <h3 class="text-lg font-extrabold tracking-tight">Último serviço e pneus</h3>
+        <h3 class="text-lg font-extrabold tracking-tight">Histórico inicial de serviço e pneus</h3>
       </div>
       {{ form.service_date|as_crispy_field }}
       {{ form.service_odometer_km|as_crispy_field }}
@@ -48,9 +133,98 @@
     </section>
 
     <div class="quick-actions-row-split">
-      <span class="text-xs font-semibold text-on-surface-variant">Você poderá editar tudo depois.</span>
+      <span class="text-xs font-semibold text-on-surface-variant">Você poderá editar tudo depois. O template é apenas ponto de partida.</span>
       <button type="submit" class="ui-btn-primary">Concluir onboarding</button>
     </div>
   </form>
 </section>
+
+<script>
+  (function () {
+    const templateSelect = document.getElementById("id_template");
+    const notListedField = document.getElementById("id_template_not_listed");
+    const preview = document.getElementById("template-preview");
+    const previewUrl = "{% url 'onboarding_template_preview' %}";
+
+    function normalize(value) {
+      return (value || "").toString().trim();
+    }
+
+    function refreshSpecBadges() {
+      document.querySelectorAll(".onboarding-spec-field").forEach((container) => {
+        const field = container.querySelector("input, textarea, select");
+        const prefilledBadge = container.querySelector("[data-prefilled-badge]");
+        const overrideBadge = container.querySelector("[data-override-badge]");
+        if (!field || !prefilledBadge || !overrideBadge) {
+          return;
+        }
+
+        const prefilledValue = field.getAttribute("data-prefilled-value");
+        if (!prefilledValue) {
+          prefilledBadge.classList.add("hidden");
+          overrideBadge.classList.add("hidden");
+          return;
+        }
+
+        const currentValue = normalize(field.value);
+        const originalValue = normalize(prefilledValue);
+        if (!currentValue) {
+          prefilledBadge.classList.add("hidden");
+          overrideBadge.classList.remove("hidden");
+          return;
+        }
+
+        if (currentValue === originalValue) {
+          prefilledBadge.classList.remove("hidden");
+          overrideBadge.classList.add("hidden");
+        } else {
+          prefilledBadge.classList.add("hidden");
+          overrideBadge.classList.remove("hidden");
+        }
+      });
+    }
+
+    function loadTemplatePreview() {
+      if (!templateSelect || !preview) {
+        return;
+      }
+
+      if (notListedField && notListedField.checked) {
+        preview.innerHTML = "<p class='text-sm text-on-surface-variant'>Fluxo sem template ativo. Preencha manualmente os campos da sua moto.</p>";
+        return;
+      }
+
+      const templateId = templateSelect.value;
+      if (!templateId) {
+        preview.innerHTML = "<p class='text-sm text-on-surface-variant'>Selecione uma moto no catálogo para visualizar as especificações base.</p>";
+        return;
+      }
+
+      const url = `${previewUrl}?template=${encodeURIComponent(templateId)}`;
+      fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then((response) => response.text())
+        .then((html) => {
+          preview.innerHTML = html || "<p class='text-sm text-on-surface-variant'>Template selecionado sem preview disponível.</p>";
+        })
+        .catch(() => {
+          preview.innerHTML = "<p class='text-sm text-on-surface-variant'>Não foi possível carregar o preview do template.</p>";
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      refreshSpecBadges();
+      loadTemplatePreview();
+
+      document.addEventListener("input", refreshSpecBadges, true);
+      document.addEventListener("change", refreshSpecBadges, true);
+
+      if (templateSelect) {
+        templateSelect.addEventListener("change", loadTemplatePreview);
+      }
+      if (notListedField) {
+        notListedField.addEventListener("change", loadTemplatePreview);
+      }
+    });
+  })();
+</script>
 {% endblock %}
