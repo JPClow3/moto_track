@@ -70,6 +70,19 @@ docker compose exec web python manage.py migrate
 
 Acesse em `http://localhost:8000`.
 
+### Com Docker + HTTPS (VPS sem proxy externo)
+
+Use o profile `edge` para subir Caddy na frente do Django com certificado TLS automatico:
+
+```bash
+cp .env.example .env
+# ajuste pelo menos: SITE_DOMAIN, DJANGO_ALLOWED_HOSTS, DJANGO_SECRET_KEY,
+# AWS_STORAGE_BUCKET_NAME e POSTGRES_PASSWORD
+docker compose --profile edge up -d --build
+```
+
+Isso publica `80/443` no host, redireciona `www` para o dominio principal e entrega o app em HTTPS.
+
 ---
 
 ## Acesso inicial
@@ -137,6 +150,9 @@ python manage.py test
 ## Deploy
 
 Guia completo (Lightsail VM + Nginx + Gunicorn + S3): [docs/deploy/lightsail-s3.md](docs/deploy/lightsail-s3.md)
+
+Deploy com Coolify continua usando apenas `--profile prod` (proxy HTTPS do proprio Coolify).
+Para VPS com Docker Compose direto (sem Coolify/Traefik/Nginx externo), use `--profile edge`.
 
 ---
 

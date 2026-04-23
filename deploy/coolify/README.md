@@ -10,6 +10,8 @@ This project is ready to run on Coolify using `docker-compose.yml`.
 - **App restarts**
 
 This repo's Compose file intentionally does **not** include Nginx/Caddy/Traefik.
+There is an optional `edge` profile with Caddy for self-hosted Docker Compose;
+do **not** use that profile on Coolify (Coolify already terminates HTTPS).
 
 ## In Coolify
 

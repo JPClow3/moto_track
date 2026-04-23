@@ -1,0 +1,11 @@
+{$SITE_DOMAIN}, www.{$SITE_DOMAIN} {
+	@www host www.{$SITE_DOMAIN}
+	redir @www https://{$SITE_DOMAIN}{uri} permanent
+
+	encode zstd gzip
+
+	reverse_proxy web-prod:8000 {
+		header_up X-Forwarded-Proto https
+		header_up X-Forwarded-Host {host}
+	}
+}
