@@ -314,6 +314,20 @@ class CoreViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sitemap: http://testserver/sitemap.xml")
 
+    def test_sitemap_uses_request_host_instead_of_default_site_record(self):
+        response = self.client.get("/sitemap.xml")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "http://testserver/accounts/login/")
+        self.assertNotContains(response, "https://example.com/")
+
+    @override_settings(SITE_DOMAIN="mototrack.app")
+    def test_sitemap_prefers_configured_site_domain(self):
+        response = self.client.get("/sitemap.xml")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "http://mototrack.app/accounts/login/")
+
 
 class OnboardingTests(TestCase):
     def setUp(self):

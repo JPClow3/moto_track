@@ -19,11 +19,10 @@ from allauth.account import views as allauth_views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
 from django.views.generic import TemplateView
 
-from .sitemaps import StaticViewSitemap
+from .sitemaps import StaticViewSitemap, sitemap_view
 
 sitemaps = {
     "static": StaticViewSitemap,
@@ -47,7 +46,7 @@ urlpatterns = [
     path("accounts/logout/", allauth_views.LogoutView.as_view(), name="logout"),
     path("accounts/", include("allauth.urls")),
     path("admin/", admin.site.urls),
-    path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="django.contrib.sitemaps.views.sitemap"),
+    path("sitemap.xml", sitemap_view, {"sitemaps": sitemaps}, name="django.contrib.sitemaps.views.sitemap"),
     path(
         "robots.txt",
         TemplateView.as_view(
