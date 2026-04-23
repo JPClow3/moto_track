@@ -51,8 +51,8 @@ services:
 
   web-prod:
     <<: *web_common
-    command: sh -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 4 --timeout 60"
-    profiles: ["prod", "edge"]
+    command: sh -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 4 --timeout 60 --forwarded-allow-ips='*'"
+    profiles: ["prod"]
     volumes:
       # MEDIA: with `STORAGES["default"]` = S3 in prod, uploads go to S3; this mount is optional
       # (e.g. local exports or if you override storage). Safe to remove on Lightsail when using S3 only.
