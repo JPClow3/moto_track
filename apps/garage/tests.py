@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
@@ -57,6 +58,23 @@ class MotorcycleModelTests(TestCase):
         self.motorcycle.refresh_from_db()
 
         self.assertEqual(self.motorcycle.current_odometer_km, 12000)
+
+    def test_current_odometer_recomputes_when_override_is_lowered_directly(self):
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date="2026-04-13",
+            odometer_km=10000,
+            liters=Decimal("9.000"),
+            total_price=Decimal("63.00"),
+            price_per_liter=Decimal("7.000"),
+        )
+        self.motorcycle.odometer_override_km = 15000
+        self.motorcycle.save(update_fields=["odometer_override_km"])
+        self.motorcycle.odometer_override_km = 9000
+        self.motorcycle.save(update_fields=["odometer_override_km"])
+        self.motorcycle.refresh_from_db()
+
+        self.assertEqual(self.motorcycle.current_odometer_km, 10000)
 
 
 class GarageViewTests(TestCase):
@@ -123,6 +141,48 @@ class GarageViewTests(TestCase):
         self.assertFalse(Motorcycle.objects.get(pk=self.motorcycle.pk).is_active)
         self.assertTrue(Motorcycle.objects.filter(pk=self.other_motorcycle.pk).exists())
 
+    def test_restore_view_reactivates_archived_motorcycle(self):
+        self.motorcycle.deactivate()
+
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("garage:restore", args=[self.motorcycle.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.motorcycle.refresh_from_db()
+        self.assertTrue(self.motorcycle.is_active)
+
+    def test_update_view_rejects_odometer_override_below_history(self):
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date="2026-04-13",
+            odometer_km=20000,
+            liters=Decimal("9.000"),
+            total_price=Decimal("63.00"),
+            price_per_liter=Decimal("7.000"),
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("garage:update", args=[self.motorcycle.pk]),
+            {
+                "name": self.motorcycle.name,
+                "brand": self.motorcycle.brand,
+                "model": self.motorcycle.model,
+                "year": self.motorcycle.year,
+                "license_plate": "",
+                "odometer_override_km": "0",
+                "riding_profile": "auto",
+                "previous_owners": "",
+                "purchase_price_0": "",
+                "purchase_price_1": "BRL",
+                "purchase_date": "",
+                "observations": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "maior km registrado (20000 km)")
+
     def test_spec_update_creates_and_updates_motorcycle_spec(self):
         self.client.force_login(self.user)
 
@@ -175,6 +235,24 @@ class GarageViewTests(TestCase):
 
 
 class MotorcycleTemplateModelTests(TestCase):
+    def test_seeded_catalog_is_available_after_migrations(self):
+        self.assertTrue(
+            MotorcycleTemplate.objects.filter(brand="Honda", model="CG 160 Titan / Fan / Start").exists()
+        )
+
+    def test_template_autocomplete_can_find_seeded_catalog(self):
+        user = get_user_model().objects.create_user(
+            username="catalog-user",
+            email="catalog-user@example.com",
+            password="pass12345",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("onboarding_template_autocomplete"), {"q": "CG 160"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "CG 160")
+
     def test_template_rejects_invalid_year_range(self):
         template = MotorcycleTemplate(
             brand="KTM",
@@ -249,9 +327,7 @@ class MotorcycleTemplateModelTests(TestCase):
         )
         samples = [
             "https://example.com/manual.pdf",
-            "file:///tmp/manual.pdf",
             "manuals/z400-manual.pdf",
-            r"C:\\manuals\\z400-manual.pdf",
         ]
 
         for manual_source in samples:
@@ -260,3 +336,38 @@ class MotorcycleTemplateModelTests(TestCase):
                 manual_url=manual_source,
             )
             spec.full_clean()
+
+    def test_template_spec_rejects_absolute_file_and_traversal_sources(self):
+        template = MotorcycleTemplate.objects.create(
+            brand="Kawasaki",
+            model="Z400",
+            year_from=2019,
+            year_to=None,
+            engine_cc=400,
+            country_code="BR",
+        )
+        samples = [
+            "file:///tmp/manual.pdf",
+            "../config/settings/prod.py",
+            r"C:\\manuals\\z400-manual.pdf",
+        ]
+
+        for manual_source in samples:
+            spec = MotorcycleTemplateSpec(template=template, manual_url=manual_source)
+            with self.subTest(manual_source=manual_source), self.assertRaises(ValidationError):
+                spec.full_clean()
+
+    def test_populate_templates_keeps_declared_year_ranges(self):
+        call_command("populate_templates", verbosity=0)
+
+        cg_templates = MotorcycleTemplate.objects.filter(brand="Honda", model="CG 160 Titan / Fan / Start")
+        self.assertEqual(cg_templates.count(), 1)
+        self.assertTrue(cg_templates.filter(year_from=2016, year_to=2024).exists())
+
+    def test_populate_templates_is_idempotent(self):
+        call_command("populate_templates", verbosity=0)
+        first_count = MotorcycleTemplate.objects.count()
+
+        call_command("populate_templates", verbosity=0)
+
+        self.assertEqual(MotorcycleTemplate.objects.count(), first_count)

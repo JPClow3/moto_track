@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Max
 
 from apps.core.sanitizers import sanitize_text
 
@@ -77,6 +78,21 @@ class MotorcycleForm(forms.ModelForm):
     def clean_observations(self):
         return sanitize_text(self.cleaned_data.get("observations"))
 
+    def clean_odometer_override_km(self):
+        value = self.cleaned_data.get("odometer_override_km")
+        if value is None or self.instance.pk is None:
+            return value
+
+        fuel_max = self.instance.fuel_records.aggregate(max_odometer=Max("odometer_km"))["max_odometer"] or 0
+        maintenance_max = self.instance.maintenance_records.aggregate(max_odometer=Max("odometer_km"))["max_odometer"] or 0
+        tire_max = self.instance.tire_records.aggregate(max_odometer=Max("installed_odometer_km"))["max_odometer"] or 0
+        record_max = max(int(fuel_max or 0), int(maintenance_max or 0), int(tire_max or 0))
+        if int(value) < record_max:
+            raise forms.ValidationError(
+                f"O valor informado não pode ser menor que o maior km registrado ({record_max} km)."
+            )
+        return value
+
 
 class MotorcycleSpecForm(forms.ModelForm):
     class Meta:
@@ -97,11 +113,19 @@ class MotorcycleSpecForm(forms.ModelForm):
             "oil_type_recommendation": "Óleo recomendado",
             "oil_viscosity_recommendation": "Viscosidade do óleo",
             "manual_reference": "Referência do manual",
+            "consumption_avg_km_l": "Consumo de referência (km/L)",
+        }
+        help_texts = {
+            "consumption_avg_km_l": (
+                "Use o valor oficial ou de catálogo da moto. A média real de uso é calculada automaticamente "
+                "pelos abastecimentos registrados."
+            ),
         }
         widgets = {
             "fuel_tank_capacity_l": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
             "fuel_octane_min": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "oil_capacity_l": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
+            "consumption_avg_km_l": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
         }
 
     def __init__(self, *args, **kwargs):

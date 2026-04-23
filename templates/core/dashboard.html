@@ -56,10 +56,10 @@
       <div class="relative w-14 h-14 flex items-center justify-center rounded-full bg-surface-lowest shadow-ambient" title="Health Score">
         <svg class="w-full h-full transform -rotate-90 p-1" viewBox="0 0 36 36">
           <path class="text-surface-highest stroke-current" stroke-width="3" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-          <path class="{% if health.total >= 80 %}text-success{% elif health.total >= 50 %}text-warning{% else %}text-error animate-pulse{% endif %} stroke-current transition-all duration-1000" stroke-dasharray="{{ health.total }}, 100" stroke-width="3" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          <path class="{% if health.total >= 80 %}text-success{% elif health.total >= 50 %}text-warning{% else %}text-error motion-safe:animate-pulse motion-reduce:animate-none{% endif %} stroke-current motion-safe:transition-all motion-safe:duration-1000 motion-reduce:transition-none" stroke-dasharray="{{ health.total }}, 100" stroke-width="3" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
         </svg>
         <div class="absolute flex flex-col items-center justify-center text-center">
-          <span class="text-xs font-extrabold {% if health.total < 50 %}animate-pulse text-error{% endif %}">{{ health.total }}</span>
+          <span class="text-xs font-extrabold {% if health.total < 50 %}motion-safe:animate-pulse motion-reduce:animate-none text-error{% endif %}">{{ health.total }}</span>
         </div>
       </div>
       {% endif %}
@@ -74,7 +74,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {% for action in quick_actions %}
         <a
-          class="group glass-card px-4 py-4 hover:translate-x-1 transition flex items-center gap-4"
+          class="group glass-card px-4 py-4 motion-safe:hover:translate-x-1 motion-safe:transition flex items-center gap-4"
           href="{{ action.url }}"
           {% if action.htmx_url %}
           hx-get="{{ action.htmx_url }}?next={% url 'dashboard' %}"
@@ -167,8 +167,8 @@
                   {% else %}bg-primary{% endif %}"
                 ></div>
                 
-                <div class="glass-card px-4 py-4 hover:translate-x-1 transition flex items-center justify-between gap-4">
-                  <div class="flex items-center gap-4 min-w-0">
+                <div class="glass-card px-4 py-4 motion-safe:hover:translate-x-1 motion-safe:transition flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div class="flex w-full sm:flex-1 items-center gap-4 min-w-0">
                     <div class="icon-chip" aria-hidden="true">
                       {% if event.source == 'fuel' %}<i data-lucide="fuel"></i>
                       {% elif event.source == 'maintenance' %}<i data-lucide="wrench"></i>
@@ -181,11 +181,11 @@
                       <p class="text-xs text-on-surface-variant truncate">{{ event.date }} {% if event.odometer_km %}• {{ event.odometer_km }} km{% endif %}</p>
                     </div>
                   </div>
-                  <div class="text-right">
+                  <div class="w-full sm:w-auto min-w-0 text-left sm:text-right">
                     {% if event.amount %}
                       <strong class="block font-extrabold">R$ {{ event.amount }}</strong>
                     {% endif %}
-                    <p class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">{{ event.description }}</p>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant break-words sm:max-w-48">{{ event.description }}</p>
                   </div>
                 </div>
               </article>
@@ -202,7 +202,8 @@
           <div>
             <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant mb-3">Distribuição de Gastos</p>
             <div class="h-48 w-full relative">
-              <canvas id="spendingChart"></canvas>
+              <canvas id="spendingChart" role="img" aria-label="Distribuição de gastos por combustível, manutenção e taxas" aria-describedby="spendingChartSummary"></canvas>
+              <p id="spendingChartSummary" class="sr-only">{{ chart_spending_distribution.summary }}</p>
             </div>
           </div>
 
@@ -210,11 +211,12 @@
             <div class="flex items-center justify-between gap-4 mb-3">
               <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Tendência de Consumo</p>
               <span class="rounded-full bg-surface-low/70 backdrop-blur px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary ring-1 ring-outline-variant/20">
-                km/L
+                L/100km estimado
               </span>
             </div>
             <div class="h-40 w-full relative">
-              <canvas id="consumptionChart"></canvas>
+              <canvas id="consumptionChart" role="img" aria-label="Tendência de consumo em litros por cem quilômetros" aria-describedby="consumptionChartSummary"></canvas>
+              <p id="consumptionChartSummary" class="sr-only">{{ chart_consumption_trend.summary }}</p>
             </div>
           </div>
 
@@ -294,6 +296,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const errorColor = cssColor('--color-error', 0.8);
     const infoColor = cssColor('--color-info');
     const infoBg = cssColor('--color-info', 0.1);
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     // Spending Chart
     const spendingDataObj = JSON.parse(document.getElementById('spendingData').textContent);
@@ -313,6 +316,7 @@ document.addEventListener("DOMContentLoaded", function() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: prefersReducedMotion ? false : undefined,
                 plugins: {
                     legend: { position: 'bottom', labels: { color: textColor } },
                 },
@@ -332,7 +336,7 @@ document.addEventListener("DOMContentLoaded", function() {
             data: {
                 labels: consumptionDataObj.labels,
                 datasets: [{
-                    label: 'km/L',
+                    label: 'L/100km estimado',
                     data: consumptionDataObj.values,
                     borderColor: infoColor,
                     backgroundColor: infoBg,
@@ -344,6 +348,7 @@ document.addEventListener("DOMContentLoaded", function() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: prefersReducedMotion ? false : undefined,
                 plugins: { legend: { display: false } },
                 scales: {
                     x: { grid: { display: false }, ticks: { color: textColor } },

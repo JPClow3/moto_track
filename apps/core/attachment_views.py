@@ -1,6 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 
 from apps.core.exports import safe_next_url
@@ -36,7 +38,11 @@ def attachment_create_view(request, app_label: str, model: str, object_id: int):
         return redirect(safe_next_url(request=request, candidate=request.POST.get("next"), fallback="dashboard"))
 
     attachment = RecordAttachment(owner=request.user, content_object=obj, file=upload, label=request.POST.get("label", ""))
-    attachment.full_clean()
+    try:
+        attachment.full_clean()
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+        return redirect(safe_next_url(request=request, candidate=request.POST.get("next"), fallback="dashboard"))
     attachment.save()
     messages.success(request, "Anexo salvo com sucesso.")
     return redirect(safe_next_url(request=request, candidate=request.POST.get("next"), fallback="dashboard"))
@@ -48,8 +54,10 @@ def attachment_delete_view(request, pk: int):
     if request.method != "POST":
         return redirect(safe_next_url(request=request, candidate=request.GET.get("next"), fallback="dashboard"))
 
-    if attachment.file:
-        attachment.file.delete(save=False)
+    file_field = attachment.file
+    file_name = file_field.name if file_field else ""
     attachment.delete()
+    if file_name:
+        transaction.on_commit(lambda: file_field.storage.delete(file_name))
     messages.success(request, "Anexo removido com sucesso.")
     return redirect(safe_next_url(request=request, candidate=request.POST.get("next"), fallback="dashboard"))

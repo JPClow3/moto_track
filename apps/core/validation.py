@@ -7,6 +7,10 @@ from typing import Any
 from django import forms
 from django.utils import timezone
 
+from apps.fuel.models import FuelRecord
+from apps.maintenance.models import MaintenanceRecord
+from apps.tires.models import TireRecord
+
 
 def money_amount(value: Any) -> Decimal | None:
     if value is None:
@@ -42,10 +46,6 @@ def validate_odometer_sequence(
         odometer = int(odometer_km)
     except (TypeError, ValueError):
         return {}
-
-    from apps.fuel.models import FuelRecord
-    from apps.maintenance.models import MaintenanceRecord
-    from apps.tires.models import TireRecord
 
     checks = [
         ("fuel.FuelRecord", FuelRecord.objects.filter(motorcycle=motorcycle), "date", "odometer_km"),

@@ -17,6 +17,14 @@
     </button>
   </header>
 
+  {% if upload_has_errors %}
+    <div class="form-errors" role="alert" aria-live="polite">
+      <p class="font-extrabold">Não foi possível enviar o documento.</p>
+      <p>Revise os campos do formulário de envio abaixo.</p>
+      <a class="text-sm font-extrabold text-primary hover:underline" href="#documents-upload-form">Ir para o formulário</a>
+    </div>
+  {% endif %}
+
   {% if insurance_alert %}
     <article class="rounded-2xl bg-error/10 p-5 shadow-ambient flex flex-col md:flex-row md:items-center md:justify-between gap-4" aria-label="Alerta de seguro">
       <div class="alert-banner-main">
@@ -68,8 +76,13 @@
     </article>
   </section>
 
-  <article id="documents-upload-form" class="panel" aria-label="Envio de documento">
+  <article id="documents-upload-form" class="panel" aria-label="Envio de documento" {% if upload_has_errors %}tabindex="-1" data-upload-has-errors="true"{% endif %}>
     <h3 class="text-lg font-extrabold tracking-tight">Envio de documento</h3>
+    {% if upload_has_errors %}
+      <div class="form-errors mt-4" role="alert" aria-live="polite">
+        <p>Corrija os erros destacados para concluir o envio.</p>
+      </div>
+    {% endif %}
     <form method="post" enctype="multipart/form-data" class="mt-4 data-form" novalidate>
       {% csrf_token %}
       {% for field in upload_form.visible_fields %}
@@ -160,13 +173,13 @@
     <nav class="rounded-2xl bg-surface-lowest p-4 shadow-ambient" aria-label="Paginação">
       <div class="flex items-center justify-between gap-4">
         {% if page_obj.has_previous %}
-          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% querystring page=page_obj.previous_page_number %}">Anterior</a>
         {% else %}
           <span></span>
         {% endif %}
         <span class="text-xs font-semibold text-on-surface-variant">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% querystring page=page_obj.next_page_number %}">Próxima</a>
         {% else %}
           <span></span>
         {% endif %}
@@ -174,4 +187,14 @@
     </nav>
   {% endif %}
 </section>
+{% if upload_has_errors %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const uploadForm = document.getElementById("documents-upload-form");
+    if (!uploadForm) return;
+    uploadForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    uploadForm.focus({ preventScroll: true });
+  });
+</script>
+{% endif %}
 {% endblock %}

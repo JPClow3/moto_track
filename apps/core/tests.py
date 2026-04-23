@@ -1,19 +1,23 @@
-from datetime import date
+import shutil
+import tempfile
+from datetime import date, timedelta
 from decimal import Decimal
-from pathlib import Path
-from tempfile import NamedTemporaryFile
 from unittest.mock import patch
 from urllib.error import URLError
 
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from djmoney.money import Money
 
-from apps.core.models import ApiToken, RecordAttachment
+from apps.core.models import ApiToken, PushSubscription, RecordAttachment
 from apps.core.services.dashboard import get_status_cards, get_tire_cards, get_weekly_sparkline_points
 from apps.core.services.notifications import notification_alerts_for_motorcycle
+from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY
 from apps.documents.models import DocumentType, MotorcycleDocument
 from apps.fuel.models import FuelRecord
 from apps.garage.models import (
@@ -26,6 +30,7 @@ from apps.garage.models import (
 from apps.maintenance.models import MaintenancePart, MaintenanceRecord
 from apps.reminders.models import Reminder, TriggerType
 from apps.tires.models import TirePosition, TireRecord
+from config.sitemaps import StaticViewSitemap
 
 
 class CoreViewsTests(TestCase):
@@ -53,6 +58,8 @@ class CoreViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.motorcycle.name)
         self.assertContains(response, "consumo")
+        self.assertContains(response, 'role="img"')
+        self.assertContains(response, 'id="spendingChartSummary"')
 
     def test_odometer_quick_update_rejects_lower_value(self):
         self.client.force_login(self.user)
@@ -159,6 +166,25 @@ class CoreViewsTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(RecordAttachment.objects.filter(pk=attachment.pk).exists())
 
+    def test_record_attachment_validation_error_returns_redirect(self):
+        self.client.force_login(self.user)
+        record = FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date="2026-04-15",
+            odometer_km=10200,
+            liters=Decimal("5.000"),
+            total_price=Decimal("35.00"),
+            price_per_liter=Decimal("7.000"),
+        )
+
+        response = self.client.post(
+            reverse("attachments:create", args=["fuel", "fuelrecord", record.pk]),
+            {"file": SimpleUploadedFile("script.exe", b"bad", content_type="application/octet-stream")},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(RecordAttachment.objects.filter(object_id=record.pk).exists())
+
     def test_api_token_lists_only_owner_fuel_records(self):
         other = get_user_model().objects.create_user(username="api-other", email="api-other@example.com")
         other_motorcycle = Motorcycle.objects.create(owner=other, name="Outra", brand="Yamaha", model="MT", year=2024)
@@ -198,11 +224,71 @@ class CoreViewsTests(TestCase):
             wear_percent=80,
             is_active=True,
         )
+        self.motorcycle.refresh_from_db()
 
         alerts = notification_alerts_for_motorcycle(self.motorcycle)
 
         self.assertTrue(any(alert.source == "reminder" for alert in alerts))
         self.assertTrue(any(alert.source == "tires" for alert in alerts))
+
+    def test_push_subscription_same_endpoint_stays_owner_scoped(self):
+        other = get_user_model().objects.create_user(username="push-other", email="push-other@example.com")
+        endpoint = "https://push.example/subscription/1"
+        PushSubscription.objects.create(owner=other, endpoint=endpoint, p256dh="old-key", auth="old-auth")
+
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("push_subscribe"),
+            data='{"endpoint":"https://push.example/subscription/1","keys":{"p256dh":"new-key","auth":"new-auth"}}',
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(PushSubscription.objects.filter(endpoint=endpoint).count(), 2)
+        self.assertTrue(PushSubscription.objects.filter(owner=other, endpoint=endpoint, p256dh="old-key").exists())
+        self.assertTrue(PushSubscription.objects.filter(owner=self.user, endpoint=endpoint, p256dh="new-key").exists())
+
+    def test_undo_token_consumption_purges_expired_session_entries(self):
+        self.client.force_login(self.user)
+        record = FuelRecord.objects.filter(motorcycle=self.motorcycle).first()
+        session = self.client.session
+        session[UNDO_SESSION_KEY] = {
+            "expired": {
+                "model": "fuel.FuelRecord",
+                "object_id": record.pk,
+                "label": "Expirado",
+                "expires_at": (timezone.now() - timedelta(minutes=1)).isoformat(),
+            },
+            "fresh": {
+                "model": "fuel.FuelRecord",
+                "object_id": record.pk,
+                "label": "Valido",
+                "expires_at": (timezone.now() + timedelta(minutes=10)).isoformat(),
+            },
+        }
+        session["last_undo_token"] = "expired"
+        session.save()
+
+        response = self.client.post(reverse("undo_action", args=["expired"]), {"next": reverse("dashboard")})
+
+        self.assertEqual(response.status_code, 302)
+        actions = self.client.session[UNDO_SESSION_KEY]
+        self.assertEqual(list(actions.keys()), ["fresh"])
+        self.assertNotIn("last_undo_token", self.client.session)
+
+    def test_sitemap_uses_existing_url_names(self):
+        sitemap = StaticViewSitemap()
+
+        for item in sitemap.items():
+            self.assertTrue(sitemap.location(item))
+        self.assertIn("privacy_policy", sitemap.items())
+        self.assertIn("terms_of_service", sitemap.items())
+
+    def test_robots_uses_request_host_for_sitemap(self):
+        response = self.client.get("/robots.txt")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sitemap: http://testserver/sitemap.xml")
 
 
 class OnboardingTests(TestCase):
@@ -301,6 +387,22 @@ class OnboardingTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("onboarding"), response["Location"])
 
+    def test_onboarding_redirects_to_garage_when_user_has_archived_motorcycle(self):
+        Motorcycle.objects.create(
+            owner=self.user,
+            name="Arquivada",
+            brand="Honda",
+            model="Biz",
+            year=2020,
+            is_active=False,
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("onboarding"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("garage:list"), response["Location"])
+
     def test_onboarding_without_template_keeps_current_flow(self):
         self.client.force_login(self.user)
         payload = self._base_payload()
@@ -318,48 +420,47 @@ class OnboardingTests(TestCase):
         self.assertEqual(TireRecord.objects.filter(motorcycle=motorcycle).count(), 2)
 
     def test_onboarding_with_template_creates_spec_plan_parts_and_manual(self):
-        with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(b"%PDF-1.4 test")
-            tmp_path = Path(tmp.name)
+        media_root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, media_root, ignore_errors=True)
 
-        self.template.spec.manual_url = tmp_path.as_uri()
-        self.template.spec.save(update_fields=["manual_url"])
+        with override_settings(MEDIA_ROOT=media_root):
+            default_storage.save("manuals/ktm-200.pdf", ContentFile(b"%PDF-1.4 test"))
+            self.template.spec.manual_url = "manuals/ktm-200.pdf"
+            self.template.spec.save(update_fields=["manual_url"])
 
-        self.client.force_login(self.user)
-        payload = self._base_payload()
-        payload["template"] = str(self.template.pk)
-        payload["template_variant"] = "Carburada"
-        payload["tire_size_front"] = "120/70R17"
-        response = self.client.post(reverse("onboarding"), payload)
-        self.assertEqual(response.status_code, 302)
+            self.client.force_login(self.user)
+            payload = self._base_payload()
+            payload["template"] = str(self.template.pk)
+            payload["template_variant"] = "Carburada"
+            payload["tire_size_front"] = "120/70R17"
+            response = self.client.post(reverse("onboarding"), payload)
+            self.assertEqual(response.status_code, 302)
 
-        motorcycle = Motorcycle.objects.get(owner=self.user)
-        self.assertEqual(motorcycle.source_template_id, self.template.id)
-        self.assertIn("Variante: Carburada", motorcycle.observations)
-        self.assertEqual(
-            motorcycle.spec.tire_size_front,
-            "120/70R17",
-        )
-        self.assertEqual(
-            motorcycle.spec.oil_type_recommendation,
-            "Sintetico",
-        )
+            motorcycle = Motorcycle.objects.get(owner=self.user)
+            self.assertEqual(motorcycle.source_template_id, self.template.id)
+            self.assertIn("Variante: Carburada", motorcycle.observations)
+            self.assertEqual(
+                motorcycle.spec.tire_size_front,
+                "120/70R17",
+            )
+            self.assertEqual(
+                motorcycle.spec.oil_type_recommendation,
+                "Sintetico",
+            )
 
-        plan_items = motorcycle.maintenance_plan_items.filter(maintenance_type="oil_change")
-        self.assertEqual(plan_items.count(), 2)
-        self.assertTrue(plan_items.filter(is_severe_duty_override=True).exists())
-        self.assertTrue(plan_items.filter(is_severe_duty_override=False).exists())
+            plan_items = motorcycle.maintenance_plan_items.filter(maintenance_type="oil_change")
+            self.assertEqual(plan_items.count(), 2)
+            self.assertTrue(plan_items.filter(is_severe_duty_override=True).exists())
+            self.assertTrue(plan_items.filter(is_severe_duty_override=False).exists())
 
-        part_qs = MaintenancePart.objects.filter(owner=self.user, name="Filtro de oleo OEM")
-        self.assertEqual(part_qs.count(), 1)
+            part_qs = MaintenancePart.objects.filter(owner=self.user, name="Filtro de oleo OEM")
+            self.assertEqual(part_qs.count(), 1)
 
-        manual_doc = MotorcycleDocument.objects.filter(
-            motorcycle=motorcycle,
-            document_type=DocumentType.MANUAL,
-        )
-        self.assertEqual(manual_doc.count(), 1)
-
-        tmp_path.unlink(missing_ok=True)
+            manual_doc = MotorcycleDocument.objects.filter(
+                motorcycle=motorcycle,
+                document_type=DocumentType.MANUAL,
+            )
+            self.assertEqual(manual_doc.count(), 1)
 
     def test_onboarding_template_part_get_or_create_avoids_duplicates(self):
         MaintenancePart.objects.create(owner=self.user, name="Filtro de oleo OEM", manufacturer="Outro")
@@ -380,6 +481,10 @@ class OnboardingTests(TestCase):
         response = self.client.post(reverse("onboarding"), payload)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "intervalo do template")
+        self.assertContains(response, 'data-onboarding-error-summary')
+        self.assertContains(response, 'data-initial-step="2"')
+        self.assertContains(response, 'data-wizard-nav')
+        self.assertContains(response, 'Pré-preenchido pelo catálogo')
 
     def test_onboarding_downloads_manual_from_external_url(self):
         self.template.spec.manual_url = "https://example.com/manual.pdf"
@@ -547,3 +652,7 @@ class DashboardServiceTests(TestCase):
         self.assertEqual(response["Service-Worker-Allowed"], "/")
         self.assertEqual(response["Cache-Control"], "no-cache")
         self.assertContains(response, "moto-track-shell-test\\u002Dbuild\\u002D123")
+        self.assertContains(response, "indexedDB")
+        self.assertContains(response, "sync-offline-requests")
+        self.assertContains(response, "showNotification")
+        self.assertContains(response, "notificationclick")

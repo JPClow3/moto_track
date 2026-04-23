@@ -1,14 +1,24 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from apps.expenses.models import AnnualFee, InsurancePolicy
 from apps.fuel.models import FuelRecord, FuelStation
 from apps.garage.models import Motorcycle
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
-from apps.reports.services import cost_summary, health_score, period_comparisons, sale_report_data, timeline_events
+from apps.reports.services import (
+    cost_summary,
+    health_score,
+    intelligent_alerts,
+    period_comparisons,
+    sale_report_data,
+    timeline_events,
+    timeline_events_count,
+)
 from apps.tires.models import TirePosition, TirePressureRecord, TireRecord
 
 
@@ -99,6 +109,47 @@ class ReportOverviewTests(TestCase):
         self.assertEqual(csv_response["Content-Type"], "text/csv; charset=utf-8")
         self.assertEqual(pdf_response.status_code, 200)
         self.assertEqual(pdf_response["Content-Type"], "application/pdf")
+
+    def test_timeline_events_support_bounded_fetch_and_count(self):
+        for idx in range(10):
+            FuelRecord.objects.create(
+                motorcycle=self.motorcycle,
+                date=f"2026-04-{idx + 1:02d}",
+                odometer_km=9000 + idx * 100,
+                liters=Decimal("8.000"),
+                total_price=Decimal("56.00"),
+                price_per_liter=Decimal("7.000"),
+            )
+
+        total = timeline_events_count(user=self.user, motorcycle=self.motorcycle)
+        events = timeline_events(user=self.user, motorcycle=self.motorcycle, limit=5)
+
+        self.assertEqual(total, 12)
+        self.assertEqual(len(events), 5)
+
+    def test_intelligent_alerts_query_count_is_bounded_across_motorcycles(self):
+        for idx in range(3):
+            motorcycle = Motorcycle.objects.create(
+                owner=self.user,
+                name=f"Moto Alert {idx}",
+                brand="Honda",
+                model="Biz",
+                year=2020,
+            )
+            FuelRecord.objects.create(
+                motorcycle=motorcycle,
+                date="2026-04-10",
+                odometer_km=1000,
+                liters=Decimal("8.000"),
+                total_price=Decimal("56.00"),
+                price_per_liter=Decimal("7.000"),
+                tank_full=True,
+            )
+
+        with CaptureQueriesContext(connection) as captured:
+            intelligent_alerts(user=self.user)
+
+        self.assertLessEqual(len(captured), 9)
 
     def test_sale_report_data_calculates_commercial_summary(self):
         preferred_station = FuelStation.objects.create(owner=self.user, name="Posto Alpha")

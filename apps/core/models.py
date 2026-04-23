@@ -15,7 +15,11 @@ class TimeStampedModel(models.Model):
 
 
 class UserOwnedModel(models.Model):
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="%(class)ss")
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="owned_%(app_label)s_%(class)ss",
+    )
 
     class Meta:
         abstract = True
@@ -77,12 +81,15 @@ class ApiToken(TimeStampedModel):
 
 class PushSubscription(TimeStampedModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="push_subscriptions")
-    endpoint = models.URLField(max_length=500, unique=True)
+    endpoint = models.URLField(max_length=500)
     p256dh = models.CharField(max_length=200)
     auth = models.CharField(max_length=200)
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "endpoint"], name="core_push_owner_endpoint_uniq"),
+        ]
 
     def __str__(self) -> str:
         return f"Subscription for {self.owner} ({self.created_at.date()})"

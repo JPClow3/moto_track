@@ -21,6 +21,7 @@
       {% csrf_token %}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         {{ form.fuel_tank_capacity_l|as_crispy_field }}
+        {{ form.consumption_avg_km_l|as_crispy_field }}
         {{ form.fuel_type_recommendation|as_crispy_field }}
         {{ form.fuel_octane_min|as_crispy_field }}
         {{ form.oil_capacity_l|as_crispy_field }}

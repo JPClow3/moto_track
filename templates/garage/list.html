@@ -64,5 +64,30 @@
       <p class="text-on-surface-variant text-sm">Você ainda não cadastrou nenhuma moto.</p>
     {% endif %}
   </article>
+
+  {% if archived_motorcycles %}
+    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Motos arquivadas">
+      <div class="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <h3 class="text-lg font-extrabold tracking-tight">Motos arquivadas</h3>
+          <p class="text-sm text-on-surface-variant">Reative uma moto antiga para voltar a acompanhar o histórico.</p>
+        </div>
+      </div>
+      <div class="space-y-3">
+        {% for motorcycle in archived_motorcycles %}
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl bg-surface-low p-4">
+            <div>
+              <p class="font-extrabold">{{ motorcycle.name }}</p>
+              <p class="text-xs text-on-surface-variant">{{ motorcycle.brand }} {{ motorcycle.model }} • {{ motorcycle.year }}</p>
+            </div>
+            <form method="post" action="{% url 'garage:restore' motorcycle.pk %}">
+              {% csrf_token %}
+              <button class="ui-btn-secondary" type="submit">Reativar</button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+    </article>
+  {% endif %}
 </section>
 {% endblock %}

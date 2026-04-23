@@ -15,13 +15,14 @@ class DocumentUploadForm(forms.ModelForm):
 
     class Meta:
         model = MotorcycleDocument
-        fields = ["motorcycle", "name", "document_type", "file", "valid_until", "notes"]
+        fields = ["motorcycle", "name", "document_type", "file", "valid_until", "notify_before_days", "notes"]
         labels = {
             "motorcycle": "Moto",
             "name": "Nome",
             "document_type": "Tipo de documento",
             "file": "Arquivo",
             "valid_until": "Validade",
+            "notify_before_days": "Avisar com antecedência (dias)",
             "notes": "Observações",
         }
         widgets = {
@@ -34,6 +35,12 @@ class DocumentUploadForm(forms.ModelForm):
         self.fields["motorcycle"].queryset = Motorcycle.objects.filter(owner=user).order_by("name")  # pylint: disable=no-member
         self.fields["notes"].required = False
         self.fields["valid_until"].required = False
+
+    def clean_notify_before_days(self):
+        value = self.cleaned_data.get("notify_before_days")
+        if value is not None and value <= 0:
+            raise ValidationError("O aviso deve ser maior que zero.")
+        return value
 
     def clean_name(self):
         return sanitize_text(self.cleaned_data.get("name"))

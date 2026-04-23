@@ -177,7 +177,10 @@ class OnboardingForm(forms.Form):
     chain_size = forms.CharField(label="Medida da relação/corrente", max_length=32, required=False)
     manual_reference = forms.CharField(label="Referência do manual", max_length=120, required=False)
 
-    fuel_date = forms.DateField(label="Data do ultimo abastecimento", widget=forms.DateInput(attrs={"type": "date"}))
+    fuel_date = forms.DateField(
+        label="Data do ultimo abastecimento",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
     fuel_odometer_km = forms.IntegerField(
         label="Km no abastecimento",
         widget=forms.NumberInput(attrs={"inputmode": "numeric"}),
@@ -195,7 +198,10 @@ class OnboardingForm(forms.Form):
         widget=forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
     )
 
-    service_date = forms.DateField(label="Data do último serviço", widget=forms.DateInput(attrs={"type": "date"}))
+    service_date = forms.DateField(
+        label="Data do último serviço",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
     service_odometer_km = forms.IntegerField(
         label="Km no serviço",
         widget=forms.NumberInput(attrs={"inputmode": "numeric"}),
@@ -209,7 +215,10 @@ class OnboardingForm(forms.Form):
 
     front_tire = forms.CharField(label="Pneu dianteiro", max_length=120)
     rear_tire = forms.CharField(label="Pneu traseiro", max_length=120)
-    tire_installed_at = forms.DateField(label="Data dos pneus", widget=forms.DateInput(attrs={"type": "date"}))
+    tire_installed_at = forms.DateField(
+        label="Data dos pneus",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
     tire_odometer_km = forms.IntegerField(label="Km dos pneus", widget=forms.NumberInput(attrs={"inputmode": "numeric"}))
 
     def __init__(self, *args, **kwargs):
@@ -344,11 +353,11 @@ class OnboardingForm(forms.Form):
         if template and cleaned_data.get("year") is None:
             cleaned_data["year"] = _resolve_template_year(template)
 
-        if not cleaned_data.get("brand"):
+        if not cleaned_data.get("brand") and "brand" not in self.errors:
             self.add_error("brand", "Informe a marca da moto.")
-        if not cleaned_data.get("model"):
+        if not cleaned_data.get("model") and "model" not in self.errors:
             self.add_error("model", "Informe o modelo da moto.")
-        if cleaned_data.get("year") is None:
+        if cleaned_data.get("year") is None and "year" not in self.errors:
             self.add_error("year", "Informe o ano da moto.")
 
         for field_name in ["fuel_date", "service_date", "tire_installed_at"]:

@@ -18,6 +18,7 @@ class MotorcycleDocument(TimeStampedModel):
     document_type = models.CharField(max_length=32, choices=DocumentType.choices, default=DocumentType.OTHER)
     file = models.FileField(upload_to="documents/%Y/%m/")
     valid_until = models.DateField(null=True, blank=True)
+    notify_before_days = models.PositiveSmallIntegerField(default=30)
     notes = models.TextField(blank=True)
 
     class Meta:

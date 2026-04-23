@@ -7,6 +7,17 @@
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{% block meta_description %}Acesse o Moto Track para acompanhar garagem, manutencoes, abastecimentos, pneus, documentos e relatorios.{% endblock %}" />
+  <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta property="og:site_name" content="Moto Track" />
+  <meta property="og:title" content="{% block og_title %}Moto Track{% endblock %}" />
+  <meta property="og:description" content="{% block og_description %}Garagem digital privada para motociclistas.{% endblock %}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="{{ request.build_absolute_uri }}" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="icon" type="image/svg+xml" href="{% static 'brand/favicon.svg' %}" />
+  <link rel="apple-touch-icon" href="{% static 'brand/app-icon.svg' %}" />
   <title>
     {% block head_title %}
     {% endblock head_title %}
@@ -124,6 +135,8 @@
               {% if signup_url %}
                 <a class="hover:underline" href="{{ signup_url }}">{% trans "Criar conta" %}</a>
               {% endif %}
+              <a class="hover:underline" href="{% url 'privacy_policy' %}">Privacidade</a>
+              <a class="hover:underline" href="{% url 'terms_of_service' %}">Termos</a>
             {% endif %}
           </nav>
         </div>

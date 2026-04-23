@@ -81,6 +81,18 @@
       {% endif %}
     </div>
 
+    <div class="rounded-2xl bg-surface-low px-4 py-3 ring-1 ring-outline-variant/20">
+      <label class="flex items-start gap-3 text-sm font-semibold leading-relaxed text-on-surface-variant" for="{{ form.accept_terms.id_for_label }}">
+        {{ form.accept_terms|add_class:"mt-1 rounded border-outline-variant/40 text-primary focus:ring-primary/20" }}
+        <span>{{ form.accept_terms.label|safe }}</span>
+      </label>
+      {% if form.accept_terms.errors %}
+        <div class="mt-3 rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">
+          {% for error in form.accept_terms.errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
     {% if redirect_field_value %}
       <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
     {% endif %}
@@ -126,4 +138,3 @@
     </footer>
   </form>
 {% endblock %}
-

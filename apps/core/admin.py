@@ -1,3 +1,6 @@
+from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
+from django.contrib import admin
+from django.contrib.auth.models import Group
 from unfold.admin import ModelAdmin
 
 
@@ -30,12 +33,13 @@ class UserScopedAdmin(ModelAdmin):
             kwargs["queryset"] = self._resolve_scoped_queryset(self.many_to_many_scopes[db_field.name], request.user)
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
-from django.contrib import admin
 
-from .models import PushSubscription
+def _safe_unregister(model) -> None:
+    try:
+        admin.site.unregister(model)
+    except admin.sites.NotRegistered:
+        pass
 
 
-@admin.register(PushSubscription)
-class PushSubscriptionAdmin(UserScopedAdmin):
-    list_display = ("owner", "endpoint", "created_at")
-    search_fields = ("owner__username", "owner__email", "endpoint")
+for _model in (Group, SocialAccount, SocialApp, SocialToken):
+    _safe_unregister(_model)

@@ -72,3 +72,29 @@ class ExpensesExportTests(TestCase):
         self.assertIn("insurance_policy,Moto Taxas,Seguradora Boa,2026-01-01,2026-12-31", body)
         self.assertNotIn("Moto de outro", body)
         self.assertNotIn("Não deve aparecer", body)
+
+    def test_list_paginates_fees_and_policies_independently(self):
+        for index in range(55):
+            AnnualFee.objects.create(
+                motorcycle=self.motorcycle,
+                fee_type=AnnualFeeType.LICENSING,
+                year=2026 + index,
+                due_date=date(2026, 1, 1),
+                amount=Decimal("100.00"),
+            )
+            InsurancePolicy.objects.create(
+                motorcycle=self.motorcycle,
+                provider=f"Seguradora {index:02d}",
+                coverage_start=date(2026, 1, 1),
+                coverage_end=date(2026, 12, 31),
+                premium=Decimal("1200.00"),
+            )
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("expenses:list"), {"fees_page": 2, "policies_page": 2})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["fees"]), 5)
+        self.assertEqual(len(response.context["policies"]), 5)
+        self.assertEqual(response.context["fees_page_obj"].paginator.count, 55)
+        self.assertEqual(response.context["policies_page_obj"].paginator.count, 55)

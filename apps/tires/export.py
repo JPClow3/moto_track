@@ -11,7 +11,6 @@ from apps.core.exports import ExportSpec, build_csv_bytes, build_xlsx_bytes, exp
 
 from .models import TirePressureRecord, TireRecord
 
-
 TIRES_SPEC = ExportSpec(
     filename_base="pneus",
     columns=[

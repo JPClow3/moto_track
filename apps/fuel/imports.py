@@ -5,8 +5,11 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from io import TextIOWrapper
 
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.utils.dateparse import parse_date
 
+from apps.core.validation import validate_odometer_sequence
 from apps.fuel.models import FuelRecord, FuelType
 from apps.garage.models import Motorcycle
 
@@ -58,6 +61,31 @@ def preview_fuel_csv(*, file_obj, motorcycle: Motorcycle) -> list[FuelImportRow]
             duplicate = FuelRecord.objects.filter(
                 motorcycle=motorcycle, date=parsed_date, odometer_km=odometer_km
             ).exists()
+        if not errors and not duplicate and parsed_date:
+            record = FuelRecord(
+                motorcycle=motorcycle,
+                date=parsed_date,
+                odometer_km=odometer_km,
+                liters=liters,
+                total_price=total_price,
+                price_per_liter=price_per_liter,
+                fuel_type=fuel_type,
+                tank_full=tank_full,
+                station_name=station_name,
+            )
+            try:
+                record.full_clean()
+            except ValidationError as exc:
+                if hasattr(exc, "message_dict"):
+                    errors.extend(str(message) for messages in exc.message_dict.values() for message in messages)
+                else:
+                    errors.extend(exc.messages)
+            sequence_errors = validate_odometer_sequence(
+                motorcycle=motorcycle,
+                event_date=parsed_date,
+                odometer_km=odometer_km,
+            )
+            errors.extend(sequence_errors.values())
 
         rows.append(
             FuelImportRow(
@@ -81,19 +109,32 @@ def preview_fuel_csv(*, file_obj, motorcycle: Motorcycle) -> list[FuelImportRow]
 
 def create_fuel_records_from_rows(*, motorcycle: Motorcycle, rows: list[dict]) -> int:
     created = 0
-    for row in rows:
-        if FuelRecord.objects.filter(motorcycle=motorcycle, date=row["date"], odometer_km=row["odometer_km"]).exists():
-            continue
-        FuelRecord.objects.create(
-            motorcycle=motorcycle,
-            date=row["date"],
-            odometer_km=row["odometer_km"],
-            liters=Decimal(row["liters"]),
-            total_price=Decimal(row["total_price"]),
-            price_per_liter=Decimal(row["price_per_liter"]),
-            fuel_type=row["fuel_type"],
-            tank_full=row["tank_full"],
-            station_name=row["station_name"],
-        )
-        created += 1
+    with transaction.atomic():
+        for row in rows:
+            row_date = parse_date(str(row["date"]))
+            if row_date is None:
+                raise ValidationError("Data inválida na importação.")
+            if FuelRecord.objects.filter(motorcycle=motorcycle, date=row_date, odometer_km=row["odometer_km"]).exists():
+                continue
+            record = FuelRecord(
+                motorcycle=motorcycle,
+                date=row_date,
+                odometer_km=row["odometer_km"],
+                liters=Decimal(row["liters"]),
+                total_price=Decimal(row["total_price"]),
+                price_per_liter=Decimal(row["price_per_liter"]),
+                fuel_type=row["fuel_type"],
+                tank_full=row["tank_full"],
+                station_name=row["station_name"],
+            )
+            record.full_clean()
+            sequence_errors = validate_odometer_sequence(
+                motorcycle=motorcycle,
+                event_date=row_date,
+                odometer_km=row["odometer_km"],
+            )
+            if sequence_errors:
+                raise ValidationError(sequence_errors)
+            record.save()
+            created += 1
     return created

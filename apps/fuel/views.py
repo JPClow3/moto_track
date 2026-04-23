@@ -1,13 +1,13 @@
 import secrets
-from datetime import date
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Sum
-from django.db.models.functions import TruncMonth
+from django.core.exceptions import ValidationError
+from django.db.models import Max, Min, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from djmoney.money import Money
 
@@ -30,31 +30,10 @@ from .services import (
     compute_station_rankings,
     detect_fuel_anomalies,
     filter_fuel_records_for_user,
+    monthly_fuel_trend,
     remember_fuel_preference,
     review_suggestion_for_motorcycle,
 )
-
-
-def _month_key(dt):
-    return (dt.year, dt.month)
-
-
-def _months_back(reference_date, count: int) -> list[tuple[int, int]]:
-    months: list[tuple[int, int]] = []
-    year = reference_date.year
-    month = reference_date.month
-    for _ in range(count):
-        months.append((year, month))
-        month -= 1
-        if month == 0:
-            month = 12
-            year -= 1
-    months.reverse()
-    return months
-
-
-def _format_month_label(year: int, month: int) -> str:
-    return timezone.datetime(year, month, 1).strftime("%b").upper()
 
 
 @login_required
@@ -87,10 +66,8 @@ def fuel_list_view(request):
     total_spend = records_qs.aggregate(total=Sum("total_price"))["total"] or Money(0, "BRL")
     total_liters = records_qs.aggregate(total=Sum("liters"))["total"] or 0
 
-    odometer_span = 0
-    if len(records) > 1:
-        odometer_values = [record.odometer_km for record in records]
-        odometer_span = max(odometer_values) - min(odometer_values)
+    odometer_bounds = records_qs.aggregate(min_odometer=Min("odometer_km"), max_odometer=Max("odometer_km"))
+    odometer_span = int(odometer_bounds["max_odometer"] or 0) - int(odometer_bounds["min_odometer"] or 0)
 
     avg_cost_per_km = None
     if odometer_span > 0:
@@ -102,67 +79,7 @@ def fuel_list_view(request):
 
     last_record = records_qs.first()
 
-    # Lightweight 6-month efficiency trend (liters/100km by month).
-    months = _months_back(timezone.localdate(), 6)
-    start_year, start_month = months[0]
-    start_date = date(start_year, start_month, 1)
-    trend_buckets = {m: {"liters": 0.0, "min_odo": None, "max_odo": None} for m in months}
-    for row in records_qs.filter(date__gte=start_date).values("date", "liters", "odometer_km"):
-        key = _month_key(row["date"])
-        if key not in trend_buckets:
-            continue
-        bucket = trend_buckets[key]
-        bucket["liters"] += float(row["liters"] or 0)
-        odo = row["odometer_km"]
-        bucket["min_odo"] = odo if bucket["min_odo"] is None else min(bucket["min_odo"], odo)
-        bucket["max_odo"] = odo if bucket["max_odo"] is None else max(bucket["max_odo"], odo)
-
-    monthly_totals = {
-        _month_key(row["month"]): row["total"] or Money(0, "BRL")
-        for row in (
-            records_qs.filter(date__gte=start_date)
-            .annotate(month=TruncMonth("date"))
-            .values("month")
-            .annotate(total=Sum("total_price"))
-        )
-        if row["month"]
-    }
-
-    trend_points = []
-    values = []
-    cost_points = []
-    cost_values = []
-    for year, month in months:
-        b = trend_buckets[(year, month)]
-        span = (b["max_odo"] - b["min_odo"]) if (b["min_odo"] is not None and b["max_odo"] is not None) else 0
-        value = None
-        if span > 0 and b["liters"] > 0:
-            value = round(b["liters"] / span * 100, 2)
-            values.append(value)
-        trend_points.append({"label": _format_month_label(year, month), "value": value})
-
-        # Cost per km by month (R$/km) using same odometer span heuristic.
-        month_total_value = monthly_totals.get((year, month), Money(0, "BRL"))
-        month_amount = float(getattr(month_total_value, "amount", month_total_value) or 0)
-        cost_value = None
-        if span > 0 and month_amount > 0:
-            cost_value = round(month_amount / span, 3)
-            cost_values.append(cost_value)
-        cost_points.append({"label": _format_month_label(year, month), "value": cost_value})
-
-    trend_max = max(values) if values else None
-    cost_max = max(cost_values) if cost_values else None
-
-    def _moving_average(series: list[float | None], window: int) -> list[float | None]:
-        out: list[float | None] = []
-        for idx in range(len(series)):
-            start = max(0, idx - window + 1)
-            chunk = [v for v in series[start : idx + 1] if v is not None]
-            out.append(round(sum(chunk) / len(chunk), 3) if chunk else None)
-        return out
-
-    trend_ma = _moving_average([p["value"] for p in trend_points], 3)
-    cost_ma = _moving_average([p["value"] for p in cost_points], 3)
+    trend = monthly_fuel_trend(records_qs)
 
     next_fill_up = period_summary.next_fill_up
 
@@ -194,12 +111,12 @@ def fuel_list_view(request):
         "last_record": last_record,
         "avg_liters_per_100km": avg_liters_per_100km,
         "recent_fillups": recent_fillups,
-        "trend_points": trend_points,
-        "trend_max": trend_max,
-        "cost_points": cost_points,
-        "cost_max": cost_max,
-        "trend_ma_last": trend_ma[-1] if trend_ma else None,
-        "cost_ma_last": cost_ma[-1] if cost_ma else None,
+        "trend_points": trend["trend_points"],
+        "trend_max": trend["trend_max"],
+        "cost_points": trend["cost_points"],
+        "cost_max": trend["cost_max"],
+        "trend_ma_last": trend["trend_ma"][-1] if trend["trend_ma"] else None,
+        "cost_ma_last": trend["cost_ma"][-1] if trend["cost_ma"] else None,
         "next_recommended_km": next_fill_up.recommended_odometer_km if next_fill_up else None,
         "next_fill_up": next_fill_up,
         "period_summary": period_summary,
@@ -287,7 +204,11 @@ def fuel_import_confirm_view(request):
         messages.error(request, "Prévia de importação expirada.")
         return redirect("fuel:import_preview")
     motorcycle = get_object_or_404(Motorcycle, pk=payload["motorcycle_id"], owner=request.user, is_active=True)
-    created = create_fuel_records_from_rows(motorcycle=motorcycle, rows=payload["rows"])
+    try:
+        created = create_fuel_records_from_rows(motorcycle=motorcycle, rows=payload["rows"])
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+        return redirect("fuel:import_preview")
     imports.pop(token, None)
     request.session["fuel_imports"] = imports
     request.session.modified = True
@@ -302,7 +223,7 @@ def fuel_catalog_view(request):
     recent_records = (
         FuelRecord.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
         .select_related("station", "fuel_grade", "motorcycle")
-        .order_by("-date", "-odometer_km")[:300]
+        .order_by("-date", "-odometer_km")
     )
     ranking_rows = compute_station_rankings(recent_records)
     comparable = [r for r in ranking_rows if (r.avg_price_per_liter is not None and r.samples >= 3)]
@@ -478,9 +399,49 @@ def _add_fuel_save_alerts(request, record: FuelRecord) -> None:
     ][:2]
     for alert in fuel_alerts:
         messages.info(request, alert.message)
-    for alert in notification_alerts_for_motorcycle(record.motorcycle, limit=3):
+    for alert in notification_alerts_for_motorcycle(
+        record.motorcycle,
+        limit=3,
+        current_odometer_km=record.motorcycle.current_odometer_km,
+    ):
         if alert.source in {"maintenance", "documents", "reminder", "tires"}:
             messages.info(request, alert.message)
+
+
+def _save_fuel_record_from_form(request, form, *, success_message: str) -> FuelRecord:
+    moto = form.cleaned_data.get("motorcycle")
+    if moto:
+        warnings = detect_fuel_anomalies(
+            history_qs=FuelRecord.objects.filter(motorcycle=moto).select_related("motorcycle"),
+            odometer_km=int(form.cleaned_data.get("odometer_km") or 0),
+            liters=form.cleaned_data.get("liters") or 0,
+            price_per_liter=form.cleaned_data.get("price_per_liter"),
+        )
+        if warnings:
+            messages.warning(request, " • ".join(warnings))
+    record = form.save()
+    record.motorcycle.refresh_from_db(fields=["current_odometer_km"])
+    remember_fuel_preference(record)
+    create_undo_token(
+        request,
+        model_label="fuel.FuelRecord",
+        object_id=record.pk,
+        label="Desfazer abastecimento",
+    )
+    today = timezone.localdate()
+    due = list_due_reminders(
+        reminders=list(Reminder.objects.filter(motorcycle=record.motorcycle, is_active=True).order_by("title")[:10]),
+        current_odometer_km=int(record.motorcycle.current_odometer_km or 0),
+        today=today,
+    )
+    if due:
+        messages.info(
+            request,
+            f"{len(due)} lembrete(s) está(ão) vencido(s) ou em breve. Você pode revisar em Lembretes.",
+        )
+    _add_fuel_save_alerts(request, record)
+    messages.success(request, success_message.format(record=record))
+    return record
 
 
 @login_required
@@ -551,37 +512,11 @@ def fuel_quick_create_view(request):
     if request.method == "POST":
         form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
-            moto = form.cleaned_data.get("motorcycle")
-            if moto:
-                warnings = detect_fuel_anomalies(
-                    history_qs=FuelRecord.objects.filter(motorcycle=moto).select_related("motorcycle"),
-                    odometer_km=int(form.cleaned_data.get("odometer_km") or 0),
-                    liters=form.cleaned_data.get("liters") or 0,
-                    price_per_liter=form.cleaned_data.get("price_per_liter"),
-                )
-                if warnings:
-                    messages.warning(request, " • ".join(warnings))
-            record = form.save()
-            remember_fuel_preference(record)
-            create_undo_token(
+            _save_fuel_record_from_form(
                 request,
-                model_label="fuel.FuelRecord",
-                object_id=record.pk,
-                label="Desfazer abastecimento",
+                form,
+                success_message="Abastecimento registrado para {record.motorcycle.name}.",
             )
-            today = timezone.localdate()
-            due = list_due_reminders(
-                reminders=list(Reminder.objects.filter(motorcycle=record.motorcycle, is_active=True).order_by("title")[:10]),
-                current_odometer_km=int(record.motorcycle.current_odometer_km or 0),
-                today=today,
-            )
-            if due:
-                messages.info(
-                    request,
-                    f"{len(due)} lembrete(s) está(ão) vencido(s) ou em breve. Você pode revisar em Lembretes.",
-                )
-            _add_fuel_save_alerts(request, record)
-            messages.success(request, f"Abastecimento registrado para {record.motorcycle.name}.")
             if is_htmx:
                 response = HttpResponse()
                 response["HX-Redirect"] = safe_next_url(
@@ -641,6 +576,7 @@ def fuel_quick_create_view(request):
         "submit_label": "Salvar abastecimento",
         "next_url": request.GET.get("next") or request.POST.get("next") or "",
         "can_prefill_last": bool(active_motorcycle),
+        "form_action_url": reverse("fuel:quick_create"),
     }
     configure_form_accessibility(form)
     return render(request, "fuel/partials/quick_form.html", context, status=status)
@@ -687,37 +623,11 @@ def fuel_repeat_last_view(request):
     if request.method == "POST":
         form = FuelRecordRepeatForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
-            moto = form.cleaned_data.get("motorcycle")
-            if moto:
-                warnings = detect_fuel_anomalies(
-                    history_qs=FuelRecord.objects.filter(motorcycle=moto).select_related("motorcycle"),
-                    odometer_km=int(form.cleaned_data.get("odometer_km") or 0),
-                    liters=form.cleaned_data.get("liters") or 0,
-                    price_per_liter=form.cleaned_data.get("price_per_liter"),
-                )
-                if warnings:
-                    messages.warning(request, " • ".join(warnings))
-            record = form.save()
-            remember_fuel_preference(record)
-            create_undo_token(
+            _save_fuel_record_from_form(
                 request,
-                model_label="fuel.FuelRecord",
-                object_id=record.pk,
-                label="Desfazer abastecimento",
+                form,
+                success_message="Abastecimento repetido para {record.motorcycle.name}.",
             )
-            today = timezone.localdate()
-            due = list_due_reminders(
-                reminders=list(Reminder.objects.filter(motorcycle=record.motorcycle, is_active=True).order_by("title")[:10]),
-                current_odometer_km=int(record.motorcycle.current_odometer_km or 0),
-                today=today,
-            )
-            if due:
-                messages.info(
-                    request,
-                    f"{len(due)} lembrete(s) está(ão) vencido(s) ou em breve. Você pode revisar em Lembretes.",
-                )
-            _add_fuel_save_alerts(request, record)
-            messages.success(request, f"Abastecimento repetido para {record.motorcycle.name}.")
             if is_htmx:
                 response = HttpResponse()
                 response["HX-Redirect"] = safe_next_url(
@@ -754,6 +664,7 @@ def fuel_repeat_last_view(request):
         "title": "Repetir abastecimento",
         "submit_label": "Salvar abastecimento",
         "next_url": request.GET.get("next") or request.POST.get("next") or "",
+        "form_action_url": reverse("fuel:repeat_last"),
         "repeat_summary": {
             "station_name": last.station_name or (last.station.name if last.station else ""),
             "fuel_type": last.get_fuel_type_display(),

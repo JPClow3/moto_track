@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """Helpers for module exports (CSV/XLSX) and safe redirects.
 
 This module centralizes export generation (bytes), download responses and optional
 email sending. XLSX support is optional and depends on `openpyxl`.
 """
+
+from __future__ import annotations
 
 import csv
 import io
@@ -109,4 +109,3 @@ def safe_next_url(*, request, candidate: str | None, fallback: str) -> str:
     if url_has_allowed_host_and_scheme(candidate, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
         return candidate
     return fallback
-

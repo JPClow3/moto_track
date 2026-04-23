@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -9,7 +10,8 @@ from apps.core.exports import parse_date_param
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
-from apps.reminders.models import Reminder, TriggerType
+from apps.reminders.models import Reminder
+from apps.reminders.services import save_date_reminder
 
 from .export import build_export
 from .forms import DocumentUploadForm
@@ -76,6 +78,7 @@ def list_documents(request):
         "category_counts": category_counts,
         "category_cards": category_cards,
         "density": density,
+        "upload_has_errors": form.is_bound and form.errors,
     }
     return render(request, "documents/list.html", context)
 
@@ -87,10 +90,11 @@ def delete_document(request, pk: int):
         return redirect("documents:list")
 
     name = document.name
-    # Delete storage file first, then row.
-    if document.file:
-        document.file.delete(save=False)
+    file_field = document.file
+    file_name = file_field.name if file_field else ""
     document.delete()
+    if file_name:
+        transaction.on_commit(lambda: file_field.storage.delete(file_name))
     messages.success(request, f"Documento '{name}' removido com sucesso.")
     return redirect("documents:list")
 
@@ -117,18 +121,15 @@ def create_document_reminder(request, pk: int):
         return redirect("documents:list")
 
     # Due date = valid_until. We model this as reference_date + trigger_value_days.
-    reference_date = document.valid_until - timedelta(days=1)
-    trigger_days = 1
+    trigger_days = int(document.notify_before_days or 30)
+    reference_date = document.valid_until - timedelta(days=trigger_days)
 
-    Reminder.objects.create(  # pylint: disable=no-member
-        motorcycle=document.motorcycle,
+    save_date_reminder(
+        Reminder(motorcycle=document.motorcycle),
         title=f"Vencimento: {document.name}",
         description=f"Documento {document.get_document_type_display()} vence em {document.valid_until}.",
-        trigger_type=TriggerType.BY_DATE,
-        trigger_value_days=trigger_days,
         reference_date=reference_date,
-        is_active=True,
-        send_email=True,
+        trigger_value_days=trigger_days,
     )
     messages.success(request, "Lembrete criado.")
     return redirect("documents:list")

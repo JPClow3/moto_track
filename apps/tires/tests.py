@@ -1,3 +1,5 @@
+import math
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -91,6 +93,20 @@ class TireModelTests(TestCase):
         self.assertIsNotNone(record.created_at)
         self.assertIsNotNone(record.updated_at)
 
+    def test_tire_record_updates_motorcycle_odometer(self):
+        TireRecord.objects.create(  # pylint: disable=no-member
+            motorcycle=self.motorcycle,
+            position=TirePosition.FRONT,
+            brand_model="Pirelli Angel GT",
+            installed_at="2026-04-14",
+            installed_odometer_km=15000,
+            cost="500.00",
+            wear_percent=10,
+        )
+        self.motorcycle.refresh_from_db()
+
+        self.assertEqual(self.motorcycle.current_odometer_km, 15000)
+
 
 class TireViewTests(TestCase):
     def setUp(self):
@@ -137,6 +153,15 @@ class TireViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Pirelli Angel GT")
         self.assertNotContains(response, "Outro pneu")
+
+    def test_tire_telemetry_radius_and_circumference_stay_synchronized(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("tires:list"))
+        rear = response.context["rear"]
+
+        self.assertEqual(rear["radius"], 88)
+        self.assertEqual(rear["circumference"], round(math.tau * rear["radius"], 2))
+        self.assertContains(response, f'r="{rear["radius"]}"')
 
     def test_create_view_creates_tire_record(self):
         self.client.force_login(self.user)

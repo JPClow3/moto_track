@@ -56,7 +56,28 @@
         <p class="text-on-surface-variant text-sm">Nenhuma taxa cadastrada.</p>
       {% endif %}
 
-      <p class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Mostrando os 50 mais recentes.</p>
+      {% if fees_page_obj %}
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+          Mostrando {{ fees_page_obj.start_index }}-{{ fees_page_obj.end_index }} de {{ fees_page_obj.paginator.count }}.
+        </p>
+        {% if fees_page_obj.paginator.num_pages > 1 %}
+          <nav class="rounded-2xl bg-surface-low p-3" aria-label="Paginação de taxas">
+            <div class="flex items-center justify-between gap-4">
+              {% if fees_page_obj.has_previous %}
+                <a class="rounded-xl bg-surface-highest px-3 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low" href="{% querystring fees_page=fees_page_obj.previous_page_number %}">Anterior</a>
+              {% else %}
+                <span></span>
+              {% endif %}
+              <span class="text-xs font-semibold text-on-surface-variant">Página {{ fees_page_obj.number }} de {{ fees_page_obj.paginator.num_pages }}</span>
+              {% if fees_page_obj.has_next %}
+                <a class="rounded-xl bg-surface-highest px-3 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low" href="{% querystring fees_page=fees_page_obj.next_page_number %}">Próxima</a>
+              {% else %}
+                <span></span>
+              {% endif %}
+            </div>
+          </nav>
+        {% endif %}
+      {% endif %}
     </article>
 
     <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient space-y-4" aria-label="Seguros">
@@ -86,9 +107,29 @@
         <p class="text-on-surface-variant text-sm">Nenhum seguro cadastrado.</p>
       {% endif %}
 
-      <p class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Mostrando os 50 mais recentes.</p>
+      {% if policies_page_obj %}
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+          Mostrando {{ policies_page_obj.start_index }}-{{ policies_page_obj.end_index }} de {{ policies_page_obj.paginator.count }}.
+        </p>
+        {% if policies_page_obj.paginator.num_pages > 1 %}
+          <nav class="rounded-2xl bg-surface-low p-3" aria-label="Paginação de seguros">
+            <div class="flex items-center justify-between gap-4">
+              {% if policies_page_obj.has_previous %}
+                <a class="rounded-xl bg-surface-highest px-3 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low" href="{% querystring policies_page=policies_page_obj.previous_page_number %}">Anterior</a>
+              {% else %}
+                <span></span>
+              {% endif %}
+              <span class="text-xs font-semibold text-on-surface-variant">Página {{ policies_page_obj.number }} de {{ policies_page_obj.paginator.num_pages }}</span>
+              {% if policies_page_obj.has_next %}
+                <a class="rounded-xl bg-surface-highest px-3 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low" href="{% querystring policies_page=policies_page_obj.next_page_number %}">Próxima</a>
+              {% else %}
+                <span></span>
+              {% endif %}
+            </div>
+          </nav>
+        {% endif %}
+      {% endif %}
     </article>
   </div>
 </section>
 {% endblock %}
-

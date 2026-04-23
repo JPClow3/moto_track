@@ -3,7 +3,7 @@ from datetime import timedelta
 from dal import autocomplete
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -137,17 +137,56 @@ def maintenance_list_view(request):
         _card_from_latest(latest_brakes, title="Pastilhas de freio", icon="disc-3"),
     ]
 
-    # Upcoming tasks should consider only the latest interval-defined record per type.
-    # Otherwise, older historical records remain perpetually overdue and crowd out the true next-due tasks.
+    upcoming_candidates: list[dict] = []
+
+    def _status_for(remaining_km, remaining_days):
+        if (remaining_km is not None and remaining_km <= 0) or (remaining_days is not None and remaining_days <= 0):
+            return "overdue"
+        if (remaining_km is not None and remaining_km <= 200) or (remaining_days is not None and remaining_days <= 7):
+            return "due_soon"
+        return "ok"
+
+    active_plan_types = set()
+    if selected_motorcycle:
+        plan_qs = MaintenancePlanItem.objects.filter(motorcycle=selected_motorcycle, is_active=True)
+        for item in plan_qs:
+            active_plan_types.add(item.maintenance_type)
+            remaining_km = None
+            if item.interval_km and item.last_done_km is not None:
+                remaining_km = (item.last_done_km + item.interval_km) - int(current_odometer_km or 0)
+
+            remaining_days = None
+            if item.interval_days and item.last_done_date is not None:
+                due_date = item.last_done_date + timedelta(days=item.interval_days)
+                remaining_days = (due_date - today).days
+
+            if remaining_km is None and remaining_days is None:
+                continue
+
+            upcoming_candidates.append(
+                {
+                    "label": item.get_maintenance_type_display(),
+                    "record": item,
+                    "maintenance_type": item.maintenance_type,
+                    "source": "plan",
+                    "source_label": "Plano preventivo",
+                    "is_severe_duty_override": item.is_severe_duty_override,
+                    "remaining_km": remaining_km,
+                    "remaining_days": remaining_days,
+                    "est_cost": None,
+                    "status": _status_for(remaining_km, remaining_days),
+                }
+            )
+
+    # Historical intervals are fallback-only. If a preventive plan exists for a type,
+    # avoid showing a second next-due calculation for the same maintenance type.
+    interval_records_qs = records_qs.filter(Q(interval_km__isnull=False) | Q(interval_days__isnull=False))
     latest_interval_record_by_type: dict[str, MaintenanceRecord] = {}
-    for rec in records_qs:
-        if not rec.interval_km and not rec.interval_days:
-            continue
-        if rec.maintenance_type in latest_interval_record_by_type:
+    for rec in interval_records_qs:
+        if rec.maintenance_type in active_plan_types or rec.maintenance_type in latest_interval_record_by_type:
             continue
         latest_interval_record_by_type[rec.maintenance_type] = rec
 
-    upcoming_candidates: list[dict] = []
     for rec in latest_interval_record_by_type.values():
         due_km = rec.odometer_km + rec.interval_km if rec.interval_km else None
         due_date = rec.date + timedelta(days=rec.interval_days) if rec.interval_days else None
@@ -159,16 +198,17 @@ def maintenance_list_view(request):
         if remaining_km is None and remaining_days is None:
             continue
 
-        # include both upcoming and overdue; sorting will surface closest items
         upcoming_candidates.append(
             {
                 "label": rec.get_maintenance_type_display(),
                 "record": rec,
-                "due_km": due_km,
-                "due_date": due_date,
+                "maintenance_type": rec.maintenance_type,
+                "source": "history",
+                "source_label": "Baseado no histórico",
                 "remaining_km": remaining_km,
                 "remaining_days": remaining_days,
                 "est_cost": rec.cost,
+                "status": _status_for(remaining_km, remaining_days),
             }
         )
 
@@ -181,37 +221,7 @@ def maintenance_list_view(request):
         return (min(km_key, days_key), days_key, km_key)
 
     upcoming_candidates.sort(key=_sort_key)
-    upcoming_tasks = upcoming_candidates[:3]
-
-    plan_items = []
-    if selected_motorcycle:
-        plan_qs = MaintenancePlanItem.objects.filter(motorcycle=selected_motorcycle, is_active=True)  # noqa: E501
-        for item in plan_qs:
-            remaining_km = None
-            if item.interval_km and item.last_done_km is not None:
-                remaining_km = (item.last_done_km + item.interval_km) - int(current_odometer_km or 0)
-
-            remaining_days = None
-            if item.interval_days and item.last_done_date is not None:
-                due_date = item.last_done_date + timedelta(days=item.interval_days)
-                remaining_days = (due_date - today).days
-
-            status = "ok"
-            if (remaining_km is not None and remaining_km <= 0) or (remaining_days is not None and remaining_days <= 0):
-                status = "overdue"
-            elif (remaining_km is not None and remaining_km <= 200) or (remaining_days is not None and remaining_days <= 7):
-                status = "due_soon"
-
-            plan_items.append(
-                {
-                    "type_label": item.get_maintenance_type_display(),
-                    "is_severe_duty_override": item.is_severe_duty_override,
-                    "pk": item.pk,
-                    "status": status,
-                    "remaining_km": remaining_km,
-                    "remaining_days": remaining_days,
-                }
-            )
+    upcoming_tasks = upcoming_candidates[:6]
 
     density = get_density(request)
     paged = paginate(request, records_qs, per_page=per_page_for_density(density))
@@ -227,7 +237,6 @@ def maintenance_list_view(request):
         "filters": {"motorcycle": motorcycle_id or ""},
         "status_cards": status_cards,
         "upcoming_tasks": upcoming_tasks,
-        "plan_items": plan_items,
         "selected_motorcycle": selected_motorcycle,
         "density": density,
     }

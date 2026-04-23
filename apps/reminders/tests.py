@@ -51,6 +51,21 @@ class ReminderTests(TestCase):
 
         reminder.full_clean()
 
+    def test_by_interval_rejects_km_interval_without_reference_km_even_with_valid_date_component(self):
+        reminder = Reminder(
+            motorcycle=self.motorcycle,
+            title="Revisao",
+            trigger_type=TriggerType.BY_INTERVAL,
+            trigger_value_km=3000,
+            trigger_value_days=180,
+            reference_date=date(2026, 4, 13),
+        )
+
+        with self.assertRaises(ValidationError) as ctx:
+            reminder.full_clean()
+
+        self.assertIn("reference_km", ctx.exception.message_dict)
+
     def test_reminders_list_is_owner_scoped(self):
         Reminder.objects.create(
             motorcycle=self.motorcycle,
@@ -199,7 +214,7 @@ class ReminderViewTests(TestCase):
 
         self.assertEqual(entry["evaluation"].status, "overdue")
 
-    def test_inactive_reminders_are_ordered_limited_and_scoped(self):
+    def test_inactive_reminders_are_ordered_paginated_and_scoped(self):
         base_time = timezone.now()
         for index in range(55):
             reminder = Reminder.objects.create(
@@ -227,10 +242,18 @@ class ReminderViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(inactive), 50)
+        self.assertEqual(response.context["inactive_page_obj"].paginator.count, 55)
         self.assertEqual(inactive[0].title, "Inativo 54")
         self.assertEqual(inactive[-1].title, "Inativo 05")
         self.assertNotIn("Inativo 04", [reminder.title for reminder in inactive])
         self.assertNotIn("Inativo de outro usuário", [reminder.title for reminder in inactive])
+
+        response = self.client.get(reverse("reminders:list"), {"inactive_page": 2})
+        inactive = list(response.context["inactive_reminders"])
+
+        self.assertEqual(len(inactive), 5)
+        self.assertEqual(inactive[0].title, "Inativo 04")
+        self.assertEqual(inactive[-1].title, "Inativo 00")
     def test_list_filters_by_search_status_and_motorcycle(self):
         second_motorcycle = Motorcycle.objects.create(
             owner=self.user, name="Moto Filtro", brand="Honda", model="ADV", year=2024

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from posixpath import normpath
 from urllib.error import URLError
-from urllib.parse import unquote, urlparse
+from urllib.parse import urlparse
 from urllib.request import urlopen
 
-from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
@@ -141,7 +141,7 @@ def _save_motorcycle_spec(*, motorcycle: Motorcycle, spec_payload: dict):
 def _create_plan_items_from_template(*, motorcycle: Motorcycle, template: MotorcycleTemplate):
     intervals = template.maintenance_intervals.all()
     for interval in intervals:
-        MaintenancePlanItem.objects.update_or_create(
+        plan_item, created = MaintenancePlanItem.objects.get_or_create(
             motorcycle=motorcycle,
             maintenance_type=interval.maintenance_type,
             is_severe_duty_override=interval.is_severe_duty_override,
@@ -154,6 +154,15 @@ def _create_plan_items_from_template(*, motorcycle: Motorcycle, template: Motorc
                 "is_active": True,
             },
         )
+        if not created:
+            plan_item.interval_km = interval.interval_km
+            plan_item.interval_days = interval.interval_days
+            plan_item.last_done_km = None
+            plan_item.last_done_date = None
+            plan_item.notes = interval.notes
+            plan_item.is_active = True
+        plan_item.full_clean()
+        plan_item.save()
 
 
 def _create_parts_from_template(*, owner, template: MotorcycleTemplate):
@@ -206,31 +215,19 @@ def _read_manual_content(source: str) -> tuple[bytes, str]:
             raise ValueError("arquivo remoto vazio")
         return payload, filename
 
-    if parsed.scheme == "file":
-        file_path_str = unquote(parsed.path)
-        if file_path_str.startswith("/") and len(file_path_str) > 2 and file_path_str[2] == ":":
-            file_path_str = file_path_str[1:]
-        file_path = Path(file_path_str)
-        if not file_path.exists() or not file_path.is_file():
-            raise OSError(f"arquivo interno nao encontrado: {file_path}")
-        return file_path.read_bytes(), file_path.name
+    if parsed.scheme:
+        raise ValueError("fonte de manual deve ser http(s) ou caminho interno relativo")
 
-    local_candidate = Path(source)
-    if local_candidate.is_file():
-        return local_candidate.read_bytes(), local_candidate.name
+    normalized = normpath(source.replace("\\", "/")).lstrip("/")
+    source_path = Path(source)
+    posix_path = PurePosixPath(source.replace("\\", "/"))
+    if source_path.is_absolute() or posix_path.is_absolute() or ".." in posix_path.parts or normalized in {"", "."}:
+        raise ValueError("caminho interno de manual invalido")
 
-    media_candidate = Path(settings.MEDIA_ROOT) / source
-    if media_candidate.is_file():
-        return media_candidate.read_bytes(), media_candidate.name
-
-    base_candidate = Path(settings.BASE_DIR) / source
-    if base_candidate.is_file():
-        return base_candidate.read_bytes(), base_candidate.name
-
-    if default_storage.exists(source):
-        with default_storage.open(source, "rb") as fp:
+    if default_storage.exists(normalized):
+        with default_storage.open(normalized, "rb") as fp:
             payload = fp.read()
-        filename = Path(source).name or "manual.pdf"
+        filename = Path(normalized).name or "manual.pdf"
         if not payload:
             raise ValueError("arquivo interno vazio")
         return payload, filename

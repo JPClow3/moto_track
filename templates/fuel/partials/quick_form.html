@@ -1,6 +1,6 @@
 {% load crispy_forms_tags %}
 
-<div class="fixed inset-0 z-50 grid place-items-end sm:place-items-center bg-inverse-surface/60 p-0 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="quick-fuel-title">
+<div class="fixed inset-0 z-50 grid place-items-end sm:place-items-center bg-inverse-surface/60 p-0 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="quick-fuel-title" data-quick-modal-backdrop>
   <div class="w-full sm:max-w-3xl max-h-[90vh] overflow-auto rounded-t-2xl sm:rounded-2xl bg-surface-lowest p-6 shadow-ambient" role="document">
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0">
@@ -41,7 +41,8 @@
       method="post"
       class="mt-6 data-form"
       enctype="multipart/form-data"
-      hx-post="{% url 'fuel:quick_create' %}"
+      action="{{ form_action_url }}"
+      hx-post="{{ form_action_url }}"
       hx-encoding="multipart/form-data"
       hx-target="#quick-form-root"
       hx-swap="innerHTML"

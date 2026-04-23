@@ -1,10 +1,10 @@
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Avg
 from django.shortcuts import redirect, render
 
 from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.exports import parse_date_param
-from apps.core.pagination import paginate
 from apps.core.severity import SEVERITY_LABELS
 from apps.core.ui import get_density, per_page_for_density
 from apps.reports.export import detailed_csv_response, sale_pdf_response
@@ -16,6 +16,7 @@ from apps.reports.services import (
     monthly_real_costs,
     period_comparisons,
     timeline_events,
+    timeline_events_count,
 )
 
 
@@ -71,7 +72,8 @@ def report_timeline_view(request):
     source = (request.GET.get("source") or "").strip()
     severity = (request.GET.get("severity") or "").strip()
     density = get_density(request)
-    events = timeline_events(
+    per_page = per_page_for_density(density)
+    total_events = timeline_events_count(
         user=request.user,
         motorcycle=motorcycle,
         start=start,
@@ -79,13 +81,23 @@ def report_timeline_view(request):
         source=source,
         severity=severity,
     )
-    paged = paginate(request, events, per_page=per_page_for_density(density))
+    page_obj = Paginator(range(total_events), per_page).get_page(request.GET.get("page") or 1)
+    events = timeline_events(
+        user=request.user,
+        motorcycle=motorcycle,
+        start=start,
+        end=end,
+        source=source,
+        severity=severity,
+        limit=per_page,
+        offset=(page_obj.number - 1) * per_page,
+    )
     return render(
         request,
         "reports/timeline.html",
         {
-            "events": paged.items,
-            "page_obj": paged.page,
+            "events": events,
+            "page_obj": page_obj,
             "filters": {"start": request.GET.get("start") or "", "end": request.GET.get("end") or "", "source": source, "severity": severity},
             "density": density,
         },

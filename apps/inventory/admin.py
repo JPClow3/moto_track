@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from apps.core.admin import UserScopedAdmin
+
 from .models import InventoryItem
 
 

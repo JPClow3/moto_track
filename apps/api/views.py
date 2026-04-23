@@ -32,9 +32,20 @@ def _require_token(request, scope: str):
     return token, None
 
 
+def _pagination_params(request):
+    try:
+        limit = int(request.GET.get("limit", 50) or 50)
+        offset = int(request.GET.get("offset", 0) or 0)
+    except (TypeError, ValueError):
+        return None, JsonResponse({"detail": "Parametros de paginacao invalidos."}, status=400)
+    return (min(max(limit, 1), 100), max(offset, 0)), None
+
+
 def _page(request, qs, serializer):
-    limit = min(max(int(request.GET.get("limit", 50) or 50), 1), 100)
-    offset = max(int(request.GET.get("offset", 0) or 0), 0)
+    params, error = _pagination_params(request)
+    if error:
+        return error
+    limit, offset = params
     total = qs.count()
     return JsonResponse(
         {
@@ -127,13 +138,42 @@ def expenses(request):
     token, error = _require_token(request, "expenses:read")
     if error:
         return error
-    fees = [
-        {"id": f"fee-{fee.pk}", "motorcycle": fee.motorcycle.name, "kind": "annual_fee", "title": fee.get_fee_type_display(), "amount": str(fee.amount)}
-        for fee in AnnualFee.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related("motorcycle")
-    ]
-    policies = [
-        {"id": f"policy-{policy.pk}", "motorcycle": policy.motorcycle.name, "kind": "insurance", "title": policy.provider, "amount": str(policy.premium)}
-        for policy in InsurancePolicy.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related("motorcycle")
-    ]
-    rows = fees + policies
-    return JsonResponse({"count": len(rows), "limit": len(rows), "offset": 0, "results": rows})
+    params, pagination_error = _pagination_params(request)
+    if pagination_error:
+        return pagination_error
+    limit, offset = params
+
+    fees_qs = AnnualFee.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related("motorcycle")
+    policies_qs = InsurancePolicy.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related("motorcycle")
+    fees_count = fees_qs.count()
+    policies_count = policies_qs.count()
+    total = fees_count + policies_count
+
+    rows = []
+    if offset < fees_count:
+        for fee in fees_qs.order_by("-due_date", "pk")[offset : offset + limit]:
+            rows.append(
+                {
+                    "id": f"fee-{fee.pk}",
+                    "motorcycle": fee.motorcycle.name,
+                    "kind": "annual_fee",
+                    "title": fee.get_fee_type_display(),
+                    "amount": str(fee.amount),
+                }
+            )
+
+    remaining = limit - len(rows)
+    policy_offset = max(offset - fees_count, 0)
+    if remaining > 0:
+        for policy in policies_qs.order_by("-coverage_end", "pk")[policy_offset : policy_offset + remaining]:
+            rows.append(
+                {
+                    "id": f"policy-{policy.pk}",
+                    "motorcycle": policy.motorcycle.name,
+                    "kind": "insurance",
+                    "title": policy.provider,
+                    "amount": str(policy.premium),
+                }
+            )
+
+    return JsonResponse({"count": total, "limit": limit, "offset": offset, "results": rows})

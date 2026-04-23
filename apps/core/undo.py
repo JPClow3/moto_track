@@ -6,13 +6,32 @@ from datetime import timedelta
 from django.apps import apps
 from django.utils import timezone
 
-
 SESSION_KEY = "undo_actions"
+
+
+def _parse_expires_at(value: str):
+    expires_at = timezone.datetime.fromisoformat(value)
+    if timezone.is_naive(expires_at):
+        expires_at = timezone.make_aware(expires_at)
+    return expires_at
+
+
+def _purge_expired_actions(actions: dict, *, now=None) -> dict:
+    now = now or timezone.now()
+    kept = {}
+    for token, payload in actions.items():
+        try:
+            expires_at = _parse_expires_at(payload["expires_at"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if expires_at >= now:
+            kept[token] = payload
+    return kept
 
 
 def create_undo_token(request, *, model_label: str, object_id: int, label: str) -> str:
     token = secrets.token_urlsafe(12)
-    actions = request.session.get(SESSION_KEY, {})
+    actions = _purge_expired_actions(request.session.get(SESSION_KEY, {}))
     actions[token] = {
         "model": model_label,
         "object_id": int(object_id),
@@ -26,7 +45,7 @@ def create_undo_token(request, *, model_label: str, object_id: int, label: str) 
 
 
 def consume_undo_token(request, *, token: str):
-    actions = request.session.get(SESSION_KEY, {})
+    actions = _purge_expired_actions(request.session.get(SESSION_KEY, {}))
     payload = actions.pop(token, None)
     request.session[SESSION_KEY] = actions
     if request.session.get("last_undo_token") == token:
@@ -36,9 +55,7 @@ def consume_undo_token(request, *, token: str):
     if not payload:
         return None, "Ação para desfazer não encontrada."
 
-    expires_at = timezone.datetime.fromisoformat(payload["expires_at"])
-    if timezone.is_naive(expires_at):
-        expires_at = timezone.make_aware(expires_at)
+    expires_at = _parse_expires_at(payload["expires_at"])
     if expires_at < timezone.now():
         return None, "A ação para desfazer expirou."
 

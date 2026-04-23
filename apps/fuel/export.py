@@ -109,7 +109,7 @@ def build_pdf_bytes(qs: QuerySet[FuelRecord]) -> bytes:
     story.append(Spacer(1, 12))
 
     rows = [["Data", "Moto", "Km", "Litros", "Preço/L", "Total", "Posto", "Tipo", "Tanque", "Comprovante"]]
-    for record in records[:80]:
+    for record in records:
         rows.append(
             [
                 record.date.strftime("%d/%m/%Y"),
@@ -182,4 +182,3 @@ def build_export(
         attachment_content_type=ct,
     )
     return export_response(content=content, filename=filename, content_type=ct)
-

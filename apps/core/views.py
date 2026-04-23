@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
@@ -21,20 +22,20 @@ from apps.core.forms import OdometerOverrideForm, OnboardingForm, configure_form
 from apps.core.services.dashboard import (
     get_active_reminders,
     get_catalog_links,
+    get_chart_consumption_trend,
+    get_chart_spending_distribution,
     get_dashboard_cards,
     get_monthly_sparkline,
     get_quick_actions,
     get_status_cards,
     get_tire_cards,
-    get_chart_spending_distribution,
-    get_chart_consumption_trend,
 )
-from apps.reports.services import health_score, timeline_events
 from apps.core.undo import consume_undo_token
 from apps.fuel.models import FuelRecord
 from apps.garage.models import Motorcycle, MotorcycleTemplate
 from apps.garage.services import apply_template_to_motorcycle, variant_observation_text
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
+from apps.reports.services import health_score, timeline_events
 from apps.tires.models import TirePosition, TireRecord
 
 
@@ -142,7 +143,7 @@ def dashboard_view(request):
         "chart_spending_distribution": get_chart_spending_distribution(motorcycle),
         "chart_consumption_trend": get_chart_consumption_trend(motorcycle),
         "health": health_score(motorcycle=motorcycle),
-        "recent_events": timeline_events(user=request.user, motorcycle=motorcycle)[:5],
+        "recent_events": timeline_events(user=request.user, motorcycle=motorcycle, limit=5),
     }
     return render(request, "core/dashboard.html", context)
 
@@ -232,7 +233,12 @@ def undo_action_view(request, token: str):
         messages.error(request, "Registro nao encontrado para desfazer.")
         return redirect(request.POST.get("next") or "dashboard")
 
-    owner = getattr(getattr(obj, "motorcycle", None), "owner", None)
+    try:
+        motorcycle = getattr(obj, "motorcycle", None)
+        owner = getattr(motorcycle, "owner", None)
+    except ObjectDoesNotExist:
+        messages.error(request, "Registro nao encontrado para desfazer.")
+        return redirect(request.POST.get("next") or "dashboard")
     if owner != request.user:
         messages.error(request, "Voce nao pode desfazer este registro.")
         return redirect("dashboard")
@@ -247,6 +253,9 @@ def undo_action_view(request, token: str):
 def onboarding_view(request):
     if get_active_motorcycle(request):
         return redirect("dashboard")
+    if Motorcycle.objects.filter(owner=request.user, is_active=False).exists():
+        messages.info(request, "Voce ja tem moto arquivada. Reative uma moto existente ou crie uma nova pela garagem.")
+        return redirect("garage:list")
 
     if request.method == "POST":
         form = OnboardingForm(request.POST)
@@ -318,10 +327,54 @@ def onboarding_view(request):
         form = OnboardingForm()
 
     configure_form_accessibility(form)
+
+    step_field_names = {
+        1: ["template", "template_not_listed"],
+        2: ["motorcycle_name", "current_odometer_km", "brand", "model", "year", "template_variant", "riding_profile"],
+        3: OnboardingForm.SPEC_FIELD_NAMES,
+        4: [
+            "fuel_date",
+            "fuel_odometer_km",
+            "fuel_liters",
+            "fuel_total_price",
+            "service_date",
+            "service_odometer_km",
+            "service_cost",
+            "tire_installed_at",
+            "tire_odometer_km",
+            "front_tire",
+            "rear_tire",
+        ],
+    }
+    step_errors = {step: any(form.errors.get(name) for name in names) for step, names in step_field_names.items()}
+    first_error_step = next((step for step in [1, 2, 3, 4] if step_errors[step]), None)
+
+    def normalize(value):
+        return "" if value is None else str(value).strip()
+
+    spec_rows = []
+    for field_name in OnboardingForm.SPEC_FIELD_NAMES:
+        bound_field = form[field_name]
+        prefilled_value = bound_field.field.widget.attrs.get("data-prefilled-value", "")
+        current_value = normalize(bound_field.value())
+        original_value = normalize(prefilled_value)
+        spec_rows.append(
+            {
+                "field": bound_field,
+                "is_prefilled": bool(original_value) and current_value == original_value,
+                "is_override": bool(original_value) and current_value != original_value,
+            }
+        )
+
     context = {
         "form": form,
         "selected_template": form.selected_template,
-        "spec_fields": [form[field_name] for field_name in OnboardingForm.SPEC_FIELD_NAMES],
+        "spec_fields": spec_rows,
+        "step1_has_errors": step_errors[1],
+        "step2_has_errors": step_errors[2],
+        "step3_has_errors": step_errors[3],
+        "step4_has_errors": step_errors[4],
+        "first_error_step": first_error_step or 1,
     }
     return render(request, "core/onboarding.html", context)
 
@@ -341,9 +394,9 @@ def push_subscribe_view(request):
 
         from apps.core.models import PushSubscription
         sub, created = PushSubscription.objects.update_or_create(
+            owner=request.user,
             endpoint=endpoint,
             defaults={
-                "owner": request.user,
                 "p256dh": p256dh,
                 "auth": auth
             }

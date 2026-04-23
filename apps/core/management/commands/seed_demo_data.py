@@ -1,9 +1,9 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 
 from apps.documents.models import DocumentType, MotorcycleDocument

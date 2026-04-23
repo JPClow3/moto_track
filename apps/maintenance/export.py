@@ -18,7 +18,7 @@ def _amount(val: Money | Decimal | None) -> Decimal | None:
     if val is None:
         return None
     if hasattr(val, "amount"):
-        return getattr(val, "amount")
+        return val.amount
     return val
 
 
@@ -86,4 +86,3 @@ def build_export(*, user: User, start: date | None, end: date | None, fmt: str, 
         attachment_content_type=ct,
     )
     return export_response(content=content, filename=filename, content_type=ct)
-
