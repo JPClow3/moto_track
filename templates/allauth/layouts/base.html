@@ -16,8 +16,11 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="{{ request.build_absolute_uri }}" />
   <meta name="twitter:card" content="summary" />
-  <link rel="icon" type="image/svg+xml" href="{% static 'brand/favicon.svg' %}" />
-  <link rel="apple-touch-icon" href="{% static 'brand/app-icon.svg' %}" />
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/moto-track-icon.png' %}" />
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/moto-track-icon.png' %}" />
+  <link rel="icon" href="{% static 'brand/favicon.ico' %}" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'brand/favicon-32x32.png' %}" />
+  <link rel="apple-touch-icon" sizes="512x512" href="{% static 'brand/moto-track-icon.png' %}" />
   <title>
     {% block head_title %}
     {% endblock head_title %}
@@ -42,11 +45,10 @@
   {% block body %}
     <main id="main-content" class="relative min-h-screen flex flex-col md:flex-row" tabindex="-1">
       <section class="hidden md:flex md:w-1/2 p-12 flex-col justify-between">
-        <header aria-label="Identidade do aplicativo" class="flex items-center gap-3">
-          <span class="h-11 w-11 grid place-items-center rounded-2xl bg-surface-lowest shadow-ambient text-primary" aria-hidden="true">
-            <i data-lucide="gauge"></i>
-          </span>
-          <a class="font-extrabold text-3xl tracking-tight text-on-surface" href="{% url 'dashboard' %}">Moto Track</a>
+        <header aria-label="Identidade do aplicativo">
+          <a class="inline-flex max-w-full" href="{% url 'dashboard' %}" aria-label="Moto Track">
+            <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-12 w-auto max-w-[18rem]" />
+          </a>
         </header>
 
         <div class="max-w-xl">
@@ -87,11 +89,10 @@
 
       <section class="flex-1 flex items-center justify-center p-6 md:p-12">
         <div class="w-full max-w-md rounded-2xl bg-surface-lowest/70 backdrop-blur-2xl p-8 md:p-10 shadow-ambient ring-1 ring-outline-variant/20">
-          <div class="md:hidden flex items-center justify-center gap-3 mb-8">
-            <span class="h-10 w-10 grid place-items-center rounded-2xl bg-surface-lowest shadow-ambient text-primary" aria-hidden="true">
-              <i data-lucide="gauge"></i>
-            </span>
-            <a class="font-extrabold text-2xl tracking-tight text-on-surface" href="{% url 'dashboard' %}">Moto Track</a>
+          <div class="md:hidden flex items-center justify-center mb-8">
+            <a class="inline-flex max-w-full" href="{% url 'dashboard' %}" aria-label="Moto Track">
+              <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-10 w-auto max-w-[15rem]" />
+            </a>
           </div>
 
           <header class="mb-8 text-center md:text-left">

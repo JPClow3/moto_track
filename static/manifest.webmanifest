@@ -7,15 +7,15 @@
   "theme_color": "#485e8d",
   "icons": [
     {
-      "src": "/static/brand/app-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/static/brand/moto-track-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/static/brand/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/static/brand/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
       "purpose": "any"
     }
   ]

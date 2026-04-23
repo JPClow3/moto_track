@@ -185,6 +185,35 @@ class MaintenanceModelTests(TestCase):
         self.assertEqual(chain_tasks[0]["source"], "history")
         self.assertEqual(chain_tasks[0]["source_label"], "Baseado no histórico")
 
+    def test_upcoming_tasks_keeps_history_fallback_when_plan_has_no_baseline(self):
+        MaintenancePlanItem.objects.create(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+            interval_km=1000,
+            last_done_km=None,
+            last_done_date=None,
+            is_active=True,
+        )
+        MaintenanceRecord.objects.create(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+            date=date(2026, 1, 1),
+            odometer_km=100,
+            cost=Decimal("0.00"),
+            interval_km=300,
+        )
+        self.motorcycle.current_odometer_km = 200
+        self.motorcycle.save(update_fields=["current_odometer_km"])
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("maintenance:list"), HTTP_HOST="localhost")
+
+        self.assertEqual(response.status_code, 200)
+        oil_tasks = [task for task in response.context["upcoming_tasks"] if task["maintenance_type"] == MaintenanceType.OIL_CHANGE]
+        self.assertEqual(len(oil_tasks), 1)
+        self.assertEqual(oil_tasks[0]["source"], "history")
+        self.assertEqual(oil_tasks[0]["source_label"], "Baseado no histórico")
+
     def test_plan_item_allows_normal_and_severe_for_same_type(self):
         MaintenancePlanItem.objects.create(
             motorcycle=self.motorcycle,

@@ -181,12 +181,18 @@ UNFOLD = {
     "SITE_SUBHEADER": "Gestao operacional",
     "SITE_URL": "/",
     "SITE_SYMBOL": "speed",
-    "SITE_ICON": _admin_static("brand/logo.svg"),
+    "SITE_ICON": _admin_static("brand/moto-track-icon.png"),
     "SITE_FAVICONS": [
         {
             "rel": "icon",
-            "href": _admin_static("brand/favicon.svg"),
-            "type": "image/svg+xml",
+            "href": _admin_static("brand/favicon.ico"),
+            "type": "image/x-icon",
+        },
+        {
+            "rel": "icon",
+            "href": _admin_static("brand/favicon-32x32.png"),
+            "type": "image/png",
+            "sizes": "32x32",
         }
     ],
     "STYLES": [

@@ -1,6 +1,7 @@
 import shutil
 import tempfile
 from datetime import date, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 from unittest.mock import patch
 from urllib.error import URLError
@@ -275,6 +276,29 @@ class CoreViewsTests(TestCase):
         actions = self.client.session[UNDO_SESSION_KEY]
         self.assertEqual(list(actions.keys()), ["fresh"])
         self.assertNotIn("last_undo_token", self.client.session)
+
+    def test_undo_token_accepts_utc_z_suffix_expiration(self):
+        self.client.force_login(self.user)
+        record = FuelRecord.objects.filter(motorcycle=self.motorcycle).first()
+        self.assertIsNotNone(record)
+        expires_at = (timezone.now().astimezone(dt_timezone.utc) + timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
+        session = self.client.session
+        session[UNDO_SESSION_KEY] = {
+            "z-token": {
+                "model": "fuel.FuelRecord",
+                "object_id": record.pk,
+                "label": "Valido Z",
+                "expires_at": expires_at,
+            }
+        }
+        session["last_undo_token"] = "z-token"
+        session.save()
+
+        response = self.client.post(reverse("undo_action", args=["z-token"]), {"next": reverse("dashboard")})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(FuelRecord.objects.filter(pk=record.pk).exists())
+        self.assertNotIn("z-token", self.client.session[UNDO_SESSION_KEY])
 
     def test_sitemap_uses_existing_url_names(self):
         sitemap = StaticViewSitemap()

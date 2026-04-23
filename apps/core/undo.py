@@ -5,12 +5,15 @@ from datetime import timedelta
 
 from django.apps import apps
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 SESSION_KEY = "undo_actions"
 
 
 def _parse_expires_at(value: str):
-    expires_at = timezone.datetime.fromisoformat(value)
+    expires_at = parse_datetime(value)
+    if expires_at is None:
+        raise ValueError("Formato de data inválido.")
     if timezone.is_naive(expires_at):
         expires_at = timezone.make_aware(expires_at)
     return expires_at

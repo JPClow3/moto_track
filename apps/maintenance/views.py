@@ -150,7 +150,6 @@ def maintenance_list_view(request):
     if selected_motorcycle:
         plan_qs = MaintenancePlanItem.objects.filter(motorcycle=selected_motorcycle, is_active=True)
         for item in plan_qs:
-            active_plan_types.add(item.maintenance_type)
             remaining_km = None
             if item.interval_km and item.last_done_km is not None:
                 remaining_km = (item.last_done_km + item.interval_km) - int(current_odometer_km or 0)
@@ -163,6 +162,7 @@ def maintenance_list_view(request):
             if remaining_km is None and remaining_days is None:
                 continue
 
+            active_plan_types.add(item.maintenance_type)
             upcoming_candidates.append(
                 {
                     "label": item.get_maintenance_type_display(),

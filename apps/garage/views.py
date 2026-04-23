@@ -3,7 +3,6 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.forms import configure_form_accessibility
-from apps.garage.services import recompute_motorcycle_odometer
 
 from .forms import MotorcycleForm, MotorcycleSpecForm
 from .models import Motorcycle, MotorcycleSpec
@@ -51,9 +50,7 @@ def garage_update_view(request, pk):
     if request.method == "POST":
         form = MotorcycleForm(request.POST, request.FILES, instance=motorcycle)
         if form.is_valid():
-            updated = form.save()
-            if "odometer_override_km" in form.changed_data:
-                recompute_motorcycle_odometer(updated.pk)
+            form.save()
             messages.success(request, f"Moto {motorcycle.name} atualizada com sucesso.")
             return redirect("garage:list")
     else:

@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.db import DatabaseError, transaction
-from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, QuerySet, StdDev, Sum
+from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q, QuerySet, StdDev, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from djmoney.money import Money
@@ -455,17 +455,18 @@ def compute_station_rankings(records: QuerySet[FuelRecord]) -> list[StationRanki
         F("price_per_liter") * F("liters"),
         output_field=DecimalField(max_digits=18, decimal_places=6),
     )
+    weighted_filter = Q(price_per_liter__isnull=False, liters__isnull=False, liters__gt=0)
     try:
         aggregated = (
             records.annotate(station_label=Coalesce("station__name", "station_name"))
             .exclude(station_label="")
             .values("station_label")
             .annotate(
-                samples=Count("id"),
+                samples=Count("price_per_liter"),
                 avg_price=Avg("price_per_liter"),
                 std_price=StdDev("price_per_liter"),
-                weighted_sum=Sum(weighted_expression),
-                liters_sum=Sum("liters"),
+                weighted_sum=Sum(weighted_expression, filter=weighted_filter),
+                liters_sum=Sum("liters", filter=weighted_filter),
             )
         )
         rows: list[StationRankingRow] = []

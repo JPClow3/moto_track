@@ -14,15 +14,18 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="{{ request.build_absolute_uri }}" />
   <meta name="twitter:card" content="summary" />
-  <link rel="icon" type="image/svg+xml" href="{% static 'brand/favicon.svg' %}" />
-  <link rel="apple-touch-icon" href="{% static 'brand/app-icon.svg' %}" />
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/moto-track-icon.png' %}" />
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/moto-track-icon.png' %}" />
+  <link rel="icon" href="{% static 'brand/favicon.ico' %}" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'brand/favicon-32x32.png' %}" />
+  <link rel="apple-touch-icon" sizes="512x512" href="{% static 'brand/moto-track-icon.png' %}" />
   <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
-  <script src="{% static 'admin/js/vendor/jquery/jquery.js' %}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
   <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
@@ -42,8 +45,10 @@
   <div class="min-h-screen lg:grid lg:grid-cols-[18rem_1fr]">
     <aside class="hidden lg:flex lg:flex-col lg:gap-2 lg:bg-surface-low lg:px-4 lg:py-5 lg:sticky lg:top-0 lg:h-screen" aria-label="Navegação principal">
       <div class="px-2 pb-3">
-        <div class="text-primary font-extrabold tracking-tight text-xl">Moto Track</div>
-        <p class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mt-1">Gestão de precisão</p>
+        <a class="inline-flex max-w-full" href="{% url 'dashboard' %}" aria-label="Moto Track">
+          <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-11 w-auto max-w-full" />
+        </a>
+        <p class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mt-2">Gestão de precisão</p>
       </div>
 
       <nav class="flex-1">

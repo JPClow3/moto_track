@@ -3,9 +3,13 @@
 from django.db import migrations, models
 
 
-def delete_intervalless_plan_items(apps, schema_editor):
+def normalize_intervalless_plan_items(apps, schema_editor):
     MaintenancePlanItem = apps.get_model("maintenance", "MaintenancePlanItem")
-    MaintenancePlanItem.objects.filter(interval_km__isnull=True, interval_days__isnull=True).delete()
+    # Preserve legacy rows while making them valid for the new constraint.
+    MaintenancePlanItem.objects.filter(interval_km__isnull=True, interval_days__isnull=True).update(
+        interval_days=36500,
+        is_active=False,
+    )
 
 
 class Migration(migrations.Migration):
@@ -15,7 +19,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(delete_intervalless_plan_items, migrations.RunPython.noop),
+        migrations.RunPython(normalize_intervalless_plan_items, migrations.RunPython.noop),
         migrations.AddConstraint(
             model_name="maintenanceplanitem",
             constraint=models.CheckConstraint(
