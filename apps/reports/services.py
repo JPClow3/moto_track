@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import Max, Min, Sum
+from django.db.models import Max, Min, Prefetch, Q, Sum
 from django.urls import reverse
 from django.utils import timezone
 
@@ -16,11 +16,11 @@ from apps.expenses.models import AnnualFee, InsurancePolicy
 from apps.fuel.models import FuelRecord
 from apps.fuel.services import (
     compute_average_consumption_km_per_liter,
-    detect_fuel_anomalies,
+    detect_fuel_anomalies_from_history,
     estimate_next_fill_up,
-    review_suggestion_for_motorcycle,
+    review_suggestion_from_history,
 )
-from apps.maintenance.models import MaintenancePlanItem, MaintenanceRecord
+from apps.maintenance.models import MaintenancePlanItem, MaintenanceRecord, MaintenanceType
 from apps.reminders.models import Reminder
 from apps.reminders.services import ReminderStatus, evaluate_reminder
 from apps.tires.models import TirePressureRecord, TireRecord
@@ -425,7 +425,7 @@ def sale_report_data(*, motorcycle) -> SaleReportData:
         tire_history=_tire_history(motorcycle=motorcycle),
         pressure_history=_pressure_history(motorcycle=motorcycle),
         documents=_document_summary(motorcycle=motorcycle),
-        recent_events=timeline_events(user=motorcycle.owner, motorcycle=motorcycle)[:12],
+        recent_events=timeline_events(user=motorcycle.owner, motorcycle=motorcycle, limit=12),
     )
 
 
@@ -492,24 +492,49 @@ def maintenance_recommendations(*, motorcycle, today: date | None = None) -> lis
 def intelligent_alerts(*, user, motorcycle=None, severity: str | None = None) -> list[Alert]:
     today = timezone.localdate()
     alerts: list[Alert] = []
-    motorcycles = [motorcycle] if motorcycle else []
-    if not motorcycles:
-        from apps.garage.models import Motorcycle
+    from apps.garage.models import Motorcycle
 
-        motorcycles = list(Motorcycle.objects.filter(owner=user, is_active=True))
+    motorcycles_qs = Motorcycle.objects.filter(owner=user, is_active=True).select_related("fuel_review_preference")
+    if motorcycle:
+        motorcycles_qs = motorcycles_qs.filter(pk=motorcycle.pk)
+    motorcycles = list(
+        motorcycles_qs.prefetch_related(
+            Prefetch("reminders", queryset=Reminder.objects.filter(is_active=True), to_attr="_alert_reminders"),
+            Prefetch(
+                "fuel_records",
+                queryset=FuelRecord.objects.select_related("station", "fuel_grade").order_by("date", "odometer_km"),
+                to_attr="_alert_fuel_records",
+            ),
+            Prefetch(
+                "maintenance_records",
+                queryset=MaintenanceRecord.objects.filter(maintenance_type=MaintenanceType.REVIEW).order_by("date", "odometer_km"),
+                to_attr="_alert_review_records",
+            ),
+            Prefetch("tire_records", queryset=TireRecord.objects.filter(is_active=True), to_attr="_alert_tires"),
+            Prefetch(
+                "documents",
+                queryset=MotorcycleDocument.objects.filter(valid_until__isnull=False),
+                to_attr="_alert_documents",
+            ),
+            Prefetch("annual_fees", queryset=AnnualFee.objects.filter(paid_date__isnull=True), to_attr="_alert_fees"),
+            Prefetch("insurance_policies", queryset=InsurancePolicy.objects.all(), to_attr="_alert_policies"),
+        )
+    )
 
     for bike in motorcycles:
         current = int(bike.current_odometer_km or 0)
-        for reminder in Reminder.objects.filter(motorcycle=bike, is_active=True):
+        for reminder in getattr(bike, "_alert_reminders", []):
             evaluation = evaluate_reminder(reminder, current_odometer_km=current, today=today)
             if evaluation.status == ReminderStatus.OVERDUE:
                 alerts.append(Alert(reminder.title, "Lembrete vencido.", Severity.CRITICAL, "reminder", evaluation.due_date))
             elif evaluation.status == ReminderStatus.DUE_SOON:
                 alerts.append(Alert(reminder.title, "Lembrete próximo do vencimento.", Severity.WARNING, "reminder", evaluation.due_date))
 
-        for rec in FuelRecord.objects.filter(motorcycle=bike).order_by("-date", "-odometer_km")[:1]:
-            warnings = detect_fuel_anomalies(
-                history_qs=FuelRecord.objects.filter(motorcycle=bike).exclude(pk=rec.pk),
+        fuel_history = list(getattr(bike, "_alert_fuel_records", []))
+        latest_fuel = fuel_history[-1:] if fuel_history else []
+        for rec in latest_fuel:
+            warnings = detect_fuel_anomalies_from_history(
+                history_records=[item for item in fuel_history if item.pk != rec.pk],
                 odometer_km=rec.odometer_km,
                 liters=rec.liters,
                 price_per_liter=rec.price_per_liter,
@@ -517,7 +542,6 @@ def intelligent_alerts(*, user, motorcycle=None, severity: str | None = None) ->
             for warning in warnings:
                 alerts.append(Alert("Qualidade do abastecimento", warning, Severity.INFO, "fuel", rec.date))
 
-        fuel_history = FuelRecord.objects.filter(motorcycle=bike).order_by("date", "odometer_km")
         next_fill = estimate_next_fill_up(fuel_history)
         if next_fill and next_fill.remaining_km <= 200:
             alerts.append(
@@ -531,7 +555,11 @@ def intelligent_alerts(*, user, motorcycle=None, severity: str | None = None) ->
                 )
             )
 
-        review = review_suggestion_for_motorcycle(bike)
+        review = review_suggestion_from_history(
+            motorcycle=bike,
+            fuel_records=fuel_history,
+            review_records=getattr(bike, "_alert_review_records", []),
+        )
         if review.is_due:
             alerts.append(
                 Alert(
@@ -544,27 +572,27 @@ def intelligent_alerts(*, user, motorcycle=None, severity: str | None = None) ->
                 )
             )
 
-        for tire in TireRecord.objects.filter(motorcycle=bike, is_active=True):
+        for tire in getattr(bike, "_alert_tires", []):
             if int(tire.wear_percent or 0) >= 85:
                 alerts.append(Alert(f"Pneu {tire.get_position_display()}", "Desgaste crítico.", Severity.CRITICAL, "tires", tire.installed_at))
             elif int(tire.wear_percent or 0) >= 70:
                 alerts.append(Alert(f"Pneu {tire.get_position_display()}", "Desgaste pede atenção.", Severity.WARNING, "tires", tire.installed_at))
 
-        for doc in MotorcycleDocument.objects.filter(motorcycle=bike, valid_until__isnull=False):
+        for doc in getattr(bike, "_alert_documents", []):
             remaining = (doc.valid_until - today).days
             if remaining < 0:
                 alerts.append(Alert(doc.name, "Documento vencido.", Severity.CRITICAL, "documents", doc.valid_until))
             elif remaining <= 30:
                 alerts.append(Alert(doc.name, "Documento vence em até 30 dias.", Severity.WARNING, "documents", doc.valid_until))
 
-        for fee in AnnualFee.objects.filter(motorcycle=bike, paid_date__isnull=True):
+        for fee in getattr(bike, "_alert_fees", []):
             remaining = (fee.due_date - today).days
             if remaining < 0:
                 alerts.append(Alert(str(fee), "Taxa vencida.", Severity.CRITICAL, "expenses", fee.due_date))
             elif remaining <= int(fee.notify_before_days or 30):
                 alerts.append(Alert(str(fee), "Taxa próxima do vencimento.", Severity.WARNING, "expenses", fee.due_date))
 
-        for policy in InsurancePolicy.objects.filter(motorcycle=bike):
+        for policy in getattr(bike, "_alert_policies", []):
             remaining = (policy.coverage_end - today).days
             if remaining < 0:
                 alerts.append(Alert(str(policy), "Seguro vencido.", Severity.CRITICAL, "expenses", policy.coverage_end))
@@ -576,43 +604,232 @@ def intelligent_alerts(*, user, motorcycle=None, severity: str | None = None) ->
     return sorted(alerts, key=lambda a: (a.priority, a.date or today, a.title))
 
 
-def timeline_events(*, user, motorcycle=None, start: date | None = None, end: date | None = None, source: str = "", severity: str = "") -> list[TimelineEvent]:
+def timeline_events(
+    *,
+    user,
+    motorcycle=None,
+    start: date | None = None,
+    end: date | None = None,
+    source: str = "",
+    severity: str = "",
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[TimelineEvent]:
     events: list[TimelineEvent] = []
     filters = _user_motorcycle_filter(user, motorcycle)
+    query_window = (offset + limit) if limit is not None else None
+    today = timezone.localdate()
 
-    def in_range(value: date) -> bool:
-        return (start is None or value >= start) and (end is None or value <= end)
+    def bounded(qs, *order):
+        qs = qs.order_by(*order)
+        if query_window is not None:
+            qs = qs[:query_window]
+        return qs
 
-    for r in FuelRecord.objects.filter(**filters).select_related("motorcycle", "station"):
-        if in_range(r.date):
+    if not source or source == "fuel":
+        qs = FuelRecord.objects.filter(**filters).select_related("motorcycle", "station")
+        if start:
+            qs = qs.filter(date__gte=start)
+        if end:
+            qs = qs.filter(date__lte=end)
+        if severity and severity != Severity.INFO:
+            qs = qs.none()
+        for r in bounded(qs, "-date", "-odometer_km", "-pk"):
             events.append(TimelineEvent(r.date, "fuel", "Abastecimento", r.station_name or "Abastecimento", f"{r.liters} L - {r.odometer_km} km", money_amount(r.total_price), r.odometer_km, Severity.INFO, reverse("fuel:list")))
-    for r in MaintenanceRecord.objects.filter(**filters).select_related("motorcycle"):
-        if in_range(r.date):
+    if not source or source == "maintenance":
+        qs = MaintenanceRecord.objects.filter(**filters).select_related("motorcycle")
+        if start:
+            qs = qs.filter(date__gte=start)
+        if end:
+            qs = qs.filter(date__lte=end)
+        if severity == Severity.SUCCESS:
+            qs = qs.filter(Q(interval_km__isnull=False) | Q(interval_days__isnull=False))
+        elif severity == Severity.INFO:
+            qs = qs.filter(interval_km__isnull=True, interval_days__isnull=True)
+        elif severity:
+            qs = qs.none()
+        for r in bounded(qs, "-date", "-odometer_km", "-pk"):
             sev = Severity.INFO if not (r.interval_km or r.interval_days) else Severity.SUCCESS
             events.append(TimelineEvent(r.date, "maintenance", "Manutenção", r.get_maintenance_type_display(), f"{r.odometer_km} km", money_amount(r.cost), r.odometer_km, sev, reverse("maintenance:list")))
-    for r in TireRecord.objects.filter(**filters).select_related("motorcycle"):
-        if in_range(r.installed_at):
+    if not source or source == "tires":
+        qs = TireRecord.objects.filter(**filters).select_related("motorcycle")
+        if start:
+            qs = qs.filter(installed_at__gte=start)
+        if end:
+            qs = qs.filter(installed_at__lte=end)
+        if severity == Severity.WARNING:
+            qs = qs.filter(wear_percent__gte=70)
+        elif severity == Severity.INFO:
+            qs = qs.filter(Q(wear_percent__lt=70) | Q(wear_percent__isnull=True))
+        elif severity:
+            qs = qs.none()
+        for r in bounded(qs, "-installed_at", "-installed_odometer_km", "-pk"):
             sev = Severity.WARNING if int(r.wear_percent or 0) >= 70 else Severity.INFO
             events.append(TimelineEvent(r.installed_at, "tires", "Pneu", f"{r.get_position_display()} - {r.brand_model}", f"{r.installed_odometer_km} km", money_amount(r.cost), r.installed_odometer_km, sev, reverse("tires:list")))
-    for d in MotorcycleDocument.objects.filter(**filters).select_related("motorcycle"):
-        event_date = d.valid_until or d.created_at.date()
-        if in_range(event_date):
-            sev = Severity.WARNING if d.valid_until and d.valid_until <= timezone.localdate() + timedelta(days=30) else Severity.INFO
-            events.append(TimelineEvent(event_date, "documents", "Documento", d.name, d.get_document_type_display(), None, None, sev, reverse("documents:list")))
-    for fee in AnnualFee.objects.filter(**filters):
-        if in_range(fee.due_date):
-            sev = Severity.CRITICAL if not fee.paid_date and fee.due_date < timezone.localdate() else Severity.INFO
+    if not source or source == "documents":
+        warning_limit = today + timedelta(days=30)
+        valid_docs = MotorcycleDocument.objects.filter(**filters, valid_until__isnull=False).select_related("motorcycle")
+        if start:
+            valid_docs = valid_docs.filter(valid_until__gte=start)
+        if end:
+            valid_docs = valid_docs.filter(valid_until__lte=end)
+        if severity == Severity.WARNING:
+            valid_docs = valid_docs.filter(valid_until__lte=warning_limit)
+        elif severity == Severity.INFO:
+            valid_docs = valid_docs.filter(valid_until__gt=warning_limit)
+        elif severity:
+            valid_docs = valid_docs.none()
+        for d in bounded(valid_docs, "-valid_until", "-pk"):
+            sev = Severity.WARNING if d.valid_until and d.valid_until <= warning_limit else Severity.INFO
+            events.append(TimelineEvent(d.valid_until, "documents", "Documento", d.name, d.get_document_type_display(), None, None, sev, reverse("documents:list")))
+
+        created_docs = MotorcycleDocument.objects.filter(**filters, valid_until__isnull=True).select_related("motorcycle")
+        if start:
+            created_docs = created_docs.filter(created_at__date__gte=start)
+        if end:
+            created_docs = created_docs.filter(created_at__date__lte=end)
+        if severity and severity != Severity.INFO:
+            created_docs = created_docs.none()
+        for d in bounded(created_docs, "-created_at", "-pk"):
+            events.append(TimelineEvent(d.created_at.date(), "documents", "Documento", d.name, d.get_document_type_display(), None, None, Severity.INFO, reverse("documents:list")))
+    if not source or source == "expenses":
+        fees_qs = AnnualFee.objects.filter(**filters)
+        if start:
+            fees_qs = fees_qs.filter(due_date__gte=start)
+        if end:
+            fees_qs = fees_qs.filter(due_date__lte=end)
+        if severity == Severity.CRITICAL:
+            fees_qs = fees_qs.filter(paid_date__isnull=True, due_date__lt=today)
+        elif severity == Severity.INFO:
+            fees_qs = fees_qs.filter(Q(paid_date__isnull=False) | Q(due_date__gte=today))
+        elif severity:
+            fees_qs = fees_qs.none()
+        for fee in bounded(fees_qs, "-due_date", "-pk"):
+            sev = Severity.CRITICAL if not fee.paid_date and fee.due_date < today else Severity.INFO
             events.append(TimelineEvent(fee.due_date, "expenses", "Taxa", fee.get_fee_type_display(), str(fee.year), money_amount(fee.amount), None, sev, reverse("expenses:list")))
-    for policy in InsurancePolicy.objects.filter(**filters):
-        if in_range(policy.coverage_end):
-            sev = Severity.CRITICAL if policy.coverage_end < timezone.localdate() else Severity.INFO
+        policies_qs = InsurancePolicy.objects.filter(**filters)
+        if start:
+            policies_qs = policies_qs.filter(coverage_end__gte=start)
+        if end:
+            policies_qs = policies_qs.filter(coverage_end__lte=end)
+        if severity == Severity.CRITICAL:
+            policies_qs = policies_qs.filter(coverage_end__lt=today)
+        elif severity == Severity.INFO:
+            policies_qs = policies_qs.filter(coverage_end__gte=today)
+        elif severity:
+            policies_qs = policies_qs.none()
+        for policy in bounded(policies_qs, "-coverage_end", "-pk"):
+            sev = Severity.CRITICAL if policy.coverage_end < today else Severity.INFO
             events.append(TimelineEvent(policy.coverage_end, "expenses", "Seguro", policy.provider, "Fim da vigência", money_amount(policy.premium), None, sev, reverse("expenses:list")))
 
-    if source:
-        events = [e for e in events if e.source == source]
-    if severity:
-        events = [e for e in events if e.severity == severity]
-    return sorted(events, key=lambda e: (e.date, e.priority), reverse=True)
+    events = sorted(events, key=lambda e: (e.date, e.priority), reverse=True)
+    if limit is not None:
+        return events[offset : offset + limit]
+    return events
+
+
+def timeline_events_count(
+    *,
+    user,
+    motorcycle=None,
+    start: date | None = None,
+    end: date | None = None,
+    source: str = "",
+    severity: str = "",
+) -> int:
+    filters = _user_motorcycle_filter(user, motorcycle)
+    today = timezone.localdate()
+    total = 0
+
+    if not source or source == "fuel":
+        qs = FuelRecord.objects.filter(**filters)
+        if start:
+            qs = qs.filter(date__gte=start)
+        if end:
+            qs = qs.filter(date__lte=end)
+        if not severity or severity == Severity.INFO:
+            total += qs.count()
+
+    if not source or source == "maintenance":
+        qs = MaintenanceRecord.objects.filter(**filters)
+        if start:
+            qs = qs.filter(date__gte=start)
+        if end:
+            qs = qs.filter(date__lte=end)
+        if severity == Severity.SUCCESS:
+            qs = qs.filter(Q(interval_km__isnull=False) | Q(interval_days__isnull=False))
+        elif severity == Severity.INFO:
+            qs = qs.filter(interval_km__isnull=True, interval_days__isnull=True)
+        elif severity:
+            qs = qs.none()
+        total += qs.count()
+
+    if not source or source == "tires":
+        qs = TireRecord.objects.filter(**filters)
+        if start:
+            qs = qs.filter(installed_at__gte=start)
+        if end:
+            qs = qs.filter(installed_at__lte=end)
+        if severity == Severity.WARNING:
+            qs = qs.filter(wear_percent__gte=70)
+        elif severity == Severity.INFO:
+            qs = qs.filter(Q(wear_percent__lt=70) | Q(wear_percent__isnull=True))
+        elif severity:
+            qs = qs.none()
+        total += qs.count()
+
+    if not source or source == "documents":
+        warning_limit = today + timedelta(days=30)
+        valid_docs = MotorcycleDocument.objects.filter(**filters, valid_until__isnull=False)
+        if start:
+            valid_docs = valid_docs.filter(valid_until__gte=start)
+        if end:
+            valid_docs = valid_docs.filter(valid_until__lte=end)
+        if severity == Severity.WARNING:
+            valid_docs = valid_docs.filter(valid_until__lte=warning_limit)
+        elif severity == Severity.INFO:
+            valid_docs = valid_docs.filter(valid_until__gt=warning_limit)
+        elif severity:
+            valid_docs = valid_docs.none()
+        total += valid_docs.count()
+
+        created_docs = MotorcycleDocument.objects.filter(**filters, valid_until__isnull=True)
+        if start:
+            created_docs = created_docs.filter(created_at__date__gte=start)
+        if end:
+            created_docs = created_docs.filter(created_at__date__lte=end)
+        if severity and severity != Severity.INFO:
+            created_docs = created_docs.none()
+        total += created_docs.count()
+
+    if not source or source == "expenses":
+        fees_qs = AnnualFee.objects.filter(**filters)
+        if start:
+            fees_qs = fees_qs.filter(due_date__gte=start)
+        if end:
+            fees_qs = fees_qs.filter(due_date__lte=end)
+        if severity == Severity.CRITICAL:
+            fees_qs = fees_qs.filter(paid_date__isnull=True, due_date__lt=today)
+        elif severity == Severity.INFO:
+            fees_qs = fees_qs.filter(Q(paid_date__isnull=False) | Q(due_date__gte=today))
+        elif severity:
+            fees_qs = fees_qs.none()
+        total += fees_qs.count()
+
+        policies_qs = InsurancePolicy.objects.filter(**filters)
+        if start:
+            policies_qs = policies_qs.filter(coverage_end__gte=start)
+        if end:
+            policies_qs = policies_qs.filter(coverage_end__lte=end)
+        if severity == Severity.CRITICAL:
+            policies_qs = policies_qs.filter(coverage_end__lt=today)
+        elif severity == Severity.INFO:
+            policies_qs = policies_qs.filter(coverage_end__gte=today)
+        elif severity:
+            policies_qs = policies_qs.none()
+        total += policies_qs.count()
+
+    return total
 
 
 def health_score(*, motorcycle) -> HealthScore:

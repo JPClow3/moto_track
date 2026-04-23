@@ -5,6 +5,19 @@
   "display": "standalone",
   "background_color": "#f7f9fb",
   "theme_color": "#485e8d",
-  "icons": []
+  "icons": [
+    {
+      "src": "/static/brand/moto-track-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/brand/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }
 

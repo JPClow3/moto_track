@@ -7,14 +7,14 @@ from django.urls import reverse
 from django.utils import timezone
 from djmoney.money import Money
 
+from apps.expenses.models import AnnualFee, InsurancePolicy
 from apps.fuel.models import FuelRecord
-from apps.fuel.services import compute_average_consumption_km_per_liter, estimate_next_fill_up
+from apps.fuel.services import compute_average_consumption_km_per_liter, estimate_next_fill_up, monthly_fuel_trend
 from apps.garage.models import Motorcycle
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.reminders.models import Reminder
 from apps.reminders.services import evaluate_reminder
 from apps.tires.models import TirePosition, TireRecord
-from apps.expenses.models import AnnualFee, InsurancePolicy
 
 
 def _money_zero(currency="BRL") -> Money:
@@ -274,52 +274,25 @@ def get_chart_spending_distribution(motorcycle: Motorcycle) -> dict:
     ins_val = float(getattr(ins_total, "amount", ins_total) or 0)
     
     taxes_val = fees_val + ins_val
-
-    return {
-        "labels": ["Combustível", "Manutenção", "Taxas & Seguros"],
-        "values": [fuel_val, maint_val, taxes_val]
-    }
-
-
-def get_chart_consumption_trend(motorcycle: Motorcycle) -> dict:
-    """Return 6-month consumption trend using a single DB query."""
-    from collections import defaultdict
-
-    today = timezone.localdate()
-
-    # Build the ordered list of (year, month) for the last 6 months.
-    months: list[tuple[int, int]] = []
-    for i in range(5, -1, -1):
-        m = today.month - i
-        y = today.year
-        if m <= 0:
-            m += 12
-            y -= 1
-        months.append((y, m))
-
-    # Single query covering the full 6-month window.
-    start_date = datetime.date(months[0][0], months[0][1], 1)
-    records = list(
-        FuelRecord.objects.filter(
-            motorcycle=motorcycle,
-            date__gte=start_date,
-        ).order_by("date", "odometer_km")
-    )
-
-    # Group records by (year, month) in Python.
-    by_month: dict[tuple[int, int], list] = defaultdict(list)
-    for rec in records:
-        by_month[(rec.date.year, rec.date.month)].append(rec)
-
-    labels = []
-    values = []
-    for y, m in months:
-        labels.append(datetime.date(y, m, 1).strftime("%b/%Y"))
-        month_records = by_month.get((y, m), [])
-        stats = compute_average_consumption_km_per_liter(month_records)
-        values.append(stats.km_per_liter if stats else 0)
+    labels = ["Combustível", "Manutenção", "Taxas & Seguros"]
+    values = [fuel_val, maint_val, taxes_val]
 
     return {
         "labels": labels,
         "values": values,
+        "summary": "; ".join(f"{label}: R$ {value:.2f}" for label, value in zip(labels, values, strict=True)),
+    }
+
+
+def get_chart_consumption_trend(motorcycle: Motorcycle) -> dict:
+    """Return 6-month estimated consumption trend using odometer span buckets."""
+    trend = monthly_fuel_trend(FuelRecord.objects.filter(motorcycle=motorcycle))
+    labels = [point["label"] for point in trend["trend_points"]]
+    values = [point["value"] or 0 for point in trend["trend_points"]]
+
+    return {
+        "labels": labels,
+        "values": values,
+        "unit": "L/100km estimado",
+        "summary": "; ".join(f"{label}: {value:.2f} L/100km" for label, value in zip(labels, values, strict=True)),
     }

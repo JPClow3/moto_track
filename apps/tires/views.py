@@ -1,5 +1,8 @@
+import math
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.exports import parse_date_param
@@ -11,6 +14,8 @@ from apps.core.ui import get_density, per_page_for_density
 from .export import build_export
 from .forms import TirePressureRecordForm, TireProductForm, TireRecordForm
 from .models import TirePosition, TirePressureRecord, TireProduct, TireRecord
+
+TIRE_RING_RADIUS = 88
 
 
 @login_required
@@ -26,8 +31,7 @@ def _build_tire_telemetry(record: TireRecord | None):
     wear = int(record.wear_percent or 0)
     wear = max(0, min(100, wear))
 
-    # SVG circle: r=88 => circumference ≈ 2πr
-    circumference = 552.92
+    circumference = round(math.tau * TIRE_RING_RADIUS, 2)
     dash_offset = round(circumference * (1 - (wear / 100)), 2)
 
     if wear >= 70:
@@ -53,6 +57,7 @@ def _build_tire_telemetry(record: TireRecord | None):
     return {
         "record": record,
         "wear_percent": wear,
+        "radius": TIRE_RING_RADIUS,
         "circumference": circumference,
         "dash_offset": dash_offset,
         "status_label": status_label,
@@ -145,7 +150,12 @@ def tire_create_view(request):
         form = TireRecordForm(request.POST, user=request.user)
         if form.is_valid():
             record = form.save()
-            for alert in notification_alerts_for_motorcycle(record.motorcycle, limit=3):
+            record.motorcycle.refresh_from_db(fields=["current_odometer_km"])
+            for alert in notification_alerts_for_motorcycle(
+                record.motorcycle,
+                limit=3,
+                current_odometer_km=record.motorcycle.current_odometer_km,
+            ):
                 messages.info(request, alert.message)
             messages.success(request, f"Pneu {record.brand_model} registrado com sucesso.")
             return redirect("tires:list")
@@ -245,9 +255,11 @@ def tire_product_delete_view(request, pk: int):
     product = get_object_or_404(TireProduct, pk=pk, owner=request.user)
     if request.method == "POST":
         label = str(product)
-        if product.image:
-            product.image.delete(save=False)
+        image_field = product.image
+        image_name = image_field.name if image_field else ""
         product.delete()
+        if image_name:
+            transaction.on_commit(lambda: image_field.storage.delete(image_name))
         messages.success(request, f"Pneu {label} removido com sucesso.")
         return redirect("tires:catalogs")
     return render(request, "tires/product_confirm_delete.html", {"product": product})

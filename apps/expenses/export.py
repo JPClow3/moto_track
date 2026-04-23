@@ -8,7 +8,6 @@ from apps.core.exports import ExportSpec, build_csv_bytes, export_response
 
 from .models import AnnualFee, InsurancePolicy
 
-
 SPEC = ExportSpec(
     filename_base="expenses",
     columns=[

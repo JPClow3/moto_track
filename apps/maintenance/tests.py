@@ -109,6 +109,111 @@ class MaintenanceModelTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Plano")
 
+    def test_plan_item_requires_interval_km_or_days(self):
+        item = MaintenancePlanItem(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+        )
+
+        with self.assertRaises(ValidationError):
+            item.full_clean()
+
+    def test_upcoming_tasks_use_interval_records_beyond_first_page(self):
+        for idx in range(55):
+            MaintenanceRecord.objects.create(
+                motorcycle=self.motorcycle,
+                maintenance_type=MaintenanceType.OTHER,
+                date=date(2026, 4, 1),
+                odometer_km=1000 + idx,
+                cost=Decimal("0.00"),
+            )
+        MaintenanceRecord.objects.create(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+            date=date(2026, 1, 1),
+            odometer_km=1000,
+            cost=Decimal("0.00"),
+            interval_km=100,
+        )
+        self.motorcycle.current_odometer_km = 1150
+        self.motorcycle.save(update_fields=["current_odometer_km"])
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("maintenance:list"), HTTP_HOST="localhost")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            any(task["maintenance_type"] == MaintenanceType.OIL_CHANGE for task in response.context["upcoming_tasks"])
+        )
+
+    def test_upcoming_tasks_dedupe_plan_and_label_history_sources(self):
+        MaintenancePlanItem.objects.create(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+            interval_km=1000,
+            last_done_km=0,
+            is_active=True,
+        )
+        MaintenanceRecord.objects.create(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+            date=date(2026, 1, 1),
+            odometer_km=100,
+            cost=Decimal("0.00"),
+            interval_km=300,
+        )
+        MaintenanceRecord.objects.create(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.CHAIN_SET,
+            date=date(2026, 1, 1),
+            odometer_km=100,
+            cost=Decimal("0.00"),
+            interval_km=300,
+        )
+        self.motorcycle.current_odometer_km = 200
+        self.motorcycle.save(update_fields=["current_odometer_km"])
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("maintenance:list"), HTTP_HOST="localhost")
+        tasks = response.context["upcoming_tasks"]
+        oil_tasks = [task for task in tasks if task["maintenance_type"] == MaintenanceType.OIL_CHANGE]
+        chain_tasks = [task for task in tasks if task["maintenance_type"] == MaintenanceType.CHAIN_SET]
+
+        self.assertEqual(len(oil_tasks), 1)
+        self.assertEqual(oil_tasks[0]["source"], "plan")
+        self.assertEqual(oil_tasks[0]["source_label"], "Plano preventivo")
+        self.assertEqual(chain_tasks[0]["source"], "history")
+        self.assertEqual(chain_tasks[0]["source_label"], "Baseado no histórico")
+
+    def test_upcoming_tasks_keeps_history_fallback_when_plan_has_no_baseline(self):
+        MaintenancePlanItem.objects.create(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+            interval_km=1000,
+            last_done_km=None,
+            last_done_date=None,
+            is_active=True,
+        )
+        MaintenanceRecord.objects.create(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+            date=date(2026, 1, 1),
+            odometer_km=100,
+            cost=Decimal("0.00"),
+            interval_km=300,
+        )
+        self.motorcycle.current_odometer_km = 200
+        self.motorcycle.save(update_fields=["current_odometer_km"])
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("maintenance:list"), HTTP_HOST="localhost")
+
+        self.assertEqual(response.status_code, 200)
+        oil_tasks = [task for task in response.context["upcoming_tasks"] if task["maintenance_type"] == MaintenanceType.OIL_CHANGE]
+        self.assertEqual(len(oil_tasks), 1)
+        self.assertEqual(oil_tasks[0]["source"], "history")
+        self.assertEqual(oil_tasks[0]["source_label"], "Baseado no histórico")
+
     def test_plan_item_allows_normal_and_severe_for_same_type(self):
         MaintenancePlanItem.objects.create(
             motorcycle=self.motorcycle,

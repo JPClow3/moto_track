@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+from django.conf import settings
+
 from apps.core.active_motorcycle import get_active_motorcycle
-from apps.garage.models import Motorcycle
 from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY
+from apps.garage.models import Motorcycle
 
 
 def garage_context(request):
     if not request.user.is_authenticated:
-        return {}
+        return {"web_push_public_key": getattr(settings, "WEB_PUSH_PUBLIC_KEY", "")}
+    if request.path.startswith("/api/") or request.headers.get("HX-Request") == "true":
+        return {
+            "current_density": request.session.get("density", "comfortable"),
+            "web_push_public_key": getattr(settings, "WEB_PUSH_PUBLIC_KEY", ""),
+        }
 
     motorcycles = list(
         Motorcycle.objects.filter(owner=request.user, is_active=True).order_by("name")
@@ -20,4 +27,5 @@ def garage_context(request):
         "active_motorcycle": active,
         "snackbar_undo": {"token": undo_token, **undo_payload} if undo_payload else None,
         "current_density": request.session.get("density", "comfortable"),
+        "web_push_public_key": getattr(settings, "WEB_PUSH_PUBLIC_KEY", ""),
     }

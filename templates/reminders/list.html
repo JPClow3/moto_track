@@ -60,26 +60,65 @@
                     • <span class="inline-flex items-center rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Indefinido</span>
                   {% endif %}
                 </p>
-                <div class="mt-3 flex flex-wrap gap-2" aria-label="Snooze do lembrete {{ reminder.title }}">
-                  {% if reminder.trigger_type == 'by_date' or reminder.trigger_type == 'by_interval' %}
-                    <form method="post" action="{% url 'reminders:snooze_days' reminder.pk 7 %}">
-                      {% csrf_token %}
-                      <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">+7 dias</button>
-                    </form>
-                    <form method="post" action="{% url 'reminders:snooze_days' reminder.pk 15 %}">
-                      {% csrf_token %}
-                      <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">+15 dias</button>
-                    </form>
-                    <form method="post" action="{% url 'reminders:snooze_days' reminder.pk 30 %}">
-                      {% csrf_token %}
-                      <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">+30 dias</button>
-                    </form>
-                  {% endif %}
-                  {% if reminder.trigger_type == 'by_km' or reminder.trigger_type == 'by_interval' %}
-                    <form method="post" action="{% url 'reminders:snooze_km' reminder.pk 500 %}">
-                      {% csrf_token %}
-                      <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">+500 km</button>
-                    </form>
+                <div class="mt-3 space-y-2" aria-label="Snooze do lembrete {{ reminder.title }}">
+                  {% if evaluation.status == "overdue" %}
+                    <button
+                      type="button"
+                      class="rounded-full bg-warning/15 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-warning hover:bg-warning/20"
+                      data-snooze-confirm-toggle
+                      data-target="snooze-confirm-{{ reminder.pk }}"
+                      aria-expanded="false"
+                    >
+                      Adiar lembrete
+                    </button>
+                    <div id="snooze-confirm-{{ reminder.pk }}" class="hidden rounded-2xl bg-warning/10 p-3 text-sm text-on-surface-variant ring-1 ring-warning/20" data-snooze-confirm-panel>
+                      <p class="font-semibold text-on-surface">Este lembrete já está vencido. Um adiamento curto pode deixá-lo vencido novamente.</p>
+                      <div class="mt-3 flex flex-wrap gap-2">
+                        {% if reminder.trigger_type == 'by_date' or reminder.trigger_type == 'by_interval' %}
+                          <form method="post" action="{% url 'reminders:snooze_days' reminder.pk 7 %}">
+                            {% csrf_token %}
+                            <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">Confirmar +7 dias</button>
+                          </form>
+                          <form method="post" action="{% url 'reminders:snooze_days' reminder.pk 15 %}">
+                            {% csrf_token %}
+                            <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">Confirmar +15 dias</button>
+                          </form>
+                          <form method="post" action="{% url 'reminders:snooze_days' reminder.pk 30 %}">
+                            {% csrf_token %}
+                            <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">Confirmar +30 dias</button>
+                          </form>
+                        {% endif %}
+                        {% if reminder.trigger_type == 'by_km' or reminder.trigger_type == 'by_interval' %}
+                          <form method="post" action="{% url 'reminders:snooze_km' reminder.pk 500 %}">
+                            {% csrf_token %}
+                            <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">Confirmar +500 km</button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% else %}
+                    <div class="flex flex-wrap gap-2">
+                      {% if reminder.trigger_type == 'by_date' or reminder.trigger_type == 'by_interval' %}
+                        <form method="post" action="{% url 'reminders:snooze_days' reminder.pk 7 %}">
+                          {% csrf_token %}
+                          <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">+7 dias</button>
+                        </form>
+                        <form method="post" action="{% url 'reminders:snooze_days' reminder.pk 15 %}">
+                          {% csrf_token %}
+                          <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">+15 dias</button>
+                        </form>
+                        <form method="post" action="{% url 'reminders:snooze_days' reminder.pk 30 %}">
+                          {% csrf_token %}
+                          <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">+30 dias</button>
+                        </form>
+                      {% endif %}
+                      {% if reminder.trigger_type == 'by_km' or reminder.trigger_type == 'by_interval' %}
+                        <form method="post" action="{% url 'reminders:snooze_km' reminder.pk 500 %}">
+                          {% csrf_token %}
+                          <button type="submit" class="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low">+500 km</button>
+                        </form>
+                      {% endif %}
+                    </div>
                   {% endif %}
                 </div>
               </div>
@@ -113,6 +152,23 @@
             </li>
           {% endfor %}
         </ul>
+        {% if inactive_page_obj and inactive_page_obj.paginator.num_pages > 1 %}
+          <nav class="rounded-2xl bg-surface-low p-3" aria-label="Paginação de lembretes inativos">
+            <div class="flex items-center justify-between gap-4">
+              {% if inactive_page_obj.has_previous %}
+                <a class="rounded-xl bg-surface-highest px-3 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low" href="{% querystring inactive_page=inactive_page_obj.previous_page_number %}">Anterior</a>
+              {% else %}
+                <span></span>
+              {% endif %}
+              <span class="text-xs font-semibold text-on-surface-variant">Página {{ inactive_page_obj.number }} de {{ inactive_page_obj.paginator.num_pages }}</span>
+              {% if inactive_page_obj.has_next %}
+                <a class="rounded-xl bg-surface-highest px-3 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-low" href="{% querystring inactive_page=inactive_page_obj.next_page_number %}">Próxima</a>
+              {% else %}
+                <span></span>
+              {% endif %}
+            </div>
+          </nav>
+        {% endif %}
       {% else %}
         <p class="text-on-surface-variant text-sm">Nenhum lembrete inativo.</p>
       {% endif %}
@@ -123,13 +179,13 @@
     <nav class="rounded-2xl bg-surface-lowest p-4 shadow-ambient" aria-label="Paginação">
       <div class="flex items-center justify-between gap-4">
         {% if page_obj.has_previous %}
-          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% querystring page=page_obj.previous_page_number %}">Anterior</a>
         {% else %}
           <span></span>
         {% endif %}
         <span class="text-xs font-semibold text-on-surface-variant">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% querystring page=page_obj.next_page_number %}">Próxima</a>
         {% else %}
           <span></span>
         {% endif %}
@@ -137,4 +193,14 @@
     </nav>
   {% endif %}
 </section>
+<script>
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-snooze-confirm-toggle]");
+    if (!trigger) return;
+    const panel = document.getElementById(trigger.dataset.target);
+    if (!panel) return;
+    const isHidden = panel.classList.toggle("hidden");
+    trigger.setAttribute("aria-expanded", String(!isHidden));
+  });
+</script>
 {% endblock %}

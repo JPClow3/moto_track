@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.forms import configure_form_accessibility
+from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
 
 from .export import build_export
@@ -24,7 +25,7 @@ def expenses_list_view(request):
     q = (request.GET.get("q") or "").strip()
     motorcycle_id = request.GET.get("motorcycle") or ""
     density = get_density(request)
-    limit = per_page_for_density(density)
+    per_page = per_page_for_density(density)
 
     fees_qs = (
         AnnualFee.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
@@ -47,9 +48,14 @@ def expenses_list_view(request):
             Q(provider__icontains=q) | Q(policy_number__icontains=q) | Q(notes__icontains=q)
         )
 
+    fees_paged = paginate(request, fees_qs, per_page=per_page, page_param="fees_page")
+    policies_paged = paginate(request, policies_qs, per_page=per_page, page_param="policies_page")
+
     context = {
-        "fees": list(fees_qs[:limit]),
-        "policies": list(policies_qs[:limit]),
+        "fees": list(fees_paged.items),
+        "fees_page_obj": fees_paged.page,
+        "policies": list(policies_paged.items),
+        "policies_page_obj": policies_paged.page,
         "filters": {"q": q, "motorcycle": motorcycle_id},
         "density": density,
     }

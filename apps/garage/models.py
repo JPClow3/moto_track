@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -110,12 +111,16 @@ class MotorcycleTemplateSpec(TimeStampedModel):
                 if not parsed.netloc:
                     errors["manual_url"] = "Informe uma URL HTTP/HTTPS válida para o manual."
             elif parsed.scheme == "file":
+                errors["manual_url"] = "Use URL HTTP/HTTPS ou caminho interno relativo para o manual."
                 if not parsed.path:
                     errors["manual_url"] = "Informe uma URL file:// válida para o manual."
             elif parsed.scheme:
+                errors["manual_url"] = "Use URL HTTP/HTTPS ou caminho interno relativo para o manual."
                 if not WINDOWS_ABSOLUTE_PATH_RE.match(manual_source):
                     errors["manual_url"] = "Use http(s), file:// ou caminho interno para o manual."
             elif manual_source.startswith("//"):
+                errors["manual_url"] = "Caminho interno inválido para o manual."
+            if Path(manual_source).is_absolute() or ".." in Path(manual_source).parts:
                 errors["manual_url"] = "Caminho interno inválido para o manual."
             self.manual_url = manual_source
         if errors:
@@ -241,6 +246,13 @@ class Motorcycle(TimeStampedModel, UserOwnedModel):
         self.deleted_at = timezone.now()
         self.save(update_fields=["is_active", "deleted_at"])
 
+    def reactivate(self) -> None:
+        if self.is_active:
+            return
+        self.is_active = True
+        self.deleted_at = None
+        self.save(update_fields=["is_active", "deleted_at"])
+
     def set_current_odometer(self, value_km: int) -> None:
         value_km = max(int(value_km or 0), 0)
         self.current_odometer_km = value_km
@@ -250,12 +262,29 @@ class Motorcycle(TimeStampedModel, UserOwnedModel):
     def save(self, *args, **kwargs):  # pylint: disable=signature-differs
         update_fields = kwargs.get("update_fields")
         override = int(self.odometer_override_km or 0)
+        needs_recompute = False
+        if self.pk and (update_fields is None or "odometer_override_km" in update_fields):
+            previous = (
+                type(self).objects.filter(pk=self.pk)
+                .values("odometer_override_km", "current_odometer_km")
+                .first()
+            )
+            if previous:
+                previous_override = int(previous["odometer_override_km"] or 0)
+                previous_current = int(previous["current_odometer_km"] or 0)
+                needs_recompute = override != previous_override and override < previous_current
         if override and override > int(self.current_odometer_km or 0):
             self.current_odometer_km = override
             self.current_odometer_updated_at = timezone.now()
             if update_fields is not None:
                 kwargs["update_fields"] = list(set(update_fields) | {"current_odometer_km", "current_odometer_updated_at"})
-        return super().save(*args, **kwargs)
+            needs_recompute = False
+        result = super().save(*args, **kwargs)
+        if needs_recompute:
+            from apps.garage.services import recompute_motorcycle_odometer
+
+            recompute_motorcycle_odometer(self.pk)
+        return result
 
 
 class MotorcycleSpec(TimeStampedModel):

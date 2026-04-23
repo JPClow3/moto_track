@@ -5,12 +5,27 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Moto Track{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Moto Track organiza garagem, abastecimentos, manutencoes, pneus, documentos e relatorios em um painel privado para motociclistas.{% endblock %}" />
+  <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta property="og:site_name" content="Moto Track" />
+  <meta property="og:title" content="{% block og_title %}Moto Track{% endblock %}" />
+  <meta property="og:description" content="{% block og_description %}Gestao de garagem, manutencoes, abastecimentos, pneus e documentos para motociclistas.{% endblock %}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="{{ request.build_absolute_uri }}" />
+  <meta name="twitter:card" content="summary" />
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/moto-track-icon.png' %}" />
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/moto-track-icon.png' %}" />
+  <link rel="icon" href="{% static 'brand/favicon.ico' %}" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'brand/favicon-32x32.png' %}" />
+  <link rel="apple-touch-icon" sizes="512x512" href="{% static 'brand/moto-track-icon.png' %}" />
   <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
   <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
@@ -30,8 +45,10 @@
   <div class="min-h-screen lg:grid lg:grid-cols-[18rem_1fr]">
     <aside class="hidden lg:flex lg:flex-col lg:gap-2 lg:bg-surface-low lg:px-4 lg:py-5 lg:sticky lg:top-0 lg:h-screen" aria-label="Navegação principal">
       <div class="px-2 pb-3">
-        <div class="text-primary font-extrabold tracking-tight text-xl">Moto Track</div>
-        <p class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mt-1">Gestão de precisão</p>
+        <a class="inline-flex max-w-full" href="{% url 'dashboard' %}" aria-label="Moto Track">
+          <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-11 w-auto max-w-full" />
+        </a>
+        <p class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mt-2">Gestão de precisão</p>
       </div>
 
       <nav class="flex-1">
@@ -109,6 +126,10 @@
             </button>
           </form>
         {% endif %}
+        <nav class="mt-3 flex flex-wrap gap-3 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant" aria-label="Links legais">
+          <a class="hover:text-primary" href="{% url 'privacy_policy' %}">Privacidade</a>
+          <a class="hover:text-primary" href="{% url 'terms_of_service' %}">Termos</a>
+        </nav>
       </div>
     </aside>
 
@@ -134,7 +155,14 @@
             >
               <i data-lucide="plus" aria-hidden="true"></i>
             </button>
-            <button type="button" class="ui-icon-btn rounded-full" onclick="subscribeToPush()" aria-label="Ativar Notificações" title="Ativar Notificações">
+            <button
+              id="push-subscribe-button"
+              type="button"
+              class="ui-icon-btn rounded-full"
+              onclick="subscribeToPush(this)"
+              aria-label="Ativar Notificações"
+              title="Ativar Notificações"
+            >
               <i data-lucide="radio" aria-hidden="true"></i>
             </button>
             <a class="ui-icon-btn rounded-full" href="{% url 'reminders:list' %}" aria-label="Ir para lembretes">
@@ -160,22 +188,45 @@
       </main>
 
       <nav class="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-surface/90 backdrop-blur-xl border-t border-outline-variant/20" aria-label="Navegação rápida">
-        <div class="mx-auto w-[min(1240px,93%)] py-2 grid grid-cols-6 text-[10px] font-extrabold uppercase tracking-widest">
+        <div class="mx-auto grid w-[min(1240px,93%)] grid-cols-5 py-2 text-[10px] font-extrabold uppercase tracking-widest">
           <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.url_name == 'dashboard' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
              href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a>
-          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'garage' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
-             href="{% url 'garage:list' %}" {% if request.resolver_match.namespace == 'garage' %}aria-current="page"{% endif %}><i data-lucide="bike" aria-hidden="true"></i><span>Garagem</span></a>
           <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
              href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Abastec.</span></a>
           <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
              href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Manut.</span></a>
-          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'documents' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
-             href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}><i data-lucide="file-text" aria-hidden="true"></i><span>Docs.</span></a>
-          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'expenses' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
-             href="{% url 'expenses:list' %}" {% if request.resolver_match.namespace == 'expenses' %}aria-current="page"{% endif %}><i data-lucide="shield-check" aria-hidden="true"></i><span>Taxas</span></a>
+          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'reminders' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}><i data-lucide="bell-ring" aria-hidden="true"></i><span>Lembretes</span></a>
+          <button
+            type="button"
+            class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'garage' or request.resolver_match.namespace == 'tires' or request.resolver_match.namespace == 'documents' or request.resolver_match.namespace == 'expenses' or request.resolver_match.namespace == 'reports' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
+            aria-controls="mobile-more-menu"
+            aria-expanded="false"
+            onclick="openMobileMoreMenu()"
+          ><i data-lucide="menu" aria-hidden="true"></i><span>Mais</span></button>
         </div>
       </nav>
     </div>
+  </div>
+
+  <div id="mobile-more-menu" class="fixed inset-0 z-[70] hidden lg:hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-inverse-surface/60" data-mobile-more-backdrop></div>
+    <section class="absolute inset-x-0 bottom-0 rounded-t-2xl bg-surface-lowest p-5 shadow-ambient" role="dialog" aria-modal="true" aria-labelledby="mobile-more-title">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <h2 id="mobile-more-title" class="text-base font-extrabold tracking-tight">Mais módulos</h2>
+        <button type="button" class="ui-icon-btn rounded-full" onclick="closeMobileMoreMenu()" aria-label="Fechar menu">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-sm font-bold">
+        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'garage:list' %}"><i data-lucide="bike" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Garagem</a>
+        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'tires:list' %}"><i data-lucide="circle-dot" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Pneus</a>
+        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'documents:list' %}"><i data-lucide="file-text" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Documentos</a>
+        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'expenses:list' %}"><i data-lucide="shield-check" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Taxas</a>
+        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'reports:overview' %}"><i data-lucide="chart-column" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Relatórios</a>
+        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'fuel:catalogs' %}"><i data-lucide="database" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Catálogos</a>
+      </div>
+    </section>
   </div>
 
   <div id="quick-form-root" aria-live="polite"></div>
@@ -197,6 +248,7 @@
       {% endif %}
     </div>
   {% endif %}
+  <div id="client-snackbar" class="snackbar hidden" role="status" aria-live="polite"></div>
   <script>
     let previousFocusedElement = null;
 
@@ -221,6 +273,59 @@
     }
 
     window.closeQuickFormModal = closeQuickFormModal;
+
+    function showClientSnackbar(message) {
+      const snackbar = document.getElementById("client-snackbar");
+      if (!snackbar) {
+        return;
+      }
+      snackbar.textContent = message;
+      snackbar.classList.remove("hidden");
+      window.clearTimeout(snackbar.dataset.hideTimer);
+      const timer = window.setTimeout(() => {
+        snackbar.classList.add("hidden");
+      }, 5000);
+      snackbar.dataset.hideTimer = timer;
+    }
+
+    window.showClientSnackbar = showClientSnackbar;
+
+    function openMobileMoreMenu() {
+      const menu = document.getElementById("mobile-more-menu");
+      const trigger = document.querySelector('[aria-controls="mobile-more-menu"]');
+      if (!menu) {
+        return;
+      }
+      previousFocusedElement = document.activeElement;
+      menu.classList.remove("hidden");
+      menu.setAttribute("aria-hidden", "false");
+      if (trigger) {
+        trigger.setAttribute("aria-expanded", "true");
+      }
+      const firstLink = menu.querySelector("a, button");
+      if (firstLink) {
+        firstLink.focus();
+      }
+    }
+
+    function closeMobileMoreMenu() {
+      const menu = document.getElementById("mobile-more-menu");
+      const trigger = document.querySelector('[aria-controls="mobile-more-menu"]');
+      if (!menu) {
+        return;
+      }
+      menu.classList.add("hidden");
+      menu.setAttribute("aria-hidden", "true");
+      if (trigger) {
+        trigger.setAttribute("aria-expanded", "false");
+      }
+      if (previousFocusedElement && typeof previousFocusedElement.focus === "function") {
+        previousFocusedElement.focus();
+      }
+    }
+
+    window.openMobileMoreMenu = openMobileMoreMenu;
+    window.closeMobileMoreMenu = closeMobileMoreMenu;
 
     function renderLucideIcons() {
       if (window.lucide) {
@@ -258,7 +363,23 @@
       }
     });
 
+    document.addEventListener("click", (event) => {
+      if (event.target && event.target.matches("[data-quick-modal-backdrop]")) {
+        closeQuickFormModal();
+      }
+      if (event.target && event.target.matches("[data-mobile-more-backdrop]")) {
+        closeMobileMoreMenu();
+      }
+    });
+
     document.addEventListener("keydown", (event) => {
+      const mobileMoreMenu = document.getElementById("mobile-more-menu");
+      if (event.key === "Escape" && mobileMoreMenu && !mobileMoreMenu.classList.contains("hidden")) {
+        event.preventDefault();
+        closeMobileMoreMenu();
+        return;
+      }
+
       const quickFormRoot = document.getElementById("quick-form-root");
       if (!quickFormRoot || !quickFormRoot.firstElementChild) {
         return;
@@ -306,29 +427,66 @@
       });
     }
 
-    async function subscribeToPush() {
-        if (!('serviceWorker' in navigator)) return;
-        try {
-            const registration = await navigator.serviceWorker.ready;
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                // In a real app with VAPID, you would pass applicationServerKey here.
-                const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true });
-                
-                await fetch('/api/push/subscribe/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify(subscription)
-                });
-                alert('Notificações ativadas com sucesso!');
-            }
-        } catch (e) {
-            console.error('Push subscription failed:', e);
-            alert('Não foi possível ativar as notificações no momento.');
+    function urlBase64ToUint8Array(base64String) {
+      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const rawData = window.atob(base64);
+      return Uint8Array.from([...rawData].map((character) => character.charCodeAt(0)));
+    }
+
+    async function subscribeToPush(button) {
+      const trigger = button || document.getElementById("push-subscribe-button");
+      const publicKey = "{{ web_push_public_key|default:''|escapejs }}";
+      if (!("serviceWorker" in navigator) || !("Notification" in window)) {
+        showClientSnackbar("Notificações push não são compatíveis com este navegador.");
+        return;
+      }
+      if (!("PushManager" in window)) {
+        showClientSnackbar("Este navegador não oferece suporte a assinatura push.");
+        return;
+      }
+      if (!publicKey) {
+        showClientSnackbar("Notificações push ainda não foram configuradas no servidor.");
+        return;
+      }
+
+      try {
+        if (trigger) {
+          trigger.disabled = true;
+          trigger.setAttribute("aria-busy", "true");
         }
+        const registration = await navigator.serviceWorker.ready;
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          showClientSnackbar("Permissão de notificação não concedida.");
+          return;
+        }
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+
+        const response = await fetch("{% url 'push_subscribe' %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}",
+          },
+          body: JSON.stringify(subscription),
+        });
+        if (!response.ok) {
+          throw new Error("Subscription API failed");
+        }
+        showClientSnackbar("Notificações ativadas com sucesso.");
+      } catch (e) {
+        console.error("Push subscription failed:", e);
+        showClientSnackbar("Não foi possível ativar as notificações agora.");
+      } finally {
+        if (trigger) {
+          trigger.disabled = false;
+          trigger.removeAttribute("aria-busy");
+        }
+      }
     }
   </script>
 </body>

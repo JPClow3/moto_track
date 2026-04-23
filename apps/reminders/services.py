@@ -95,3 +95,28 @@ def list_due_reminders(*, reminders: list[Reminder], current_odometer_km: int, t
         if evaluation.status in {ReminderStatus.OVERDUE, ReminderStatus.DUE_SOON}:
             due.append(r)
     return due
+
+
+def save_date_reminder(
+    reminder: Reminder,
+    *,
+    title: str,
+    description: str,
+    reference_date: date,
+    trigger_value_days: int,
+    notes: str = "",
+    send_email: bool = True,
+) -> Reminder:
+    reminder.title = title
+    reminder.trigger_type = TriggerType.BY_DATE
+    reminder.trigger_value_days = int(trigger_value_days)
+    reminder.reference_date = reference_date
+    reminder.reference_km = None
+    reminder.trigger_value_km = None
+    reminder.is_active = True
+    reminder.send_email = send_email
+    reminder.description = description
+    reminder.notes = notes
+    reminder.full_clean()
+    reminder.save()
+    return reminder

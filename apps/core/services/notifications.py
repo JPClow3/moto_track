@@ -20,10 +20,14 @@ class NotificationAlert:
     message: str
 
 
-def notification_alerts_for_motorcycle(motorcycle: Motorcycle, *, limit: int = 6) -> list[NotificationAlert]:
-    motorcycle.refresh_from_db(fields=["current_odometer_km"])
+def notification_alerts_for_motorcycle(
+    motorcycle: Motorcycle,
+    *,
+    limit: int = 6,
+    current_odometer_km: int | None = None,
+) -> list[NotificationAlert]:
     today = timezone.localdate()
-    current_odometer = int(motorcycle.current_odometer_km or 0)
+    current_odometer = int(current_odometer_km if current_odometer_km is not None else motorcycle.current_odometer_km or 0)
     alerts: list[NotificationAlert] = []
 
     for reminder in Reminder.objects.filter(motorcycle=motorcycle, is_active=True).order_by("reference_date", "reference_km"):

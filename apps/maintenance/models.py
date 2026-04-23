@@ -133,9 +133,18 @@ class MaintenancePlanItem(TimeStampedModel):
     class Meta:
         ordering = ["maintenance_type", "is_severe_duty_override", "-is_active", "-updated_at"]
         unique_together = [("motorcycle", "maintenance_type", "is_severe_duty_override")]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(interval_km__isnull=False) | models.Q(interval_days__isnull=False),
+                name="maint_plan_item_has_interval",
+            )
+        ]
 
     def clean(self):
         errors = {}
+        if self.interval_km is None and self.interval_days is None:
+            errors["interval_km"] = "Informe intervalo em km ou em dias."
+            errors["interval_days"] = "Informe intervalo em km ou em dias."
         if self.interval_km is not None and self.interval_km <= 0:
             errors["interval_km"] = "O intervalo em km deve ser maior que zero."
         if self.interval_days is not None and self.interval_days <= 0:

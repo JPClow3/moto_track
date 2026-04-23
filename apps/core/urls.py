@@ -7,10 +7,10 @@ from .views import (
     offline_view,
     onboarding_template_preview_view,
     onboarding_view,
+    push_subscribe_view,
     quick_add_selector_view,
     service_worker_view,
     undo_action_view,
-    push_subscribe_view,
 )
 
 urlpatterns = [

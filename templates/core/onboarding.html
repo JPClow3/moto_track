@@ -13,11 +13,25 @@
     <p class="text-sm text-on-surface-variant">Escolha um template de catálogo (opcional), revise as especificações e conclua com seu histórico inicial.</p>
   </header>
 
-  <form method="post" class="data-form rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15">
+  <form method="post" class="data-form rounded-2xl bg-surface-lowest p-6 shadow-ambient ring-1 ring-outline-variant/15" data-onboarding-wizard data-initial-step="{{ first_error_step|default:1 }}">
     {% csrf_token %}
     {{ form.media }}
 
-    {% if form.non_field_errors %}
+    {% if form.errors %}
+      <div id="onboarding-error-summary" class="form-errors" role="alert" aria-live="polite" tabindex="-1" data-onboarding-error-summary>
+        <p class="font-extrabold">Revise os campos destacados antes de concluir.</p>
+        <ul class="mt-2 list-disc pl-5 text-sm">
+          {% for field in form %}
+            {% if field.errors %}
+              <li>{{ field.label }}: {{ field.errors|striptags }}</li>
+            {% endif %}
+          {% endfor %}
+          {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% elif form.non_field_errors %}
       <div class="form-errors" role="alert" aria-live="polite">
         {% for error in form.non_field_errors %}
           <p>{{ error }}</p>
@@ -25,7 +39,24 @@
       </div>
     {% endif %}
 
-    <section class="space-y-4" aria-label="Passo 1 - seleção da moto">
+    <nav class="hidden rounded-2xl bg-surface-low p-2 ring-1 ring-outline-variant/20" aria-label="Etapas do onboarding" data-wizard-nav>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <button class="ui-btn-secondary justify-center" type="button" data-step-button="1">
+          1. Moto{% if step1_has_errors %} <span class="severity-badge severity-critical ml-2">Erro</span>{% endif %}
+        </button>
+        <button class="ui-btn-secondary justify-center" type="button" data-step-button="2">
+          2. Exemplar{% if step2_has_errors %} <span class="severity-badge severity-critical ml-2">Erro</span>{% endif %}
+        </button>
+        <button class="ui-btn-secondary justify-center" type="button" data-step-button="3">
+          3. Specs{% if step3_has_errors %} <span class="severity-badge severity-critical ml-2">Erro</span>{% endif %}
+        </button>
+        <button class="ui-btn-secondary justify-center" type="button" data-step-button="4">
+          4. Histórico{% if step4_has_errors %} <span class="severity-badge severity-critical ml-2">Erro</span>{% endif %}
+        </button>
+      </div>
+    </nav>
+
+    <section class="space-y-4" aria-label="Passo 1 - seleção da moto" data-onboarding-step="1">
       <div class="flex items-center justify-between gap-3">
         <h3 class="text-lg font-extrabold tracking-tight">Passo 1 - Seleção da moto</h3>
         <span class="severity-badge severity-neutral">Catálogo</span>
@@ -64,7 +95,7 @@
       </div>
     </section>
 
-    <section class="space-y-4" aria-label="Passo 2 - confirmação do exemplar">
+    <section class="space-y-4" aria-label="Passo 2 - confirmação do exemplar" data-onboarding-step="2">
       <div class="flex items-center justify-between gap-3">
         <h3 class="text-lg font-extrabold tracking-tight">Passo 2 - Confirmação e ajuste</h3>
         <span class="severity-badge severity-neutral">Exemplar</span>
@@ -80,18 +111,19 @@
       </div>
     </section>
 
-    <section class="space-y-4" aria-label="Passo 3 - revisão de specs">
+    <section class="space-y-4" aria-label="Passo 3 - revisão de specs" data-onboarding-step="3">
       <div class="flex items-center justify-between gap-3">
         <h3 class="text-lg font-extrabold tracking-tight">Passo 3 - Revisão das specs</h3>
         <span class="severity-badge severity-neutral">Pré-preenchimento</span>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {% for field in spec_fields %}
+        {% for row in spec_fields %}
+          {% with field=row.field %}
           <div class="form-field onboarding-spec-field">
             <div class="flex items-center justify-between gap-2">
               <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-              <span class="severity-badge severity-info hidden" data-prefilled-badge>Pré-preenchido pelo catálogo</span>
-              <span class="severity-badge severity-warning hidden" data-override-badge>Override</span>
+              <span class="severity-badge severity-info{% if not row.is_prefilled %} hidden{% endif %}" data-prefilled-badge>Pré-preenchido pelo catálogo</span>
+              <span class="severity-badge severity-warning{% if not row.is_override %} hidden{% endif %}" data-override-badge>Override</span>
             </div>
             {{ field }}
             {% if field.help_text %}
@@ -105,11 +137,12 @@
               </div>
             {% endif %}
           </div>
+          {% endwith %}
         {% endfor %}
       </div>
     </section>
 
-    <section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5" aria-label="Passo 4 - último abastecimento">
+    <section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5" aria-label="Passo 4 - último abastecimento" data-onboarding-step="4">
       <div class="md:col-span-2">
         <h3 class="text-lg font-extrabold tracking-tight">Passo 4 - Último abastecimento</h3>
       </div>
@@ -119,7 +152,7 @@
       {{ form.fuel_total_price|as_crispy_field }}
     </section>
 
-    <section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5" aria-label="Histórico inicial de serviço e pneus">
+    <section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5" aria-label="Histórico inicial de serviço e pneus" data-onboarding-step="4">
       <div class="md:col-span-2">
         <h3 class="text-lg font-extrabold tracking-tight">Histórico inicial de serviço e pneus</h3>
       </div>
@@ -134,7 +167,11 @@
 
     <div class="quick-actions-row-split">
       <span class="text-xs font-semibold text-on-surface-variant">Você poderá editar tudo depois. O template é apenas ponto de partida.</span>
-      <button type="submit" class="ui-btn-primary">Concluir onboarding</button>
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <button type="button" class="ui-btn-secondary hidden" data-wizard-prev>Voltar</button>
+        <button type="button" class="ui-btn-secondary hidden" data-wizard-next>Avançar</button>
+        <button type="submit" class="ui-btn-primary" data-wizard-submit>Concluir onboarding</button>
+      </div>
     </div>
   </form>
 </section>
@@ -211,7 +248,73 @@
         });
     }
 
+    function initWizard() {
+      const form = document.querySelector("[data-onboarding-wizard]");
+      if (!form) {
+        return;
+      }
+
+      const nav = form.querySelector("[data-wizard-nav]");
+      const buttons = Array.from(form.querySelectorAll("[data-step-button]"));
+      const sections = Array.from(form.querySelectorAll("[data-onboarding-step]"));
+      const previousButton = form.querySelector("[data-wizard-prev]");
+      const nextButton = form.querySelector("[data-wizard-next]");
+      const submitButton = form.querySelector("[data-wizard-submit]");
+      const errorSummary = form.querySelector("[data-onboarding-error-summary]");
+      let activeStep = Math.min(Math.max(parseInt(form.dataset.initialStep || "1", 10), 1), 4);
+
+      function showStep(step, shouldFocus) {
+        activeStep = step;
+        sections.forEach((section) => {
+          section.classList.toggle("hidden", section.dataset.onboardingStep !== String(step));
+        });
+        buttons.forEach((button) => {
+          const isActive = button.dataset.stepButton === String(step);
+          button.setAttribute("aria-current", isActive ? "step" : "false");
+          button.classList.toggle("bg-primary", isActive);
+          button.classList.toggle("text-on-primary", isActive);
+        });
+        if (previousButton) {
+          previousButton.classList.toggle("hidden", step === 1);
+        }
+        if (nextButton) {
+          nextButton.classList.toggle("hidden", step === 4);
+        }
+        if (submitButton) {
+          submitButton.classList.toggle("hidden", step !== 4);
+        }
+        if (shouldFocus) {
+          const firstField = form.querySelector(`[data-onboarding-step="${step}"] input, [data-onboarding-step="${step}"] select, [data-onboarding-step="${step}"] textarea, [data-onboarding-step="${step}"] button`);
+          if (firstField) {
+            firstField.focus({ preventScroll: false });
+          }
+        }
+      }
+
+      if (nav) {
+        nav.classList.remove("hidden");
+      }
+      if (previousButton) {
+        previousButton.classList.remove("hidden");
+        previousButton.addEventListener("click", () => showStep(Math.max(activeStep - 1, 1), true));
+      }
+      if (nextButton) {
+        nextButton.classList.remove("hidden");
+        nextButton.addEventListener("click", () => showStep(Math.min(activeStep + 1, 4), true));
+      }
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => showStep(parseInt(button.dataset.stepButton, 10), true));
+      });
+
+      showStep(activeStep, false);
+      if (errorSummary) {
+        errorSummary.focus({ preventScroll: true });
+        errorSummary.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
+      initWizard();
       refreshSpecBadges();
       loadTemplatePreview();
 

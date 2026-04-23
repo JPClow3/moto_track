@@ -41,12 +41,21 @@ urlpatterns = [
     path("reports/", include("apps.reports.urls")),
     path("attachments/", include("apps.core.attachment_urls", namespace="attachments")),
     path("api/v1/", include("apps.api.urls", namespace="api_v1")),
+    path("politica/", TemplateView.as_view(template_name="legal/privacy.html"), name="privacy_policy"),
+    path("termos/", TemplateView.as_view(template_name="legal/terms.html"), name="terms_of_service"),
     path("accounts/login/", allauth_views.LoginView.as_view(), name="login"),
     path("accounts/logout/", allauth_views.LogoutView.as_view(), name="logout"),
     path("accounts/", include("allauth.urls")),
     path("admin/", admin.site.urls),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="django.contrib.sitemaps.views.sitemap"),
-    path("robots.txt", TemplateView.as_view(template_name="robots.txt", content_type="text/plain")),
+    path(
+        "robots.txt",
+        TemplateView.as_view(
+            template_name="robots.txt",
+            content_type="text/plain",
+            extra_context={"site_domain": settings.SITE_DOMAIN},
+        ),
+    ),
 ]
 
 if settings.DEBUG:

@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Value
+from django.db.models.functions import Coalesce
 from djmoney.models.fields import MoneyField
 
 from apps.core.models import TimeStampedModel, UserOwnedModel
@@ -127,6 +129,17 @@ class FuelPreference(TimeStampedModel, UserOwnedModel):
 
     class Meta:
         ordering = ["-last_used_at", "-use_count", "-updated_at"]
+        constraints = [
+            models.UniqueConstraint(
+                "owner",
+                Coalesce("motorcycle_id", Value(0)),
+                Coalesce("station_id", Value(0)),
+                Coalesce("fuel_grade_id", Value(0)),
+                "fuel_type",
+                "station_name",
+                name="fuel_preference_unique_pattern",
+            )
+        ]
 
     def __str__(self) -> str:
         label = self.station.name if self.station else self.station_name or self.get_fuel_type_display()

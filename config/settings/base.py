@@ -2,6 +2,8 @@ from pathlib import Path
 
 import dj_database_url
 import environ
+from django.templatetags.static import static
+from django.urls import reverse_lazy
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
@@ -12,6 +14,7 @@ env = environ.Env(
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
+SITE_DOMAIN = env("SITE_DOMAIN", default="")
 
 INSTALLED_APPS = [
     "unfold",
@@ -28,6 +31,7 @@ INSTALLED_APPS = [
     "crispy_tailwind",
     "dal",
     "dal_select2",
+    "slippers",
     "allauth_ui",
     "widget_tweaks",
     "allauth",
@@ -42,7 +46,7 @@ INSTALLED_APPS = [
     "apps.garage",
     "apps.fuel.apps.FuelConfig",
     "apps.maintenance.apps.MaintenanceConfig",
-    "apps.tires",
+    "apps.tires.apps.TiresConfig",
     "apps.documents",
     "apps.reminders",
     "apps.reports",
@@ -144,6 +148,9 @@ CRISPY_TEMPLATE_PACK = "tailwind"
 
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+ACCOUNT_FORMS = {
+    "signup": "apps.accounts.forms.SignupForm",
+}
 ACCOUNT_UNIQUE_EMAIL = True
 _account_email_verification_raw = env("ACCOUNT_EMAIL_VERIFICATION", default="mandatory")
 ACCOUNT_EMAIL_VERIFICATION = _account_email_verification_raw.split("#", 1)[0].strip().lower() or "mandatory"
@@ -151,6 +158,7 @@ if ACCOUNT_EMAIL_VERIFICATION not in {"mandatory", "optional", "none"}:
     ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
 APP_BUILD_ID = env("APP_BUILD_ID", default="dev")
+WEB_PUSH_PUBLIC_KEY = env("WEB_PUSH_PUBLIC_KEY", default=env("PUSH_PUBLIC_KEY", default=""))
 ACCOUNT_CONFIRM_EMAIL_ON_GET = env.bool("ACCOUNT_CONFIRM_EMAIL_ON_GET", default=True)
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = env(
     "ACCOUNT_DEFAULT_HTTP_PROTOCOL",
@@ -161,6 +169,99 @@ ACCOUNT_RATE_LIMITS = {
     "login_failed": "5/m",
 }
 ALLAUTH_UI_THEME = "light"
+
+
+def _admin_static(path):
+    return lambda request: static(path)
+
+
+UNFOLD = {
+    "SITE_TITLE": "Moto Track Admin",
+    "SITE_HEADER": "Moto Track",
+    "SITE_SUBHEADER": "Gestao operacional",
+    "SITE_URL": "/",
+    "SITE_SYMBOL": "speed",
+    "SITE_ICON": _admin_static("brand/moto-track-icon.png"),
+    "SITE_FAVICONS": [
+        {
+            "rel": "icon",
+            "href": _admin_static("brand/favicon.ico"),
+            "type": "image/x-icon",
+        },
+        {
+            "rel": "icon",
+            "href": _admin_static("brand/favicon-32x32.png"),
+            "type": "image/png",
+            "sizes": "32x32",
+        }
+    ],
+    "STYLES": [
+        _admin_static("admin/mototrack_admin.css"),
+    ],
+    "COLORS": {
+        "primary": {
+            "50": "239 246 255",
+            "100": "219 234 254",
+            "200": "191 219 254",
+            "300": "147 197 253",
+            "400": "96 165 250",
+            "500": "59 130 246",
+            "600": "37 99 235",
+            "700": "29 78 216",
+            "800": "30 64 175",
+            "900": "30 58 138",
+            "950": "23 37 84",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": "Principal",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Usuarios",
+                        "icon": "group",
+                        "link": reverse_lazy("admin:auth_user_changelist"),
+                    },
+                    {
+                        "title": "Motos",
+                        "icon": "two_wheeler",
+                        "link": reverse_lazy("admin:garage_motorcycle_changelist"),
+                    },
+                    {
+                        "title": "Templates de motos",
+                        "icon": "fact_check",
+                        "link": reverse_lazy("admin:garage_motorcycletemplate_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Operacao",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Documentos",
+                        "icon": "description",
+                        "link": reverse_lazy("admin:documents_motorcycledocument_changelist"),
+                    },
+                    {
+                        "title": "Manutencoes",
+                        "icon": "build",
+                        "link": reverse_lazy("admin:maintenance_maintenancerecord_changelist"),
+                    },
+                    {
+                        "title": "Abastecimentos",
+                        "icon": "local_gas_station",
+                        "link": reverse_lazy("admin:fuel_fuelrecord_changelist"),
+                    },
+                ],
+            },
+        ],
+    },
+}
 
 SOCIALACCOUNT_PROVIDERS = {
     "google": {

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://moto-track.net/sitemap.xml
+Sitemap: {% if site_domain %}https://{{ site_domain }}{% else %}{{ request.scheme }}://{{ request.get_host }}{% endif %}/sitemap.xml

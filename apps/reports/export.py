@@ -155,7 +155,7 @@ def sale_pdf_response(*, motorcycle) -> HttpResponse:
                 ["Saúde da moto", f"{data.health.total}/100"],
                 ["Gasto total registrado", _money(data.summary.total)],
                 ["Custo por km", _money(data.summary.cost_per_km) if data.summary.cost_per_km is not None else "-"],
-                ["Média por abastecimento", average_fillup],
+                ["Km médio por abastecimento registrado", average_fillup],
                 ["Posto mais abastecido", station_label],
             ]
         )
@@ -185,7 +185,7 @@ def sale_pdf_response(*, motorcycle) -> HttpResponse:
         ["Registros", str(data.fuel_summary.fillups_count)],
         ["Litros registrados", f"{data.fuel_summary.liters_total:.3f} L"],
         ["Gasto em combustível", _money(data.fuel_summary.total_spend)],
-        ["Média de km por abastecimento", average_fillup],
+        ["Km médio por abastecimento registrado", average_fillup],
     ]
     if station:
         fuel_rows.append(

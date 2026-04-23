@@ -13,7 +13,12 @@ def garage_list_view(request):
     motorcycles = Motorcycle.objects.filter(owner=request.user, is_active=True).order_by(
         "name"
     )  # pylint: disable=no-member
-    return render(request, "garage/list.html", {"motorcycles": motorcycles})
+    archived_motorcycles = Motorcycle.objects.filter(owner=request.user, is_active=False).order_by("name")
+    return render(
+        request,
+        "garage/list.html",
+        {"motorcycles": motorcycles, "archived_motorcycles": archived_motorcycles},
+    )
 
 
 @login_required
@@ -99,3 +104,12 @@ def garage_delete_view(request, pk):
         return redirect("garage:list")
 
     return render(request, "garage/confirm_delete.html", {"motorcycle": motorcycle})
+
+
+@login_required
+def garage_restore_view(request, pk):
+    motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user, is_active=False)
+    if request.method == "POST":
+        motorcycle.reactivate()
+        messages.success(request, f"Moto {motorcycle.name} reativada com sucesso.")
+    return redirect("garage:list")

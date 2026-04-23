@@ -67,8 +67,20 @@ class DocumentsTests(TestCase):
         self.client.force_login(self.user)
         document = MotorcycleDocument.objects.filter(motorcycle=self.motorcycle).first()
         document.valid_until = date(2026, 5, 1)
+        document.notify_before_days = 30
         document.save()
 
         response = self.client.post(reverse("documents:create_reminder", args=[document.pk]))
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(Reminder.objects.filter(motorcycle=self.motorcycle, title__icontains=document.name).exists())
+        reminder = Reminder.objects.get(motorcycle=self.motorcycle, title__icontains=document.name)
+        self.assertEqual(reminder.reference_date, date(2026, 4, 1))
+        self.assertEqual(reminder.trigger_value_days, 30)
+
+    def test_invalid_upload_marks_form_for_focus(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("documents:list"), {})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["upload_has_errors"])
+        self.assertContains(response, 'id="documents-upload-form"')
+        self.assertContains(response, 'data-upload-has-errors="true"')

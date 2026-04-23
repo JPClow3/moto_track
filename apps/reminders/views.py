@@ -45,7 +45,13 @@ def reminder_list_view(request):
     density = get_density(request)
     paged = paginate(request, active_qs, per_page=per_page_for_density(density))
     active_reminders = list(paged.items)
-    inactive_reminders = inactive_base_qs.select_related("motorcycle").order_by("-updated_at")[:50]
+    inactive_paged = paginate(
+        request,
+        inactive_base_qs.select_related("motorcycle").order_by("-updated_at"),
+        per_page=per_page_for_density(density),
+        page_param="inactive_page",
+    )
+    inactive_reminders = list(inactive_paged.items)
 
     active_with_status = [
         {"reminder": r, "evaluation": evaluate_reminder(r, current_odometer_km=r.motorcycle.current_odometer_km, today=today)}
@@ -55,6 +61,7 @@ def reminder_list_view(request):
         "active_reminders": active_with_status,
         "page_obj": paged.page,
         "inactive_reminders": inactive_reminders,
+        "inactive_page_obj": inactive_paged.page,
         "density": density,
         "filters": {"q": q, "status": status, "motorcycle": motorcycle_id},
     }

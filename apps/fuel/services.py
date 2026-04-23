@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import QuerySet
+from django.db import DatabaseError, transaction
+from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q, QuerySet, StdDev, Sum
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from djmoney.money import Money
 
@@ -222,6 +224,41 @@ def review_suggestion_for_motorcycle(motorcycle) -> FuelReviewSuggestion:
     )
 
 
+def review_suggestion_from_history(
+    *,
+    motorcycle,
+    fuel_records: Iterable[FuelRecord],
+    review_records: Iterable,
+) -> FuelReviewSuggestion:
+    try:
+        preference = motorcycle.fuel_review_preference
+    except FuelReviewPreference.DoesNotExist:
+        preference = FuelReviewPreference(motorcycle=motorcycle)
+    interval = int(preference.fillups_interval or 10)
+    if not preference.is_active:
+        return FuelReviewSuggestion(False, 0, interval, interval)
+
+    latest_review = None
+    for record in review_records:
+        record_key = (record.date, record.odometer_km, record.pk or 0)
+        if latest_review is None or record_key > (latest_review.date, latest_review.odometer_km, latest_review.pk or 0):
+            latest_review = record
+
+    count = 0
+    for record in fuel_records:
+        if latest_review and (record.date, record.odometer_km) <= (latest_review.date, latest_review.odometer_km):
+            continue
+        count += 1
+
+    remaining = max(interval - count, 0)
+    return FuelReviewSuggestion(
+        is_due=count >= interval,
+        fillups_since_review=count,
+        interval=interval,
+        remaining_fillups=remaining,
+    )
+
+
 def _money_amount(value) -> Decimal | None:
     if value is None:
         return None
@@ -287,6 +324,54 @@ def detect_fuel_anomalies(
     return warnings
 
 
+def detect_fuel_anomalies_from_history(
+    *,
+    history_records: Iterable[FuelRecord],
+    odometer_km: int,
+    liters: Decimal,
+    price_per_liter: Money | Decimal | None,
+) -> list[str]:
+    """In-memory variant for callers that already prefetched fuel history."""
+    warnings: list[str] = []
+    recent = sorted(history_records, key=lambda r: (r.date, r.odometer_km, r.pk or 0), reverse=True)
+    last = recent[0] if recent else None
+    if last and odometer_km <= int(last.odometer_km or 0):
+        warnings.append("Odômetro menor/igual ao último abastecimento registrado.")
+
+    price_amt = _money_amount(price_per_liter)
+    if price_amt is not None and price_amt > 0:
+        recent_prices = [
+            amt
+            for amt in (_money_amount(r.price_per_liter) for r in recent[:10])
+            if amt is not None and amt > 0
+        ]
+        if len(recent_prices) >= 5:
+            mean = sum(recent_prices) / Decimal(len(recent_prices))
+            if mean > 0:
+                ratio = price_amt / mean
+                if ratio >= Decimal("1.30") or ratio <= Decimal("0.70"):
+                    warnings.append("Preço/L muito fora da sua média recente.")
+
+    if last:
+        distance = int(odometer_km) - int(last.odometer_km or 0)
+        if distance > 0 and liters and Decimal(liters) > 0:
+            current_l_per_100 = (Decimal(liters) / Decimal(distance)) * Decimal("100")
+            intervals: list[Decimal] = []
+            for a, b in zip(recent[:12], recent[1:12], strict=False):
+                d = int(a.odometer_km or 0) - int(b.odometer_km or 0)
+                if d <= 0 or not a.liters:
+                    continue
+                intervals.append((Decimal(a.liters) / Decimal(d)) * Decimal("100"))
+            if len(intervals) >= 5:
+                mean = sum(intervals) / Decimal(len(intervals))
+                if mean > 0:
+                    ratio = current_l_per_100 / mean
+                    if ratio >= Decimal("1.40") or ratio <= Decimal("0.60"):
+                        warnings.append("Consumo (L/100km) fora do padrão recente.")
+
+    return warnings
+
+
 @dataclass(frozen=True)
 class StationRankingRow:
     station_label: str
@@ -296,7 +381,7 @@ class StationRankingRow:
     weighted_avg_price_per_liter: Decimal | None
 
 
-def compute_station_rankings(records: Iterable[FuelRecord]) -> list[StationRankingRow]:
+def _compute_station_rankings_python(records: Iterable[FuelRecord]) -> list[StationRankingRow]:
     """
     Compute simple station rankings from a set of FuelRecords.
 
@@ -360,7 +445,144 @@ def compute_station_rankings(records: Iterable[FuelRecord]) -> list[StationRanki
     return rows
 
 
-## NOTE: Station ranking helpers are defined once above.
+def compute_station_rankings(records: QuerySet[FuelRecord]) -> list[StationRankingRow]:
+    """
+    Compute station rankings with SQL aggregation.
+
+    The caller is responsible for scoping records to the current user.
+    """
+    weighted_expression = ExpressionWrapper(
+        F("price_per_liter") * F("liters"),
+        output_field=DecimalField(max_digits=18, decimal_places=6),
+    )
+    weighted_filter = Q(price_per_liter__isnull=False, liters__isnull=False, liters__gt=0)
+    try:
+        aggregated = (
+            records.annotate(station_label=Coalesce("station__name", "station_name"))
+            .exclude(station_label="")
+            .values("station_label")
+            .annotate(
+                samples=Count("price_per_liter"),
+                avg_price=Avg("price_per_liter"),
+                std_price=StdDev("price_per_liter"),
+                weighted_sum=Sum(weighted_expression, filter=weighted_filter),
+                liters_sum=Sum("liters", filter=weighted_filter),
+            )
+        )
+        rows: list[StationRankingRow] = []
+        for row in aggregated:
+            liters_sum = Decimal(row["liters_sum"] or 0)
+            weighted = (Decimal(row["weighted_sum"] or 0) / liters_sum) if liters_sum > 0 else None
+            rows.append(
+                StationRankingRow(
+                    station_label=row["station_label"],
+                    samples=int(row["samples"] or 0),
+                    avg_price_per_liter=Decimal(row["avg_price"]) if row["avg_price"] is not None else None,
+                    std_price_per_liter=Decimal(row["std_price"]) if row["std_price"] is not None else None,
+                    weighted_avg_price_per_liter=weighted,
+                )
+            )
+        return rows
+    except DatabaseError:
+        return _compute_station_rankings_python(records)
+
+
+def _month_key(dt):
+    return (dt.year, dt.month)
+
+
+def months_back(reference_date, count: int) -> list[tuple[int, int]]:
+    months: list[tuple[int, int]] = []
+    year = reference_date.year
+    month = reference_date.month
+    for _ in range(count):
+        months.append((year, month))
+        month -= 1
+        if month == 0:
+            month = 12
+            year -= 1
+    months.reverse()
+    return months
+
+
+def format_month_label(year: int, month: int) -> str:
+    return timezone.datetime(year, month, 1).strftime("%b").upper()
+
+
+def moving_average(series: list[float | None], window: int) -> list[float | None]:
+    out: list[float | None] = []
+    for idx in range(len(series)):
+        start = max(0, idx - window + 1)
+        chunk = [v for v in series[start : idx + 1] if v is not None]
+        out.append(round(sum(chunk) / len(chunk), 3) if chunk else None)
+    return out
+
+
+def monthly_fuel_trend(records_qs: QuerySet[FuelRecord], *, months_count: int = 6, today=None) -> dict:
+    today = today or timezone.localdate()
+    months = months_back(today, months_count)
+    start_year, start_month = months[0]
+    start_date = timezone.datetime(start_year, start_month, 1).date()
+    buckets = {
+        month: {"liters": 0.0, "min_odo": None, "max_odo": None, "total": Decimal("0"), "count": 0}
+        for month in months
+    }
+
+    for row in records_qs.filter(date__gte=start_date).values("date", "liters", "odometer_km", "total_price"):
+        key = _month_key(row["date"])
+        if key not in buckets:
+            continue
+        bucket = buckets[key]
+        bucket["count"] += 1
+        bucket["liters"] += float(row["liters"] or 0)
+        total = row["total_price"]
+        total_amount = getattr(total, "amount", total) or 0
+        bucket["total"] += Decimal(str(total_amount))
+        odo = row["odometer_km"]
+        bucket["min_odo"] = odo if bucket["min_odo"] is None else min(bucket["min_odo"], odo)
+        bucket["max_odo"] = odo if bucket["max_odo"] is None else max(bucket["max_odo"], odo)
+
+    trend_points = []
+    trend_values = []
+    cost_points = []
+    cost_values = []
+    for year, month in months:
+        bucket = buckets[(year, month)]
+        span = (
+            bucket["max_odo"] - bucket["min_odo"]
+            if bucket["min_odo"] is not None and bucket["max_odo"] is not None
+            else 0
+        )
+        value = None
+        if span > 0 and bucket["count"] > 0:
+            value = round(bucket["liters"] / span * 100, 2)
+            trend_values.append(value)
+        label = format_month_label(year, month)
+        trend_points.append({"label": label, "value": value, "has_value": value is not None, "bar_percent": 0})
+
+        cost_value = None
+        if span > 0 and bucket["count"] > 0:
+            cost_value = round(float(bucket["total"]) / span, 3)
+            cost_values.append(cost_value)
+        cost_points.append({"label": label, "value": cost_value, "has_value": cost_value is not None, "bar_percent": 0})
+
+    trend_max = max(trend_values) if trend_values else None
+    cost_max = max(cost_values) if cost_values else None
+    for point in trend_points:
+        if trend_max and point["value"] is not None:
+            point["bar_percent"] = round((point["value"] / trend_max) * 100, 2)
+    for point in cost_points:
+        if cost_max and point["value"] is not None:
+            point["bar_percent"] = round((point["value"] / cost_max) * 100, 2)
+
+    return {
+        "trend_points": trend_points,
+        "trend_max": trend_max,
+        "trend_ma": moving_average([p["value"] for p in trend_points], 3),
+        "cost_points": cost_points,
+        "cost_max": cost_max,
+        "cost_ma": moving_average([p["value"] for p in cost_points], 3),
+    }
 
 
 def best_fuel_preference(*, user, motorcycle=None) -> FuelPreference | None:
@@ -372,30 +594,28 @@ def best_fuel_preference(*, user, motorcycle=None) -> FuelPreference | None:
 
 def remember_fuel_preference(record: FuelRecord) -> FuelPreference:
     station_name = record.station_name or (record.station.name if record.station else "")
-    preference = (
-        FuelPreference.objects.filter(
-            owner=record.motorcycle.owner,
-            motorcycle=record.motorcycle,
-            station=record.station,
-            fuel_grade=record.fuel_grade,
-            fuel_type=record.fuel_type,
-            station_name=station_name,
+    lookup = {
+        "owner": record.motorcycle.owner,
+        "motorcycle": record.motorcycle,
+        "station": record.station,
+        "fuel_grade": record.fuel_grade,
+        "fuel_type": record.fuel_type,
+        "station_name": station_name,
+    }
+    with transaction.atomic():
+        preference, _ = FuelPreference.objects.select_for_update().get_or_create(
+            **lookup,
+            defaults={
+                "price_per_liter": record.price_per_liter,
+                "tank_full": record.tank_full,
+                "use_count": 0,
+            },
         )
-        .order_by("-updated_at")
-        .first()
-    )
-    if preference is None:
-        preference = FuelPreference(
-            owner=record.motorcycle.owner,
-            motorcycle=record.motorcycle,
-            station=record.station,
-            fuel_grade=record.fuel_grade,
-            fuel_type=record.fuel_type,
-            station_name=station_name,
+        FuelPreference.objects.filter(pk=preference.pk).update(
+            price_per_liter=record.price_per_liter,
+            tank_full=record.tank_full,
+            use_count=F("use_count") + 1,
+            last_used_at=timezone.now(),
         )
-    preference.price_per_liter = record.price_per_liter
-    preference.tank_full = record.tank_full
-    preference.use_count = int(preference.use_count or 0) + 1
-    preference.last_used_at = timezone.now()
-    preference.save()
+        preference.refresh_from_db()
     return preference

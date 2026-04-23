@@ -7,6 +7,7 @@ from datetime import timedelta
 from django.db import transaction
 
 from apps.reminders.models import Reminder, TriggerType
+from apps.reminders.services import save_date_reminder
 
 from .models import AnnualFee, InsurancePolicy
 
@@ -117,19 +118,14 @@ def sync_fee_reminder(fee: AnnualFee) -> Reminder:
             send_email=True,
         )
 
-    reminder.title = title
-    reminder.trigger_type = TriggerType.BY_DATE
-    reminder.trigger_value_days = notify_before_days
-    reminder.reference_date = reference_date
-    reminder.reference_km = None
-    reminder.trigger_value_km = None
-    reminder.is_active = True
-    reminder.send_email = True
-    reminder.description = f"Taxa anual ({fee.get_fee_type_display()})"  # pylint: disable=no-member
-    reminder.notes = (fee.notes or "").strip()
-    reminder.full_clean()
-    reminder.save()
-    return reminder
+    return save_date_reminder(
+        reminder,
+        title=title,
+        description=f"Taxa anual ({fee.get_fee_type_display()})",  # pylint: disable=no-member
+        reference_date=reference_date,
+        trigger_value_days=notify_before_days,
+        notes=(fee.notes or "").strip(),
+    )
 
 
 @transaction.atomic
@@ -166,19 +162,14 @@ def sync_policy_reminder(policy: InsurancePolicy) -> Reminder:
             send_email=True,
         )
 
-    reminder.title = title
-    reminder.trigger_type = TriggerType.BY_DATE
-    reminder.trigger_value_days = notify_before_days
-    reminder.reference_date = reference_date
-    reminder.reference_km = None
-    reminder.trigger_value_km = None
-    reminder.is_active = True
-    reminder.send_email = True
-    reminder.description = f"Renovação do seguro ({policy.provider})"
-    reminder.notes = (policy.notes or "").strip()
-    reminder.full_clean()
-    reminder.save()
-    return reminder
+    return save_date_reminder(
+        reminder,
+        title=title,
+        description=f"Renovação do seguro ({policy.provider})",
+        reference_date=reference_date,
+        trigger_value_days=notify_before_days,
+        notes=(policy.notes or "").strip(),
+    )
 
 
 @transaction.atomic

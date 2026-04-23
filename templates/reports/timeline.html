@@ -35,7 +35,11 @@
     </select>
     <div class="flex gap-2">
       <button class="ui-btn-primary flex-1" type="submit">Filtrar</button>
-      <a class="ui-btn-secondary" href="?density={% if density == 'compact' %}comfortable{% else %}compact{% endif %}">{% if density == 'compact' %}Conforto{% else %}Compacto{% endif %}</a>
+      {% if density == 'compact' %}
+        <a class="ui-btn-secondary" href="{% querystring density='comfortable' page=None %}">Conforto</a>
+      {% else %}
+        <a class="ui-btn-secondary" href="{% querystring density='compact' page=None %}">Compacto</a>
+      {% endif %}
     </div>
   </form>
 
@@ -64,11 +68,11 @@
     <nav class="rounded-2xl bg-surface-lowest p-4 shadow-ambient" aria-label="Paginação">
       <div class="flex items-center justify-between gap-4">
         {% if page_obj.has_previous %}
-          <a class="ui-btn-secondary" href="?page={{ page_obj.previous_page_number }}&start={{ filters.start }}&end={{ filters.end }}&source={{ filters.source }}&severity={{ filters.severity }}">Anterior</a>
+          <a class="ui-btn-secondary" href="{% querystring page=page_obj.previous_page_number %}">Anterior</a>
         {% else %}<span></span>{% endif %}
         <span class="text-xs font-semibold text-on-surface-variant">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-          <a class="ui-btn-secondary" href="?page={{ page_obj.next_page_number }}&start={{ filters.start }}&end={{ filters.end }}&source={{ filters.source }}&severity={{ filters.severity }}">Próxima</a>
+          <a class="ui-btn-secondary" href="{% querystring page=page_obj.next_page_number %}">Próxima</a>
         {% else %}<span></span>{% endif %}
       </div>
     </nav>

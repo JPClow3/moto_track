@@ -70,11 +70,13 @@
       </div>
       <div class="flex flex-wrap gap-2">
         <button type="submit" class="ui-btn-primary">Aplicar</button>
-        <a class="ui-btn-secondary" href="?density={% if density == 'compact' %}comfortable{% else %}compact{% endif %}&q={{ filters.q }}&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">
-          {% if density == 'compact' %}Modo conforto{% else %}Modo compacto{% endif %}
-        </a>
-        <a class="ui-btn-secondary" href="{% url 'fuel:export' %}?format=csv&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">CSV</a>
-        <a class="ui-btn-secondary" href="{% url 'fuel:export' %}?format=pdf&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">PDF</a>
+        {% if density == 'compact' %}
+          <a class="ui-btn-secondary" href="{% querystring density='comfortable' page=None %}">Modo conforto</a>
+        {% else %}
+          <a class="ui-btn-secondary" href="{% querystring density='compact' page=None %}">Modo compacto</a>
+        {% endif %}
+        <a class="ui-btn-secondary" data-export-link data-loading-label="Gerando CSV..." href="{% url 'fuel:export' %}?format=csv&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">CSV</a>
+        <a class="ui-btn-secondary" data-export-link data-loading-label="Gerando PDF..." href="{% url 'fuel:export' %}?format=pdf&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">PDF</a>
       </div>
     </form>
   </article>
@@ -91,7 +93,7 @@
               --
             {% endif %}
           </p>
-          <p class="text-sm text-on-surface-variant">L/100km (estimado)</p>
+          <p class="text-sm text-on-surface-variant">L/100km (tanque cheio)</p>
         </div>
         <span class="h-10 w-10 grid place-items-center rounded-2xl bg-surface-low text-primary" aria-hidden="true">
           <i data-lucide="droplets" class="h-5 w-5"></i>
@@ -120,18 +122,18 @@
       <div class="flex items-center justify-between">
         <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Tendência</p>
         <span class="inline-flex items-center rounded-full bg-surface-low px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">
-          {% if last_record %}{{ last_record.get_fuel_type_display }}{% endif %}
+          L/100km estimado
         </span>
       </div>
 
-      <div class="mt-5 grid grid-cols-6 gap-2 items-end h-28" aria-label="Tendência de consumo (6 meses)">
+      <div class="mt-5 grid grid-cols-6 gap-2 items-end h-28" aria-label="Tendência estimada de consumo em L/100km (6 meses)">
         {% for p in trend_points %}
           <div class="flex flex-col items-center gap-2">
             <div class="w-full rounded-xl bg-surface-low overflow-hidden h-20 flex items-end">
-              {% if p.value and trend_max %}
-                <div class="w-full {% if forloop.last %}bg-primary{% else %}bg-primary/25{% endif %}" style="height: {% widthratio p.value trend_max 100 %}%"></div>
+              {% if p.has_value %}
+                <div class="w-full {% if forloop.last %}bg-primary{% else %}bg-primary/25{% endif %}" style="height: {{ p.bar_percent }}%"></div>
               {% else %}
-                <div class="w-full bg-surface-highest" style="height: 12%"></div>
+                <div class="w-full bg-surface-highest" style="height: 0%"></div>
               {% endif %}
             </div>
             <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">{{ p.label }}</span>
@@ -172,10 +174,10 @@
         {% for p in cost_points %}
           <div class="flex flex-col items-center gap-2">
             <div class="w-full rounded-xl bg-surface-low overflow-hidden h-20 flex items-end">
-              {% if p.value and cost_max %}
-                <div class="w-full {% if forloop.last %}bg-primary{% else %}bg-primary/25{% endif %}" style="height: {% widthratio p.value cost_max 100 %}%"></div>
+              {% if p.has_value %}
+                <div class="w-full {% if forloop.last %}bg-primary{% else %}bg-primary/25{% endif %}" style="height: {{ p.bar_percent }}%"></div>
               {% else %}
-                <div class="w-full bg-surface-highest" style="height: 12%"></div>
+                <div class="w-full bg-surface-highest" style="height: 0%"></div>
               {% endif %}
             </div>
             <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">{{ p.label }}</span>
@@ -189,7 +191,7 @@
     <div class="lg:col-span-8 space-y-4">
       <div class="flex items-center justify-between">
         <h3 class="text-xl font-extrabold tracking-tight">Abastecimentos recentes</h3>
-        <a class="text-on-surface-variant text-xs font-extrabold uppercase tracking-widest hover:text-primary" href="?q={{ filters.q }}&motorcycle={{ filters.motorcycle }}">Ver histórico</a>
+        <a class="text-on-surface-variant text-xs font-extrabold uppercase tracking-widest hover:text-primary" href="{% querystring page=None %}">Ver histórico</a>
       </div>
 
       {% if recent_fillups %}
@@ -349,13 +351,13 @@
     <nav class="rounded-2xl bg-surface-lowest p-4 shadow-ambient" aria-label="Paginação">
       <div class="flex items-center justify-between gap-4">
         {% if page_obj.has_previous %}
-          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="?page={{ page_obj.previous_page_number }}&q={{ filters.q }}&motorcycle={{ filters.motorcycle }}">Anterior</a>
+          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% querystring page=page_obj.previous_page_number %}">Anterior</a>
         {% else %}
           <span></span>
         {% endif %}
         <span class="text-xs font-semibold text-on-surface-variant">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="?page={{ page_obj.next_page_number }}&q={{ filters.q }}&motorcycle={{ filters.motorcycle }}">Próxima</a>
+          <a class="rounded-xl bg-surface-low px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-on-surface-variant hover:bg-surface-highest/60" href="{% querystring page=page_obj.next_page_number %}">Próxima</a>
         {% else %}
           <span></span>
         {% endif %}
@@ -363,4 +365,22 @@
     </nav>
   {% endif %}
 </section>
+<script>
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest("[data-export-link]");
+    if (!link || link.getAttribute("aria-busy") === "true") {
+      return;
+    }
+    const loadingLabel = link.dataset.loadingLabel || "Gerando...";
+    link.dataset.originalLabel = link.textContent.trim();
+    link.textContent = loadingLabel;
+    link.setAttribute("aria-busy", "true");
+    link.classList.add("pointer-events-none", "opacity-70");
+    window.setTimeout(() => {
+      link.textContent = link.dataset.originalLabel || "Exportar";
+      link.removeAttribute("aria-busy");
+      link.classList.remove("pointer-events-none", "opacity-70");
+    }, 8000);
+  });
+</script>
 {% endblock %}

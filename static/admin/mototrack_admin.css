@@ -1,0 +1,156 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --mototrack-surface: #f6f8fc;
+  --mototrack-panel: #ffffff;
+  --mototrack-panel-soft: #edf2fb;
+  --mototrack-text: #0f172a;
+  --mototrack-muted: #475569;
+  --mototrack-primary: #2563eb;
+  --mototrack-primary-strong: #1d4ed8;
+  --mototrack-border: rgba(148, 163, 184, 0.28);
+  --mototrack-shadow: 0 8px 24px rgba(42, 52, 57, 0.06);
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, "Segoe UI", Tahoma, sans-serif !important;
+}
+
+body {
+  background:
+    radial-gradient(circle at 92% 2%, rgba(37, 99, 235, 0.11), transparent 28rem),
+    linear-gradient(180deg, #fbfdff 0%, var(--mototrack-surface) 100%) !important;
+  color: var(--mototrack-text);
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+#header,
+[data-simplebar],
+.sidebar,
+aside {
+  border-color: var(--mototrack-border) !important;
+}
+
+.font-semibold,
+.font-bold,
+.font-extrabold,
+h1,
+h2,
+h3,
+th {
+  letter-spacing: 0 !important;
+}
+
+h1,
+.breadcrumbs,
+.module caption,
+.module h2 {
+  color: var(--mototrack-text) !important;
+}
+
+.breadcrumbs,
+.object-tools,
+.submit-row,
+.module,
+.grp-module,
+fieldset,
+.paginator,
+.messagelist li {
+  border-radius: 14px !important;
+}
+
+.module,
+fieldset,
+.form-row,
+.submit-row,
+.paginator,
+.messagelist li,
+div.results {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  border-color: var(--mototrack-border) !important;
+  box-shadow: var(--mototrack-shadow) !important;
+}
+
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+thead th {
+  background-color: var(--mototrack-panel-soft) !important;
+  color: var(--mototrack-muted) !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+}
+
+tbody td,
+tbody th {
+  padding-top: 0.8rem !important;
+  padding-bottom: 0.8rem !important;
+  vertical-align: middle !important;
+}
+
+input,
+select,
+textarea,
+.select2-selection {
+  min-height: 2.75rem !important;
+  border-radius: 12px !important;
+  border-color: var(--mototrack-border) !important;
+  background-color: #f8fafc !important;
+  color: var(--mototrack-text) !important;
+  box-shadow: none !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.select2-container--focus .select2-selection {
+  border-color: rgba(37, 99, 235, 0.45) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16) !important;
+  outline: none !important;
+}
+
+.button,
+input[type="submit"],
+.submit-row input,
+a.button,
+.object-tools a {
+  min-height: 2.75rem !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, var(--mototrack-primary), var(--mototrack-primary-strong)) !important;
+  border: 0 !important;
+  color: #fff !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase;
+  box-shadow: var(--mototrack-shadow) !important;
+}
+
+.deletelink,
+.submit-row .deletelink {
+  background: #dc2626 !important;
+}
+
+a,
+.link,
+.selector-chosen h2 {
+  color: var(--mototrack-primary) !important;
+}
+
+.help,
+.quiet,
+.small,
+.mini,
+.errornote,
+.inline-deletelink {
+  font-size: 0.8rem !important;
+}

@@ -70,6 +70,8 @@ SPEC = ExportSpec(
     ],
 )
 
+PDF_MAX_TABLE_ROWS = 500
+
 
 def build_pdf_bytes(qs: QuerySet[FuelRecord]) -> bytes:
     buffer = io.BytesIO()
@@ -82,7 +84,9 @@ def build_pdf_bytes(qs: QuerySet[FuelRecord]) -> bytes:
         bottomMargin=30,
     )
     styles = getSampleStyleSheet()
-    records = list(qs.order_by("-date", "-odometer_km"))
+    ordered_qs = qs.order_by("-date", "-odometer_km")
+    total_records = ordered_qs.count()
+    records = list(ordered_qs[:PDF_MAX_TABLE_ROWS])
     summary = build_fuel_period_summary(records)
 
     story = [
@@ -108,8 +112,17 @@ def build_pdf_bytes(qs: QuerySet[FuelRecord]) -> bytes:
     )
     story.append(Spacer(1, 12))
 
+    if total_records > PDF_MAX_TABLE_ROWS:
+        story.append(
+            Paragraph(
+                f"Mostrando os {PDF_MAX_TABLE_ROWS} registros mais recentes de {total_records} encontrados.",
+                styles["Italic"],
+            )
+        )
+        story.append(Spacer(1, 8))
+
     rows = [["Data", "Moto", "Km", "Litros", "Preço/L", "Total", "Posto", "Tipo", "Tanque", "Comprovante"]]
-    for record in records[:80]:
+    for record in records:
         rows.append(
             [
                 record.date.strftime("%d/%m/%Y"),
@@ -182,4 +195,3 @@ def build_export(
         attachment_content_type=ct,
     )
     return export_response(content=content, filename=filename, content_type=ct)
-

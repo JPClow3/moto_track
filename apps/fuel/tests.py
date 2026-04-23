@@ -18,6 +18,7 @@ from apps.fuel.services import (
     build_fuel_period_summary,
     compute_average_consumption_km_per_liter,
     estimate_next_fill_up,
+    monthly_fuel_trend,
     remember_fuel_preference,
     review_suggestion_for_motorcycle,
 )
@@ -545,6 +546,7 @@ class FuelModelTests(TestCase):
         response = self.client.get(reverse("fuel:repeat_last"), HTTP_HX_REQUEST="true", HTTP_HOST="localhost")
         self.assertEqual(response.status_code, 200)
         self.assertIn("Repetir abastecimento", response.content.decode())
+        self.assertContains(response, f'hx-post="{reverse("fuel:repeat_last")}"')
 
         post = self.client.post(
             reverse("fuel:repeat_last"),
@@ -567,6 +569,32 @@ class FuelModelTests(TestCase):
         )
         self.assertEqual(post.status_code, 200)
         self.assertTrue(FuelRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=250).exists())  # pylint: disable=no-member
+
+    def test_monthly_fuel_trend_zero_values_render_zero_bars(self):
+        self._create_record(
+            date=date(2026, 4, 1),
+            odometer_km=100,
+            liters=Decimal("0.0"),
+            total_price=Decimal("0.00"),
+            price_per_liter=Decimal("0.000"),
+        )
+        self._create_record(
+            date=date(2026, 4, 2),
+            odometer_km=200,
+            liters=Decimal("0.0"),
+            total_price=Decimal("0.00"),
+            price_per_liter=Decimal("0.000"),
+        )
+
+        trend = monthly_fuel_trend(
+            FuelRecord.objects.filter(motorcycle=self.motorcycle),  # pylint: disable=no-member
+            today=date(2026, 4, 15),
+        )
+
+        current_point = trend["trend_points"][-1]
+        self.assertTrue(current_point["has_value"])
+        self.assertEqual(current_point["value"], 0.0)
+        self.assertEqual(current_point["bar_percent"], 0)
 
     def test_compute_average_consumption_uses_full_tank_anchors(self):
         self._create_record(
@@ -667,6 +695,25 @@ class FuelModelTests(TestCase):
         self.assertEqual(suggestion.fillups_since_review, 3)
         self.assertEqual(suggestion.interval, 3)
 
+    def test_review_suggestion_excludes_same_day_same_or_lower_odometer_after_review(self):
+        FuelReviewPreference.objects.create(motorcycle=self.motorcycle, fillups_interval=2)  # pylint: disable=no-member
+        from apps.maintenance.models import MaintenanceRecord, MaintenanceType
+
+        MaintenanceRecord.objects.create(
+            motorcycle=self.motorcycle,
+            maintenance_type=MaintenanceType.REVIEW,
+            date=date(2026, 4, 10),
+            odometer_km=1000,
+            cost=Decimal("0.00"),
+        )
+        self._create_record(date=date(2026, 4, 10), odometer_km=900)
+        self._create_record(date=date(2026, 4, 10), odometer_km=1000, total_price=Decimal("71.00"))
+        self._create_record(date=date(2026, 4, 10), odometer_km=1100, total_price=Decimal("72.00"))
+
+        suggestion = review_suggestion_for_motorcycle(self.motorcycle)
+
+        self.assertEqual(suggestion.fillups_since_review, 1)
+
     def test_intelligent_alerts_include_fuel_and_review_recommendations(self):
         FuelReviewPreference.objects.create(motorcycle=self.motorcycle, fillups_interval=2)  # pylint: disable=no-member
         self._create_record(date=date(2026, 4, 1), odometer_km=0, tank_full=True)
@@ -722,6 +769,26 @@ class FuelModelTests(TestCase):
         self.assertContains(response, "Posto CSV")
         self.assertFalse(FuelRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=1500).exists())
 
+    def test_fuel_import_preview_rejects_invalid_liters_prices_and_odometer(self):
+        self._create_record(date=date(2026, 4, 18), odometer_km=2000)
+        self.client.force_login(self.user)
+        csv_file = SimpleUploadedFile(
+            "fuel.csv",
+            (
+                b"date,odometer_km,liters,total_price,price_per_liter,fuel_type,tank_full,station_name\n"
+                b"2026-04-17,1500,0,-1.00,0,gasoline,true,Posto CSV\n"
+            ),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(reverse("fuel:import_preview"), {"motorcycle": self.motorcycle.pk, "file": csv_file})
+
+        self.assertEqual(response.status_code, 200)
+        row = response.context["preview_rows"][0]
+        self.assertFalse(row.is_valid)
+        self.assertIn("maior que zero", " ".join(row.errors))
+        self.assertFalse(FuelRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=1500).exists())
+
     def test_fuel_import_confirm_creates_previewed_rows(self):
         self.client.force_login(self.user)
         csv_file = SimpleUploadedFile(
@@ -738,3 +805,56 @@ class FuelModelTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertTrue(FuelRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=1500).exists())
+
+    def test_fuel_import_confirm_rolls_back_tampered_invalid_session_rows(self):
+        self.client.force_login(self.user)
+        session = self.client.session
+        session["fuel_imports"] = {
+            "tampered": {
+                "motorcycle_id": self.motorcycle.pk,
+                "rows": [
+                    {
+                        "date": "2026-04-20",
+                        "odometer_km": 1500,
+                        "liters": "8.000",
+                        "total_price": "56.00",
+                        "price_per_liter": "7.000",
+                        "fuel_type": FuelType.GASOLINE,
+                        "tank_full": True,
+                        "station_name": "Posto CSV",
+                    },
+                    {
+                        "date": "2026-04-21",
+                        "odometer_km": 1600,
+                        "liters": "0",
+                        "total_price": "0",
+                        "price_per_liter": "0",
+                        "fuel_type": FuelType.GASOLINE,
+                        "tank_full": True,
+                        "station_name": "Posto CSV",
+                    },
+                ],
+            }
+        }
+        session.save()
+
+        response = self.client.post(reverse("fuel:import_confirm"), {"import_token": "tampered"})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(FuelRecord.objects.filter(motorcycle=self.motorcycle, odometer_km__in=[1500, 1600]).exists())
+
+    def test_fuel_list_cost_per_km_uses_full_filtered_span_not_current_page(self):
+        for idx in range(55):
+            self._create_record(
+                date=date(2026, 4, 1 + (idx % 20)),
+                odometer_km=1000 + idx * 100,
+                liters=Decimal("1.000"),
+                total_price=Decimal("10.00"),
+                price_per_liter=Decimal("10.000"),
+            )
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("fuel:list"), {"page": "2"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["avg_cost_per_km"], 0.102)
