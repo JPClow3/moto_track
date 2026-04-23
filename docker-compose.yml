@@ -57,8 +57,6 @@ services:
       # MEDIA: with `STORAGES["default"]` = S3 in prod, uploads go to S3; this mount is optional
       # (e.g. local exports or if you override storage). Safe to remove on Lightsail when using S3 only.
       - ./media:/app/media
-    ports:
-      - "8000:8000"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?missing_DJANGO_SECRET_KEY}
@@ -75,7 +73,7 @@ services:
 
   caddy:
     image: caddy:2.10-alpine
-    profiles: ["edge"]
+    profiles: ["prod"]
     depends_on:
       web-prod:
         condition: service_started
