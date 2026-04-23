@@ -1,0 +1,24 @@
+name: Deploy to Lightsail
+
+# This tells GitHub to run the script whenever you push to the 'main' branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USERNAME }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          # These are the exact commands GitHub will type into your server
+          script: |
+            cd ~/moto_track
+            git pull origin main
+            docker compose --profile prod down
+            docker compose --profile prod up -d --build
