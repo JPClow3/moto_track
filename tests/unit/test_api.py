@@ -110,3 +110,108 @@ class ApiAuthZTests(TestCase):
             HTTP_AUTHORIZATION="Bearer invalid",
         )
         self.assertEqual(response.status_code, 401)
+
+    def test_valid_token_updates_last_used_at(self):
+        from apps.core.models import ApiToken
+        token = ApiToken.objects.create(owner=self.user, name="Used", scopes="fuel:read")
+        old_used = token.last_used_at
+        response = self.client.get(
+            reverse("api_v1:fuel_records"),
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+        )
+        self.assertEqual(response.status_code, 200)
+        token.refresh_from_db()
+        self.assertIsNotNone(token.last_used_at)
+        if old_used:
+            self.assertGreater(token.last_used_at, old_used)
+
+    def test_wrong_token_hash_returns_401(self):
+        from apps.core.models import ApiToken
+        token = ApiToken.objects.create(owner=self.user, name="Wrong", scopes="fuel:read")
+        response = self.client.get(
+            reverse("api_v1:fuel_records"),
+            HTTP_AUTHORIZATION="Token totally-wrong-key-here",
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_maintenance_records_endpoint_requires_scope(self):
+        token = ApiToken.objects.create(owner=self.user, name="Maint", scopes="maintenance:read")
+        from apps.maintenance.models import MaintenanceRecord, MaintenanceType
+        MaintenanceRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date="2024-01-01",
+            odometer_km=1000,
+            maintenance_type=MaintenanceType.OIL_CHANGE,
+            cost=Decimal("100.00"),
+        )
+        response = self.client.get(reverse("api_v1:maintenance_records"), HTTP_AUTHORIZATION=f"Token {token.key}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["results"]), 1)
+
+    def test_tire_records_endpoint_requires_scope(self):
+        token = ApiToken.objects.create(owner=self.user, name="Tires", scopes="tires:read")
+        from apps.tires.models import TirePosition, TireRecord, TireProduct
+        product = TireProduct.objects.create(owner=self.user, manufacturer="Pirelli", model_name="Angel")
+        TireRecord.objects.create(
+            motorcycle=self.motorcycle,
+            position=TirePosition.REAR,
+            installed_at="2024-01-01",
+            installed_odometer_km=1000,
+            tire_product=product,
+            brand_model="Pirelli Angel",
+            cost=Decimal("500.00"),
+        )
+        response = self.client.get(reverse("api_v1:tire_records"), HTTP_AUTHORIZATION=f"Token {token.key}")
+        self.assertEqual(response.status_code, 200)
+
+    def test_reminders_endpoint_requires_scope(self):
+        token = ApiToken.objects.create(owner=self.user, name="Remind", scopes="reminders:read")
+        from apps.reminders.models import Reminder, TriggerType
+        Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Test reminder",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=5000,
+            reference_km=1000,
+        )
+        response = self.client.get(reverse("api_v1:reminders"), HTTP_AUTHORIZATION=f"Token {token.key}")
+        self.assertEqual(response.status_code, 200)
+
+    def test_documents_endpoint_requires_scope(self):
+        token = ApiToken.objects.create(owner=self.user, name="Docs", scopes="documents:read")
+        from apps.documents.models import DocumentType, MotorcycleDocument
+        MotorcycleDocument.objects.create(
+            motorcycle=self.motorcycle,
+            name="Manual",
+            document_type=DocumentType.MANUAL,
+        )
+        response = self.client.get(reverse("api_v1:documents"), HTTP_AUTHORIZATION=f"Token {token.key}")
+        self.assertEqual(response.status_code, 200)
+
+    def test_expenses_endpoint_with_pagination(self):
+        token = ApiToken.objects.create(owner=self.user, name="Exp", scopes="expenses:read")
+        from apps.expenses.models import AnnualFee
+        AnnualFee.objects.create(
+            motorcycle=self.motorcycle,
+            fee_type="ipva",
+            year=2024,
+            due_date="2024-05-01",
+            amount=Decimal("100.00"),
+        )
+        response = self.client.get(reverse("api_v1:expenses"), {"limit": "1"}, HTTP_AUTHORIZATION=f"Token {token.key}")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(len(payload["results"]), 1)
+
+    def test_pagination_limit_clamped(self):
+        token = ApiToken.objects.create(owner=self.user, name="Page", scopes="fuel:read")
+        response = self.client.get(
+            reverse("api_v1:fuel_records"),
+            {"limit": "999", "offset": "-5"},
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["limit"], 100)
+        self.assertEqual(payload["offset"], 0)

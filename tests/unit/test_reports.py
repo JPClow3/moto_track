@@ -252,3 +252,19 @@ class ReportOverviewTests(TestCase):
         self.assertEqual(data.summary.total, Decimal("0"))
         self.assertEqual(data.maintenance_history, [])
         self.assertEqual(data.tire_history, [])
+
+    def test_sale_pdf_weasyprint_import_error(self):
+        import sys
+        self.client.force_login(self.user)
+        # Simulate weasyprint not installed
+        real_module = sys.modules.get("weasyprint")
+        sys.modules["weasyprint"] = None
+        try:
+            with self.assertRaises(ImportError) as cm:
+                self.client.get(reverse("reports:sale_report_pdf", args=[self.motorcycle.pk]))
+            self.assertIn("weasyprint is required", str(cm.exception))
+        finally:
+            if real_module is not None:
+                sys.modules["weasyprint"] = real_module
+            else:
+                sys.modules.pop("weasyprint", None)

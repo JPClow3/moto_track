@@ -22,6 +22,37 @@ def noop(apps, schema_editor):
     pass
 
 
+def encrypt_existing_push_keys(apps, schema_editor):
+    """Encrypt existing plaintext p256dh/auth before column becomes EncryptedCharField."""
+    from django.conf import settings
+    from django.utils.encoding import force_bytes, force_str
+
+    import base64
+    from cryptography.fernet import Fernet
+
+    PushSubscription = apps.get_model("core", "PushSubscription")
+    push_key = getattr(settings, "PUSH_ENCRYPTION_KEY", None)
+    if push_key is None:
+        push_key = settings.SECRET_KEY
+    raw = force_bytes(push_key)
+    key = base64.urlsafe_b64encode(raw[:32].ljust(32, b"0"))
+    fernet = Fernet(key)
+
+    to_update = []
+    for sub in PushSubscription.objects.all().iterator():
+        changed = False
+        if sub.p256dh and not sub.p256dh.startswith("gAAAA"):
+            sub.p256dh = force_str(fernet.encrypt(force_bytes(sub.p256dh)))
+            changed = True
+        if sub.auth and not sub.auth.startswith("gAAAA"):
+            sub.auth = force_str(fernet.encrypt(force_bytes(sub.auth)))
+            changed = True
+        if changed:
+            to_update.append(sub)
+    if to_update:
+        PushSubscription.objects.bulk_update(to_update, ["p256dh", "auth"])
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("core", "0004_remove_recordattachment_attach_owner_obj_idx_and_more"),
@@ -48,6 +79,7 @@ class Migration(migrations.Migration):
             model_name="apitoken",
             name="key",
         ),
+        migrations.RunPython(encrypt_existing_push_keys, noop),
         migrations.AlterField(
             model_name="pushsubscription",
             name="p256dh",

@@ -317,6 +317,164 @@ class CoreViewsTests(TestCase):
         self.assertContains(response, "Problemas conhecidos")
 
 
+class EncryptedFieldTests(TestCase):
+    def test_fernet_key_uses_push_encryption_key_when_set(self):
+        from django.test import override_settings
+        from apps.core.fields import _get_fernet
+        with override_settings(PUSH_ENCRYPTION_KEY="custom-key-for-testing-1234567890"):
+            fernet = _get_fernet()
+            encrypted = fernet.encrypt(b"hello")
+            decrypted = fernet.decrypt(encrypted)
+            self.assertEqual(decrypted, b"hello")
+
+    def test_fernet_key_falls_back_to_secret_key(self):
+        from django.test import override_settings
+        from apps.core.fields import _get_fernet
+        with override_settings(SECRET_KEY="fallback-secret-key-1234567890"):
+            # Ensure PUSH_ENCRYPTION_KEY is absent from settings
+            from django.conf import settings
+            original = getattr(settings, "PUSH_ENCRYPTION_KEY", None)
+            try:
+                if hasattr(settings, "PUSH_ENCRYPTION_KEY"):
+                    delattr(settings, "PUSH_ENCRYPTION_KEY")
+                fernet = _get_fernet()
+                encrypted = fernet.encrypt(b"hello")
+                decrypted = fernet.decrypt(encrypted)
+                self.assertEqual(decrypted, b"hello")
+            finally:
+                if original is not None:
+                    settings.PUSH_ENCRYPTION_KEY = original
+
+    def test_encrypted_field_roundtrip(self):
+        from django.db import connection
+        from apps.core.fields import EncryptedCharField
+        field = EncryptedCharField(max_length=255)
+        encrypted = field.get_prep_value("secret text")
+        self.assertNotEqual(encrypted, "secret text")
+        decrypted = field.from_db_value(encrypted, None, connection)
+        self.assertEqual(decrypted, "secret text")
+
+    def test_encrypted_field_returns_none_for_none(self):
+        from django.db import connection
+        from apps.core.fields import EncryptedCharField
+        field = EncryptedCharField(max_length=255)
+        self.assertIsNone(field.from_db_value(None, None, connection))
+        self.assertIsNone(field.get_prep_value(None))
+
+    def test_encrypted_field_returns_none_for_invalid_token(self):
+        from django.db import connection
+        from apps.core.fields import EncryptedCharField
+        field = EncryptedCharField(max_length=255)
+        decrypted = field.from_db_value("not-valid-fernet-token==", None, connection)
+        self.assertIsNone(decrypted)
+
+    def test_encrypted_field_to_python_passthrough(self):
+        from apps.core.fields import EncryptedCharField
+        field = EncryptedCharField(max_length=255)
+        self.assertEqual(field.to_python("plain"), "plain")
+        self.assertIsNone(field.to_python(None))
+
+
+class CoreMiscViewTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="misc-user", email="misc@example.com", password="pass12345")
+        self.motorcycle = Motorcycle.objects.create(
+            owner=self.user, name="Moto Misc", brand="Honda", model="CB", year=2023
+        )
+
+    def test_onboarding_template_preview_empty(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("onboarding_template_preview"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"")
+
+    def test_odometer_quick_update_get(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("quick_odometer_update"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_odometer_quick_update_post(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("quick_odometer_update"), {"odometer_override_km": 15000})
+        self.assertEqual(response.status_code, 302)
+        self.motorcycle.refresh_from_db()
+        self.assertEqual(self.motorcycle.current_odometer_km, 15000)
+
+    def test_quick_add_selector(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("quick_add"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_offline_page(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("offline"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_manifest_view(self):
+        response = self.client.get(reverse("manifest"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["name"], "Moto Track")
+
+    def test_manifest_view_dark_mode(self):
+        response = self.client.get(reverse("manifest"), {"mode": "dark", "resolved": "dark"})
+        self.assertEqual(response.status_code, 200)
+
+    def test_service_worker(self):
+        response = self.client.get(reverse("service_worker"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/javascript")
+
+    def test_undo_action_missing_token(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("undo_action", args=["no-such-token"]), {"next": reverse("dashboard")})
+        self.assertEqual(response.status_code, 302)
+
+    def test_demo_bike_create_redirects_when_has_moto(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("demo_bike_create"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("dashboard"))
+
+    def test_push_subscribe_invalid_json(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("push_subscribe"), data="not-json", content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Invalid JSON", response.json()["error"])
+
+    def test_push_subscribe_missing_data(self):
+        self.client.force_login(self.user)
+        import json
+        response = self.client.post(reverse("push_subscribe"), data=json.dumps({"endpoint": "https://e"}), content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Invalid subscription data", response.json()["error"])
+
+    def test_push_subscribe_success(self):
+        self.client.force_login(self.user)
+        import json
+        payload = {"endpoint": "https://example.com/push", "keys": {"p256dh": "abc", "auth": "def"}}
+        response = self.client.post(reverse("push_subscribe"), data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")
+
+    def test_theme_preference_invalid(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("theme_preference"), {"theme": "invalid"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_theme_preference_valid(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("theme_preference"), {"theme": "dark"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["theme"], "dark")
+
+    def test_message_list(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("message_list"))
+        self.assertEqual(response.status_code, 200)
+
+
 class SentryInitializationTests(TestCase):
     @override_settings(SENTRY_DSN="")
     def test_sentry_skipped_when_dsn_missing(self):
