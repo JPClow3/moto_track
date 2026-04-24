@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.contrib.auth.hashers import check_password
 from django.http import JsonResponse
 from django.utils import timezone
 
@@ -16,11 +17,13 @@ def _token_from_request(request):
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Token "):
         return None
-    key = auth.removeprefix("Token ").strip()
-    token = ApiToken.objects.filter(key=key, is_active=True).select_related("owner").first()
-    if token:
-        ApiToken.objects.filter(pk=token.pk).update(last_used_at=timezone.now())
-    return token
+    raw_key = auth.removeprefix("Token ").strip()
+    prefix = raw_key[:12] if len(raw_key) >= 12 else raw_key
+    for token in ApiToken.objects.filter(is_active=True, key_prefix=prefix).select_related("owner"):
+        if check_password(raw_key, token.key_hash):
+            ApiToken.objects.filter(pk=token.pk).update(last_used_at=timezone.now())
+            return token
+    return None
 
 
 def _require_token(request, scope: str):

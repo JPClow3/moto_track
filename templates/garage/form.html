@@ -13,7 +13,7 @@
     <a class="inline-cta" href="{% url 'garage:list' %}">Voltar para garagem</a>
   </header>
 
-  <article class="panel">
+  <div class="space-y-6">
     <form method="post" class="data-form" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -26,16 +26,28 @@
         </div>
         {{ form.license_plate|as_crispy_field }}
         {{ form.odometer_override_km|as_crispy_field }}
-        {{ form.riding_profile|as_crispy_field }}
+        <div class="mb-3">
+          <label for="{{ form.riding_profile.id_for_label }}" class="block text-sm font-medium text-on-surface mb-1">
+            <span class="relative inline-flex items-center gap-1" x-data="{ t: false }" @mouseenter="t = true" @mouseleave="t = false" @focus="t = true" @blur="t = false">
+              {{ form.riding_profile.label }}
+              <i data-lucide="info" class="h-3.5 w-3.5 text-on-surface-variant" aria-hidden="true"></i>
+              <span x-show="t" x-cloak class="absolute bottom-full left-1/2 mb-1 w-56 -translate-x-1/2 rounded bg-inverse-surface px-2 py-1 text-xs text-on-primary shadow-lg" role="tooltip">
+                Severo = trânsito intenso, curta distância. Moderado = misto. Suave = estrada, longa distância.
+              </span>
+            </span>
+          </label>
+          {{ form.riding_profile }}
+          {% if form.riding_profile.errors %}<div class="text-sm text-error mt-1">{{ form.riding_profile.errors }}</div>{% endif %}
+          {% if form.riding_profile.help_text %}<p class="text-xs text-on-surface-variant mt-1">{{ form.riding_profile.help_text }}</p>{% endif %}
+        </div>
       </div>
 
-      <section class="rounded-2xl bg-surface-low/70 p-5 ring-1 ring-outline-variant/20" aria-label="Informações opcionais">
+      <section class="rounded-md border border-outline-variant/20 bg-surface-low p-5" aria-label="Informações opcionais">
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
-            <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Informações opcionais</p>
+            <p class="text-xs font-semibold text-on-surface-variant">Informações opcionais</p>
             <p class="mt-1 text-sm text-on-surface-variant">Ajuda a manter um histórico mais completo da moto.</p>
           </div>
-          <span class="icon-chip" aria-hidden="true"><i data-lucide="clipboard-list"></i></span>
         </div>
 
         <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -55,6 +67,6 @@
         <button type="submit" class="primary-btn">{{ submit_label }}</button>
       </div>
     </form>
-  </article>
+  </div>
 </section>
 {% endblock %}

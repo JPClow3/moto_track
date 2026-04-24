@@ -1,493 +1,527 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="pt-BR" class="h-full">
+<html lang="pt-BR" class="h-full" data-theme="system" data-user-theme="{{ user_theme_preference|default:'system' }}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Moto Track{% endblock %}</title>
-  <meta name="description" content="{% block meta_description %}Moto Track organiza garagem, abastecimentos, manutencoes, pneus, documentos e relatorios em um painel privado para motociclistas.{% endblock %}" />
+  <meta name="description" content="{% block meta_description %}Moto Track organiza garagem, abastecimentos, manutenções, pneus, documentos e relatórios em um painel privado para motociclistas.{% endblock %}" />
   <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}" />
-  <meta name="theme-color" content="#2563eb" />
+  <meta name="theme-color" content="#F5F5F4" />
+  <meta name="csrf-token" content="{{ csrf_token }}" />
+  <meta name="service-worker-url" content="{% url 'service_worker' %}" />
+  <meta name="push-subscribe-url" content="{% url 'push_subscribe' %}" />
   <meta property="og:site_name" content="Moto Track" />
   <meta property="og:title" content="{% block og_title %}Moto Track{% endblock %}" />
-  <meta property="og:description" content="{% block og_description %}Gestao de garagem, manutencoes, abastecimentos, pneus e documentos para motociclistas.{% endblock %}" />
-  <meta property="og:type" content="website" />
+  <meta property="og:description" content="{% block og_description %}Gestão de garagem, manutenções, abastecimentos, pneus e documentos para motociclistas.{% endblock %}" />
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}" />
   <meta property="og:url" content="{{ request.build_absolute_uri }}" />
-  <meta name="twitter:card" content="summary" />
-  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/moto-track-icon.png' %}" />
-  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/moto-track-icon.png' %}" />
+  <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}" />
+  <meta property="og:image" content="{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}{% endblock %}" />
+  <meta name="twitter:image" content="{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}{% endblock %}" />
+  {% block extra_meta %}{% endblock %}
   <link rel="icon" href="{% static 'brand/favicon.ico' %}" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'brand/favicon-32x32.png' %}" />
   <link rel="apple-touch-icon" sizes="512x512" href="{% static 'brand/moto-track-icon.png' %}" />
-  <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+  <link rel="manifest" href="{% url 'manifest' %}" data-base-href="{% url 'manifest' %}" />
+  <script>
+    /* AI-NOTE: justified-exception — Theme initialization must run synchronously before render to prevent FOUC */
+    (() => {
+      const palette = { dark: "#09090B", light: "#F5F5F4" };
+      const validThemes = new Set(["system", "dark", "light"]);
+      try {
+        const serverTheme = document.documentElement.dataset.userTheme;
+        const savedTheme = localStorage.getItem("mototrack-theme");
+        const mode = validThemes.has(serverTheme) ? serverTheme : (validThemes.has(savedTheme) ? savedTheme : "system");
+        const resolved =
+          mode === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : mode === "system"
+              ? "light"
+              : mode;
+        document.documentElement.dataset.theme = mode;
+        document.documentElement.dataset.resolvedTheme = resolved;
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+          meta.setAttribute("content", palette[resolved]);
+        }
+        const manifest = document.querySelector('link[rel="manifest"]');
+        if (manifest) {
+          const baseHref = manifest.dataset.baseHref || manifest.getAttribute("href");
+          if (baseHref) {
+            manifest.dataset.baseHref = baseHref;
+            const manifestUrl = new URL(baseHref, window.location.origin);
+            manifestUrl.searchParams.set("mode", mode);
+            manifestUrl.searchParams.set("resolved", resolved);
+            manifest.setAttribute("href", manifestUrl.toString());
+          }
+        }
+      } catch (error) {
+        document.documentElement.dataset.theme = "system";
+        document.documentElement.dataset.resolvedTheme = "light";
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <style>[x-cloak] { display: none !important; }</style>
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="{% static 'js/theme.js' %}" defer></script>
+  <script src="{% static 'js/app.js' %}" defer></script>
 </head>
-<body class="min-h-full overflow-x-hidden">
+<body class="min-h-full overflow-x-hidden"
+      x-init="if (window.lucide) window.lucide.createIcons()"
+      x-data="{
+        mobileMenuOpen: false,
+        quickFormOpen: false,
+        snackbarMessage: '',
+        snackbarVisible: false,
+        snackbarTimer: null,
+        skeletonVisible: false,
+        previousFocusedElement: null,
+        openMobileMenu() {
+          this.previousFocusedElement = document.activeElement;
+          this.mobileMenuOpen = true;
+          this.$nextTick(() => {
+            const firstLink = this.$refs.mobileMenuDialog?.querySelector('a, button');
+            if (firstLink) firstLink.focus();
+          });
+        },
+        closeMobileMenu() {
+          this.mobileMenuOpen = false;
+          if (this.previousFocusedElement && typeof this.previousFocusedElement.focus === 'function') {
+            this.previousFocusedElement.focus();
+          }
+        },
+        closeQuickFormModal() {
+          const quickFormRoot = document.getElementById('quick-form-root');
+          if (quickFormRoot) quickFormRoot.innerHTML = '';
+          this.quickFormOpen = false;
+        },
+        showSnackbar(message) {
+          this.snackbarMessage = message;
+          this.snackbarVisible = true;
+          clearTimeout(this.snackbarTimer);
+          this.snackbarTimer = setTimeout(() => { this.snackbarVisible = false; }, 5000);
+        },
+        kbdHelpOpen: false,
+        openKbdHelp() { this.kbdHelpOpen = true; },
+        closeKbdHelp() { this.kbdHelpOpen = false; },
+        triggerQuickForm(url) {
+          if (typeof htmx !== 'undefined' && url) {
+            htmx.ajax('GET', url, { target: '#quick-form-root', swap: 'innerHTML', indicator: '#quick-form-skeleton' });
+          }
+        },
+        isTyping() {
+          const active = document.activeElement;
+          if (!active) return false;
+          return active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable;
+        },
+      }"
+      x-on:keydown.escape.window="if (mobileMenuOpen) { closeMobileMenu(); } else { closeQuickFormModal(); }"
+      x-on:keydown.window="
+        if (isTyping()) return;
+        if ($event.key === '?' && $event.shiftKey) { $event.preventDefault(); openKbdHelp(); }
+        if ($event.key === 'n' || $event.key === 'N') { $event.preventDefault(); triggerQuickForm('{% url 'fuel:quick_create' %}?next={{ request.path|urlencode }}'); }
+        if ($event.key === 'm' || $event.key === 'M') { $event.preventDefault(); triggerQuickForm('{% url 'maintenance:quick_create' %}?next={{ request.path|urlencode }}'); }
+        if ($event.key === 'o' || $event.key === 'O') { $event.preventDefault(); triggerQuickForm('{% url 'quick_odometer_update' %}?next={{ request.path|urlencode }}'); }
+      "
+      x-on:htmx:afterSwap.window="
+        if (window.lucide) window.lucide.createIcons();
+        if (window.Alpine && $event.detail?.target) {
+          window.Alpine.initTree($event.detail.target);
+        }
+        if ($event.detail?.target?.id === 'quick-form-root') {
+          quickFormOpen = true;
+          previousFocusedElement = document.activeElement;
+          $nextTick(() => {
+            const dialog = document.getElementById('quick-form-root')?.querySelector('[role=dialog]');
+            if (dialog) {
+              const first = Array.from(dialog.querySelectorAll('a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex=-1])')).filter(el => !el.hasAttribute('hidden') && el.offsetParent !== null)[0];
+              if (first) first.focus();
+            }
+          });
+        }
+      "
+      x-on:htmx:beforeRequest.window="
+        previousFocusedElement = document.activeElement;
+        if ($event.detail.elt) $event.detail.elt.setAttribute('aria-busy', 'true');
+        if ($event.detail.target && $event.detail.target.id === 'quick-form-root') {
+          skeletonVisible = true;
+        }
+      "
+      x-on:htmx:afterRequest.window="
+        if ($event.detail.elt) $event.detail.elt.removeAttribute('aria-busy');
+        if ($event.detail.target && $event.detail.target.id === 'quick-form-root') {
+          skeletonVisible = false;
+        }
+      "
+>
   <a class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-inverse-surface focus:px-4 focus:py-2 focus:text-on-primary" href="#main-content">
     Pular para o conteúdo principal
   </a>
 
-  <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
-    <div class="absolute -top-24 -right-24 h-[520px] w-[520px] rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-3xl opacity-50"></div>
-    <div class="absolute -bottom-28 -left-24 h-[560px] w-[560px] rounded-full bg-gradient-to-tr from-surface-highest/60 to-transparent blur-3xl opacity-60"></div>
-    <div class="absolute inset-0 bg-gradient-to-b from-surface-lowest/70 via-surface/90 to-surface-low"></div>
-    <div class="bg-grain"></div>
-  </div>
-
-  <div class="min-h-screen lg:grid lg:grid-cols-[18rem_1fr]">
-    <aside class="hidden lg:flex lg:flex-col lg:gap-2 lg:bg-surface-low lg:px-4 lg:py-5 lg:sticky lg:top-0 lg:h-screen" aria-label="Navegação principal">
-      <div class="px-2 pb-3">
+  <div class="min-h-screen {% if request.user.is_authenticated %}lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]{% endif %}">
+    {% if request.user.is_authenticated %}
+    <aside class="hidden border-r border-outline-variant/80 bg-surface-low/85 lg:flex lg:sticky lg:top-0 lg:h-screen lg:flex-col lg:px-4 lg:py-5 print:hidden" aria-label="Navegação principal">
+      <div class="px-2 pb-5">
         <a class="inline-flex max-w-full" href="{% url 'dashboard' %}" aria-label="Moto Track">
-          <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-11 w-auto max-w-full" />
+          <picture>
+            <source srcset="{% static 'brand/moto-track-full-logo.webp' %}" type="image/webp">
+            <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-11 w-auto max-w-full" loading="eager" fetchpriority="high" width="220" height="44" />
+          </picture>
         </a>
-        <p class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mt-2">Gestão de precisão</p>
+        <p class="mt-3 text-xs font-medium text-on-surface-variant">Controle de precisão</p>
       </div>
 
       <nav class="flex-1">
         <ul class="space-y-1 text-sm font-semibold">
           <li>
-            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.url_name == 'dashboard' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.url_name == 'dashboard' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
                href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}>
               <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span>
             </a>
           </li>
           <li>
-            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'garage' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'garage' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
                href="{% url 'garage:list' %}" {% if request.resolver_match.namespace == 'garage' %}aria-current="page"{% endif %}>
               <i data-lucide="bike" aria-hidden="true"></i><span>Garagem</span>
             </a>
           </li>
           <li>
-            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
                href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}>
-              <i data-lucide="fuel" aria-hidden="true"></i><span>Abastecimentos</span>
+              <i data-lucide="fuel" aria-hidden="true"></i><span>Combustível</span>
             </a>
           </li>
           <li>
-            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
                href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}>
-              <i data-lucide="wrench" aria-hidden="true"></i><span>Manutenções</span>
+              <i data-lucide="wrench" aria-hidden="true"></i><span>Manutenção</span>
             </a>
           </li>
           <li>
-            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'tires' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'tires' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
                href="{% url 'tires:list' %}" {% if request.resolver_match.namespace == 'tires' %}aria-current="page"{% endif %}>
               <i data-lucide="circle-dot" aria-hidden="true"></i><span>Pneus</span>
             </a>
           </li>
           <li>
-            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'documents' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'documents' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
                href="{% url 'documents:list' %}" {% if request.resolver_match.namespace == 'documents' %}aria-current="page"{% endif %}>
               <i data-lucide="file-text" aria-hidden="true"></i><span>Documentos</span>
             </a>
           </li>
           <li>
-            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'reminders' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'reminders' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
                href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}>
               <i data-lucide="bell-ring" aria-hidden="true"></i><span>Lembretes</span>
             </a>
           </li>
           <li>
-            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'expenses' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'expenses' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
                href="{% url 'expenses:list' %}" {% if request.resolver_match.namespace == 'expenses' %}aria-current="page"{% endif %}>
-              <i data-lucide="shield-check" aria-hidden="true"></i><span>Taxas & Seguros</span>
+              <i data-lucide="shield-check" aria-hidden="true"></i><span>Taxas e seguros</span>
             </a>
           </li>
           <li>
-            <a class="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-surface-highest/60 transition {% if request.resolver_match.namespace == 'reports' %}bg-surface-lowest shadow-ambient text-primary{% else %}text-on-surface-variant{% endif %}"
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'reports' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
                href="{% url 'reports:overview' %}" {% if request.resolver_match.namespace == 'reports' %}aria-current="page"{% endif %}>
               <i data-lucide="chart-column" aria-hidden="true"></i><span>Relatórios</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'blog' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
+               href="{% url 'blog:list' %}" {% if request.resolver_match.namespace == 'blog' %}aria-current="page"{% endif %}>
+              <i data-lucide="book-open-text" aria-hidden="true"></i><span>Blog</span>
             </a>
           </li>
         </ul>
       </nav>
 
-      <div class="rounded-2xl bg-surface-lowest p-3 shadow-ambient">
-        <p class="text-on-surface-variant text-xs font-semibold">{{ request.user.username|default:'Garagem' }}</p>
-        {% if garage_motorcycles|length > 1 %}
-          <form method="post" action="{% url 'dashboard' %}" class="mt-3 space-y-2">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.path }}" />
-            <select name="active_motorcycle_id" aria-label="Selecionar moto ativa" class="ui-select">
-              {% for bike in garage_motorcycles %}
-                <option value="{{ bike.id }}" {% if active_motorcycle and bike.id == active_motorcycle.id %}selected{% endif %}>{{ bike.name }}</option>
-              {% endfor %}
-            </select>
-            <button type="submit" class="w-full ui-btn-primary">
-              Usar esta moto
-            </button>
-          </form>
-        {% endif %}
-        <nav class="mt-3 flex flex-wrap gap-3 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant" aria-label="Links legais">
+      <div class="mt-4 rounded-md border border-outline-variant/20 bg-surface-low p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-medium text-on-surface-variant">Moto ativa</p>
+            <p class="mt-1 text-sm font-semibold text-on-surface">{{ active_motorcycle.name|default:request.user.username|default:"Garagem" }}</p>
+          </div>
+          <button type="button" class="ui-toolbar-btn !min-h-10 !px-3 !py-2" data-theme-toggle>
+            <span>Tema</span>
+          </button>
+        </div>
+        <nav class="mt-4 flex flex-wrap gap-3 text-xs font-medium text-on-surface-variant" aria-label="Links legais">
           <a class="hover:text-primary" href="{% url 'privacy_policy' %}">Privacidade</a>
           <a class="hover:text-primary" href="{% url 'terms_of_service' %}">Termos</a>
         </nav>
       </div>
     </aside>
+    {% endif %}
 
-    <div class="min-h-screen pb-24 lg:pb-0">
-      <header class="sticky top-0 z-40 bg-surface/85 backdrop-blur-xl">
-        <div class="mx-auto w-[min(1240px,93%)] py-4 flex items-end justify-between gap-4">
+    <div class="min-w-0 pb-24 lg:pb-0">
+      <header class="sticky top-0 z-40 border-b border-outline-variant/80 bg-surface/88 backdrop-blur print:hidden">
+        <div class="mx-auto flex w-[min(1280px,94%)] items-center justify-between gap-4 py-4">
           <div class="min-w-0">
-            <p class="ui-eyebrow">
-              {% block topbar_eyebrow %}Moto Track{% endblock %}
-            </p>
-            <h1 class="mt-1 ui-h1 truncate">
-              {% block topbar_title %}Controle da sua moto em um só lugar{% endblock %}
-            </h1>
+            <p class="ui-eyebrow">{% block topbar_eyebrow %}Moto Track{% endblock %}</p>
+            <h1 class="mt-2 ui-h1 truncate">{% block topbar_title %}Controle da sua moto em um so lugar{% endblock %}</h1>
           </div>
+          {% if request.user.is_authenticated and garage_motorcycles|length > 1 %}
+            <div class="relative hidden md:block" x-data="{ open: false }" @click.outside="open = false">
+              <button
+                type="button"
+                class="ui-toolbar-btn !min-h-9 !px-3 !py-1.5 text-sm"
+                aria-haspopup="listbox"
+                :aria-expanded="open"
+                @click="open = !open"
+              >
+                <i data-lucide="bike" aria-hidden="true"></i>
+                <span class="max-w-[12ch] truncate">{{ active_motorcycle.name|default:"Moto" }}</span>
+                <i data-lucide="chevron-down" class="h-3 w-3" aria-hidden="true"></i>
+              </button>
+              <div
+                x-show="open"
+                x-cloak
+                x-transition:enter="transition ease-out duration-100"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-75"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-md border border-outline-variant/40 bg-surface-lowest p-1 shadow-lg"
+                role="listbox"
+              >
+                {% for bike in garage_motorcycles %}
+                  <form method="post" action="{% url 'dashboard' %}" hx-post="{% url 'dashboard' %}" hx-swap="none" class="contents">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}" />
+                    <input type="hidden" name="active_motorcycle_id" value="{{ bike.id }}" />
+                    <button
+                      type="submit"
+                      class="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition {% if active_motorcycle and bike.id == active_motorcycle.id %}bg-primary/10 text-primary font-semibold{% else %}text-on-surface hover:bg-surface-low{% endif %}"
+                      role="option"
+                      :aria-selected="{{ active_motorcycle.id|default:0 }} === {{ bike.id }}"
+                      @click="open = false"
+                    >
+                      <span class="truncate">{{ bike.name }}</span>
+                      <span class="text-xs text-on-surface-variant">{{ bike.current_odometer_km|default:0 }} km</span>
+                    </button>
+                  </form>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
           <div class="flex items-center gap-2" aria-label="Ações do topo">
+            {% block topbar_actions %}{% endblock %}
+            <button type="button" class="ui-toolbar-btn hidden sm:inline-flex lg:hidden" data-theme-toggle>
+              <span>Tema</span>
+            </button>
+            {% if request.user.is_authenticated %}
             <button
+              id="quick-add-trigger"
               type="button"
-              class="ui-icon-btn rounded-full"
-              aria-label="Adicionar"
+              class="ui-icon-btn"
+              aria-label="Adicionar registro rápido"
+              title="Adicionar registro rápido"
               hx-get="{% url 'quick_add' %}?next={{ request.path|urlencode }}"
               hx-target="#quick-form-root"
               hx-swap="innerHTML"
+              hx-indicator="#quick-form-skeleton"
             >
               <i data-lucide="plus" aria-hidden="true"></i>
             </button>
             <button
               id="push-subscribe-button"
               type="button"
-              class="ui-icon-btn rounded-full"
-              onclick="subscribeToPush(this)"
-              aria-label="Ativar Notificações"
-              title="Ativar Notificações"
+              class="ui-icon-btn hidden sm:inline-grid"
+              @click="subscribeToPush(this)"
+              data-vapid-key="{{ web_push_public_key|default:''|escapejs }}"
+              aria-label="Ativar notificações"
+              title="Ativar notificações"
             >
               <i data-lucide="radio" aria-hidden="true"></i>
             </button>
-            <a class="ui-icon-btn rounded-full" href="{% url 'reminders:list' %}" aria-label="Ir para lembretes">
+            <a class="ui-icon-btn hidden sm:inline-grid" href="{% url 'reminders:list' %}" aria-label="Ir para lembretes">
               <i data-lucide="bell" aria-hidden="true"></i>
             </a>
-            <a class="ui-icon-btn rounded-full" href="{% url 'reports:overview' %}" aria-label="Ir para relatórios">
-              <i data-lucide="chart-column" aria-hidden="true"></i>
-            </a>
+            {% endif %}
             {% if request.user.is_authenticated %}
               <form method="post" action="{% url 'account_logout' %}">
                 {% csrf_token %}
-                <button type="submit" class="rounded-full bg-surface-lowest px-4 py-2 text-sm font-bold text-on-surface shadow-ambient hover:bg-surface-highest/60">Sair</button>
+                <button type="submit" class="ui-btn-secondary !min-h-11 !px-4 !text-sm !font-semibold">Sair</button>
               </form>
             {% else %}
-              <a class="rounded-full bg-surface-lowest px-4 py-2 text-sm font-bold text-on-surface shadow-ambient hover:bg-surface-highest/60" href="{% url 'account_login' %}">Entrar</a>
+              <a class="ui-btn-secondary !min-h-11 !px-4 !text-sm !font-semibold" href="{% url 'account_login' %}">Entrar</a>
             {% endif %}
           </div>
         </div>
       </header>
 
-      <main id="main-content" class="mx-auto w-[min(1240px,93%)] pt-6" tabindex="-1">
+      <main id="main-content" class="mx-auto w-[min(1280px,94%)] pt-6" tabindex="-1">
         {% block content %}{% endblock %}
       </main>
 
-      <nav class="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-surface/90 backdrop-blur-xl border-t border-outline-variant/20" aria-label="Navegação rápida">
-        <div class="mx-auto grid w-[min(1240px,93%)] grid-cols-5 py-2 text-[10px] font-extrabold uppercase tracking-widest">
-          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.url_name == 'dashboard' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
-             href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span></a>
-          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
-             href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="fuel" aria-hidden="true"></i><span>Abastec.</span></a>
-          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
-             href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}><i data-lucide="wrench" aria-hidden="true"></i><span>Manut.</span></a>
-          <a class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'reminders' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
-             href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}><i data-lucide="bell-ring" aria-hidden="true"></i><span>Lembretes</span></a>
+      {% if request.user.is_authenticated %}
+      <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-outline-variant/80 bg-surface/92 backdrop-blur lg:hidden print:hidden" aria-label="Navegação rápida">
+        <div class="mx-auto grid w-[min(1280px,94%)] grid-cols-5 gap-1 py-2 text-xs font-medium">
+          <a class="flex flex-col items-center justify-center gap-1 rounded-md py-2 {% if request.resolver_match.url_name == 'dashboard' %}bg-primary/10 text-primary{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}>
+            <i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Painel</span>
+          </a>
+          <a class="flex flex-col items-center justify-center gap-1 rounded-md py-2 {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}bg-primary/10 text-primary{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'fuel:list' %}" {% if request.resolver_match.namespace == 'fuel' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}>
+            <i data-lucide="fuel" aria-hidden="true"></i><span>Comb.</span>
+          </a>
+          <a class="flex flex-col items-center justify-center gap-1 rounded-md py-2 {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}bg-primary/10 text-primary{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'maintenance:list' %}" {% if request.resolver_match.namespace == 'maintenance' and request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}>
+            <i data-lucide="wrench" aria-hidden="true"></i><span>Manut.</span>
+          </a>
+          <a class="flex flex-col items-center justify-center gap-1 rounded-md py-2 {% if request.resolver_match.namespace == 'reminders' %}bg-primary/10 text-primary{% else %}text-on-surface-variant{% endif %}"
+             href="{% url 'reminders:list' %}" {% if request.resolver_match.namespace == 'reminders' %}aria-current="page"{% endif %}>
+            <i data-lucide="bell-ring" aria-hidden="true"></i><span>Alertas</span>
+          </a>
           <button
             type="button"
-            class="flex flex-col items-center justify-center gap-1 rounded-xl py-2 {% if request.resolver_match.namespace == 'garage' or request.resolver_match.namespace == 'tires' or request.resolver_match.namespace == 'documents' or request.resolver_match.namespace == 'expenses' or request.resolver_match.namespace == 'reports' %}bg-surface-lowest text-primary shadow-ambient{% else %}text-on-surface-variant{% endif %}"
+            class="flex flex-col items-center justify-center gap-1 rounded-md py-2 {% if request.resolver_match.namespace == 'garage' or request.resolver_match.namespace == 'tires' or request.resolver_match.namespace == 'documents' or request.resolver_match.namespace == 'expenses' or request.resolver_match.namespace == 'reports' %}bg-primary/10 text-primary{% else %}text-on-surface-variant{% endif %}"
             aria-controls="mobile-more-menu"
-            aria-expanded="false"
-            onclick="openMobileMoreMenu()"
-          ><i data-lucide="menu" aria-hidden="true"></i><span>Mais</span></button>
+            :aria-expanded="mobileMenuOpen"
+            @click="openMobileMenu()"
+          >
+            <i data-lucide="menu" aria-hidden="true"></i><span>Mais</span>
+          </button>
         </div>
       </nav>
+      {% endif %}
     </div>
   </div>
 
-  <div id="mobile-more-menu" class="fixed inset-0 z-[70] hidden lg:hidden" aria-hidden="true">
-    <div class="absolute inset-0 bg-inverse-surface/60" data-mobile-more-backdrop></div>
-    <section class="absolute inset-x-0 bottom-0 rounded-t-2xl bg-surface-lowest p-5 shadow-ambient" role="dialog" aria-modal="true" aria-labelledby="mobile-more-title">
+  <div id="mobile-more-menu" class="fixed inset-0 z-[70] lg:hidden" x-show="mobileMenuOpen" x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       :aria-hidden="!mobileMenuOpen">
+    <div class="absolute inset-0 bg-inverse-surface/60" data-mobile-more-backdrop @click="closeMobileMenu()"></div>
+    <section x-ref="mobileMenuDialog" class="absolute inset-x-0 bottom-0 rounded-t-xl border border-outline-variant/60 bg-surface-lowest p-5" role="dialog" aria-modal="true" aria-labelledby="mobile-more-title">
       <div class="mb-4 flex items-center justify-between gap-3">
-        <h2 id="mobile-more-title" class="text-base font-extrabold tracking-tight">Mais módulos</h2>
-        <button type="button" class="ui-icon-btn rounded-full" onclick="closeMobileMoreMenu()" aria-label="Fechar menu">
+        <div>
+          <h2 id="mobile-more-title" class="font-headline text-2xl font-semibold tracking-tight">Mais módulos</h2>
+          <p class="mt-1 text-sm text-on-surface-variant">Acesso rápido para o restante da operação.</p>
+        </div>
+        <button type="button" class="ui-icon-btn" @click="closeMobileMenu()" aria-label="Fechar menu">
           <i data-lucide="x" aria-hidden="true"></i>
         </button>
       </div>
-      <div class="grid grid-cols-2 gap-3 text-sm font-bold">
-        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'garage:list' %}"><i data-lucide="bike" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Garagem</a>
-        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'tires:list' %}"><i data-lucide="circle-dot" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Pneus</a>
-        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'documents:list' %}"><i data-lucide="file-text" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Documentos</a>
-        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'expenses:list' %}"><i data-lucide="shield-check" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Taxas</a>
-        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'reports:overview' %}"><i data-lucide="chart-column" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Relatórios</a>
-        <a class="rounded-xl bg-surface-low px-4 py-3 text-on-surface-variant" href="{% url 'fuel:catalogs' %}"><i data-lucide="database" class="mr-2 inline h-4 w-4" aria-hidden="true"></i>Catálogos</a>
+      <div class="grid grid-cols-2 gap-2 text-sm font-semibold">
+        <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'garage:list' %}"><i data-lucide="bike" class="inline text-on-surface-variant" aria-hidden="true"></i>Garagem</a>
+        <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'tires:list' %}"><i data-lucide="circle-dot" class="inline text-on-surface-variant" aria-hidden="true"></i>Pneus</a>
+        <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'documents:list' %}"><i data-lucide="file-text" class="inline text-on-surface-variant" aria-hidden="true"></i>Documentos</a>
+        <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'expenses:list' %}"><i data-lucide="shield-check" class="inline text-on-surface-variant" aria-hidden="true"></i>Taxas</a>
+        <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'reports:overview' %}"><i data-lucide="chart-column" class="inline text-on-surface-variant" aria-hidden="true"></i>Relatórios</a>
+        <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'blog:list' %}"><i data-lucide="book-open-text" class="inline text-on-surface-variant" aria-hidden="true"></i>Blog</a>
+        <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'fuel:catalogs' %}"><i data-lucide="database" class="inline text-on-surface-variant" aria-hidden="true"></i>Catálogos</a>
+      </div>
+      <div class="mt-4 flex gap-3">
+        <button type="button" class="ui-toolbar-btn w-full justify-center" data-theme-toggle>
+          <span>Tema</span>
+        </button>
       </div>
     </section>
   </div>
 
   <div id="quick-form-root" aria-live="polite"></div>
-  {% if messages %}
-    <div class="snackbar flex items-center justify-between gap-3" role="status" aria-live="polite">
-      <div class="min-w-0">
-        {% for message in messages %}
-          <p class="truncate">{{ message }}</p>
-        {% endfor %}
+
+  <div id="quick-form-skeleton" class="fixed inset-0 z-50 bg-inverse-surface/60 p-0 sm:p-6" role="status" aria-live="polite" aria-label="Carregando formulário" x-show="skeletonVisible" x-cloak>
+    <div class="grid h-full place-items-end sm:place-items-center">
+      <div class="w-full max-h-[90vh] sm:max-w-lg rounded-t-md sm:rounded-md border border-outline-variant/20 bg-surface-low p-6">
+        <div class="animate-pulse space-y-4">
+          <div class="h-6 w-1/3 rounded bg-surface-high"></div>
+          <div class="h-4 w-1/2 rounded bg-surface-high"></div>
+          <div class="h-11 w-full rounded bg-surface-high"></div>
+          <div class="h-11 w-full rounded bg-surface-high"></div>
+          <div class="h-11 w-full rounded bg-surface-high"></div>
+          <div class="h-11 w-24 rounded bg-surface-high"></div>
+        </div>
       </div>
-      {% if snackbar_undo %}
-        <form method="post" action="{% url 'undo_action' snackbar_undo.token %}">
-          {% csrf_token %}
-          <input type="hidden" name="next" value="{{ request.path }}" />
-          <button class="rounded-xl bg-on-primary px-3 py-2 text-[10px] font-extrabold uppercase tracking-widest text-inverse-surface" type="submit">
-            Desfazer
-          </button>
-        </form>
-      {% endif %}
     </div>
-  {% endif %}
+  </div>
+
+  <div id="toast-container" hx-get="{% url 'message_list' %}" hx-trigger="load, htmx:afterSwap from:body" hx-target="this" hx-swap="innerHTML" aria-live="polite"></div>
+
   <div id="client-snackbar" class="snackbar hidden" role="status" aria-live="polite"></div>
-  <script>
-    let previousFocusedElement = null;
 
-    function getFocusableElements(container) {
-      return Array.from(
-        container.querySelectorAll(
-          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
-      ).filter((element) => !element.hasAttribute("hidden") && element.offsetParent !== null);
-    }
+  {% if request.user.is_authenticated %}
+  <div
+    x-show="kbdHelpOpen"
+    x-cloak
+    class="fixed inset-0 z-[80] bg-inverse-surface/60"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="kbd-help-title"
+    @keydown.escape.window="closeKbdHelp()"
+    @click.self="closeKbdHelp()"
+  >
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="w-full max-w-sm rounded-md border border-outline-variant/20 bg-surface-low p-6 shadow-lg" @click.stop>
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <h2 id="kbd-help-title" class="font-headline text-lg font-semibold tracking-tight">Atalhos do teclado</h2>
+          <button type="button" class="ui-icon-btn" @click="closeKbdHelp()" aria-label="Fechar">
+            <i data-lucide="x" aria-hidden="true"></i>
+          </button>
+        </div>
+        <ul class="space-y-3 text-sm">
+          <li class="flex items-center justify-between">
+            <span>Novo abastecimento</span>
+            <kbd class="rounded bg-surface-high px-2 py-0.5 text-xs font-semibold text-on-surface-variant">N</kbd>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Nova manutenção</span>
+            <kbd class="rounded bg-surface-high px-2 py-0.5 text-xs font-semibold text-on-surface-variant">M</kbd>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Atualizar odômetro</span>
+            <kbd class="rounded bg-surface-high px-2 py-0.5 text-xs font-semibold text-on-surface-variant">O</kbd>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Esta ajuda</span>
+            <kbd class="rounded bg-surface-high px-2 py-0.5 text-xs font-semibold text-on-surface-variant">Shift + /</kbd>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
-    function closeQuickFormModal() {
-      const quickFormRoot = document.getElementById("quick-form-root");
-      if (!quickFormRoot) {
-        return;
-      }
+  <div
+    x-data="{ pwaVisible: false, pwaDeferred: null }"
+    x-show="pwaVisible"
+    x-cloak
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="translate-y-full opacity-0"
+    x-transition:enter-end="translate-y-0 opacity-100"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="translate-y-0 opacity-100"
+    x-transition:leave-end="translate-y-full opacity-0"
+    @pwa-prompt-available.window="pwaVisible = true; pwaDeferred = $event.detail;"
+    class="fixed bottom-0 left-0 right-0 z-[90] border-t border-outline-variant/40 bg-surface-lowest p-4 shadow-lg md:bottom-6 md:left-auto md:right-6 md:w-80 md:rounded-md md:border"
+  >
+    <div class="flex items-start gap-3">
+      <div class="flex-1">
+        <p class="text-sm font-semibold text-on-surface">Adicionar à tela inicial</p>
+        <p class="mt-1 text-xs text-on-surface-variant">Acesse o Moto Track como um app nativo direto da sua tela inicial.</p>
+      </div>
+      <div class="flex gap-2">
+        <button type="button" class="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-on-primary" @click="if(pwaDeferred){ pwaDeferred.prompt(); pwaDeferred.userChoice.then(() => { pwaVisible = false; pwaDeferred = null; }); }">Instalar</button>
+        <button type="button" class="rounded-md border border-outline-variant/40 px-3 py-1.5 text-xs font-semibold text-on-surface-variant" @click="pwaVisible = false; pwaDeferred = null;">Dispensar</button>
+      </div>
+    </div>
+  </div>
 
-      quickFormRoot.innerHTML = "";
-      if (previousFocusedElement && typeof previousFocusedElement.focus === "function") {
-        previousFocusedElement.focus();
-      }
-    }
-
-    window.closeQuickFormModal = closeQuickFormModal;
-
-    function showClientSnackbar(message) {
-      const snackbar = document.getElementById("client-snackbar");
-      if (!snackbar) {
-        return;
-      }
-      snackbar.textContent = message;
-      snackbar.classList.remove("hidden");
-      window.clearTimeout(snackbar.dataset.hideTimer);
-      const timer = window.setTimeout(() => {
-        snackbar.classList.add("hidden");
-      }, 5000);
-      snackbar.dataset.hideTimer = timer;
-    }
-
-    window.showClientSnackbar = showClientSnackbar;
-
-    function openMobileMoreMenu() {
-      const menu = document.getElementById("mobile-more-menu");
-      const trigger = document.querySelector('[aria-controls="mobile-more-menu"]');
-      if (!menu) {
-        return;
-      }
-      previousFocusedElement = document.activeElement;
-      menu.classList.remove("hidden");
-      menu.setAttribute("aria-hidden", "false");
-      if (trigger) {
-        trigger.setAttribute("aria-expanded", "true");
-      }
-      const firstLink = menu.querySelector("a, button");
-      if (firstLink) {
-        firstLink.focus();
-      }
-    }
-
-    function closeMobileMoreMenu() {
-      const menu = document.getElementById("mobile-more-menu");
-      const trigger = document.querySelector('[aria-controls="mobile-more-menu"]');
-      if (!menu) {
-        return;
-      }
-      menu.classList.add("hidden");
-      menu.setAttribute("aria-hidden", "true");
-      if (trigger) {
-        trigger.setAttribute("aria-expanded", "false");
-      }
-      if (previousFocusedElement && typeof previousFocusedElement.focus === "function") {
-        previousFocusedElement.focus();
-      }
-    }
-
-    window.openMobileMoreMenu = openMobileMoreMenu;
-    window.closeMobileMoreMenu = closeMobileMoreMenu;
-
-    function renderLucideIcons() {
-      if (window.lucide) {
-        window.lucide.createIcons();
-      }
-    }
-
-    function setupQuickFormAccessibility() {
-      const quickFormRoot = document.getElementById("quick-form-root");
-      if (!quickFormRoot) {
-        return;
-      }
-
-      const dialog = quickFormRoot.querySelector('[role="dialog"]');
-      if (!dialog) {
-        return;
-      }
-
-      const focusableElements = getFocusableElements(dialog);
-      if (focusableElements.length > 0) {
-        focusableElements[0].focus();
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", renderLucideIcons);
-    document.body.addEventListener("htmx:afterSwap", renderLucideIcons);
-
-    document.body.addEventListener("htmx:beforeRequest", () => {
-      previousFocusedElement = document.activeElement;
-    });
-
-    document.body.addEventListener("htmx:afterSwap", (event) => {
-      if (event.target && event.target.id === "quick-form-root") {
-        setupQuickFormAccessibility();
-      }
-    });
-
-    document.addEventListener("click", (event) => {
-      if (event.target && event.target.matches("[data-quick-modal-backdrop]")) {
-        closeQuickFormModal();
-      }
-      if (event.target && event.target.matches("[data-mobile-more-backdrop]")) {
-        closeMobileMoreMenu();
-      }
-    });
-
-    document.addEventListener("keydown", (event) => {
-      const mobileMoreMenu = document.getElementById("mobile-more-menu");
-      if (event.key === "Escape" && mobileMoreMenu && !mobileMoreMenu.classList.contains("hidden")) {
-        event.preventDefault();
-        closeMobileMoreMenu();
-        return;
-      }
-
-      const quickFormRoot = document.getElementById("quick-form-root");
-      if (!quickFormRoot || !quickFormRoot.firstElementChild) {
-        return;
-      }
-
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeQuickFormModal();
-      }
-    });
-
-    document.addEventListener("keydown", (event) => {
-      if (event.key !== "Tab") {
-        return;
-      }
-
-      const quickFormRoot = document.getElementById("quick-form-root");
-      const dialog = quickFormRoot ? quickFormRoot.querySelector('[role="dialog"]') : null;
-      if (!dialog) {
-        return;
-      }
-
-      const focusableElements = getFocusableElements(dialog);
-      if (focusableElements.length === 0) {
-        return;
-      }
-
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-
-      if (event.shiftKey && document.activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-      } else if (!event.shiftKey && document.activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    });
-  </script>
-
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("{% url 'service_worker' %}").catch(() => {});
-      });
-    }
-
-    function urlBase64ToUint8Array(base64String) {
-      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-      const rawData = window.atob(base64);
-      return Uint8Array.from([...rawData].map((character) => character.charCodeAt(0)));
-    }
-
-    async function subscribeToPush(button) {
-      const trigger = button || document.getElementById("push-subscribe-button");
-      const publicKey = "{{ web_push_public_key|default:''|escapejs }}";
-      if (!("serviceWorker" in navigator) || !("Notification" in window)) {
-        showClientSnackbar("Notificações push não são compatíveis com este navegador.");
-        return;
-      }
-      if (!("PushManager" in window)) {
-        showClientSnackbar("Este navegador não oferece suporte a assinatura push.");
-        return;
-      }
-      if (!publicKey) {
-        showClientSnackbar("Notificações push ainda não foram configuradas no servidor.");
-        return;
-      }
-
-      try {
-        if (trigger) {
-          trigger.disabled = true;
-          trigger.setAttribute("aria-busy", "true");
-        }
-        const registration = await navigator.serviceWorker.ready;
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") {
-          showClientSnackbar("Permissão de notificação não concedida.");
-          return;
-        }
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
-        });
-
-        const response = await fetch("{% url 'push_subscribe' %}", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": "{{ csrf_token }}",
-          },
-          body: JSON.stringify(subscription),
-        });
-        if (!response.ok) {
-          throw new Error("Subscription API failed");
-        }
-        showClientSnackbar("Notificações ativadas com sucesso.");
-      } catch (e) {
-        console.error("Push subscription failed:", e);
-        showClientSnackbar("Não foi possível ativar as notificações agora.");
-      } finally {
-        if (trigger) {
-          trigger.disabled = false;
-          trigger.removeAttribute("aria-busy");
-        }
-      }
-    }
-  </script>
 </body>
 </html>

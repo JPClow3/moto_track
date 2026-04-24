@@ -3,8 +3,8 @@
   "short_name": "Moto Track",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f7f9fb",
-  "theme_color": "#485e8d",
+  "background_color": "#F5F5F4",
+  "theme_color": "#F5F5F4",
   "icons": [
     {
       "src": "/static/brand/moto-track-icon.png",

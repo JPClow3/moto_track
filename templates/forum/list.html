@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Blog - Moto Track{% endblock %}
+{% block meta_description %}Guias práticos e técnicos para motociclistas: manutenção, consumo, pneus e cuidados por modelo.{% endblock %}
+{% block og_title %}Blog Moto Track — Guias para Motociclistas{% endblock %}
+{% block og_description %}Artigos técnicos em português sobre manutenção, consumo de combustível, pneus e cuidados com sua moto.{% endblock %}
+{% block topbar_eyebrow %}Blog{% endblock %}
+{% block topbar_title %}Guias práticos para sua moto{% endblock %}
+
+{% block content %}
+  <section class="page-shell" aria-label="Blog de artigos">
+    <header class="page-hero">
+      <div>
+        <span class="page-kicker">Biblioteca técnica</span>
+        <h2 class="page-title">Artigos para manutenção e diagnóstico rápido</h2>
+        <p class="page-copy">
+          Conteudo direto para dúvidas do dia a dia: troca de óleo, verificações básicas e boas práticas por modelo/ano.
+        </p>
+      </div>
+    </header>
+
+    {% if not request.user.is_authenticated %}
+      <div class="panel p-6 md:p-8 mb-5 border border-primary/20 bg-primary/5">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-on-surface">Organize sua moto com o Moto Track</h3>
+            <p class="mt-1 text-sm text-on-surface-variant">Cadastre abastecimentos, manutenções, pneus, documentos e lembretes em um so lugar.</p>
+          </div>
+          <a href="{% url 'account_signup' %}" class="ui-btn-primary inline-flex items-center gap-2 shrink-0">
+            Criar conta gratis
+            <i data-lucide="arrow-right" aria-hidden="true"></i>
+          </a>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if articles %}
+      <div class="grid gap-4 md:grid-cols-2">
+        {% for article in articles %}
+          <article class="panel p-6 transition-all duration-200 hover:border-primary/20 hover:shadow-sm">
+            <p class="metric-card-label">Publicado em {{ article.published_at|date:"d/m/Y" }}</p>
+            <h3 class="mt-3 font-headline text-xl font-semibold tracking-tight text-on-surface">{{ article.title }}</h3>
+            <p class="mt-3 text-sm leading-6 text-on-surface-variant">{{ article.summary }}</p>
+            <div class="mt-5">
+              <a class="inline-cta" href="{% url 'blog:detail' article.slug %}">
+                Ler artigo
+                <i data-lucide="arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        Nenhum artigo publicado ainda. Em breve teremos guias como "como trocar óleo" e "como verificar nível de óleo".
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

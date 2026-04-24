@@ -14,3 +14,38 @@ target-version = ["py310"]
 profile = "django"
 indent = 2
 max_line_length = 120
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.dev"
+testpaths = ["tests"]
+addopts = "--reuse-db -ra --strict-markers"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m not slow')",
+    "security: marks tests as security related",
+    "performance: marks tests as performance related",
+    "regression: marks tests as regression related",
+    "e2e: marks tests as end-to-end / browser tests",
+]
+
+[tool.coverage.run]
+source = ["apps"]
+branch = true
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/tests.py",
+    "tests/*",
+    "config/*",
+    "manage.py",
+]
+
+[tool.coverage.report]
+fail_under = 80
+skip_covered = false
+show_missing = true
+
+[tool.bandit]
+exclude_dirs = ["tests", "tests-e2e", "migrations"]
+skips = ["B101"]
+

@@ -98,6 +98,7 @@ class FuelRecord(TimeStampedModel):
         return f"{self.motorcycle.name} - {self.date} - {self.total_price}"
 
     def clean(self):
+        super().clean()
         errors = {}
         if self.liters is not None and self.liters <= 0:
             errors["liters"] = "A quantidade de litros deve ser maior que zero."
@@ -105,6 +106,8 @@ class FuelRecord(TimeStampedModel):
             errors["total_price"] = "O valor total não pode ser negativo."
         if self.price_per_liter is not None and getattr(self.price_per_liter, "amount", self.price_per_liter) <= 0:
             errors["price_per_liter"] = "O preço por litro deve ser maior que zero."
+        from apps.core.validation import validate_instance_odometer
+        errors.update(validate_instance_odometer(self))
         if errors:
             raise ValidationError(errors)
 
@@ -159,5 +162,6 @@ class FuelReviewPreference(TimeStampedModel):
         return f"{self.motorcycle.name} - revisão a cada {self.fillups_interval} abastecimentos"
 
     def clean(self):
+        super().clean()
         if self.fillups_interval <= 0:
             raise ValidationError({"fillups_interval": "O intervalo deve ser maior que zero."})

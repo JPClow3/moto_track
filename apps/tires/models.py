@@ -74,6 +74,7 @@ class TireRecord(TimeStampedModel):
         return f"{self.motorcycle.name} - {self.get_position_display()}"
 
     def clean(self):
+        super().clean()
         errors = {}
         if self.wear_percent is not None and self.wear_percent > 100:
             errors["wear_percent"] = "O desgaste deve estar entre 0 e 100%."
@@ -81,6 +82,8 @@ class TireRecord(TimeStampedModel):
             errors["cost"] = "O custo não pode ser negativo."
         if self.purchase_price is not None and getattr(self.purchase_price, "amount", self.purchase_price) < 0:
             errors["purchase_price"] = "O preço de compra não pode ser negativo."
+        from apps.core.validation import validate_instance_odometer
+        errors.update(validate_instance_odometer(self))
         if errors:
             raise ValidationError(errors)
 

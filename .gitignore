@@ -11,5 +11,25 @@ staticfiles/
 .ruff_cache/
 .vscode/
 node_modules/
-test_output.txt
-single_test_output.txt
+
+# Test and CI output files
+*_output.txt
+*_tests.txt
+*_exit.txt
+test_*.txt
+simple_test.txt
+onboarding_single_test.txt
+check_output.txt
+test_results.txt
+test_results_new.txt
+tests_output.txt
+
+# Temporary scripts and logs
+tmp_*.py
+tailwind-error.txt
+screenshot.png
+--db
+check_updates.py
+*_report.txt
+latest_versions.txt
+pip_outdated.txt

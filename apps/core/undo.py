@@ -15,7 +15,10 @@ def _parse_expires_at(value: str):
     if expires_at is None:
         raise ValueError("Formato de data inválido.")
     if timezone.is_naive(expires_at):
-        expires_at = timezone.make_aware(expires_at)
+        try:
+            expires_at = timezone.make_aware(expires_at)
+        except Exception:
+            expires_at = timezone.make_aware(expires_at, is_dst=False)
     return expires_at
 
 
@@ -62,5 +65,8 @@ def consume_undo_token(request, *, token: str):
     if expires_at < timezone.now():
         return None, "A ação para desfazer expirou."
 
-    model = apps.get_model(payload["model"])
+    try:
+        model = apps.get_model(payload["model"])
+    except (LookupError, ValueError):
+        return None, "Registro inválido."
     return model.objects.filter(pk=payload["object_id"]).first(), ""

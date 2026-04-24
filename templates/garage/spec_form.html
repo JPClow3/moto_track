@@ -7,41 +7,39 @@
 
 {% block content %}
 <section class="space-y-8 pb-10" aria-labelledby="garage-spec-title">
-  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-    <div class="space-y-2">
-      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Especificações</span>
-      <h2 id="garage-spec-title" class="text-3xl font-extrabold tracking-tight">{{ motorcycle.name }}</h2>
-      <p class="text-on-surface-variant text-sm">Tanque, pneus, óleo, bateria e referências do manual.</p>
+  <header class="page-hero">
+    <div>
+      <span class="page-kicker">Especificações</span>
+      <h2 id="garage-spec-title" class="page-title">{{ motorcycle.name }}</h2>
+      <p class="page-copy">Tanque, pneus, óleo, bateria e referências do manual.</p>
     </div>
     <a class="secondary-btn" href="{% url 'garage:list' %}">Voltar</a>
   </header>
 
-  <article class="glass-card-tight p-6">
-    <form method="post" class="data-form" novalidate>
-      {% csrf_token %}
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {{ form.fuel_tank_capacity_l|as_crispy_field }}
-        {{ form.consumption_avg_km_l|as_crispy_field }}
-        {{ form.fuel_type_recommendation|as_crispy_field }}
-        {{ form.fuel_octane_min|as_crispy_field }}
-        {{ form.oil_capacity_l|as_crispy_field }}
-        {{ form.oil_type_recommendation|as_crispy_field }}
-        {{ form.oil_viscosity_recommendation|as_crispy_field }}
-        {{ form.tire_size_front|as_crispy_field }}
-        {{ form.tire_size_rear|as_crispy_field }}
-        {{ form.tire_speed_rating|as_crispy_field }}
-        {{ form.recommended_tire_pressure_front|as_crispy_field }}
-        {{ form.recommended_tire_pressure_rear|as_crispy_field }}
-        {{ form.battery_spec|as_crispy_field }}
-        {{ form.chain_size|as_crispy_field }}
-        {{ form.manual_reference|as_crispy_field }}
-      </div>
+  <form method="post" class="data-form" novalidate>
+    {% csrf_token %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {{ form.fuel_tank_capacity_l|as_crispy_field }}
+      {{ form.consumption_avg_km_l|as_crispy_field }}
+      {{ form.fuel_type_recommendation|as_crispy_field }}
+      {{ form.fuel_octane_min|as_crispy_field }}
+      {{ form.oil_capacity_l|as_crispy_field }}
+      {{ form.oil_type_recommendation|as_crispy_field }}
+      {{ form.oil_viscosity_recommendation|as_crispy_field }}
+      {{ form.tire_size_front|as_crispy_field }}
+      {{ form.tire_size_rear|as_crispy_field }}
+      {{ form.tire_speed_rating|as_crispy_field }}
+      {{ form.recommended_tire_pressure_front|as_crispy_field }}
+      {{ form.recommended_tire_pressure_rear|as_crispy_field }}
+      {{ form.battery_spec|as_crispy_field }}
+      {{ form.chain_size|as_crispy_field }}
+      {{ form.manual_reference|as_crispy_field }}
+    </div>
 
-      <div class="quick-actions-row-split">
-        <a class="secondary-btn" href="{% url 'garage:list' %}">Cancelar</a>
-        <button type="submit" class="primary-btn">{{ submit_label }}</button>
-      </div>
-    </form>
-  </article>
+    <div class="quick-actions-row-split">
+      <a class="secondary-btn" href="{% url 'garage:list' %}">Cancelar</a>
+      <button type="submit" class="primary-btn">{{ submit_label }}</button>
+    </div>
+  </form>
 </section>
 {% endblock %}

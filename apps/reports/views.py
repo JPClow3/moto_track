@@ -1,12 +1,15 @@
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Avg
-from django.shortcuts import redirect, render
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 
 from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.exports import parse_date_param
 from apps.core.severity import SEVERITY_LABELS
 from apps.core.ui import get_density, per_page_for_density
+from apps.garage.models import Motorcycle
 from apps.reports.export import detailed_csv_response, sale_pdf_response
 from apps.reports.services import (
     cost_summary,
@@ -15,6 +18,7 @@ from apps.reports.services import (
     maintenance_recommendations,
     monthly_real_costs,
     period_comparisons,
+    sale_report_data,
     timeline_events,
     timeline_events_count,
 )
@@ -119,3 +123,23 @@ def sale_pdf_export_view(request):
     if not motorcycle:
         return redirect("onboarding")
     return sale_pdf_response(motorcycle=motorcycle)
+
+
+@login_required
+def sale_report_html_view(request, pk: int):
+    motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user)
+    data = sale_report_data(motorcycle=motorcycle)
+    return render(request, "reports/sale_report.html", {"motorcycle": motorcycle, "data": data})
+
+
+@login_required
+def sale_report_weasyprint_view(request, pk: int):
+    from weasyprint import HTML
+
+    motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user)
+    data = sale_report_data(motorcycle=motorcycle)
+    html_string = render_to_string("reports/sale_report.html", {"motorcycle": motorcycle, "data": data, "print_mode": True})
+    pdf = HTML(string=html_string, base_url=request.build_absolute_uri("/")).write_pdf()
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="dossie_venda_{motorcycle.name}.pdf"'
+    return response

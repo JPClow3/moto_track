@@ -29,6 +29,7 @@ from .services import (
     build_fuel_period_summary,
     compute_station_rankings,
     detect_fuel_anomalies,
+    detect_fuel_anomalies_from_history,
     filter_fuel_records_for_user,
     monthly_fuel_trend,
     remember_fuel_preference,
@@ -100,6 +101,22 @@ def fuel_list_view(request):
         review_form = FuelReviewPreferenceForm(instance=review_preference)
         configure_form_accessibility(review_form)
         review_suggestion = review_suggestion_for_motorcycle(selected_motorcycle)
+
+    all_records_ordered = list(records_qs.order_by("date", "odometer_km", "pk"))
+    record_index = {r.pk: i for i, r in enumerate(all_records_ordered)}
+    for record in records:
+        idx = record_index.get(record.pk)
+        record.anomaly_warnings = []
+        if idx is not None and idx > 0:
+            history = all_records_ordered[:idx]
+            warnings = detect_fuel_anomalies_from_history(
+                history_records=history,
+                odometer_km=record.odometer_km,
+                liters=record.liters,
+                price_per_liter=record.price_per_liter,
+            )
+            if warnings:
+                record.anomaly_warnings = warnings
 
     context = {
         "records": records,
@@ -570,6 +587,16 @@ def fuel_quick_create_view(request):
         form = FuelRecordQuickForm(user=request.user, initial=initial)
         status = 200
 
+    last_odometer_km = None
+    if active_motorcycle:
+        last_record = (
+            FuelRecord.objects.filter(motorcycle=active_motorcycle)
+            .order_by("-date", "-odometer_km")
+            .first()
+        )
+        if last_record:
+            last_odometer_km = last_record.odometer_km
+
     context = {
         "form": form,
         "title": "Adicionar abastecimento",
@@ -577,6 +604,7 @@ def fuel_quick_create_view(request):
         "next_url": request.GET.get("next") or request.POST.get("next") or "",
         "can_prefill_last": bool(active_motorcycle),
         "form_action_url": reverse("fuel:quick_create"),
+        "last_odometer_km": last_odometer_km,
     }
     configure_form_accessibility(form)
     return render(request, "fuel/partials/quick_form.html", context, status=status)
@@ -663,12 +691,13 @@ def fuel_repeat_last_view(request):
         "form": form,
         "title": "Repetir abastecimento",
         "submit_label": "Salvar abastecimento",
-        "next_url": request.GET.get("next") or request.POST.get("next") or "",
         "form_action_url": reverse("fuel:repeat_last"),
+        "next_url": request.GET.get("next") or request.POST.get("next") or "",
         "repeat_summary": {
             "station_name": last.station_name or (last.station.name if last.station else ""),
             "fuel_type": last.get_fuel_type_display(),
         },
+        "last_odometer_km": last.odometer_km,
     }
     configure_form_accessibility(form)
     return render(request, "fuel/partials/quick_form.html", context, status=status)

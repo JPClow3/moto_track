@@ -6,7 +6,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Dynamic palette using CSS variables for native dark mode.
+        // Semantic palette driven by CSS variables and data-theme.
         surface: "rgb(var(--color-surface) / <alpha-value>)",
         "surface-low": "rgb(var(--color-surface-low) / <alpha-value>)",
         "surface-lowest": "rgb(var(--color-surface-lowest) / <alpha-value>)",
@@ -26,17 +26,25 @@ module.exports = {
         success: "rgb(var(--color-success) / <alpha-value>)",
         warning: "rgb(var(--color-warning) / <alpha-value>)",
         info: "rgb(var(--color-info) / <alpha-value>)",
+        brand: "#DC2626",
+        "brand-hover": "#EF4444",
+        "brand-active": "#B91C1C",
       },
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "ui-sans-serif", "system-ui", "Segoe UI", "Tahoma", "sans-serif"],
-        headline: ["Plus Jakarta Sans", "ui-sans-serif", "system-ui", "Segoe UI", "Tahoma", "sans-serif"],
+        sans: ["Inter", "ui-sans-serif", "system-ui", "Segoe UI", "Tahoma", "sans-serif"],
+        headline: ["Rajdhani", "Inter", "ui-sans-serif", "system-ui", "Segoe UI", "Tahoma", "sans-serif"],
+        display: ["Rajdhani", "Inter", "ui-sans-serif", "system-ui", "Segoe UI", "Tahoma", "sans-serif"],
       },
       borderRadius: {
-        xl: "0.75rem",
+        xl: "0.875rem",
         "2xl": "1rem",
+        card: "1rem",
+        control: "0.875rem",
       },
       boxShadow: {
-        ambient: "0 8px 24px rgba(42, 52, 57, 0.06)",
+        ambient: "var(--shadow-panel)",
+        panel: "var(--shadow-panel)",
+        subtle: "var(--shadow-soft)",
       },
     }
   },

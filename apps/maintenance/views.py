@@ -21,7 +21,7 @@ from apps.reminders.services import list_due_reminders
 
 from .export import build_export
 from .forms import MaintenancePartForm, MaintenancePlanItemForm, MaintenanceRecordQuickForm
-from .models import MaintenancePart, MaintenancePlanItem, MaintenanceRecord, MaintenanceRecordPart, MaintenanceType
+from .models import MaintenancePart, MaintenancePhoto, MaintenancePlanItem, MaintenanceRecord, MaintenanceRecordPart, MaintenanceType
 
 # pylint: disable=no-member
 
@@ -42,6 +42,7 @@ def maintenance_list_view(request):
     records_qs = (
         MaintenanceRecord.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
         .select_related("motorcycle")
+        .prefetch_related("photos")
         .order_by("-date", "-odometer_km")
     )
 
@@ -362,13 +363,16 @@ def maintenance_quick_create_view(request):
     active_motorcycle = get_active_motorcycle(request)
 
     if request.method == "POST":
-        form = MaintenanceRecordQuickForm(request.POST, user=request.user)
+        form = MaintenanceRecordQuickForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             parts = form.cleaned_data.pop("parts", [])
-            record = form.save()  # parts is not a model field, so this is safe
+            photos = request.FILES.getlist("photos") if request.FILES else []
+            record = form.save()  # parts & photos are not model fields, so this is safe
             if parts:
                 for part in parts:
                     MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
+            for photo in photos:
+                MaintenancePhoto.objects.create(maintenance_record=record, image=photo)
             create_undo_token(
                 request,
                 model_label="maintenance.MaintenanceRecord",
@@ -395,7 +399,13 @@ def maintenance_quick_create_view(request):
                     fallback="/",
                 )
                 return response
-            return redirect(request.POST.get("next") or "maintenance:list")
+            return redirect(
+                safe_next_url(
+                    request=request,
+                    candidate=request.POST.get("next"),
+                    fallback="maintenance:list",
+                )
+            )
         status = 422 if is_htmx else 200
     else:
         initial = {"next": request.GET.get("next") or ""}

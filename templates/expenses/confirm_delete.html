@@ -18,7 +18,7 @@
     <form method="post" class="data-form">
       {% csrf_token %}
       <p class="text-on-surface-variant text-sm">
-        Tem certeza que deseja excluir este {{ object_type }}?
+        Tem certeza que desejá excluir este {{ object_type }}?
       </p>
       <div class="quick-actions-row-split mt-4">
         <a class="secondary-btn" href="{% url 'expenses:list' %}">Cancelar</a>

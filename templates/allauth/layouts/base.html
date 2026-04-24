@@ -1,15 +1,14 @@
 {% load i18n %}
 {% load static %}
-{% load allauth_ui %}
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="{% allauth_ui_theme %}">
+<html lang="pt-BR" class="h-full" data-theme="system">
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="{% block meta_description %}Acesse o Moto Track para acompanhar garagem, manutencoes, abastecimentos, pneus, documentos e relatorios.{% endblock %}" />
+  <meta name="description" content="{% block meta_description %}Acesse o Moto Track para acompanhar garagem, manutenções, abastecimentos, pneus, documentos e relatórios.{% endblock %}" />
   <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}" />
-  <meta name="theme-color" content="#2563eb" />
+  <meta name="theme-color" content="#F5F5F4" />
   <meta property="og:site_name" content="Moto Track" />
   <meta property="og:title" content="{% block og_title %}Moto Track{% endblock %}" />
   <meta property="og:description" content="{% block og_description %}Garagem digital privada para motociclistas.{% endblock %}" />
@@ -21,125 +20,188 @@
   <link rel="icon" href="{% static 'brand/favicon.ico' %}" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'brand/favicon-32x32.png' %}" />
   <link rel="apple-touch-icon" sizes="512x512" href="{% static 'brand/moto-track-icon.png' %}" />
-  <title>
-    {% block head_title %}
-    {% endblock head_title %}
-  </title>
+  <link rel="manifest" href="{% url 'manifest' %}" data-base-href="{% url 'manifest' %}" />
+  <title>{% block head_title %}{% endblock head_title %}</title>
+  <script>
+    /* AI-NOTE: justified-exception — Theme initialization must run synchronously before render to prevent FOUC */
+    (() => {
+      const palette = { dark: "#09090B", light: "#F5F5F4" };
+      const validThemes = new Set(["system", "dark", "light"]);
+      try {
+        const savedTheme = localStorage.getItem("mototrack-theme");
+        const mode = validThemes.has(savedTheme) ? savedTheme : "system";
+        const resolved =
+          mode === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : mode === "system"
+              ? "light"
+              : mode;
+        document.documentElement.dataset.theme = mode;
+        document.documentElement.dataset.resolvedTheme = resolved;
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+          meta.setAttribute("content", palette[resolved]);
+        }
+        const manifest = document.querySelector('link[rel="manifest"]');
+        if (manifest) {
+          const baseHref = manifest.dataset.baseHref || manifest.getAttribute("href");
+          if (baseHref) {
+            manifest.dataset.baseHref = baseHref;
+            const manifestUrl = new URL(baseHref, window.location.origin);
+            manifestUrl.searchParams.set("mode", mode);
+            manifestUrl.searchParams.set("resolved", resolved);
+            manifest.setAttribute("href", manifestUrl.toString());
+          }
+        }
+      } catch (error) {
+        document.documentElement.dataset.theme = "system";
+        document.documentElement.dataset.resolvedTheme = "light";
+      }
+    })();
+  </script>
   {% block extra_head %}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+    <style>[x-cloak] { display: none !important; }</style>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
+    <script src="{% static 'js/theme.js' %}" defer></script>
   {% endblock extra_head %}
 </head>
-<body class="min-h-screen bg-surface text-on-surface antialiased overflow-x-hidden">
-  <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
+<body class="min-h-screen overflow-x-hidden bg-surface text-on-surface antialiased" x-data="{}" x-init="window.lucide && window.lucide.createIcons()">
   <a class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-inverse-surface focus:px-4 focus:py-2 focus:text-on-primary" href="#main-content">Pular para o conteúdo principal</a>
 
   <div class="fixed inset-0 -z-10 overflow-hidden">
-    <div class="absolute -top-24 -right-24 h-[520px] w-[520px] rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-3xl opacity-50"></div>
-    <div class="absolute -bottom-28 -left-24 h-[560px] w-[560px] rounded-full bg-gradient-to-tr from-surface-highest/60 to-transparent blur-3xl opacity-60"></div>
-    <div class="absolute inset-0 bg-gradient-to-b from-surface-lowest/70 via-surface/90 to-surface-low"></div>
+    <div class="absolute inset-0 bg-surface"></div>
   </div>
 
   {% block body %}
-    <main id="main-content" class="relative min-h-screen flex flex-col md:flex-row" tabindex="-1">
-      <section class="hidden md:flex md:w-1/2 p-12 flex-col justify-between">
-        <header aria-label="Identidade do aplicativo">
-          <a class="inline-flex max-w-full" href="{% url 'dashboard' %}" aria-label="Moto Track">
-            <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-12 w-auto max-w-[18rem]" />
+    <main id="main-content" class="relative min-h-screen lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]" tabindex="-1">
+      <section class="hidden border-r border-outline-variant/80 bg-surface-low/80 p-12 lg:flex lg:flex-col lg:justify-between">
+        <div class="flex items-start justify-between gap-4">
+          <a class="inline-flex max-w-full" href="{% url 'landing' %}" aria-label="Moto Track">
+            <picture>
+              <source srcset="{% static 'brand/moto-track-full-logo.webp' %}" type="image/webp">
+              <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-12 w-auto max-w-[18rem]" loading="eager" fetchpriority="high" width="240" height="48" />
+            </picture>
           </a>
-        </header>
+          <button type="button" class="ui-toolbar-btn" data-theme-toggle>
+            <span>Tema</span>
+          </button>
+        </div>
 
         <div class="max-w-xl">
-          <h1 class="text-6xl font-extrabold tracking-tight leading-tight">
-            Precisão em<br />
-            <span class="text-primary">cada curva.</span>
-          </h1>
-          <p class="mt-6 text-lg leading-relaxed text-on-surface-variant">
-            Acompanhe sua garagem digital com um painel projetado para quem não aceita nada menos que a perfeição mecânica.
+          <span class="page-kicker">Utilidade premium para o piloto</span>
+          <h1 class="page-title">Controle rápido, leitura clara, operação confiável.</h1>
+          <p class="page-copy">
+            Moto Track organiza manutenção, consumo, documentos e histórico da moto em uma interface pensada para consulta rápida na rua e leitura longa no escritório.
           </p>
 
-          <div class="mt-10 flex gap-4">
-            <div class="w-1 h-12 bg-primary rounded-full"></div>
-            <div class="space-y-1">
-              <div class="text-[10px] font-extrabold uppercase tracking-widest text-primary">Performance estável</div>
-              <div class="text-sm text-on-surface-variant">Monitoramento rápido de custos, serviço e telemetria.</div>
+          <div class="mt-8 grid gap-3 sm:grid-cols-2">
+            <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4">
+              <p class="text-xs font-semibold text-on-surface-variant">Garagem</p>
+              <p class="mt-2 text-base font-semibold text-on-surface">Estado atual primeiro</p>
+              <p class="mt-2 text-sm leading-6 text-on-surface-variant">O que venceu, o que apróxima e o que precisa ser registrado agora.</p>
+            </div>
+            <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4">
+              <p class="text-xs font-semibold text-on-surface-variant">Relatórios</p>
+              <p class="mt-2 text-base font-semibold text-on-surface">Clareza operacional</p>
+              <p class="mt-2 text-sm leading-6 text-on-surface-variant">Custos, históricos e dossie com leitura limpa em claro e escuro.</p>
             </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-2xl bg-surface-lowest shadow-ambient grid place-items-center text-on-surface-variant" aria-hidden="true">
-            <i data-lucide="wrench"></i>
+        <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold text-on-surface-variant">Modo padrao</p>
+              <p class="mt-1 text-base font-semibold text-on-surface">Sistema com override manual</p>
+            </div>
+            <span class="severity-badge severity-neutral">Moto Track</span>
           </div>
-          <div class="text-xs font-extrabold uppercase tracking-widest text-on-surface-variant">Divisão Motorsport // 2026</div>
+          <p class="mt-2 text-sm text-on-surface-variant">O tema acompanha o aparelho por padrao, mas o usuário pode fixar claro ou noturno e manter a mesma escolha entre login e dashboard.</p>
         </div>
       </section>
 
       {% if messages %}
-        <section class="absolute top-6 left-1/2 -translate-x-1/2 w-[min(720px,92%)] space-y-2" aria-label="Mensagens do sistema">
+        <section class="absolute top-6 left-1/2 z-20 w-[min(720px,92%)] -translate-x-1/2 space-y-2" aria-label="Mensagens do sistema">
           {% for message in messages %}
-            <div role="alert" class="rounded-2xl bg-surface-lowest px-4 py-3 text-sm font-semibold shadow-ambient">
+            <div role="alert" class="rounded-md border border-outline-variant/20 bg-surface-low px-4 py-3 text-sm font-semibold">
               <strong>{{ message }}</strong>
             </div>
           {% endfor %}
         </section>
       {% endif %}
 
-      <section class="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div class="w-full max-w-md rounded-2xl bg-surface-lowest/70 backdrop-blur-2xl p-8 md:p-10 shadow-ambient ring-1 ring-outline-variant/20">
-          <div class="md:hidden flex items-center justify-center mb-8">
-            <a class="inline-flex max-w-full" href="{% url 'dashboard' %}" aria-label="Moto Track">
-              <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-10 w-auto max-w-[15rem]" />
+      <section class="flex min-h-screen items-center justify-center p-6 md:p-10">
+        <div class="w-full max-w-lg">
+          <div class="mb-5 flex items-center justify-between gap-3 lg:hidden">
+            <a class="inline-flex max-w-full" href="{% url 'landing' %}" aria-label="Moto Track">
+              <picture>
+                <source srcset="{% static 'brand/moto-track-full-logo.webp' %}" type="image/webp">
+                <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-10 w-auto max-w-[15rem]" loading="eager" fetchpriority="high" width="200" height="40" />
+              </picture>
             </a>
+            <button type="button" class="ui-toolbar-btn" data-theme-toggle>
+              <span>Tema</span>
+            </button>
           </div>
 
-          <header class="mb-8 text-center md:text-left">
-            <h2 class="text-3xl font-extrabold tracking-tight text-on-surface">Bem-vindo</h2>
-            <p class="mt-2 text-sm text-on-surface-variant">Acesse sua garagem digital para ver estatísticas.</p>
-          </header>
+          <div class="rounded-md border border-outline-variant/20 bg-surface-low p-8 md:p-10">
+            <header class="mb-8 text-left">
+              <p class="ui-eyebrow">Acesso seguro</p>
+              <h2 class="mt-2 font-headline text-3xl font-semibold tracking-tight text-on-surface">
+                {% block auth_title %}Acesse sua garagem com rapidez{% endblock %}
+              </h2>
+              <p class="mt-2 text-sm leading-6 text-on-surface-variant">
+                {% block auth_subtitle %}Use e-mail/senha ou continue com Google em uma única etapa.{% endblock %}
+              </p>
+            </header>
 
-          <section aria-label="Formulário de autenticação">
-            {% block content %}
-            {% endblock content %}
-          </section>
+            <section aria-label="Formulário de autenticação">
+              {% block content %}
+              {% endblock content %}
+            </section>
 
-          <nav class="mt-8 flex flex-wrap gap-4 text-sm font-bold text-primary justify-center md:justify-start" aria-label="Links de conta">
-            {% if user.is_authenticated %}
-              {% url 'account_email' as email_url %}
-              {% if email_url %}
-                <a class="hover:underline" href="{{ email_url }}">{% trans "Alterar e-mail" %}</a>
+            <nav class="mt-8 flex flex-wrap gap-4 text-sm font-semibold text-primary" aria-label="Links de conta">
+              {% if user.is_authenticated %}
+                {% url 'account_email' as email_url %}
+                {% if email_url %}
+                  <a class="hover:underline" href="{{ email_url }}">{% trans "Alterar e-mail" %}</a>
+                {% endif %}
+                {% url 'account_change_password' as change_password_url %}
+                {% if change_password_url %}
+                  <a class="hover:underline" href="{{ change_password_url }}">{% trans "Alterar senha" %}</a>
+                {% endif %}
+                {% url 'mfa_index' as mfa_url %}
+                {% if mfa_url %}
+                  <a class="hover:underline" href="{{ mfa_url }}">{% trans "Autenticação em dois fatores" %}</a>
+                {% endif %}
+                {% url 'usersessions_list' as usersessions_list_url %}
+                {% if usersessions_list_url %}
+                  <a class="hover:underline" href="{{ usersessions_list_url }}">{% trans "Sessões" %}</a>
+                {% endif %}
+                {% url 'account_logout' as logout_url %}
+                {% if logout_url %}
+                  <a class="hover:underline" href="{{ logout_url }}">{% trans "Sair" %}</a>
+                {% endif %}
+              {% else %}
+                {% url 'account_login' as login_url %}
+                {% if login_url %}
+                  <a class="hover:underline" href="{{ login_url }}">{% trans "Entrar" %}</a>
+                {% endif %}
+                {% url 'account_signup' as signup_url %}
+                {% if signup_url %}
+                  <a class="hover:underline" href="{{ signup_url }}">{% trans "Criar conta" %}</a>
+                {% endif %}
+                <a class="hover:underline" href="{% url 'privacy_policy' %}">Privacidade</a>
+                <a class="hover:underline" href="{% url 'terms_of_service' %}">Termos</a>
               {% endif %}
-              {% url 'account_change_password' as change_password_url %}
-              {% if change_password_url %}
-                <a class="hover:underline" href="{{ change_password_url }}">{% trans "Alterar senha" %}</a>
-              {% endif %}
-              {% url 'mfa_index' as mfa_url %}
-              {% if mfa_url %}
-                <a class="hover:underline" href="{{ mfa_url }}">{% trans "Autenticação em dois fatores" %}</a>
-              {% endif %}
-              {% url 'usersessions_list' as usersessions_list_url %}
-              {% if usersessions_list_url %}
-                <a class="hover:underline" href="{{ usersessions_list_url }}">{% trans "Sessões" %}</a>
-              {% endif %}
-              {% url 'account_logout' as logout_url %}
-              {% if logout_url %}
-                <a class="hover:underline" href="{{ logout_url }}">{% trans "Sair" %}</a>
-              {% endif %}
-            {% else %}
-              {% url 'account_login' as login_url %}
-              {% if login_url %}
-                <a class="hover:underline" href="{{ login_url }}">{% trans "Entrar" %}</a>
-              {% endif %}
-              {% url 'account_signup' as signup_url %}
-              {% if signup_url %}
-                <a class="hover:underline" href="{{ signup_url }}">{% trans "Criar conta" %}</a>
-              {% endif %}
-              <a class="hover:underline" href="{% url 'privacy_policy' %}">Privacidade</a>
-              <a class="hover:underline" href="{% url 'terms_of_service' %}">Termos</a>
-            {% endif %}
-          </nav>
+            </nav>
+          </div>
         </div>
       </section>
     </main>
@@ -147,12 +209,5 @@
 
   {% block extra_body %}
   {% endblock extra_body %}
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      if (window.lucide) {
-        window.lucide.createIcons();
-      }
-    });
-  </script>
 </body>
 </html>

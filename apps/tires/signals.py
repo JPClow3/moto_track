@@ -8,6 +8,11 @@ from apps.tires.models import TireRecord
 
 
 @receiver(pre_save, sender=TireRecord)
+def _tire_record_validate(sender, instance: TireRecord, **kwargs):  # pylint: disable=unused-argument
+    instance.full_clean()
+
+
+@receiver(pre_save, sender=TireRecord)
 def _tire_record_snapshot(sender, instance: TireRecord, **kwargs):  # pylint: disable=unused-argument
     if not instance.pk:
         instance._odometer_snapshot = None

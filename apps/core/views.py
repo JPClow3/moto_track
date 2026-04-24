@@ -1,18 +1,17 @@
 import json
-from decimal import Decimal
 
 from dal import autocomplete
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ObjectDoesNotExist
-from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.utils import timezone
+from django.template.loader import render_to_string
 from django.utils.html import escape
 from django.views.decorators.http import require_POST
 
@@ -30,13 +29,12 @@ from apps.core.services.dashboard import (
     get_status_cards,
     get_tire_cards,
 )
-from apps.core.undo import consume_undo_token
-from apps.fuel.models import FuelRecord
+from apps.core.services.onboarding import create_motorcycle_from_onboarding
+from apps.core.models import PushSubscription
+from apps.core.services.demo_bike import create_demo_motorcycle
+from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY, consume_undo_token
 from apps.garage.models import Motorcycle, MotorcycleTemplate
-from apps.garage.services import apply_template_to_motorcycle, variant_observation_text
-from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.reports.services import health_score, timeline_events
-from apps.tires.models import TirePosition, TireRecord
 
 
 class OnboardingTemplateAutocomplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
@@ -86,40 +84,39 @@ def onboarding_template_preview_view(request):
     spec = getattr(template, "spec", None)
     fuel = escape(spec.fuel_type_recommendation) if spec and spec.fuel_type_recommendation else "-"
     oil = escape(spec.oil_type_recommendation) if spec and spec.oil_type_recommendation else "-"
-    variant = f" {escape(template.variant)}" if template.variant else ""
     year_label = f"{template.year_from}-{template.year_to}" if template.year_to else f"{template.year_from}+"
-    html = f"""
-<article class="space-y-3" aria-label="Preview do template selecionado">
-  <header class="flex items-start justify-between gap-3">
-    <div>
-      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Template selecionado</p>
-      <h4 class="text-lg font-extrabold tracking-tight">{escape(template.brand)} {escape(template.model)}{variant}</h4>
-      <p class="text-xs text-on-surface-variant">{year_label} &bull; {template.engine_cc} cc &bull; {escape(template.country_code)}</p>
-    </div>
-    <span class="severity-badge severity-success">Catálogo</span>
-  </header>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-    <div class="rounded-xl bg-surface-lowest p-3 ring-1 ring-outline-variant/20">
-      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Combustível</p>
-      <p class="text-sm font-semibold text-on-surface">{fuel}</p>
-    </div>
-    <div class="rounded-xl bg-surface-lowest p-3 ring-1 ring-outline-variant/20">
-      <p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Óleo</p>
-      <p class="text-sm font-semibold text-on-surface">{oil}</p>
-    </div>
-  </div>
-</article>
-"""
+    html = render_to_string(
+        "core/partials/template_preview.html",
+        {
+            "template": template,
+            "year_label": year_label,
+            "fuel": fuel,
+            "oil": oil,
+        },
+    )
     return HttpResponse(html)
+
+
+def landing_view(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    from apps.forum.models import ForumArticle
+    latest_blog = ForumArticle.objects.filter(is_published=True).only(
+        "title", "slug", "summary", "published_at"
+    ).order_by("-published_at")[:3]
+    return render(request, "core/landing.html", {"latest_blog": latest_blog})
 
 
 @login_required
 def dashboard_view(request):
     if request.method == "POST" and request.POST.get("active_motorcycle_id"):
         set_active_motorcycle(request, int(request.POST["active_motorcycle_id"]))
-        return redirect(
-            safe_next_url(request=request, candidate=request.POST.get("next"), fallback=reverse("dashboard"))
-        )
+        next_url = safe_next_url(request=request, candidate=request.POST.get("next"), fallback=reverse("dashboard"))
+        if request.headers.get("HX-Request"):
+            response = HttpResponse()
+            response["HX-Redirect"] = next_url
+            return response
+        return redirect(next_url)
 
     motorcycle = get_active_motorcycle(request)
     if not motorcycle:
@@ -211,6 +208,41 @@ def offline_view(request):
     return render(request, "offline.html")
 
 
+def manifest_view(request):
+    palettes = {
+        "light": {"background_color": "#F5F5F4", "theme_color": "#F5F5F4"},
+        "dark": {"background_color": "#09090B", "theme_color": "#09090B"},
+    }
+    mode = (request.GET.get("mode") or "system").strip().lower()
+    resolved = (request.GET.get("resolved") or "").strip().lower()
+    resolved_theme = resolved if resolved in palettes else ("dark" if mode == "dark" else "light")
+    manifest = {
+        "name": "Moto Track",
+        "short_name": "Moto Track",
+        "start_url": "/",
+        "display": "standalone",
+        **palettes[resolved_theme],
+        "icons": [
+            {
+                "src": "/static/brand/moto-track-icon.png",
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable",
+            },
+            {
+                "src": "/static/brand/favicon-32x32.png",
+                "sizes": "32x32",
+                "type": "image/png",
+                "purpose": "any",
+            },
+        ],
+    }
+    response = JsonResponse(manifest)
+    response["Content-Type"] = "application/manifest+json"
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
 def service_worker_view(request):
     build_id = getattr(settings, "APP_BUILD_ID", "dev")
     response = render(request, "sw.js", {"build_id": build_id}, content_type="application/javascript")
@@ -225,20 +257,25 @@ def undo_action_view(request, token: str):
         return redirect("dashboard")
 
     obj, error = consume_undo_token(request, token=token)
+    next_url = safe_next_url(
+        request=request,
+        candidate=request.POST.get("next"),
+        fallback="dashboard",
+    )
     if error:
         messages.error(request, error)
-        return redirect(request.POST.get("next") or "dashboard")
+        return redirect(next_url)
 
     if obj is None:
         messages.error(request, "Registro nao encontrado para desfazer.")
-        return redirect(request.POST.get("next") or "dashboard")
+        return redirect(next_url)
 
     try:
         motorcycle = getattr(obj, "motorcycle", None)
         owner = getattr(motorcycle, "owner", None)
     except ObjectDoesNotExist:
         messages.error(request, "Registro nao encontrado para desfazer.")
-        return redirect(request.POST.get("next") or "dashboard")
+        return redirect(next_url)
     if owner != request.user:
         messages.error(request, "Voce nao pode desfazer este registro.")
         return redirect("dashboard")
@@ -246,7 +283,21 @@ def undo_action_view(request, token: str):
     label = str(obj)
     obj.delete()
     messages.success(request, f"Acao desfeita: {label}.")
-    return redirect(request.POST.get("next") or "dashboard")
+    return redirect(next_url)
+
+
+@login_required
+def demo_bike_create_view(request):
+    if Motorcycle.objects.filter(owner=request.user).exists():
+        return redirect("dashboard")
+    try:
+        motorcycle = create_demo_motorcycle(request.user)
+    except (ValidationError, IntegrityError) as exc:
+        messages.error(request, f"Não foi possível criar a moto de demonstração: {exc}")
+        return redirect("onboarding")
+    set_active_motorcycle(request, motorcycle.id)
+    messages.success(request, "Moto de demonstração criada. Explore o painel com dados de exemplo.")
+    return redirect("dashboard")
 
 
 @login_required
@@ -260,63 +311,12 @@ def onboarding_view(request):
     if request.method == "POST":
         form = OnboardingForm(request.POST)
         if form.is_valid():
-            data = form.cleaned_data
-            template = data.get("template")
-            now = timezone.now()
             with transaction.atomic():
-                motorcycle = Motorcycle.objects.create(
-                    owner=request.user,
-                    name=data["motorcycle_name"],
-                    brand=data["brand"],
-                    model=data["model"],
-                    year=data["year"],
-                    source_template=template,
-                    observations=variant_observation_text(data.get("template_variant", "")),
-                    odometer_override_km=data["current_odometer_km"],
-                    odometer_override_at=now,
-                    current_odometer_km=data["current_odometer_km"],
-                    current_odometer_updated_at=now,
-                    riding_profile=data.get("riding_profile") or "auto",
-                )
-
-                warnings = apply_template_to_motorcycle(
-                    motorcycle=motorcycle,
-                    owner=request.user,
-                    template=template,
+                motorcycle, warnings = create_motorcycle_from_onboarding(
+                    form.cleaned_data,
+                    user=request.user,
                     spec_payload=form.spec_payload(),
                 )
-
-                price_per_liter = Decimal("0")
-                if data["fuel_liters"]:
-                    price_per_liter = (data["fuel_total_price"] / data["fuel_liters"]).quantize(Decimal("0.001"))
-                FuelRecord.objects.create(
-                    motorcycle=motorcycle,
-                    date=data["fuel_date"],
-                    odometer_km=data["fuel_odometer_km"],
-                    liters=data["fuel_liters"],
-                    total_price=data["fuel_total_price"],
-                    price_per_liter=price_per_liter,
-                    tank_full=True,
-                )
-                MaintenanceRecord.objects.create(
-                    motorcycle=motorcycle,
-                    maintenance_type=MaintenanceType.REVIEW,
-                    date=data["service_date"],
-                    odometer_km=data["service_odometer_km"],
-                    cost=data["service_cost"],
-                    description="Serviço inicial registrado no onboarding.",
-                )
-                for position, label in [(TirePosition.FRONT, data["front_tire"]), (TirePosition.REAR, data["rear_tire"])]:
-                    TireRecord.objects.create(
-                        motorcycle=motorcycle,
-                        position=position,
-                        brand_model=label,
-                        installed_at=data["tire_installed_at"],
-                        installed_odometer_km=data["tire_odometer_km"],
-                        cost=Decimal("0"),
-                        wear_percent=0,
-                        is_active=True,
-                    )
 
             for warning in warnings:
                 messages.warning(request, warning)
@@ -386,13 +386,13 @@ def push_subscribe_view(request):
     try:
         data = json.loads(request.body)
         endpoint = data.get("endpoint")
-        p256dh = data.get("keys", {}).get("p256dh")
-        auth = data.get("keys", {}).get("auth")
+        keys = data.get("keys") or {}
+        p256dh = keys.get("p256dh")
+        auth = keys.get("auth")
 
         if not endpoint or not p256dh or not auth:
             return JsonResponse({"error": "Invalid subscription data"}, status=400)
 
-        from apps.core.models import PushSubscription
         sub, created = PushSubscription.objects.update_or_create(
             owner=request.user,
             endpoint=endpoint,
@@ -404,3 +404,35 @@ def push_subscribe_view(request):
         return JsonResponse({"status": "ok", "created": created})
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+
+@login_required
+@require_POST
+def theme_preference_view(request):
+    from apps.accounts.models import UserPreference
+
+    theme = request.POST.get("theme", "system").strip().lower()
+    if theme not in ("system", "dark", "light"):
+        return JsonResponse({"error": "Invalid theme"}, status=400)
+    UserPreference.objects.update_or_create(
+        user=request.user, defaults={"theme": theme}
+    )
+    return JsonResponse({"theme": theme})
+
+
+@login_required
+def message_list_view(request):
+    from django.contrib.messages import get_messages
+
+    undo_token = request.session.get("last_undo_token")
+    undo_payload = request.session.get(UNDO_SESSION_KEY, {}).get(undo_token) if undo_token else None
+    snackbar_undo = {"token": undo_token, **undo_payload} if undo_payload else None
+    storage = get_messages(request)
+    messages_list = list(storage)
+    response = render(
+        request,
+        "core/partials/messages.html",
+        {"messages": messages_list, "snackbar_undo": snackbar_undo},
+    )
+    storage.used = True
+    return response

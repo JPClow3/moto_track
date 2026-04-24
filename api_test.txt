@@ -1,0 +1,19 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-7.4.3, pluggy-1.6.0 -- C:\Users\lives\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+django: version: 5.2.13, settings: config.settings.dev (from env)
+rootdir: F:\Github\moto_track
+configfile: pytest.ini
+plugins: django-constance-4.3.5, django-perf-rec-4.31.0, Faker-40.13.0, cov-4.1.0, django-4.7.0, xdist-3.6.1, typeguard-2.13.3
+collecting ... collected 0 items
+
+============================== warnings summary ===============================
+C:\Users\lives\AppData\Local\Programs\Python\Python312\Lib\site-packages\pytz\tzinfo.py:27
+  C:\Users\lives\AppData\Local\Programs\Python\Python312\Lib\site-packages\pytz\tzinfo.py:27: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    _epoch = datetime.utcfromtimestamp(0)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= 1 warning in 0.01s ==============================
+ERROR: not found: F:\Github\moto_track\tests\unit\test_api.py::APITokenTests::test_api_token_is_created_and_shown_to_user
+(no name 'F:\\Github\\moto_track\\tests\\unit\\test_api.py::APITokenTests::test_api_token_is_created_and_shown_to_user' in any of [<Module test_api.py>])
+

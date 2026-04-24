@@ -12,9 +12,35 @@ env = environ.Env(
 )
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
+PUSH_ENCRYPTION_KEY = env("PUSH_ENCRYPTION_KEY", default="")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
 SITE_DOMAIN = env("SITE_DOMAIN", default="")
+
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+
+    def _safe_float(var, default):
+        val = env(var, default=default).strip()
+        return float(val) if val else float(default)
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(),
+            LoggingIntegration(),
+        ],
+        release=env("APP_BUILD_ID", default="dev"),
+        environment=env("SENTRY_ENVIRONMENT", default="production" if not DEBUG else "development"),
+        send_default_pii=True,
+        enable_logs=True,
+        traces_sample_rate=_safe_float("SENTRY_TRACES_SAMPLE_RATE", "0.1"),
+        profile_session_sample_rate=_safe_float("SENTRY_PROFILES_SAMPLE_RATE", "0.05"),
+        profile_lifecycle="trace",
+    )
 
 INSTALLED_APPS = [
     "unfold",
@@ -52,10 +78,12 @@ INSTALLED_APPS = [
     "apps.reports",
     "apps.expenses",
     "apps.inventory",
+    "apps.forum",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "config.middleware.RequestIDMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -146,6 +174,7 @@ AUTHENTICATION_BACKENDS = [
 CRISPY_ALLOWED_TEMPLATE_PACKS = ("tailwind",)
 CRISPY_TEMPLATE_PACK = "tailwind"
 
+ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_FORMS = {
@@ -168,6 +197,8 @@ ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_RATE_LIMITS = {
     "login_failed": "5/m",
 }
+SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.MotoSocialAccountAdapter"
+SOCIALACCOUNT_LOGIN_ON_GET = True
 ALLAUTH_UI_THEME = "light"
 
 
@@ -200,19 +231,28 @@ UNFOLD = {
     ],
     "COLORS": {
         "primary": {
-            "50": "239 246 255",
-            "100": "219 234 254",
-            "200": "191 219 254",
-            "300": "147 197 253",
-            "400": "96 165 250",
-            "500": "59 130 246",
-            "600": "37 99 235",
-            "700": "29 78 216",
-            "800": "30 64 175",
-            "900": "30 58 138",
-            "950": "23 37 84",
+            "50": "254 242 242",
+            "100": "254 226 226",
+            "200": "254 202 202",
+            "300": "252 165 165",
+            "400": "248 113 113",
+            "500": "239 68 68",
+            "600": "220 38 38",
+            "700": "185 28 28",
+            "800": "153 27 27",
+            "900": "127 29 29",
+            "950": "69 10 10",
+        },
+        "font": {
+            "subtle-light": "113 113 122",
+            "subtle-dark": "161 161 170",
+            "default-light": "24 24 27",
+            "default-dark": "250 250 250",
+            "important-light": "24 24 27",
+            "important-dark": "250 250 250",
         },
     },
+    "DARK_MODE": True,
     "SIDEBAR": {
         "show_search": True,
         "show_all_applications": False,

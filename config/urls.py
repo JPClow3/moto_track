@@ -19,14 +19,23 @@ from allauth.account import views as allauth_views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import Http404
 from django.urls import include, path
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView, TemplateView
 
-from .sitemaps import StaticViewSitemap, sitemap_view
+from .error_views import status_preview_view
+from .sitemaps import ForumArticleSitemap, StaticViewSitemap, sitemap_view
 
 sitemaps = {
     "static": StaticViewSitemap,
+    "blog": ForumArticleSitemap,
 }
+
+
+def debug_status_preview_view(request, status_code):
+    if not settings.DEBUG:
+        raise Http404
+    return status_preview_view(request, status_code)
 
 urlpatterns = [
     path("", include("apps.core.urls")),
@@ -38,10 +47,14 @@ urlpatterns = [
     path("reminders/", include("apps.reminders.urls")),
     path("expenses/", include("apps.expenses.urls")),
     path("reports/", include("apps.reports.urls")),
-    path("attachments/", include("apps.core.attachment_urls", namespace="attachments")),
+    path("blog/", include("apps.forum.urls")),
+    path("forum/<path:path>", RedirectView.as_view(url="/blog/%(path)s", permanent=True)),
+    path("forum/", RedirectView.as_view(url="/blog/", permanent=True)),
     path("api/v1/", include("apps.api.urls", namespace="api_v1")),
+    path("status/<int:status_code>/", debug_status_preview_view, name="status_preview"),
     path("politica/", TemplateView.as_view(template_name="legal/privacy.html"), name="privacy_policy"),
     path("termos/", TemplateView.as_view(template_name="legal/terms.html"), name="terms_of_service"),
+    path("roadmap/", TemplateView.as_view(template_name="core/roadmap.html"), name="roadmap"),
     path("accounts/login/", allauth_views.LoginView.as_view(), name="login"),
     path("accounts/logout/", allauth_views.LogoutView.as_view(), name="logout"),
     path("accounts/", include("allauth.urls")),
@@ -54,8 +67,19 @@ urlpatterns = [
             content_type="text/plain",
             extra_context={"site_domain": settings.SITE_DOMAIN},
         ),
+        name="robots_txt",
     ),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+    def trigger_error(request):
+        division_by_zero = 1 / 0
+
+    urlpatterns += [path("sentry-debug/", trigger_error)]
+
+handler400 = "config.error_views.handler400"
+handler403 = "config.error_views.handler403"
+handler404 = "config.error_views.handler404"
+handler500 = "config.error_views.handler500"
