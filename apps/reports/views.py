@@ -134,7 +134,12 @@ def sale_report_html_view(request, pk: int):
 
 @login_required
 def sale_report_weasyprint_view(request, pk: int):
-    from weasyprint import HTML
+    try:
+        from weasyprint import HTML  # type: ignore[import-untyped]
+    except ImportError as exc:
+        raise ImportError(
+            "weasyprint is required for PDF export. Install it: pip install 'weasyprint>=61.0'"
+        ) from exc
 
     motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user)
     data = sale_report_data(motorcycle=motorcycle)

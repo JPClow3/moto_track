@@ -56,8 +56,9 @@ def validate_odometer_sequence(
     exclude_ct = None
     if exclude_model and exclude_pk:
         try:
-            exclude_ct = ContentType.objects.get_by_natural_key(*exclude_model.split("."))
-        except ContentType.DoesNotExist:
+            app_label, model_name = exclude_model.split(".")
+            exclude_ct = ContentType.objects.get_by_natural_key(app_label.lower(), model_name.lower())
+        except (ContentType.DoesNotExist, ValueError):
             pass
 
     for model_label, qs, date_field, odometer_field in checks:

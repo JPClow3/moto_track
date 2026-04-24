@@ -17,7 +17,7 @@ def _parse_expires_at(value: str):
     if timezone.is_naive(expires_at):
         try:
             expires_at = timezone.make_aware(expires_at)
-        except Exception:
+        except (ValueError, OverflowError):
             expires_at = timezone.make_aware(expires_at, is_dst=False)
     return expires_at
 

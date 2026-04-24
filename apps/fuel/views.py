@@ -102,7 +102,12 @@ def fuel_list_view(request):
         configure_form_accessibility(review_form)
         review_suggestion = review_suggestion_for_motorcycle(selected_motorcycle)
 
-    all_records_ordered = list(records_qs.order_by("date", "odometer_km", "pk"))
+    all_records_ordered = list(
+        records_qs.order_by("date", "odometer_km", "pk").only(
+            "pk", "date", "odometer_km", "liters", "price_per_liter", "price_per_liter_currency",
+            "tank_full", "motorcycle", "station", "fuel_grade"
+        )
+    )
     record_index = {r.pk: i for i, r in enumerate(all_records_ordered)}
     for record in records:
         idx = record_index.get(record.pk)

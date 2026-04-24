@@ -2,7 +2,9 @@ import csv
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 from django.utils.dateparse import parse_date
 
 from apps.core.validation import validate_odometer_sequence
@@ -22,31 +24,10 @@ class Command(BaseCommand):
         parser.add_argument("--motorcycle", required=True, type=int, help="ID da moto")
         parser.add_argument("--dry-run", action="store_true", help="Valida sem importar")
 
-    def handle(self, *args, **options):
-        file_path = options["file"]
-        user_lookup = options["user"]
-        motorcycle_id = options["motorcycle"]
-        dry_run = options["dry_run"]
-
-        user = User.objects.filter(email=user_lookup).first() or User.objects.filter(username=user_lookup).first()
-        if not user:
-            raise CommandError(f"Usuário não encontrado: {user_lookup}")
-
-        motorcycle = Motorcycle.objects.filter(id=motorcycle_id, owner=user).first()
-        if not motorcycle:
-            raise CommandError(f"Moto {motorcycle_id} não encontrada para o usuário.")
-
+    def _process_rows(self, reader, motorcycle, dry_run):
         created_count = 0
         error_count = 0
-
-        with open(file_path, newline="", encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-
-        if dry_run:
-            self.stdout.write(self.style.WARNING("MODO PREVIEW - nenhum registro será criado."))
-
-        for index, raw in enumerate(rows, start=1):
+        for index, raw in enumerate(reader, start=1):
             errors = []
             parsed_date = parse_date((raw.get("date") or "").strip())
             if parsed_date is None:
@@ -99,7 +80,12 @@ class Command(BaseCommand):
                     tank_full=True,
                     station_name=station_name,
                 )
-                record.full_clean()
+                try:
+                    record.full_clean()
+                except ValidationError as exc:
+                    self.stdout.write(f"Linha {index}: {', '.join(exc.messages)}")
+                    error_count += 1
+                    continue
                 seq_errors = validate_odometer_sequence(
                     motorcycle=motorcycle,
                     event_date=parsed_date,
@@ -111,8 +97,34 @@ class Command(BaseCommand):
                     continue
                 record.save()
                 created_count += 1
+        return created_count, error_count
+
+    def handle(self, *args, **options):
+        file_path = options["file"]
+        user_lookup = options["user"]
+        motorcycle_id = options["motorcycle"]
+        dry_run = options["dry_run"]
+
+        user = User.objects.filter(email=user_lookup).first() or User.objects.filter(username=user_lookup).first()
+        if not user:
+            raise CommandError(f"Usuário não encontrado: {user_lookup}")
+
+        motorcycle = Motorcycle.objects.filter(id=motorcycle_id, owner=user).first()
+        if not motorcycle:
+            raise CommandError(f"Moto {motorcycle_id} não encontrada para o usuário.")
 
         if dry_run:
-            self.stdout.write(self.style.SUCCESS(f"Preview concluído: {len(rows)} linhas, {error_count} erros."))
+            self.stdout.write(self.style.WARNING("MODO PREVIEW - nenhum registro será criado."))
+
+        with open(file_path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            if not dry_run:
+                with transaction.atomic():
+                    created_count, error_count = self._process_rows(reader, motorcycle, dry_run)
+            else:
+                created_count, error_count = self._process_rows(reader, motorcycle, dry_run)
+
+        if dry_run:
+            self.stdout.write(self.style.SUCCESS(f"Preview concluído: {created_count + error_count} linhas, {error_count} erros."))
         else:
             self.stdout.write(self.style.SUCCESS(f"Importados {created_count} registros. {error_count} erros."))

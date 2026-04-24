@@ -84,4 +84,5 @@ def markdown_lite(value):
 
     _flush_paragraph(parts, paragraph_lines)
     _flush_list(parts, list_type, list_items)
-    return mark_safe("".join(parts))
+    # All user input is escaped via conditional_escape in _render_inline before mark_safe.
+    return mark_safe("".join(parts))  # nosec

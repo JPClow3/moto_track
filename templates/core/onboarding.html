@@ -34,69 +34,9 @@
             errorSummary.focus({ preventScroll: true });
             errorSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-          /* AI-NOTE: justified-exception — Template preview data fetch and spec badge comparison require imperative DOM inspection */
-          (function() {
-            const templateSelect = document.getElementById('id_template');
-            const notListedField = document.getElementById('id_template_not_listed');
-            const preview = document.getElementById('template-preview');
-            const previewUrl = '{% url 'onboarding_template_preview' %}';
-            function normalize(value) { return (value || '').toString().trim(); }
-            function refreshSpecBadges() {
-              document.querySelectorAll('.onboarding-spec-field').forEach((container) => {
-                const field = container.querySelector('input, textarea, select');
-                const prefilledBadge = container.querySelector('[data-prefilled-badge]');
-                const overrideBadge = container.querySelector('[data-override-badge]');
-                if (!field || !prefilledBadge || !overrideBadge) return;
-                const prefilledValue = field.getAttribute('data-prefilled-value');
-                if (!prefilledValue) {
-                  prefilledBadge.classList.add('hidden');
-                  overrideBadge.classList.add('hidden');
-                  return;
-                }
-                const currentValue = normalize(field.value);
-                const originalValue = normalize(prefilledValue);
-                if (!currentValue) {
-                  prefilledBadge.classList.add('hidden');
-                  overrideBadge.classList.remove('hidden');
-                } else if (currentValue === originalValue) {
-                  prefilledBadge.classList.remove('hidden');
-                  overrideBadge.classList.add('hidden');
-                } else {
-                  prefilledBadge.classList.add('hidden');
-                  overrideBadge.classList.remove('hidden');
-                }
-              });
-            }
-            function loadTemplatePreview() {
-              if (!preview) return;
-              if (notListedField && notListedField.checked) {
-                preview.innerHTML = '<p class=\'text-sm text-on-surface-variant\'>Fluxo sem template ativo. Preencha manualmente os campos da sua moto.</p>';
-                return;
-              }
-              if (!templateSelect || !templateSelect.value) {
-                preview.innerHTML = '<p class=\'text-sm text-on-surface-variant\'>Selecione uma moto no catálogo para visualizar as especificações base.</p>';
-                return;
-              }
-              const url = previewUrl + '?template=' + encodeURIComponent(templateSelect.value);
-              fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then((response) => response.text())
-                .then((html) => {
-                  preview.innerHTML = html || '<p class=\'text-sm text-on-surface-variant\'>Template selecionado sem preview disponível.</p>';
-                })
-                .catch(() => {
-                  preview.innerHTML = '<p class=\'text-sm text-on-surface-variant\'>Não foi possível carregar o preview do template.</p>';
-                });
-            }
-            refreshSpecBadges();
-            loadTemplatePreview();
-            document.addEventListener('input', refreshSpecBadges, true);
-            document.addEventListener('change', (e) => {
-              refreshSpecBadges();
-              if (e.target.id === 'id_template' || e.target.id === 'id_template_not_listed') {
-                loadTemplatePreview();
-              }
-            }, true);
-          })();
+          if (typeof window.initOnboardingWizard === 'function') {
+            window.initOnboardingWizard('{% url 'onboarding_template_preview' %}');
+          }
         ">
     {% csrf_token %}
     {{ form.media }}
