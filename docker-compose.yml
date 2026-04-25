@@ -71,9 +71,25 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
 
+  test:
+    <<: *web_common
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        pytest tests/unit tests/integration tests/system tests/regression tests/performance tests/security -q
+      "
+    profiles: ["test"]
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-test-secret-key}
+
   caddy:
     image: caddy:2.10-alpine
-    profiles: ["prod"]
+    profiles: ["edge"]
     depends_on:
       web-prod:
         condition: service_started

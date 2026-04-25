@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Garagem - Visão geral{% endblock %}
+
+{% block topbar_eyebrow %}Operação atual{% endblock %}
+{% block topbar_title %}Todas as motos{% endblock %}
+
+{% block content %}
+<section class="page-shell" aria-labelledby="garage-overview-title">
+  <header class="page-hero">
+    <div>
+      <span class="page-kicker">Visão geral</span>
+      <h2 id="garage-overview-title" class="page-title">Garagem</h2>
+      <p class="page-copy">Acompanhe a saúde, odômetro, próximo alerta e gasto mensal de todas as motos em um só lugar.</p>
+    </div>
+  </header>
+
+  <section class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3" aria-label="Motos do usuário">
+    {% for item in overview_items %}
+      {% with bike=item.motorcycle %}
+        <article class="rounded-lg border border-outline-variant/40 bg-surface-lowest p-5 transition hover:shadow-sm {% if not bike.is_active %}opacity-50 grayscale{% endif %}">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="font-headline text-lg font-semibold text-on-surface">{{ bike.name }}</h3>
+              <p class="text-sm text-on-surface-variant">{{ bike.brand }} {{ bike.model }} ({{ bike.year }})</p>
+            </div>
+            {% if bike.is_active %}
+              <span class="severity-badge severity-success">Ativa</span>
+            {% else %}
+              <span class="severity-badge severity-neutral">Arquivada</span>
+            {% endif %}
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-xs text-on-surface-variant">Odômetro</p>
+              <p class="font-headline text-lg font-semibold text-on-surface">{{ bike.current_odometer_km }} km</p>
+            </div>
+            <div>
+              <p class="text-xs text-on-surface-variant">Saúde</p>
+              <p class="font-headline text-lg font-semibold text-on-surface">{{ item.health.total }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-on-surface-variant">Combustível no mês</p>
+              <p class="font-headline text-lg font-semibold text-on-surface">{{ item.month_fuel_total }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-on-surface-variant">Próximo alerta</p>
+              <p class="text-sm font-semibold text-on-surface">
+                {% if item.next_reminder %}
+                  {{ item.next_reminder.reminder.title }}
+                {% else %}
+                  Sem alertas
+                {% endif %}
+              </p>
+              {% if item.next_reminder %}
+                <p class="text-xs text-on-surface-variant">
+                  {% if item.next_reminder.evaluation.due_date %}
+                    Até {{ item.next_reminder.evaluation.due_date }}
+                  {% elif item.next_reminder.evaluation.due_km %}
+                    Até {{ item.next_reminder.evaluation.due_km }} km
+                  {% endif %}
+                </p>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-2">
+            <a class="ui-btn-secondary w-full text-center text-sm" href="{% url 'garage:update' bike.pk %}">Editar</a>
+            <a class="ui-btn-secondary w-full text-center text-sm" href="{% url 'reports:sale_report_html' bike.pk %}">Relatório de venda</a>
+            <a class="ui-btn-primary w-full text-center text-sm" href="{% url 'dashboard' %}">Painel</a>
+          </div>
+        </article>
+      {% endwith %}
+    {% empty %}
+      <div class="empty-state">Nenhuma moto cadastrada.</div>
+    {% endfor %}
+  </section>
+</section>
+{% endblock %}

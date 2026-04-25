@@ -1,8 +1,15 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from djmoney.money import Money
 
 from apps.core.forms import configure_form_accessibility
+from apps.fuel.models import FuelRecord
+from apps.reports.services import health_score
+from apps.reminders.models import Reminder
+from apps.reminders.services import evaluate_reminder
 
 from .forms import MotorcycleForm, MotorcycleSpecForm
 from .models import Motorcycle, MotorcycleSpec
@@ -113,3 +120,36 @@ def garage_restore_view(request, pk):
         motorcycle.reactivate()
         messages.success(request, f"Moto {motorcycle.name} reativada com sucesso.")
     return redirect("garage:list")
+
+
+@login_required
+def garage_overview_view(request):
+    motorcycles = Motorcycle.objects.filter(owner=request.user).order_by("-is_active", "name")
+    today = timezone.localdate()
+
+    overview_items = []
+    for motorcycle in motorcycles:
+        health = health_score(motorcycle=motorcycle)
+        next_reminder = None
+        for reminder in Reminder.objects.filter(motorcycle=motorcycle, is_active=True).order_by("reference_km", "reference_date"):
+            evaluation = evaluate_reminder(reminder, current_odometer_km=motorcycle.current_odometer_km, today=today)
+            next_reminder = {"reminder": reminder, "evaluation": evaluation}
+            break
+
+        month_fuel_total = (
+            FuelRecord.objects.filter(
+                motorcycle=motorcycle, date__year=today.year, date__month=today.month
+            ).aggregate(total=Sum("total_price"))["total"]
+            or Money(0, "BRL")
+        )
+
+        overview_items.append(
+            {
+                "motorcycle": motorcycle,
+                "health": health,
+                "next_reminder": next_reminder,
+                "month_fuel_total": month_fuel_total,
+            }
+        )
+
+    return render(request, "garage/overview.html", {"overview_items": overview_items})

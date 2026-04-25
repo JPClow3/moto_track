@@ -30,17 +30,17 @@
   </form>
 
   {% if preview_rows %}
-    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient space-y-4">
-      <h3 class="text-lg font-extrabold">Prévia</h3>
+    <article class="panel p-6 space-y-4">
+      <h3 class="text-lg font-semibold">Prévia</h3>
       <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="min-w-full text-sm" aria-label="Prévia de importação">
           <thead>
             <tr class="text-left text-on-surface-variant">
-              <th class="py-2 pr-4">Linha</th>
-              <th class="py-2 pr-4">Data</th>
-              <th class="py-2 pr-4">Km</th>
-              <th class="py-2 pr-4">Posto</th>
-              <th class="py-2 pr-4">Status</th>
+              <th class="py-2 pr-4" scope="col">Linha</th>
+              <th class="py-2 pr-4" scope="col">Data</th>
+              <th class="py-2 pr-4" scope="col">Km</th>
+              <th class="py-2 pr-4" scope="col">Posto</th>
+              <th class="py-2 pr-4" scope="col">Status</th>
             </tr>
           </thead>
           <tbody>

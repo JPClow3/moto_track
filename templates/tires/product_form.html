@@ -6,12 +6,11 @@
 
 {% block content %}
 <section class="list-section" aria-labelledby="tire-product-form-title">
-  <div class="section-heading">
+  <header class="list-header">
     <div>
-      <p class="eyebrow">Catálogo</p>
       <h2 id="tire-product-form-title">{{ title }}</h2>
     </div>
-  </div>
+  </header>
 
   <form method="post" enctype="multipart/form-data" class="form-card" novalidate>
     {% csrf_token %}

@@ -10,16 +10,32 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.http import http_date
 
+from apps.forum.models import ForumArticle
+
 
 class StaticViewSitemap(Sitemap):
     priority = 0.8
     changefreq = "daily"
 
     def items(self):
-        return ["account_login", "account_signup", "privacy_policy", "terms_of_service"]
+        return ["landing", "account_login", "account_signup", "privacy_policy", "terms_of_service", "roadmap", "blog:list"]
 
     def location(self, item):
         return reverse(item)
+
+
+class ForumArticleSitemap(Sitemap):
+    priority = 0.9
+    changefreq = "monthly"
+
+    def items(self):
+        return ForumArticle.objects.filter(is_published=True).only("slug", "updated_at", "published_at")
+
+    def location(self, item):
+        return reverse("blog:detail", kwargs={"slug": item.slug})
+
+    def lastmod(self, item):
+        return item.updated_at or item.published_at
 
 
 def _sitemap_site(request):

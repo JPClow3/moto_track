@@ -179,47 +179,63 @@ class OnboardingForm(forms.Form):
 
     fuel_date = forms.DateField(
         label="Data do ultimo abastecimento",
+        required=False,
+        help_text="Opcional — pode ser preenchido depois.",
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
     fuel_odometer_km = forms.IntegerField(
         label="Km no abastecimento",
+        required=False,
+        help_text="Km do hodômetro no momento do abastecimento.",
         widget=forms.NumberInput(attrs={"inputmode": "numeric"}),
     )
     fuel_liters = forms.DecimalField(
         label="Litros",
-        min_value=0,
+        min_value=0.01,
         decimal_places=3,
+        required=False,
         widget=forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.001"}),
     )
     fuel_total_price = forms.DecimalField(
         label="Total",
         min_value=0,
         decimal_places=2,
+        required=False,
         widget=forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
     )
 
     service_date = forms.DateField(
         label="Data do último serviço",
+        required=False,
+        help_text="Opcional — pode ser preenchido depois.",
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
     service_odometer_km = forms.IntegerField(
         label="Km no serviço",
+        required=False,
         widget=forms.NumberInput(attrs={"inputmode": "numeric"}),
     )
     service_cost = forms.DecimalField(
         label="Custo do serviço",
         min_value=0,
         decimal_places=2,
+        required=False,
         widget=forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
     )
 
-    front_tire = forms.CharField(label="Pneu dianteiro", max_length=120)
-    rear_tire = forms.CharField(label="Pneu traseiro", max_length=120)
+    front_tire = forms.CharField(label="Pneu dianteiro", max_length=120, required=False)
+    rear_tire = forms.CharField(label="Pneu traseiro", max_length=120, required=False)
     tire_installed_at = forms.DateField(
         label="Data dos pneus",
+        required=False,
+        help_text="Opcional — pode ser preenchido depois.",
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
-    tire_odometer_km = forms.IntegerField(label="Km dos pneus", widget=forms.NumberInput(attrs={"inputmode": "numeric"}))
+    tire_odometer_km = forms.IntegerField(
+        label="Km dos pneus",
+        required=False,
+        widget=forms.NumberInput(attrs={"inputmode": "numeric"}),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

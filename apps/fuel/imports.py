@@ -27,8 +27,11 @@ class FuelImportRow:
 
 
 def _decimal(value: str, field: str, errors: list[str]) -> Decimal:
+    text = str(value).strip()
+    if not text:
+        return Decimal("0")
     try:
-        return Decimal(str(value).strip())
+        return Decimal(text)
     except (InvalidOperation, ValueError):
         errors.append(f"{field} inválido.")
         return Decimal("0")
@@ -50,7 +53,10 @@ def preview_fuel_csv(*, file_obj, motorcycle: Motorcycle) -> list[FuelImportRow]
             odometer_km = 0
         liters = _decimal(raw.get("liters") or "", "Litros", errors)
         total_price = _decimal(raw.get("total_price") or "", "Valor total", errors)
-        price_per_liter = _decimal(raw.get("price_per_liter") or "", "Preço por litro", errors)
+        price_per_liter_raw = raw.get("price_per_liter") or ""
+        price_per_liter = _decimal(price_per_liter_raw, "Preço por litro", errors)
+        if price_per_liter == 0 and liters > 0 and total_price > 0:
+            price_per_liter = total_price / liters
         fuel_type = (raw.get("fuel_type") or FuelType.GASOLINE).strip()
         if fuel_type not in FuelType.values:
             errors.append("Tipo de combustível inválido.")
@@ -116,13 +122,18 @@ def create_fuel_records_from_rows(*, motorcycle: Motorcycle, rows: list[dict]) -
                 raise ValidationError("Data inválida na importação.")
             if FuelRecord.objects.filter(motorcycle=motorcycle, date=row_date, odometer_km=row["odometer_km"]).exists():
                 continue
+            liters = Decimal(row["liters"])
+            total_price = Decimal(row["total_price"])
+            price_per_liter = Decimal(row.get("price_per_liter") or "0")
+            if price_per_liter == 0 and liters > 0 and total_price > 0:
+                price_per_liter = total_price / liters
             record = FuelRecord(
                 motorcycle=motorcycle,
                 date=row_date,
                 odometer_km=row["odometer_km"],
-                liters=Decimal(row["liters"]),
-                total_price=Decimal(row["total_price"]),
-                price_per_liter=Decimal(row["price_per_liter"]),
+                liters=liters,
+                total_price=total_price,
+                price_per_liter=price_per_liter,
                 fuel_type=row["fuel_type"],
                 tank_full=row["tank_full"],
                 station_name=row["station_name"],

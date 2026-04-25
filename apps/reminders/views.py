@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -10,6 +11,8 @@ from apps.core.exports import parse_date_param
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
+
+from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 
 from .export import build_export
 from .forms import ReminderForm
@@ -135,6 +138,12 @@ def reminder_export_view(request):
     return build_export(user=request.user, start=start, end=end, fmt=fmt, email_to=email_to)
 
 
+def _htmx_or_redirect(request, redirect_url):
+    if request.headers.get("HX-Request"):
+        return HttpResponse("", status=200)
+    return redirect(redirect_url)
+
+
 @login_required
 def reminder_snooze_days_view(request, pk: int, days: int):
     reminder = get_object_or_404(Reminder, pk=pk, motorcycle__owner=request.user, motorcycle__is_active=True)
@@ -152,7 +161,7 @@ def reminder_snooze_days_view(request, pk: int, days: int):
     else:
         messages.info(request, "Este lembrete não é por data.")
 
-    return redirect("reminders:list")
+    return _htmx_or_redirect(request, "reminders:list")
 
 
 @login_required
@@ -172,4 +181,27 @@ def reminder_snooze_km_view(request, pk: int, km: int):
     else:
         messages.info(request, "Este lembrete não é por km.")
 
-    return redirect("reminders:list")
+    return _htmx_or_redirect(request, "reminders:list")
+
+
+@login_required
+def reminder_concluir_view(request, pk: int):
+    reminder = get_object_or_404(Reminder, pk=pk, motorcycle__owner=request.user, motorcycle__is_active=True)
+    if request.method != "POST":
+        return redirect("reminders:list")
+
+    today = timezone.localdate()
+    current_odo = int(reminder.motorcycle.current_odometer_km or 0)
+
+    MaintenanceRecord.objects.create(
+        motorcycle=reminder.motorcycle,
+        maintenance_type=MaintenanceType.OTHER,
+        date=today,
+        odometer_km=current_odo,
+        description=reminder.title,
+        cost=0,
+    )
+    reminder.is_active = False
+    reminder.save(update_fields=["is_active", "updated_at"])
+    messages.success(request, f"Lembrete '{reminder.title}' concluído e registrado na manutenção.")
+    return _htmx_or_redirect(request, "reminders:list")

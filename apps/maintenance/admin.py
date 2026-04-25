@@ -1,9 +1,10 @@
 from django.contrib import admin
+from unfold.admin import TabularInline
 
 from apps.core.admin import UserScopedAdmin
 from apps.garage.models import Motorcycle
 
-from .models import MaintenancePart, MaintenanceRecord, MaintenanceRecordPart
+from .models import MaintenancePart, MaintenancePhoto, MaintenanceRecord, MaintenanceRecordPart
 
 
 @admin.register(MaintenancePart)
@@ -25,6 +26,18 @@ class MaintenanceRecordPartAdmin(UserScopedAdmin):
     search_fields = ("maintenance_record__motorcycle__name", "part__name")
 
 
+class MaintenancePhotoInline(TabularInline):
+    model = MaintenancePhoto
+    extra = 1
+
+
+@admin.register(MaintenancePhoto)
+class MaintenancePhotoAdmin(UserScopedAdmin):
+    owner_lookup = "maintenance_record__motorcycle__owner"
+    list_display = ("maintenance_record", "caption", "created_at")
+    search_fields = ("maintenance_record__motorcycle__name", "caption")
+
+
 @admin.register(MaintenanceRecord)
 class MaintenanceRecordAdmin(UserScopedAdmin):
     owner_lookup = "motorcycle__owner"
@@ -32,6 +45,7 @@ class MaintenanceRecordAdmin(UserScopedAdmin):
         "motorcycle": lambda user: Motorcycle.objects.filter(owner=user),
     }
 
+    inlines = [MaintenancePhotoInline]
     list_display = ("date", "motorcycle", "maintenance_type", "odometer_km", "cost", "interval_km", "interval_days")
     list_filter = ("maintenance_type", "date")
     search_fields = ("motorcycle__name", "workshop", "parts__name")

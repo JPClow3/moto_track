@@ -2,57 +2,56 @@
 
 {% block title %}Garagem - Moto Track{% endblock %}
 
-{% block topbar_eyebrow %}Garagem{% endblock %}
-{% block topbar_title %}Motos cadastradas{% endblock %}
+{% block topbar_eyebrow %}Base da operação{% endblock %}
+{% block topbar_title %}Garagem{% endblock %}
 
 {% block content %}
-<section class="space-y-8 pb-10" aria-labelledby="garage-list-title">
-  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-    <div class="space-y-2">
-      <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">Garagem</span>
-      <h2 id="garage-list-title" class="text-3xl font-extrabold tracking-tight">Garagem</h2>
-      <p class="text-on-surface-variant text-sm">Cadastre suas motos e acompanhe o odômetro atual de cada uma.</p>
+<section class="page-shell" aria-labelledby="garage-list-title">
+  <header class="page-hero">
+    <div>
+      <span class="page-kicker">Motos cadastradas</span>
+      <h2 id="garage-list-title" class="page-title">Sua garagem em ordem.</h2>
+      <p class="page-copy">Cadastre as motos, acompanhe odômetro atual e mantenha a base correta para consumo, manutenção, pneus e documentos.</p>
     </div>
-    <a class="rounded-2xl bg-gradient-to-br from-primary to-primary-dim px-6 py-3 text-[11px] font-extrabold uppercase tracking-widest text-on-primary shadow-ambient" href="{% url 'garage:create' %}">
-      Nova moto
-    </a>
+    <a class="ui-btn-primary" href="{% url 'garage:create' %}">Nova moto</a>
   </header>
 
-  <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Motos cadastradas">
+  <section aria-label="Motos cadastradas">
     {% if motorcycles %}
       <div class="overflow-x-auto">
-        <table class="min-w-[900px] w-full text-sm">
+        <table class="responsive-table min-w-[900px]" aria-label="Motos cadastradas">
           <thead>
             <tr>
-              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Foto</th>
-              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Nome</th>
-              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Modelo</th>
-              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Ano</th>
-              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Placa</th>
-              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Odômetro</th>
-              <th class="text-left text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant py-3" scope="col">Ações</th>
+              <th class="py-3" scope="col">Foto</th>
+              <th class="py-3" scope="col">Nome</th>
+              <th class="py-3" scope="col">Modelo</th>
+              <th class="py-3" scope="col">Ano</th>
+              <th class="py-3" scope="col">Placa</th>
+              <th class="py-3" scope="col">Odômetro</th>
+              <th class="py-3" scope="col">Ações</th>
             </tr>
           </thead>
           <tbody>
             {% for motorcycle in motorcycles %}
-              <tr class="border-t border-outline-variant/10">
-                <td>
+              <tr class="border-t border-outline-variant/60">
+                <td data-label="Foto">
                   {% if motorcycle.photo %}
-                    <img class="h-10 w-10 rounded-xl object-cover bg-surface-low" src="{{ motorcycle.photo.url }}" alt="Foto de {{ motorcycle.name }}" loading="lazy" />
+                    <img class="h-10 w-10 rounded-md object-cover bg-surface-low" src="{{ motorcycle.photo.url }}" alt="Foto de {{ motorcycle.name }}" loading="lazy" />
                   {% else %}
-                    <span class="h-10 w-10 rounded-xl bg-surface-low" aria-hidden="true"></span>
+                    <span class="inline-block h-10 w-10 rounded-md bg-surface-low" aria-hidden="true"></span>
                   {% endif %}
                 </td>
-                <td><strong>{{ motorcycle.name }}</strong></td>
-                <td>{{ motorcycle.brand }} {{ motorcycle.model }}</td>
-                <td>{{ motorcycle.year }}</td>
-                <td>{{ motorcycle.license_plate|default:"--" }}</td>
-                <td>{{ motorcycle.current_odometer_km }} km</td>
-                <td>
+                <td data-label="Nome"><strong class="font-semibold">{{ motorcycle.name }}</strong></td>
+                <td data-label="Modelo">{{ motorcycle.brand }} {{ motorcycle.model }}</td>
+                <td data-label="Ano">{{ motorcycle.year }}</td>
+                <td data-label="Placa">{{ motorcycle.license_plate|default:"--" }}</td>
+                <td data-label="Odômetro">{{ motorcycle.current_odometer_km }} km</td>
+                <td data-label="Ações">
                   <div class="flex items-center justify-end gap-2" role="group" aria-label="Ações da moto {{ motorcycle.name }}">
-                    <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-low" href="{% url 'garage:update' motorcycle.pk %}" aria-label="Editar moto {{ motorcycle.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                    <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-low" href="{% url 'garage:spec_update' motorcycle.pk %}" aria-label="Editar especificações {{ motorcycle.name }}"><i data-lucide="settings" aria-hidden="true"></i></a>
-                    <a class="h-9 w-9 grid place-items-center rounded-xl text-error hover:bg-error/10" href="{% url 'garage:delete' motorcycle.pk %}" aria-label="Excluir moto {{ motorcycle.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn !h-9 !w-9" href="{% url 'reports:sale_report_html' motorcycle.pk %}" aria-label="Relatório de venda {{ motorcycle.name }}" title="Gerar relatório de venda"><i data-lucide="file-text" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn !h-9 !w-9" href="{% url 'garage:update' motorcycle.pk %}" aria-label="Editar moto {{ motorcycle.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn !h-9 !w-9" href="{% url 'garage:spec_update' motorcycle.pk %}" aria-label="Editar especificações {{ motorcycle.name }}"><i data-lucide="settings" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'garage:delete' motorcycle.pk %}" aria-label="Excluir moto {{ motorcycle.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
                   </div>
                 </td>
               </tr>
@@ -61,24 +60,22 @@
         </table>
       </div>
     {% else %}
-      <p class="text-on-surface-variant text-sm">Você ainda não cadastrou nenhuma moto.</p>
+      <div class="empty-state">Você ainda não cadastrou nenhuma moto.</div>
     {% endif %}
-  </article>
+  </section>
 
   {% if archived_motorcycles %}
-    <article class="rounded-2xl bg-surface-lowest p-6 shadow-ambient" aria-label="Motos arquivadas">
-      <div class="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <h3 class="text-lg font-extrabold tracking-tight">Motos arquivadas</h3>
-          <p class="text-sm text-on-surface-variant">Reative uma moto antiga para voltar a acompanhar o histórico.</p>
-        </div>
+    <section class="space-y-4" aria-label="Motos arquivadas">
+      <div>
+        <h3 class="font-headline text-2xl font-semibold tracking-tight">Motos arquivadas</h3>
+        <p class="mt-2 text-sm leading-6 text-on-surface-variant">Reative uma moto antiga para retomar o histórico e o monitoramento.</p>
       </div>
-      <div class="space-y-3">
+      <div class="divide-y divide-outline-variant/40">
         {% for motorcycle in archived_motorcycles %}
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl bg-surface-low p-4">
+          <div class="flex items-start justify-between gap-4 py-4">
             <div>
-              <p class="font-extrabold">{{ motorcycle.name }}</p>
-              <p class="text-xs text-on-surface-variant">{{ motorcycle.brand }} {{ motorcycle.model }} • {{ motorcycle.year }}</p>
+              <p class="text-sm font-semibold text-on-surface">{{ motorcycle.name }}</p>
+              <p class="text-xs text-on-surface-variant">{{ motorcycle.brand }} {{ motorcycle.model }} - {{ motorcycle.year }}</p>
             </div>
             <form method="post" action="{% url 'garage:restore' motorcycle.pk %}">
               {% csrf_token %}
@@ -87,7 +84,7 @@
           </div>
         {% endfor %}
       </div>
-    </article>
+    </section>
   {% endif %}
 </section>
 {% endblock %}

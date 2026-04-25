@@ -12,4 +12,5 @@ urlpatterns = [
     path("<int:pk>/delete/", views.reminder_delete_view, name="delete"),
     path("<int:pk>/snooze-days/<int:days>/", views.reminder_snooze_days_view, name="snooze_days"),
     path("<int:pk>/snooze-km/<int:km>/", views.reminder_snooze_km_view, name="snooze_km"),
+    path("<int:pk>/concluir/", views.reminder_concluir_view, name="concluir"),
 ]

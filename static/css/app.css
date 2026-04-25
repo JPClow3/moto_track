@@ -2,7 +2,113 @@
    The UI is Tailwind-first; keep only tiny global tweaks here. */
 
 .lucide {
-  width: 1rem;
-  height: 1rem;
-  stroke-width: 2;
+  width: 1.05rem;
+  height: 1.05rem;
+  stroke-width: 1.9;
+}
+
+.lucide[data-lucide="layout-dashboard"],
+.lucide[data-lucide="fuel"],
+.lucide[data-lucide="wrench"],
+.lucide[data-lucide="bell-ring"],
+.lucide[data-lucide="menu"] {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* Skeleton shimmer for lazy loading and HTMX states */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-surface-high, 214 211 209)) 0%,
+    rgb(var(--color-surface-highest, 231 229 228)) 50%,
+    rgb(var(--color-surface-high, 214 211 209)) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+[data-theme="dark"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(39 39 42) 0%,
+    rgb(63 63 70) 50%,
+    rgb(39 39 42) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* HTMX request loading states */
+.htmx-request .htmx-hide-on-request,
+.htmx-request.htmx-hide-on-request {
+  display: none !important;
+}
+
+.htmx-request .htmx-show-on-request,
+.htmx-request.htmx-show-on-request {
+  display: block !important;
+}
+
+/* HTMX indicator visibility */
+.htmx-indicator {
+  display: none !important;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  display: flex !important;
+}
+
+/* Button dimming during HTMX request */
+.htmx-request.ui-btn-primary,
+.htmx-request.ui-btn-secondary,
+.htmx-request.ui-icon-btn,
+.htmx-request.ui-toolbar-btn {
+  opacity: 0.65;
+  pointer-events: none;
+  cursor: wait;
+}
+
+[x-cloak] {
+  display: none !important;
+}
+
+/* Image skeleton before load */
+img[loading="lazy"] {
+  background-color: rgb(var(--color-surface-high, 214 211 209));
+}
+
+[data-theme="dark"] img[loading="lazy"] {
+  background-color: rgb(39 39 42);
+}
+
+@media print {
+  aside, header, .fixed, nav[aria-label="Navegação rápida"], .ui-icon-btn, .ui-btn-primary, .ui-btn-secondary, .ui-toolbar-btn, .quick-actions-row-split, .quick-actions-row {
+    display: none !important;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+  main {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  canvas {
+    width: 100% !important;
+    height: auto !important;
+  }
+  .page-shell {
+    max-width: 100% !important;
+  }
 }

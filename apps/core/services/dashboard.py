@@ -95,8 +95,7 @@ def get_active_reminders(motorcycle: Motorcycle, current_odometer: int, *, limit
     ]
 
 
-def get_status_cards(motorcycle: Motorcycle, current_odometer: int, active_reminders=None) -> tuple[list[dict], int]:
-    active_reminders = active_reminders if active_reminders is not None else get_active_reminders(motorcycle, current_odometer)
+def get_status_cards(motorcycle: Motorcycle, current_odometer: int, active_reminders: list[dict]) -> tuple[list[dict], int]:
     last_oil = (
         MaintenanceRecord.objects.filter(motorcycle=motorcycle, maintenance_type=MaintenanceType.OIL_CHANGE)
         .order_by("-date", "-odometer_km")
@@ -272,7 +271,6 @@ def get_chart_spending_distribution(motorcycle: Motorcycle) -> dict:
 
     ins_total = InsurancePolicy.objects.filter(motorcycle=motorcycle).aggregate(t=Sum("premium"))["t"] or _money_zero()
     ins_val = float(getattr(ins_total, "amount", ins_total) or 0)
-    
     taxes_val = fees_val + ins_val
     labels = ["Combustível", "Manutenção", "Taxas & Seguros"]
     values = [fuel_val, maint_val, taxes_val]

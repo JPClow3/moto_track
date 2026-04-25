@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.conf import settings
 
+from apps.accounts.models import UserPreference
 from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY
 from apps.garage.models import Motorcycle
@@ -10,10 +11,19 @@ from apps.garage.models import Motorcycle
 def garage_context(request):
     if not request.user.is_authenticated:
         return {"web_push_public_key": getattr(settings, "WEB_PUSH_PUBLIC_KEY", "")}
+
+    user_theme_preference = "system"
+    try:
+        pref = request.user.preference
+        user_theme_preference = pref.theme
+    except UserPreference.DoesNotExist:
+        pass
+
     if request.path.startswith("/api/") or request.headers.get("HX-Request") == "true":
         return {
             "current_density": request.session.get("density", "comfortable"),
             "web_push_public_key": getattr(settings, "WEB_PUSH_PUBLIC_KEY", ""),
+            "user_theme_preference": user_theme_preference,
         }
 
     motorcycles = list(
@@ -28,4 +38,5 @@ def garage_context(request):
         "snackbar_undo": {"token": undo_token, **undo_payload} if undo_payload else None,
         "current_density": request.session.get("density", "comfortable"),
         "web_push_public_key": getattr(settings, "WEB_PUSH_PUBLIC_KEY", ""),
+        "user_theme_preference": user_theme_preference,
     }

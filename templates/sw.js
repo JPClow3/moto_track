@@ -34,7 +34,10 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
 
-  if (req.method === "POST" && (req.url.includes("/quick-create/") || req.url.includes("/fuel/"))) {
+  if (
+    req.method === "POST" &&
+    (req.url.includes("/quick-create/") || req.url.includes("/fuel/") || req.url.includes("/maintenance/") || req.url.includes("/quick-odometer-update/"))
+  ) {
     event.respondWith(queuePostWhenOffline(req));
     return;
   }
@@ -69,6 +72,14 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+async function broadcastPendingCount() {
+  const requests = await getRequests();
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const client of clients) {
+    client.postMessage({ type: "offline-pending-count", count: requests.length });
+  }
+}
+
 async function queuePostWhenOffline(req) {
   try {
     return await fetch(req.clone());
@@ -81,6 +92,7 @@ async function queuePostWhenOffline(req) {
     });
     headers["Content-Type"] = "application/x-www-form-urlencoded";
     await saveRequest(req.url, req.method, headers, body);
+    await broadcastPendingCount();
 
     if ("sync" in self.registration) {
       try {
@@ -91,7 +103,7 @@ async function queuePostWhenOffline(req) {
     }
 
     return new Response(
-      '<div class="p-4 bg-warning text-surface-highest rounded-lg shadow-ambient font-extrabold flex items-center gap-2"><i data-lucide="wifi-off"></i> Salvo offline. Sera sincronizado assim que a conexao voltar.</div>',
+      '<div class="alert-banner-main"><div class="alert-body"><span class="alert-icon"><i data-lucide="wifi-off" aria-hidden="true"></i></span><div><p class="font-semibold text-on-surface">Salvo offline.</p><p class="text-sm text-warning">Será sincronizado assim que a conexão voltar.</p></div></div></div>',
       { headers: { "Content-Type": "text/html" } }
     );
   }
@@ -159,6 +171,7 @@ async function syncRequests() {
       console.error("Sync network error for request", queued.id, err);
     }
   }
+  await broadcastPendingCount();
 }
 
 self.addEventListener("sync", (event) => {
@@ -179,7 +192,7 @@ self.addEventListener("push", (event) => {
 
   const title = data.title || "Moto Track";
   const options = {
-    body: data.body || "Voce tem uma nova notificacao.",
+    body: data.body || "Você tem uma nova notificação.",
     icon: "/static/icons/icon-192x192.png",
     badge: "/static/icons/icon-72x72.png",
     vibrate: [100, 50, 100],

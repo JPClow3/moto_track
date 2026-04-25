@@ -9,14 +9,19 @@ A proposta é transformar o controle da moto em algo simples, confiável e útil
 ## Módulos
 
 | Módulo | O que faz |
-|---|---|
+| --- | --- |
 | **Painel** | Resumo da situação atual, últimos eventos e alertas |
 | **Abastecimentos** | Histórico de reabastecimentos, consumo e gastos |
 | **Manutenções** | Serviços realizados, peças usadas e intervalos preventivos |
 | **Pneus** | Catálogo estruturado e histórico de instalação/desgaste |
 | **Documentos** | Arquivos, metadados e acesso rápido (CRLV, seguro, manual) |
 | **Lembretes** | Alertas por data, km ou intervalo |
+| **Despesas** | Taxas anuais (IPVA, DPVAT, licenciamento) |
+| **Inventário** | Estoque de peças e itens de manutenção |
+| **Blog** | Artigos e guias públicos (SEO/forum) |
 | **Relatórios** | Evolução de custos e uso ao longo do tempo |
+| **API** | Endpoints REST para dados principais |
+| **Contas** | Autenticação e adaptadores de conta (django-allauth) |
 
 ---
 
@@ -25,10 +30,35 @@ A proposta é transformar o controle da moto em algo simples, confiável e útil
 - **Backend**: Django (monolith), django-environ, django-money, django-bleach, django-autocomplete-light
 - **Auth**: django-allauth + django-allauth-ui
 - **Forms**: django-crispy-forms + crispy-tailwind
-- **Templates**: django-cotton, HTMX, JavaScript vanilla
-- **Frontend**: Tailwind CSS, Chart.js
+- **Templates**: django-cotton, HTMX, Alpine.js
+- **Frontend**: Tailwind CSS, Chart.js, Lucide icons
 - **Banco**: SQLite (dev) · PostgreSQL (prod)
 - **Infraestrutura**: Docker, Gunicorn, Nginx, S3 (media)
+
+### Frontend Stack (Locked)
+
+The frontend is **strictly limited** to three technologies. Any deviation requires explicit approval and justification:
+
+| Technology | Purpose |
+|-----------|---------|
+| **HTMX** | Server-rendered AJAX, partial page updates, form submissions |
+| **Alpine.js** | Reactive UI state: modals, menus, snackbars, wizards, toggles, `@click` handlers |
+| **Tailwind CSS** | All styling via utility classes |
+
+**Allowed with restrictions:**
+- Chart.js — dashboard charts only, initialized via Alpine.js `x-init`
+- Lucide — icons only
+- Vanilla JS — **only** for: Service Workers, Push API, Web Crypto, HTMX event glue, Chart.js init
+
+**Forbidden:**
+- jQuery (isolate and remove; only tolerated for django-autocomplete-light third-party dep)
+- Bootstrap, Bulma, Foundation, or any other CSS framework
+- React, Vue, Svelte, Angular
+- Inline `onclick=`, `onchange=`, `onload=` attributes (use Alpine.js)
+- `<script>` blocks in templates for UI state (use Alpine.js `x-data`)
+- Inline `<style>` blocks in templates (use Tailwind or `static/css/input.css`)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full frontend rules and contributor checklist.
 
 ---
 
@@ -62,10 +92,10 @@ python manage.py runserver
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose --profile dev up --build
 
 # Em outro terminal, aplicar migrações
-docker compose exec web python manage.py migrate
+docker compose --profile dev exec web python manage.py migrate
 ```
 
 Acesse em `http://localhost:8000`.
@@ -78,7 +108,7 @@ Use o profile `edge` para subir Caddy na frente do Django com certificado TLS au
 cp .env.example .env
 # ajuste pelo menos: SITE_DOMAIN, DJANGO_ALLOWED_HOSTS, DJANGO_SECRET_KEY,
 # AWS_STORAGE_BUCKET_NAME e POSTGRES_PASSWORD
-docker compose --profile edge up -d --build
+docker compose --profile prod --profile edge up -d --build
 ```
 
 Isso publica `80/443` no host, redireciona `www` para o dominio principal e entrega o app em HTTPS.
@@ -111,7 +141,7 @@ Cria, de forma idempotente: usuário demo, moto, especificações, posto, combus
 
 ## Estrutura do projeto
 
-```
+```text
 apps/
   core/        — modelos base, dashboard e utilitários compartilhados
   garage/      — motocicleta e especificações estruturadas
@@ -121,6 +151,11 @@ apps/
   documents/   — documentos e arquivos da moto
   reminders/   — lembretes por gatilho
   reports/     — agregações e indicadores
+  expenses/    — taxas anuais (IPVA, DPVAT, licenciamento)
+  inventory/   — estoque de peças e itens
+  forum/       — artigos públicos e blog
+  api/         — endpoints REST internos
+  accounts/    — autenticação (django-allauth)
 ```
 
 ---
@@ -151,8 +186,8 @@ python manage.py test
 
 Guia completo (Lightsail VM + Nginx + Gunicorn + S3): [docs/deploy/lightsail-s3.md](docs/deploy/lightsail-s3.md)
 
-Deploy com Coolify continua usando apenas `--profile prod` (proxy HTTPS do proprio Coolify).
-Para VPS com Docker Compose direto (sem Coolify/Traefik/Nginx externo), use `--profile edge`.
+Deploy com Coolify usa apenas `--profile prod` (proxy HTTPS do proprio Coolify).
+Para VPS com Docker Compose direto (sem Coolify/Traefik/Nginx externo), use `--profile prod --profile edge`.
 
 ---
 

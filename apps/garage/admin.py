@@ -1,5 +1,5 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, StackedInline, TabularInline
 
 from apps.core.admin import UserScopedAdmin
 
@@ -13,18 +13,18 @@ from .models import (
 )
 
 
-class MotorcycleTemplateSpecInline(admin.StackedInline):
+class MotorcycleTemplateSpecInline(StackedInline):
     model = MotorcycleTemplateSpec
     extra = 0
     max_num = 1
 
 
-class MotorcycleTemplateMaintenanceIntervalInline(admin.TabularInline):
+class MotorcycleTemplateMaintenanceIntervalInline(TabularInline):
     model = MotorcycleTemplateMaintenanceInterval
     extra = 0
 
 
-class MotorcycleTemplateRecommendedPartInline(admin.TabularInline):
+class MotorcycleTemplateRecommendedPartInline(TabularInline):
     model = MotorcycleTemplateRecommendedPart
     extra = 0
 

@@ -20,5 +20,6 @@ jobs:
           script: |
             cd ~/moto_track
             git pull origin main
-            docker compose --profile prod down
-            docker compose --profile prod up -d --build
+            docker compose --profile prod --profile edge up -d --build --remove-orphans
+            # Ensure admin exists on first deploy (idempotent; safe to run every deploy)
+            docker compose --profile prod exec web-prod python manage.py createadmin --noinput || true

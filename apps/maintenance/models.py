@@ -94,6 +94,7 @@ class MaintenanceRecord(TimeStampedModel):
         return None
 
     def clean(self):
+        super().clean()
         errors = {}
         if self.interval_km is not None and self.interval_km <= 0:
             errors["interval_km"] = "O intervalo em km deve ser maior que zero."
@@ -101,6 +102,8 @@ class MaintenanceRecord(TimeStampedModel):
             errors["interval_days"] = "O intervalo em dias deve ser maior que zero."
         if self.cost is not None and getattr(self.cost, "amount", self.cost) < 0:
             errors["cost"] = "O custo não pode ser negativo."
+        from apps.core.validation import validate_instance_odometer
+        errors.update(validate_instance_odometer(self))
         if errors:
             raise ValidationError(errors)
 
@@ -151,3 +154,18 @@ class MaintenancePlanItem(TimeStampedModel):
             errors["interval_days"] = "O intervalo em dias deve ser maior que zero."
         if errors:
             raise ValidationError(errors)
+
+
+class MaintenancePhoto(TimeStampedModel):
+    maintenance_record = models.ForeignKey(
+        MaintenanceRecord, on_delete=models.CASCADE, related_name="photos"
+    )
+    image = models.ImageField(upload_to="maintenance/photos/%Y/%m/")
+    caption = models.CharField(max_length=200, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+    def __str__(self) -> str:
+        return f"Foto de {self.maintenance_record}"

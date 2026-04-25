@@ -11,11 +11,23 @@ from apps.garage.models import Motorcycle
 from .models import MaintenancePart, MaintenancePlanItem, MaintenanceRecord
 
 
+class _MultiFileInput(forms.FileInput):
+    def __init__(self, attrs=None):
+        multiple = attrs.pop("multiple", None) if attrs else None
+        super().__init__(attrs=attrs)
+        if multiple is not None:
+            self.attrs["multiple"] = multiple
+
+
 class MaintenanceRecordQuickForm(forms.ModelForm):
     parts = forms.ModelMultipleChoiceField(
         queryset=MaintenancePart.objects.none(),
         required=False,
         widget=autocomplete.ModelSelect2Multiple(url="maintenance:part_autocomplete"),
+    )
+    photos = forms.ImageField(
+        required=False,
+        widget=_MultiFileInput(attrs={"multiple": True, "accept": "image/*"}),
     )
 
     class Meta:
@@ -31,6 +43,7 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
             "parts_used",
             "interval_km",
             "interval_days",
+            "photos",
         ]
         labels = {
             "motorcycle": "Moto",

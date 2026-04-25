@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Dossiê de venda - {{ motorcycle.name }}{% endblock %}
+
+{% block topbar_eyebrow %}Relatório{% endblock %}
+{% block topbar_title %}Dossiê de venda{% endblock %}
+
+{% block extra_meta %}{% endblock %}
+
+{% block content %}
+<section class="page-shell print-container" aria-labelledby="sale-report-title">
+  <header class="page-hero print:hidden">
+    <div>
+      <span class="page-kicker">Para compradores</span>
+      <h2 id="sale-report-title" class="page-title">{{ motorcycle.name }}</h2>
+      <p class="page-copy">Dossiê de venda gerado a partir dos registros informados pelo proprietário.</p>
+    </div>
+    <div class="page-actions print:hidden">
+      <a class="ui-btn-secondary" href="{% url 'reports:sale_report_pdf' motorcycle.pk %}">Baixar PDF</a>
+      <button class="ui-btn-primary" @click="window.print()">Imprimir</button>
+    </div>
+  </header>
+
+  <section class="space-y-6" aria-label="Resumo do veículo">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div class="space-y-1">
+        <p class="text-xs text-on-surface-variant">Marca / Modelo / Ano</p>
+        <p class="font-semibold text-on-surface">{{ motorcycle.brand }} {{ motorcycle.model }} - {{ motorcycle.year }}</p>
+      </div>
+      <div class="space-y-1">
+        <p class="text-xs text-on-surface-variant">Odômetro</p>
+        <p class="font-semibold text-on-surface">{{ motorcycle.current_odometer_km }} km</p>
+      </div>
+      {% if motorcycle.license_plate %}
+        <div class="space-y-1">
+          <p class="text-xs text-on-surface-variant">Placa</p>
+          <p class="font-semibold text-on-surface">{{ motorcycle.license_plate }}</p>
+        </div>
+      {% endif %}
+      {% if motorcycle.purchase_date %}
+        <div class="space-y-1">
+          <p class="text-xs text-on-surface-variant">Data de compra</p>
+          <p class="font-semibold text-on-surface">{{ motorcycle.purchase_date|date:"d/m/Y" }}</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div class="rounded-lg border border-outline-variant/40 bg-surface-low p-4">
+        <p class="text-xs text-on-surface-variant">Saúde da moto</p>
+        <p class="mt-1 font-headline text-2xl font-semibold text-on-surface">{{ data.health.total }}/100</p>
+      </div>
+      <div class="rounded-lg border border-outline-variant/40 bg-surface-low p-4">
+        <p class="text-xs text-on-surface-variant">Gasto total registrado</p>
+        <p class="mt-1 font-headline text-2xl font-semibold text-on-surface">{{ data.summary.total }}</p>
+      </div>
+      <div class="rounded-lg border border-outline-variant/40 bg-surface-low p-4">
+        <p class="text-xs text-on-surface-variant">Custo por km</p>
+        <p class="mt-1 font-headline text-2xl font-semibold text-on-surface">{{ data.summary.cost_per_km|default:"--" }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-4" aria-label="Gastos consolidados">
+    <h3 class="font-headline text-xl font-semibold tracking-tight">Gastos consolidados</h3>
+    <table class="w-full text-sm" aria-label="Gastos consolidados">
+      <thead>
+        <tr class="border-b border-outline-variant/40">
+          <th class="py-2 text-left text-xs text-on-surface-variant" scope="col">Categoria</th>
+          <th class="py-2 text-right text-xs text-on-surface-variant" scope="col">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-b border-outline-variant/20"><td class="py-2">Combustível</td><td class="py-2 text-right">{{ data.summary.fuel }}</td></tr>
+        <tr class="border-b border-outline-variant/20"><td class="py-2">Manutenção</td><td class="py-2 text-right">{{ data.summary.maintenance }}</td></tr>
+        <tr class="border-b border-outline-variant/20"><td class="py-2">Pneus</td><td class="py-2 text-right">{{ data.summary.tires }}</td></tr>
+        <tr class="border-b border-outline-variant/20"><td class="py-2">Taxas</td><td class="py-2 text-right">{{ data.summary.annual_fees }}</td></tr>
+        <tr class="border-b border-outline-variant/20"><td class="py-2">Seguros</td><td class="py-2 text-right">{{ data.summary.insurance }}</td></tr>
+        <tr class="border-b border-outline-variant/40 font-semibold"><td class="py-2">Total</td><td class="py-2 text-right">{{ data.summary.total }}</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="space-y-4" aria-label="Combustível">
+    <h3 class="font-headline text-xl font-semibold tracking-tight">Combustível</h3>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="space-y-1"><p class="text-xs text-on-surface-variant">Registros</p><p class="font-semibold">{{ data.fuel_summary.fillups_count }}</p></div>
+      <div class="space-y-1"><p class="text-xs text-on-surface-variant">Litros</p><p class="font-semibold">{{ data.fuel_summary.liters_total|floatformat:3 }} L</p></div>
+      <div class="space-y-1"><p class="text-xs text-on-surface-variant">Gasto</p><p class="font-semibold">{{ data.fuel_summary.total_spend }}</p></div>
+      <div class="space-y-1"><p class="text-xs text-on-surface-variant">Km médio por abastecimento</p><p class="font-semibold">{{ data.fuel_summary.average_km_between_fillups|default:"--" }} km</p></div>
+    </div>
+  </section>
+
+  <section class="space-y-4" aria-label="Manutenção">
+    <h3 class="font-headline text-xl font-semibold tracking-tight">Manutenção</h3>
+    {% if data.maintenance_by_type %}
+      <table class="w-full text-sm" aria-label="Manutenção por tipo">
+        <thead>
+          <tr class="border-b border-outline-variant/40">
+            <th class="py-2 text-left text-xs text-on-surface-variant" scope="col">Tipo</th>
+            <th class="py-2 text-right text-xs text-on-surface-variant" scope="col">Qtde.</th>
+            <th class="py-2 text-right text-xs text-on-surface-variant" scope="col">Total</th>
+            <th class="py-2 text-right text-xs text-on-surface-variant" scope="col">Última</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data.maintenance_by_type %}
+            <tr class="border-b border-outline-variant/20">
+              <td class="py-2">{{ row.type_label }}</td>
+              <td class="py-2 text-right">{{ row.count }}</td>
+              <td class="py-2 text-right">{{ row.total_cost }}</td>
+              <td class="py-2 text-right">{{ row.latest_date|date:"d/m/Y"|default:"--" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-sm text-on-surface-variant">Nenhuma manutenção registrada.</p>
+    {% endif %}
+  </section>
+
+  {% if motorcycle.observations %}
+    <section class="space-y-2" aria-label="Observações do proprietário">
+      <h3 class="font-headline text-xl font-semibold tracking-tight">Observações do proprietário</h3>
+      <p class="text-sm text-on-surface-variant">{{ motorcycle.observations }}</p>
+    </section>
+  {% endif %}
+
+  <footer class="pt-6 text-xs text-on-surface-variant border-t border-outline-variant/40">
+    Documento gerado pelo Moto Track com base nos registros informados pelo proprietário.
+  </footer>
+</section>
+{% endblock %}

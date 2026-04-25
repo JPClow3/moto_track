@@ -8,6 +8,11 @@ from apps.maintenance.models import MaintenanceRecord
 
 
 @receiver(pre_save, sender=MaintenanceRecord)
+def _maintenance_record_validate(sender, instance: MaintenanceRecord, **kwargs):  # pylint: disable=unused-argument
+    instance.full_clean()
+
+
+@receiver(pre_save, sender=MaintenanceRecord)
 def _maintenance_record_snapshot(sender, instance: MaintenanceRecord, **kwargs):  # pylint: disable=unused-argument
     if not instance.pk:
         instance._odometer_snapshot = None

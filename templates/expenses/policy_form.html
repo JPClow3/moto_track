@@ -15,20 +15,18 @@
     <a class="inline-cta" href="{% url 'expenses:list' %}">Voltar</a>
   </header>
 
-  <article class="panel">
-    <form method="post" class="data-form" novalidate>
-      {% csrf_token %}
-      {{ form|crispy }}
+  <form method="post" class="data-form" novalidate>
+    {% csrf_token %}
+    {{ form|crispy }}
 
-      <div class="quick-actions-row-split">
-        <a class="secondary-btn" href="{% url 'expenses:list' %}">Cancelar</a>
-        <button type="submit" class="primary-btn">{{ submit_label }}</button>
-      </div>
-    </form>
-  </article>
+    <div class="quick-actions-row-split">
+      <a class="secondary-btn" href="{% url 'expenses:list' %}">Cancelar</a>
+      <button type="submit" class="primary-btn">{{ submit_label }}</button>
+    </div>
+  </form>
 
   {% if policy %}
-    <article class="panel mt-6">
+    <div class="mt-6 space-y-4">
       <header class="list-header">
         <div>
           <h3>Sinistros</h3>
@@ -38,18 +36,18 @@
       </header>
 
       {% if claims %}
-        <ul class="space-y-3">
+        <ul class="divide-y divide-outline-variant/40">
           {% for claim in claims %}
-            <li class="flex items-start justify-between gap-4 rounded-2xl bg-surface-low px-4 py-3">
+            <li class="flex items-start justify-between gap-4 py-4">
               <div class="min-w-0">
-                <strong class="block font-extrabold truncate">{{ claim.claim_date }} • {{ claim.get_status_display }}</strong>
+                <strong class="block font-semibold truncate">{{ claim.claim_date }} • {{ claim.get_status_display }}</strong>
                 <p class="text-xs text-on-surface-variant truncate">
                   {% if claim.amount %}{{ claim.amount }} • {% endif %}{{ claim.description }}
                 </p>
               </div>
-              <div class="flex items-center gap-2" role="group" aria-label="Ações do sinistro">
-                <a class="h-9 w-9 grid place-items-center rounded-xl text-on-surface-variant hover:bg-surface-highest/60" href="{% url 'expenses:claim_update' claim.pk %}" aria-label="Editar sinistro"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                <a class="h-9 w-9 grid place-items-center rounded-xl text-error hover:bg-error/10" href="{% url 'expenses:claim_delete' claim.pk %}" aria-label="Excluir sinistro"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+              <div class="flex items-center gap-2 shrink-0" role="group" aria-label="Ações do sinistro">
+                <a class="ui-icon-btn !h-9 !w-9" href="{% url 'expenses:claim_update' claim.pk %}" aria-label="Editar sinistro"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'expenses:claim_delete' claim.pk %}" aria-label="Excluir sinistro"><i data-lucide="trash-2" aria-hidden="true"></i></a>
               </div>
             </li>
           {% endfor %}
@@ -57,7 +55,7 @@
       {% else %}
         <p class="text-on-surface-variant text-sm">Nenhum sinistro registrado.</p>
       {% endif %}
-    </article>
+    </div>
   {% endif %}
 </section>
 {% endblock %}
