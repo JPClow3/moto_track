@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -193,14 +194,19 @@ def reminder_concluir_view(request, pk: int):
     today = timezone.localdate()
     current_odo = int(reminder.motorcycle.current_odometer_km or 0)
 
-    MaintenanceRecord.objects.create(
-        motorcycle=reminder.motorcycle,
-        maintenance_type=MaintenanceType.OTHER,
-        date=today,
-        odometer_km=current_odo,
-        description=reminder.title,
-        cost=0,
-    )
+    try:
+        MaintenanceRecord.objects.create(
+            motorcycle=reminder.motorcycle,
+            maintenance_type=MaintenanceType.OTHER,
+            date=today,
+            odometer_km=current_odo,
+            description=reminder.title,
+            cost=0,
+        )
+    except ValidationError as exc:
+        messages.error(request, f"Não foi possível registrar a manutenção: {exc}")
+        return _htmx_or_redirect(request, "reminders:list")
+
     reminder.is_active = False
     reminder.save(update_fields=["is_active", "updated_at"])
     messages.success(request, f"Lembrete '{reminder.title}' concluído e registrado na manutenção.")

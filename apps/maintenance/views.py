@@ -4,6 +4,7 @@ from dal import autocomplete
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -367,19 +368,20 @@ def maintenance_quick_create_view(request):
         form = MaintenanceRecordQuickForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             parts = form.cleaned_data.pop("parts", [])
-            record = form.save()  # parts & photos are not model fields, so this is safe
-            if parts:
-                for part in parts:
-                    MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
-            photos = request.FILES.getlist("photos") if request.FILES else []
-            if photos:
-                img_validator = forms.ImageField(required=False)
-                for photo in photos:
-                    try:
-                        img_validator.clean(photo, None)
-                    except forms.ValidationError:
-                        continue
-                    MaintenancePhoto.objects.create(maintenance_record=record, image=photo)
+            with transaction.atomic():
+                record = form.save()  # parts & photos are not model fields, so this is safe
+                if parts:
+                    for part in parts:
+                        MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
+                photos = request.FILES.getlist("photos") if request.FILES else []
+                if photos:
+                    img_validator = forms.ImageField(required=False)
+                    for photo in photos:
+                        try:
+                            img_validator.clean(photo, None)
+                        except forms.ValidationError:
+                            continue
+                        MaintenancePhoto.objects.create(maintenance_record=record, image=photo)
             create_undo_token(
                 request,
                 model_label="maintenance.MaintenanceRecord",

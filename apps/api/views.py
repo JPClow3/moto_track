@@ -146,15 +146,38 @@ def expenses(request):
         return pagination_error
     limit, offset = params
 
-    fees_qs = AnnualFee.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related("motorcycle")
-    policies_qs = InsurancePolicy.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related("motorcycle")
-    fees_count = fees_qs.count()
-    policies_count = policies_qs.count()
-    total = fees_count + policies_count
+    fees_qs = AnnualFee.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True)
+    policies_qs = InsurancePolicy.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True)
+
+    # Build ordered meta-lists so we can merge by date safely even if rows are deleted between pages.
+    fee_meta = list(fees_qs.order_by("-due_date", "pk").values("pk", "due_date"))
+    policy_meta = list(policies_qs.order_by("-coverage_end", "pk").values("pk", "coverage_end"))
+
+    merged = []
+    for f in fee_meta:
+        merged.append({"kind": "fee", "pk": f["pk"], "date": f["due_date"]})
+    for p in policy_meta:
+        merged.append({"kind": "policy", "pk": p["pk"], "date": p["coverage_end"]})
+    merged.sort(key=lambda r: (r["date"], r["pk"]), reverse=True)
+
+    total = len(merged)
+    page = merged[offset : offset + limit]
+    fee_pks = [m["pk"] for m in page if m["kind"] == "fee"]
+    policy_pks = [m["pk"] for m in page if m["kind"] == "policy"]
+
+    fees_map = {
+        f.pk: f
+        for f in fees_qs.filter(pk__in=fee_pks).select_related("motorcycle")
+    }
+    policies_map = {
+        p.pk: p
+        for p in policies_qs.filter(pk__in=policy_pks).select_related("motorcycle")
+    }
 
     rows = []
-    if offset < fees_count:
-        for fee in fees_qs.order_by("-due_date", "pk")[offset : offset + limit]:
+    for m in page:
+        if m["kind"] == "fee":
+            fee = fees_map[m["pk"]]
             rows.append(
                 {
                     "id": f"fee-{fee.pk}",
@@ -164,11 +187,8 @@ def expenses(request):
                     "amount": str(fee.amount),
                 }
             )
-
-    remaining = limit - len(rows)
-    policy_offset = max(offset - fees_count, 0)
-    if remaining > 0:
-        for policy in policies_qs.order_by("-coverage_end", "pk")[policy_offset : policy_offset + remaining]:
+        else:
+            policy = policies_map[m["pk"]]
             rows.append(
                 {
                     "id": f"policy-{policy.pk}",

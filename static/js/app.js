@@ -128,6 +128,10 @@
     }
   });
 
+  document.body.addEventListener("htmx:configRequest", (event) => {
+    event.detail.headers["X-CSRFToken"] = getCsrfToken();
+  });
+
   document.body.addEventListener("htmx:beforeRequest", (event) => {
     previousFocusedElement = document.activeElement;
     const trigger = event.detail.elt;

@@ -8,11 +8,6 @@ from apps.garage.services import bump_motorcycle_odometer, recompute_motorcycle_
 
 
 @receiver(pre_save, sender=FuelRecord)
-def _fuel_record_validate(sender, instance: FuelRecord, **kwargs):  # pylint: disable=unused-argument
-    instance.full_clean()
-
-
-@receiver(pre_save, sender=FuelRecord)
 def _fuel_record_snapshot(sender, instance: FuelRecord, **kwargs):  # pylint: disable=unused-argument
     if not instance.pk:
         instance._odometer_snapshot = None

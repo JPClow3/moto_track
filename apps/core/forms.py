@@ -268,6 +268,10 @@ class OnboardingForm(forms.Form):
                 template_id = initial_template
         if not template_id:
             return None
+        try:
+            template_id = int(template_id)
+        except (ValueError, TypeError):
+            return None
         return MotorcycleTemplate.objects.select_related("spec").filter(pk=template_id).first()
 
     def _apply_template_defaults(self):

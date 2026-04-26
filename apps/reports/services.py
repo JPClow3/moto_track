@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
+from django.core.cache import cache
 from django.db.models import Max, Min, Prefetch, Q, Sum
 from django.urls import reverse
 from django.utils import timezone
@@ -490,6 +491,11 @@ def maintenance_recommendations(*, motorcycle, today: date | None = None) -> lis
 
 
 def intelligent_alerts(*, user, motorcycle=None, severity: str | None = None) -> list[Alert]:
+    cache_key = f"intelligent_alerts:{user.pk}:{motorcycle.pk if motorcycle else 'all'}:{severity or 'all'}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     today = timezone.localdate()
     alerts: list[Alert] = []
     from apps.garage.models import Motorcycle
@@ -601,7 +607,9 @@ def intelligent_alerts(*, user, motorcycle=None, severity: str | None = None) ->
 
     if severity:
         alerts = [a for a in alerts if a.severity == severity]
-    return sorted(alerts, key=lambda a: (a.priority, a.date or today, a.title))
+    result = sorted(alerts, key=lambda a: (a.priority, a.date or today, a.title))
+    cache.set(cache_key, result, 60)
+    return result
 
 
 def timeline_events(
@@ -615,6 +623,11 @@ def timeline_events(
     limit: int | None = None,
     offset: int = 0,
 ) -> list[TimelineEvent]:
+    cache_key = f"timeline_events:{user.pk}:{motorcycle.pk if motorcycle else 'all'}:{source}:{severity}:{start}:{end}:{limit}:{offset}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     events: list[TimelineEvent] = []
     filters = _user_motorcycle_filter(user, motorcycle)
     query_window = (offset + limit) if limit is not None else None
@@ -724,8 +737,11 @@ def timeline_events(
 
     events = sorted(events, key=lambda e: (e.date, e.priority), reverse=True)
     if limit is not None:
-        return events[offset : offset + limit]
-    return events
+        result = events[offset : offset + limit]
+    else:
+        result = events
+    cache.set(cache_key, result, 30)
+    return result
 
 
 def timeline_events_count(

@@ -1,21 +1,23 @@
 from django.urls import path
 
 from .views import (
-    OnboardingTemplateAutocomplete,
     dashboard_view,
-    demo_bike_create_view,
     landing_view,
     manifest_view,
     message_list_view,
     odometer_quick_update_view,
     offline_view,
-    onboarding_template_preview_view,
-    onboarding_view,
     push_subscribe_view,
     quick_add_selector_view,
     service_worker_view,
     theme_preference_view,
     undo_action_view,
+)
+from .views_onboarding import (
+    OnboardingTemplateAutocomplete,
+    demo_bike_create_view,
+    onboarding_template_preview_view,
+    onboarding_view,
 )
 
 urlpatterns = [

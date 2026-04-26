@@ -67,7 +67,7 @@ class ApiToken(TimeStampedModel):
         return self._plaintext_key
 
     def save(self, *args, **kwargs):
-        if not self.pk and not self.key_hash:
+        if not self.key_hash:
             for attempt in range(5):
                 raw_key = generate_api_key()
                 self.key_hash = make_password(raw_key)
@@ -80,7 +80,7 @@ class ApiToken(TimeStampedModel):
                 except IntegrityError:
                     if attempt == 4:
                         raise RuntimeError("Failed to generate a unique API key after 5 attempts.")
-                    self.key_hash = None
+                    self.key_hash = ""
                     self.key_prefix = ""
         else:
             super().save(*args, **kwargs)

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 def _get_fernet():
     push_key = getattr(settings, "PUSH_ENCRYPTION_KEY", None)
-    if push_key is None:
+    if not push_key:
         push_key = settings.SECRET_KEY
     raw = force_bytes(push_key)
     key = base64.urlsafe_b64encode(raw[:32].ljust(32, b"0"))
@@ -30,7 +30,7 @@ class EncryptedCharField(models.CharField):
             return force_str(_get_fernet().decrypt(force_bytes(value)))
         except (InvalidToken, ValueError, TypeError):
             logger.warning("EncryptedCharField decryption failed for value %r", value, exc_info=True)
-            return None
+            return value
 
     def to_python(self, value):
         if isinstance(value, str) or value is None:

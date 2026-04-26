@@ -60,8 +60,8 @@ def fuel_list_view(request):
     density = get_density(request)
     paged = paginate(request, records_qs, per_page=per_page_for_density(density))
     records = paged.items
-    now = timezone.now()
-    month_total = records_qs.filter(date__year=now.year, date__month=now.month).aggregate(total=Sum("total_price"))[
+    today = timezone.localdate()
+    month_total = records_qs.filter(date__year=today.year, date__month=today.month).aggregate(total=Sum("total_price"))[
         "total"
     ] or Money(0, "BRL")
     total_spend = records_qs.aggregate(total=Sum("total_price"))["total"] or Money(0, "BRL")
@@ -102,26 +102,24 @@ def fuel_list_view(request):
         configure_form_accessibility(review_form)
         review_suggestion = review_suggestion_for_motorcycle(selected_motorcycle)
 
-    all_records_ordered = list(
-        records_qs.order_by("date", "odometer_km", "pk").only(
+    for record in records:
+        record.anomaly_warnings = []
+        history_qs = records_qs.filter(
+            Q(date__lt=record.date)
+            | Q(date=record.date, odometer_km__lt=record.odometer_km)
+            | Q(date=record.date, odometer_km=record.odometer_km, pk__lt=record.pk)
+        ).order_by("date", "odometer_km", "pk").only(
             "pk", "date", "odometer_km", "liters", "price_per_liter", "price_per_liter_currency",
             "tank_full", "motorcycle", "station", "fuel_grade"
         )
-    )
-    record_index = {r.pk: i for i, r in enumerate(all_records_ordered)}
-    for record in records:
-        idx = record_index.get(record.pk)
-        record.anomaly_warnings = []
-        if idx is not None and idx > 0:
-            history = all_records_ordered[:idx]
-            warnings = detect_fuel_anomalies_from_history(
-                history_records=history,
-                odometer_km=record.odometer_km,
-                liters=record.liters,
-                price_per_liter=record.price_per_liter,
-            )
-            if warnings:
-                record.anomaly_warnings = warnings
+        warnings = detect_fuel_anomalies_from_history(
+            history_records=list(history_qs),
+            odometer_km=record.odometer_km,
+            liters=record.liters,
+            price_per_liter=record.price_per_liter,
+        )
+        if warnings:
+            record.anomaly_warnings = warnings
 
     context = {
         "records": records,
@@ -189,7 +187,11 @@ def fuel_import_preview_view(request):
     import_token = ""
     selected_motorcycle = None
     if request.method == "POST":
-        selected_motorcycle = get_object_or_404(motorcycles, pk=request.POST.get("motorcycle"))
+        try:
+            motorcycle_id = int(request.POST.get("motorcycle") or 0)
+        except (ValueError, TypeError):
+            motorcycle_id = 0
+        selected_motorcycle = get_object_or_404(motorcycles, pk=motorcycle_id)
         upload = request.FILES.get("file")
         if not upload:
             messages.error(request, "Selecione um CSV para importar.")
@@ -510,7 +512,10 @@ def fuel_review_settings_view(request):
         return redirect("fuel:list")
 
     active_motorcycle = get_active_motorcycle(request)
-    motorcycle_id = request.POST.get("motorcycle") or (active_motorcycle.pk if active_motorcycle else None)
+    try:
+        motorcycle_id = int(request.POST.get("motorcycle") or (active_motorcycle.pk if active_motorcycle else 0))
+    except (ValueError, TypeError):
+        motorcycle_id = active_motorcycle.pk if active_motorcycle else 0
     from apps.garage.models import Motorcycle
 
     motorcycle = get_object_or_404(Motorcycle, pk=motorcycle_id, owner=request.user, is_active=True)

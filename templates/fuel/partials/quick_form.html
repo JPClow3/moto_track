@@ -47,28 +47,6 @@
         get pricePerKm() { return this.km > (this.last || 0) && this.price > 0 ? (this.price / (this.km - (this.last || 0))).toFixed(2) : null; }
       }"
       @input="if ($event.target.id === '{{ form.odometer_km.id_for_label }}') km = Number($event.target.value); if ($event.target.id === '{{ form.liters.id_for_label }}') liters = Number($event.target.value); if ($event.target.id === '{{ form.total_price.id_for_label }}') price = Number($event.target.value);"
-      x-init="(() => {
-        const station = document.getElementById('{{ form.station.id_for_label }}');
-        const grade = document.getElementById('{{ form.fuel_grade.id_for_label }}');
-        const type = document.getElementById('{{ form.fuel_type.id_for_label }}');
-        const price = document.getElementById('{{ form.price_per_liter.id_for_label }}_0') || document.getElementById('{{ form.price_per_liter.id_for_label }}');
-        const tankFull = document.getElementById('{{ form.tank_full.id_for_label }}');
-        const stationName = document.getElementById('{{ form.station_name.id_for_label }}');
-        async function loadDefaults() {
-          const params = new URLSearchParams();
-          if (station && station.value) params.set('station', station.value);
-          if (grade && grade.value) params.set('fuel_grade', grade.value);
-          if (type && type.value) params.set('fuel_type', type.value);
-          if (!params.toString()) return;
-          const response = await fetch('{% url 'fuel:defaults' %}?' + params.toString(), {headers: {Accept: 'application/json'}});
-          if (!response.ok) return;
-          const data = await response.json();
-          if (price && data.price_per_liter && !price.value) price.value = data.price_per_liter;
-          if (tankFull && typeof data.tank_full === 'boolean') tankFull.checked = data.tank_full;
-          if (stationName && data.station_name && !stationName.value) stationName.value = data.station_name;
-        }
-        [station, grade, type].forEach((el) => el && el.addEventListener('change', loadDefaults));
-      })()"
       method="post"
       class="mt-6 data-form"
       data-fuel-defaults

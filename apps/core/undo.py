@@ -38,6 +38,10 @@ def _purge_expired_actions(actions: dict, *, now=None) -> dict:
 def create_undo_token(request, *, model_label: str, object_id: int, label: str) -> str:
     token = secrets.token_urlsafe(12)
     actions = _purge_expired_actions(request.session.get(SESSION_KEY, {}))
+    # Cap tokens to prevent session bloat (oldest dropped first).
+    if len(actions) >= 20:
+        for old in list(actions.keys())[: len(actions) - 19]:
+            actions.pop(old, None)
     actions[token] = {
         "model": model_label,
         "object_id": int(object_id),

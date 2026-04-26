@@ -184,7 +184,7 @@ python manage.py test
 
 ## Deploy
 
-Guia completo (Lightsail VM + Nginx + Gunicorn + S3): [docs/deploy/lightsail-s3.md](docs/deploy/lightsail-s3.md)
+Guia completo: [docs/deploy.md](docs/deploy.md)
 
 Deploy com Coolify usa apenas `--profile prod` (proxy HTTPS do proprio Coolify).
 Para VPS com Docker Compose direto (sem Coolify/Traefik/Nginx externo), use `--profile prod --profile edge`.

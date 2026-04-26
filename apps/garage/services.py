@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
+import ipaddress
+import socket
 from posixpath import normpath
 from urllib.error import URLError
 from urllib.parse import urlparse
@@ -97,6 +99,7 @@ def apply_template_to_motorcycle(
     owner,
     template: MotorcycleTemplate | None,
     spec_payload: dict,
+    manual_prefetch: tuple[bytes, str] | None = None,
 ) -> list[str]:
     warnings: list[str] = []
     _save_motorcycle_spec(motorcycle=motorcycle, spec_payload=spec_payload)
@@ -114,6 +117,7 @@ def apply_template_to_motorcycle(
                 motorcycle=motorcycle,
                 template=template,
                 manual_source=template_spec.manual_url,
+                manual_prefetch=manual_prefetch,
             )
         except (OSError, URLError, ValueError) as exc:
             warnings.append(f"Não foi possível anexar o manual automaticamente: {exc}")
@@ -178,8 +182,13 @@ def _create_parts_from_template(*, owner, template: MotorcycleTemplate):
         )
 
 
-def _attach_manual_document(*, motorcycle: Motorcycle, template: MotorcycleTemplate, manual_source: str):
-    content, source_filename = _read_manual_content(manual_source)
+def _attach_manual_document(
+    *, motorcycle: Motorcycle, template: MotorcycleTemplate, manual_source: str, manual_prefetch: tuple[bytes, str] | None = None
+):
+    if manual_prefetch is not None:
+        content, source_filename = manual_prefetch
+    else:
+        content, source_filename = _read_manual_content(manual_source)
     suffix = Path(source_filename).suffix.lower() or ".pdf"
     doc_name = f"Manual {template.brand} {template.model}".strip()
     if MotorcycleDocument.objects.filter(
@@ -199,6 +208,20 @@ def _attach_manual_document(*, motorcycle: Motorcycle, template: MotorcycleTempl
     document.save()
 
 
+def _is_internal_ip(hostname: str) -> bool:
+    """Return True if hostname resolves to a private/loopback/reserved IP."""
+    try:
+        addrinfo = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        # If we cannot resolve, conservatively block.
+        return True
+    for _family, _socktype, _proto, _canonname, sockaddr in addrinfo:
+        ip = ipaddress.ip_address(sockaddr[0])
+        if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_multicast or ip.is_link_local:
+            return True
+    return False
+
+
 def _read_manual_content(source: str) -> tuple[bytes, str]:
     source = (source or "").strip()
     if not source:
@@ -207,9 +230,16 @@ def _read_manual_content(source: str) -> tuple[bytes, str]:
     parsed = urlparse(source)
 
     if parsed.scheme in {"http", "https"}:
-        with urlopen(source, timeout=25) as response:  # nosec B310
+        # SSRF guard: block private/loopback/reserved IPs before fetching.
+        if not parsed.netloc or _is_internal_ip(parsed.hostname or parsed.netloc):
+            raise ValueError("URL do manual aponta para um destino interno ou inválido")
+        with urlopen(source, timeout=15) as response:  # nosec B310
             payload = response.read()
             final_url = getattr(response, "url", source)
+        # Re-check final URL in case of redirect to internal host.
+        final_parsed = urlparse(final_url)
+        if _is_internal_ip(final_parsed.hostname or final_parsed.netloc):
+            raise ValueError("Redirecionamento do manual aponta para destino interno")
         filename = Path(urlparse(final_url).path).name or "manual.pdf"
         if not payload:
             raise ValueError("arquivo remoto vazio")

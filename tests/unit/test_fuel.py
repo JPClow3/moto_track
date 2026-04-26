@@ -7,6 +7,7 @@ from typing import Any, cast
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.test.utils import override_settings
@@ -265,6 +266,31 @@ class FuelModelTests(TestCase):
         self.assertEqual(second_preference.use_count, 2)
         self.assertEqual(second_preference.price_per_liter.amount, Decimal("7.250"))
         self.assertFalse(second_preference.tank_full)
+
+    def test_fuel_preference_unique_constraint_blocks_duplicate_pattern(self):
+        FuelPreference.objects.create(  # pylint: disable=no-member
+            owner=self.user,
+            motorcycle=self.motorcycle,
+            station=self.station,
+            fuel_grade=self.grade,
+            fuel_type=FuelType.PREMIUM_GASOLINE,
+            station_name="Posto A",
+            price_per_liter=Decimal("7.000"),
+            tank_full=True,
+            use_count=1,
+        )
+        with self.assertRaises(IntegrityError):
+            FuelPreference.objects.create(  # pylint: disable=no-member
+                owner=self.user,
+                motorcycle=self.motorcycle,
+                station=self.station,
+                fuel_grade=self.grade,
+                fuel_type=FuelType.PREMIUM_GASOLINE,
+                station_name="Posto A",
+                price_per_liter=Decimal("7.500"),
+                tank_full=False,
+                use_count=1,
+            )
 
     def test_catalog_view_only_shows_owned_catalogs(self):
         self.client.force_login(self.user)

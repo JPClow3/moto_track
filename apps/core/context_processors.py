@@ -27,9 +27,15 @@ def garage_context(request):
         }
 
     motorcycles = list(
-        Motorcycle.objects.filter(owner=request.user, is_active=True).order_by("name")
+        Motorcycle.objects.filter(owner=request.user, is_active=True).select_related("owner").order_by("name")
     )  # pylint: disable=no-member
-    active = get_active_motorcycle(request)
+
+    # Cache active motorcycle on request to avoid redundant queries across context processors/views.
+    active = getattr(request, "_cached_active_motorcycle", None)
+    if active is None:
+        active = get_active_motorcycle(request)
+        request._cached_active_motorcycle = active
+
     undo_token = request.session.get("last_undo_token")
     undo_payload = request.session.get(UNDO_SESSION_KEY, {}).get(undo_token) if undo_token else None
     return {

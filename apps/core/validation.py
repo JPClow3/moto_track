@@ -48,9 +48,9 @@ def validate_odometer_sequence(
         return {}
 
     checks = [
-        ("fuel.fuelrecord", FuelRecord.objects.filter(motorcycle=motorcycle), "date", "odometer_km"),
-        ("maintenance.maintenancerecord", MaintenanceRecord.objects.filter(motorcycle=motorcycle), "date", "odometer_km"),
-        ("tires.tirerecord", TireRecord.objects.filter(motorcycle=motorcycle), "installed_at", "installed_odometer_km"),
+        ("fuel.fuelrecord", "date", "odometer_km"),
+        ("maintenance.maintenancerecord", "date", "odometer_km"),
+        ("tires.tirerecord", "installed_at", "installed_odometer_km"),
     ]
 
     exclude_ct = None
@@ -61,7 +61,7 @@ def validate_odometer_sequence(
         except (ContentType.DoesNotExist, ValueError):
             pass
 
-    for model_label, qs, date_field, odometer_field in checks:
+    for model_label, date_field, odometer_field in checks:
         try:
             ct = ContentType.objects.get_by_natural_key(*model_label.split("."))
         except ContentType.DoesNotExist:

@@ -603,19 +603,21 @@ def remember_fuel_preference(record: FuelRecord) -> FuelPreference:
         "station_name": station_name,
     }
     with transaction.atomic():
-        preference, _ = FuelPreference.objects.select_for_update().get_or_create(
+        preference, created = FuelPreference.objects.update_or_create(
             **lookup,
             defaults={
                 "price_per_liter": record.price_per_liter,
                 "tank_full": record.tank_full,
-                "use_count": 0,
+                "last_used_at": timezone.now(),
+                "use_count": 1,
             },
         )
-        FuelPreference.objects.filter(pk=preference.pk).update(
-            price_per_liter=record.price_per_liter,
-            tank_full=record.tank_full,
-            use_count=F("use_count") + 1,
-            last_used_at=timezone.now(),
-        )
-        preference.refresh_from_db()
+        if not created:
+            FuelPreference.objects.filter(pk=preference.pk).update(
+                price_per_liter=record.price_per_liter,
+                tank_full=record.tank_full,
+                use_count=F("use_count") + 1,
+                last_used_at=timezone.now(),
+            )
+            preference.refresh_from_db()
     return preference
