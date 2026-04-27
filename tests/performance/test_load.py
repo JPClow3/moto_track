@@ -1,8 +1,10 @@
 import threading
 from http.client import HTTPConnection
+from unittest import skipIf
 
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.db import connection
 from django.test import override_settings
 from django.urls import reverse
 
@@ -10,6 +12,7 @@ from apps.garage.models import Motorcycle
 
 
 @override_settings(ALLOWED_HOSTS=["*"])
+@skipIf(connection.vendor == "sqlite", "SQLite :memory: does not support concurrent threaded access")
 class InProcessLoadTests(StaticLiveServerTestCase):
     fixtures = []
 

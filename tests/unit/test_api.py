@@ -63,7 +63,7 @@ class ApiPaginationTests(TestCase):
         self.assertEqual(payload["count"], 5)
         self.assertEqual(payload["limit"], 2)
         self.assertEqual(payload["offset"], 3)
-        self.assertEqual([row["kind"] for row in payload["results"]], ["insurance", "insurance"])
+        self.assertEqual([row["kind"] for row in payload["results"]], ["annual_fee", "annual_fee"])
 
 
 class ApiAuthZTests(TestCase):

@@ -30,7 +30,7 @@ class EncryptedCharField(models.CharField):
             return force_str(_get_fernet().decrypt(force_bytes(value)))
         except (InvalidToken, ValueError, TypeError):
             logger.warning("EncryptedCharField decryption failed for value %r", value, exc_info=True)
-            return value
+            return None
 
     def to_python(self, value):
         if isinstance(value, str) or value is None:

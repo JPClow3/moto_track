@@ -18,3 +18,9 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 # Ensure allauth doesn't require email verification in tests
 ACCOUNT_EMAIL_VERIFICATION = "none"
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+    }
+}

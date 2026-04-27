@@ -111,6 +111,10 @@ class FuelRecord(TimeStampedModel):
         if errors:
             raise ValidationError(errors)
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
 
 class FuelPreference(TimeStampedModel, UserOwnedModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="fuel_preferences")

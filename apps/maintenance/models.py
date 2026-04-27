@@ -107,6 +107,10 @@ class MaintenanceRecord(TimeStampedModel):
         if errors:
             raise ValidationError(errors)
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
 
 class MaintenanceRecordPart(TimeStampedModel):
     maintenance_record = models.ForeignKey(MaintenanceRecord, on_delete=models.CASCADE)
