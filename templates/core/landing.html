@@ -17,10 +17,7 @@
     <header class="border-b border-outline-variant/80 bg-surface/88 backdrop-blur">
       <div class="mx-auto flex w-[min(1280px,94%)] items-center justify-between gap-4 py-4">
         <a class="inline-flex max-w-full" href="{% url 'landing' %}" aria-label="Moto Track — Início">
-          <picture>
-            <source srcset="{% static 'brand/moto-track-full-logo.webp' %}" type="image/webp">
-            <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-10 w-auto max-w-[15rem]" loading="eager" fetchpriority="high" width="240" height="40">
-          </picture>
+          <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-10 w-auto max-w-[15rem]" loading="eager" fetchpriority="high" width="240" height="40">
         </a>
         <nav aria-label="Navegação principal">
           <ul class="flex items-center gap-4 text-sm font-semibold">
@@ -54,10 +51,7 @@
           </div>
 
           <div class="hidden md:flex justify-center">
-            <picture>
-              <source srcset="{% static 'brand/moto-track-icon.webp' %}" type="image/webp">
-              <img src="{% static 'brand/moto-track-icon.png' %}" alt="Ícone do Moto Track" class="h-40 w-auto opacity-80" loading="lazy" width="160" height="160">
-            </picture>
+            <img src="{% static 'brand/moto-track-icon.png' %}" alt="Ícone do Moto Track" class="h-40 w-auto opacity-80" loading="lazy" width="160" height="160">
           </div>
         </div>
       </section>
