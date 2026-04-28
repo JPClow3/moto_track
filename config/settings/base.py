@@ -196,6 +196,7 @@ ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_RATE_LIMITS = {
     "login_failed": "5/m",
 }
+ACCOUNT_ADAPTER = "apps.accounts.adapters.MotoAccountAdapter"
 SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.MotoSocialAccountAdapter"
 SOCIALACCOUNT_LOGIN_ON_GET = True
 ALLAUTH_UI_THEME = "light"
