@@ -87,9 +87,12 @@ class FuelRecordBaseForm(forms.ModelForm):
             subwidget.attrs.setdefault("inputmode", "decimal")
 
         if motorcycle_field.queryset.count() == 1:
-            self.fields["motorcycle"].widget = forms.HiddenInput()
-            if "motorcycle" not in self.initial:
-                self.fields["motorcycle"].initial = motorcycle_field.queryset.first()
+            only_motorcycle = motorcycle_field.queryset.first()
+            submitted_motorcycle = str(self.data.get(self.add_prefix("motorcycle"), "")).strip() if self.is_bound else ""
+            if not self.is_bound or submitted_motorcycle == str(only_motorcycle.pk):
+                self.fields["motorcycle"].widget = forms.HiddenInput()
+                if "motorcycle" not in self.initial:
+                    self.fields["motorcycle"].initial = only_motorcycle
 
     def clean(self):
         cleaned_data = super().clean()

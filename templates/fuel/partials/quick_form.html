@@ -42,11 +42,11 @@
         last: {{ last_odometer_km|default:'null' }},
         km: Number(document.getElementById('{{ form.odometer_km.id_for_label }}')?.value || 0),
         liters: Number(document.getElementById('{{ form.liters.id_for_label }}')?.value || 0),
-        price: Number(document.getElementById('{{ form.total_price.id_for_label }}')?.value || 0),
+        price: Number(document.querySelector('[name=total_price_0]')?.value || 0),
         get kmPerLiter() { return this.liters > 0 && this.km > (this.last || 0) ? ((this.km - (this.last || 0)) / this.liters).toFixed(2) : null; },
         get pricePerKm() { return this.km > (this.last || 0) && this.price > 0 ? (this.price / (this.km - (this.last || 0))).toFixed(2) : null; }
       }"
-      @input="if ($event.target.id === '{{ form.odometer_km.id_for_label }}') km = Number($event.target.value); if ($event.target.id === '{{ form.liters.id_for_label }}') liters = Number($event.target.value); if ($event.target.id === '{{ form.total_price.id_for_label }}') price = Number($event.target.value);"
+      @input="if ($event.target.id === '{{ form.odometer_km.id_for_label }}') km = Number($event.target.value); if ($event.target.id === '{{ form.liters.id_for_label }}') liters = Number($event.target.value); if ($event.target.name === 'total_price_0') price = Number($event.target.value);"
       method="post"
       class="mt-6 data-form"
       data-fuel-defaults
