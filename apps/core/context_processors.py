@@ -1,11 +1,25 @@
 from __future__ import annotations
 
+import logging
+
 from django.conf import settings
+from django.db import OperationalError, ProgrammingError
 
 from apps.accounts.models import UserPreference
 from apps.core.active_motorcycle import get_active_motorcycle
+from apps.core.models import SiteSettings
 from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY
 from apps.garage.models import Motorcycle
+
+logger = logging.getLogger(__name__)
+
+
+def site_settings_context(request):
+    try:
+        return {"site_settings": SiteSettings.load()}
+    except (OperationalError, ProgrammingError):
+        logger.warning("SiteSettings table not available (migrations pending).")
+        return {"site_settings": None}
 
 
 def garage_context(request):

@@ -7,10 +7,6 @@ from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
-from apps.fuel.models import FuelRecord
-from apps.maintenance.models import MaintenanceRecord
-from apps.tires.models import TireRecord
-
 
 def money_amount(value):
     if value is None:

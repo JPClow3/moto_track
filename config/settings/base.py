@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import dj_database_url
@@ -6,7 +7,12 @@ from django.templatetags.static import static
 from django.urls import reverse_lazy
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
+_env_path = BASE_DIR / ".env"
+if _env_path.is_file():
+    # In production containers (DJANGO_DEBUG=0), allow the mounted .env file
+    # to override empty defaults that docker-compose may interpolate.
+    _overwrite = os.environ.get("DJANGO_DEBUG") == "0"
+    environ.Env.read_env(_env_path, overwrite=_overwrite)
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
 )
@@ -106,6 +112,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.core.context_processors.site_settings_context",
                 "apps.core.context_processors.garage_context",
             ],
         },

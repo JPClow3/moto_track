@@ -87,32 +87,6 @@ class OnboardingTests(TestCase):
             "model": "200 Duke",
             "year": "2018",
             "current_odometer_km": "1000",
-            "riding_profile": "auto",
-            "fuel_date": "2026-04-10",
-            "fuel_odometer_km": "950",
-            "fuel_liters": "10.000",
-            "fuel_total_price": "70.00",
-            "service_date": "2026-04-11",
-            "service_odometer_km": "960",
-            "service_cost": "120.00",
-            "front_tire": "Pneu dianteiro",
-            "rear_tire": "Pneu traseiro",
-            "tire_installed_at": "2026-04-09",
-            "tire_odometer_km": "900",
-            "fuel_tank_capacity_l": "11.00",
-            "fuel_type_recommendation": "Gasolina",
-            "fuel_octane_min": "95",
-            "oil_capacity_l": "1.70",
-            "oil_type_recommendation": "Sintetico",
-            "oil_viscosity_recommendation": "10W-40",
-            "tire_size_front": "110/70R17",
-            "tire_size_rear": "150/60R17",
-            "tire_speed_rating": "H",
-            "recommended_tire_pressure_front": "29 psi",
-            "recommended_tire_pressure_rear": "33 psi",
-            "battery_spec": "12V 8Ah",
-            "chain_size": "520",
-            "manual_reference": "Manual de fabrica",
         }
 
     def test_dashboard_redirects_to_onboarding_without_motorcycle(self):
@@ -149,9 +123,9 @@ class OnboardingTests(TestCase):
         motorcycle = Motorcycle.objects.get(owner=self.user)
         self.assertIsNone(motorcycle.source_template)
         self.assertEqual(motorcycle.current_odometer_km, 1000)
-        self.assertEqual(FuelRecord.objects.filter(motorcycle=motorcycle).count(), 1)
-        self.assertEqual(MaintenanceRecord.objects.filter(motorcycle=motorcycle).count(), 1)
-        self.assertEqual(TireRecord.objects.filter(motorcycle=motorcycle).count(), 2)
+        self.assertEqual(FuelRecord.objects.filter(motorcycle=motorcycle).count(), 0)
+        self.assertEqual(MaintenanceRecord.objects.filter(motorcycle=motorcycle).count(), 0)
+        self.assertEqual(TireRecord.objects.filter(motorcycle=motorcycle).count(), 0)
 
     def test_onboarding_with_template_creates_spec_plan_parts_and_manual(self):
         media_root = tempfile.mkdtemp()
@@ -165,18 +139,11 @@ class OnboardingTests(TestCase):
             self.client.force_login(self.user)
             payload = self._base_payload()
             payload["template"] = str(self.template.pk)
-            payload["template_variant"] = "Carburada"
-            payload["tire_size_front"] = "120/70R17"
             response = self.client.post(reverse("onboarding"), payload)
             self.assertEqual(response.status_code, 302)
 
             motorcycle = Motorcycle.objects.get(owner=self.user)
             self.assertEqual(motorcycle.source_template_id, self.template.id)
-            self.assertIn("Variante: Carburada", motorcycle.observations)
-            self.assertEqual(
-                motorcycle.spec.tire_size_front,
-                "120/70R17",
-            )
             self.assertEqual(
                 motorcycle.spec.oil_type_recommendation,
                 "Sintetico",
@@ -215,10 +182,7 @@ class OnboardingTests(TestCase):
         response = self.client.post(reverse("onboarding"), payload)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "intervalo do template")
-        self.assertContains(response, 'data-onboarding-error-summary')
-        self.assertContains(response, 'data-initial-step="2"')
-        self.assertContains(response, 'data-wizard-nav')
-        self.assertContains(response, 'Pré-preenchido pelo catálogo')
+        self.assertContains(response, 'id="onboarding-error-summary"')
 
     def test_onboarding_downloads_manual_from_external_url(self):
         self.template.spec.manual_url = "https://example.com/manual.pdf"

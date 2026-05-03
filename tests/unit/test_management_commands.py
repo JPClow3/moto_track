@@ -10,6 +10,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 
+from allauth.account.models import EmailAddress
 from apps.garage.models import Motorcycle
 
 
@@ -21,6 +22,9 @@ class CreateAdminCommandTests(TestCase):
         user = get_user_model().objects.get(username="cmdadmin")
         self.assertTrue(user.is_superuser)
         self.assertEqual(user.email, "cmd@example.com")
+        email_addr = EmailAddress.objects.get(user=user, email="cmd@example.com")
+        self.assertTrue(email_addr.verified)
+        self.assertTrue(email_addr.primary)
 
     def test_create_admin_updates_existing(self):
         User = get_user_model()
@@ -31,6 +35,9 @@ class CreateAdminCommandTests(TestCase):
         user = User.objects.get(username="cmdadmin2")
         self.assertTrue(user.check_password("newpass12345"))
         self.assertEqual(user.email, "new@example.com")
+        email_addr = EmailAddress.objects.get(user=user, email="new@example.com")
+        self.assertTrue(email_addr.verified)
+        self.assertTrue(email_addr.primary)
 
     def test_create_admin_empty_password_env_raises(self):
         with patch.dict(os.environ, {"DJANGO_CREATEADMIN_PASSWORD": "   "}):
@@ -62,6 +69,9 @@ class EnsureAdminCommandTests(TestCase):
         self.assertIn("created", out.getvalue())
         user = get_user_model().objects.get(username="bootstrapadmin")
         self.assertTrue(user.check_password("bootpass12345"))
+        email_addr = EmailAddress.objects.get(user=user)
+        self.assertTrue(email_addr.verified)
+        self.assertTrue(email_addr.primary)
 
     def test_bootstrap_existing_user_no_password(self):
         User = get_user_model()
@@ -75,6 +85,9 @@ class EnsureAdminCommandTests(TestCase):
             call_command("ensure_admin", stdout=out)
         self.assertIn("updated", out.getvalue())
         self.assertIn("keeping existing admin password", out.getvalue())
+        email_addr = EmailAddress.objects.get(user__username="existingadmin")
+        self.assertTrue(email_addr.verified)
+        self.assertTrue(email_addr.primary)
 
 
 class SeedDemoDataCommandTests(TestCase):

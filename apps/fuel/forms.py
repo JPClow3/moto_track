@@ -11,6 +11,18 @@ from apps.garage.models import Motorcycle
 from .models import FuelGrade, FuelRecord, FuelReviewPreference, FuelStation
 
 
+class CommaNormalizedDecimalInput(forms.NumberInput):
+    def value_from_datadict(self, data, files, name):
+        value = super().value_from_datadict(data, files, name)
+        if isinstance(value, str) and "," in value:
+            # Brazilian format: dots = thousands, last comma = decimal
+            last_comma = value.rfind(",")
+            int_part = value[:last_comma].replace(".", "")
+            dec_part = value[last_comma + 1 :]
+            return f"{int_part}.{dec_part}" if dec_part else int_part
+        return value
+
+
 class FuelRecordBaseForm(forms.ModelForm):
     class Meta:
         model = FuelRecord
@@ -46,7 +58,9 @@ class FuelRecordBaseForm(forms.ModelForm):
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
             "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
-            "liters": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.001"}),
+            "liters": CommaNormalizedDecimalInput(attrs={"inputmode": "decimal", "step": "0.001"}),
+            "total_price": CommaNormalizedDecimalInput(attrs={"inputmode": "decimal"}),
+            "price_per_liter": CommaNormalizedDecimalInput(attrs={"inputmode": "decimal"}),
             "receipt_file": forms.ClearableFileInput(attrs={"accept": "image/*,.pdf"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
@@ -70,10 +84,15 @@ class FuelRecordBaseForm(forms.ModelForm):
         self.fields["tank_full"].help_text = (
             "Marque quando completar o tanque. O consumo médio precisa de pelo menos dois tanques cheios."
         )
-        for name in ["total_price", "price_per_liter"]:
+        for name in ["liters", "total_price", "price_per_liter"]:
             widget = self.fields[name].widget
             for subwidget in getattr(widget, "widgets", [widget]):
                 subwidget.attrs.setdefault("inputmode", "decimal")
+
+        if motorcycle_field.queryset.count() == 1:
+            self.fields["motorcycle"].widget = forms.HiddenInput()
+            if "motorcycle" not in self.initial:
+                self.fields["motorcycle"].initial = motorcycle_field.queryset.first()
 
     def clean(self):
         cleaned_data = super().clean()
@@ -155,9 +174,7 @@ class FuelRecordRepeatForm(FuelRecordBaseForm):
 
     class Meta(FuelRecordBaseForm.Meta):
         widgets = {
-            "date": forms.DateInput(attrs={"type": "date"}),
-            "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
-            "liters": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.001"}),
+            **FuelRecordBaseForm.Meta.widgets,
             "station": forms.HiddenInput(),
             "fuel_grade": forms.HiddenInput(),
             "price_per_liter": forms.HiddenInput(),

@@ -89,19 +89,7 @@ class OnboardingTemplateFlowTests(TestCase):
             "model": "MT-03",
             "year": 2022,
             "current_odometer_km": 12000,
-            "riding_profile": "mixed",
             "template": str(self.template.pk),
-            "fuel_date": "2026-04-01",
-            "fuel_odometer_km": 12000,
-            "fuel_liters": "10.000",
-            "fuel_total_price": "80.00",
-            "service_date": "2026-03-15",
-            "service_odometer_km": 11500,
-            "service_cost": "150.00",
-            "front_tire": "Michelin Pilot",
-            "rear_tire": "Michelin Pilot",
-            "tire_installed_at": "2026-01-10",
-            "tire_odometer_km": 10000,
         }
         response = self.client.post(reverse("onboarding"), payload)
         self.assertEqual(response.status_code, 302)
@@ -111,9 +99,9 @@ class OnboardingTemplateFlowTests(TestCase):
         self.assertTrue(hasattr(motorcycle, "spec"))
         self.assertIsNotNone(motorcycle.spec)
 
-        self.assertEqual(FuelRecord.objects.filter(motorcycle=motorcycle).count(), 1)
-        self.assertEqual(MaintenanceRecord.objects.filter(motorcycle=motorcycle, maintenance_type=MaintenanceType.REVIEW).count(), 1)
-        self.assertEqual(TireRecord.objects.filter(motorcycle=motorcycle).count(), 2)
+        self.assertEqual(FuelRecord.objects.filter(motorcycle=motorcycle).count(), 0)
+        self.assertEqual(MaintenanceRecord.objects.filter(motorcycle=motorcycle, maintenance_type=MaintenanceType.REVIEW).count(), 0)
+        self.assertEqual(TireRecord.objects.filter(motorcycle=motorcycle).count(), 0)
 
     def test_apply_template_to_motorcycle_creates_maintenance_intervals(self):
         from apps.garage.models import MotorcycleTemplateMaintenanceInterval

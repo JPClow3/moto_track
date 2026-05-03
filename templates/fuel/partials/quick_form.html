@@ -64,17 +64,16 @@
         <div class="form-errors">{{ form.non_field_errors }}</div>
       {% endif %}
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="form-field">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {% if not form.motorcycle.is_hidden %}
+        <div class="form-field md:col-span-3">
           {{ form.motorcycle.label_tag }}
           {{ form.motorcycle }}
           {% if form.motorcycle.errors %}<div id="{{ form.motorcycle.id_for_label }}_error" class="field-error">{{ form.motorcycle.errors }}</div>{% endif %}
         </div>
-        <div class="form-field">
-          {{ form.date.label_tag }}
-          {{ form.date }}
-          {% if form.date.errors %}<div id="{{ form.date.id_for_label }}_error" class="field-error">{{ form.date.errors }}</div>{% endif %}
-        </div>
+        {% else %}
+          {{ form.motorcycle }}
+        {% endif %}
         <div class="form-field">
           {{ form.odometer_km.label_tag }}
           {{ form.odometer_km }}
@@ -90,12 +89,7 @@
           {{ form.total_price }}
           {% if form.total_price.errors %}<div id="{{ form.total_price.id_for_label }}_error" class="field-error">{{ form.total_price.errors }}</div>{% endif %}
         </div>
-        <div class="form-field">
-          {{ form.receipt_file.label_tag }}
-          {{ form.receipt_file }}
-          {% if form.receipt_file.errors %}<div id="{{ form.receipt_file.id_for_label }}_error" class="field-error">{{ form.receipt_file.errors }}</div>{% endif %}
-        </div>
-        <label class="md:col-span-2 flex items-center gap-3 rounded-md bg-surface-low px-4 py-3 text-sm font-semibold text-on-surface-variant">
+        <label class="md:col-span-3 flex items-center gap-3 rounded-md bg-surface-low px-4 py-3 text-sm font-semibold text-on-surface-variant">
           {{ form.tank_full }}
           <span class="relative inline-flex items-center gap-1" x-data="{ t: false }" @mouseenter="t = true" @mouseleave="t = false" @focus="t = true" @blur="t = false">
             <span>Tanque cheio</span>
@@ -116,11 +110,29 @@
         </span>
       </div>
 
-      <details class="rounded-md bg-surface-low p-4">
+      <div class="quick-actions-row pt-4">
+        <button type="submit" class="primary-btn w-full min-h-[3.5rem] text-base">{{ submit_label }}</button>
+      </div>
+
+      <div class="pt-3">
+        <label class="flex items-center gap-2 rounded-md border border-outline-variant/40 bg-surface-low px-4 py-3 text-sm font-semibold text-on-surface-variant transition hover:bg-surface-high cursor-pointer">
+          <i data-lucide="camera" class="h-4 w-4" aria-hidden="true"></i>
+          <span>Adicionar foto do cupom</span>
+          {{ form.receipt_file }}
+        </label>
+        {% if form.receipt_file.errors %}<div id="{{ form.receipt_file.id_for_label }}_error" class="field-error mt-1">{{ form.receipt_file.errors }}</div>{% endif %}
+      </div>
+
+      <details class="rounded-md bg-surface-low p-4 mt-3">
         <summary class="cursor-pointer text-xs font-semibold text-on-surface-variant">
-          Detalhes do posto e combustível
+          Detalhes: data, posto, combustível, observações
         </summary>
         <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-field">
+            {{ form.date.label_tag }}
+            {{ form.date }}
+            {% if form.date.errors %}<div id="{{ form.date.id_for_label }}_error" class="field-error">{{ form.date.errors }}</div>{% endif %}
+          </div>
           <div class="form-field">
             {{ form.station.label_tag }}
             {{ form.station }}
@@ -154,9 +166,8 @@
         </div>
       </details>
 
-      <div class="quick-actions-row-split">
-        <button type="button" class="secondary-btn" @click="closeQuickFormModal()">Cancelar</button>
-        <button type="submit" class="primary-btn">{{ submit_label }}</button>
+      <div class="quick-actions-row pt-2">
+        <button type="button" class="secondary-btn w-full" @click="closeQuickFormModal()">Cancelar</button>
       </div>
     </form>
   </div>

@@ -20,6 +20,7 @@ from apps.core.services.dashboard import (
     get_dashboard_cards,
     get_monthly_sparkline,
     get_quick_actions,
+    get_setup_progress,
     get_status_cards,
     get_tire_cards,
 )
@@ -64,6 +65,7 @@ def dashboard_view(request):
     active_reminders = get_active_reminders(motorcycle, current_odometer_km)
     status_cards, pending_alerts = get_status_cards(motorcycle, current_odometer_km, active_reminders)
 
+    setup_progress = get_setup_progress(motorcycle)
     context = {
         "motorcycle": motorcycle,
         "status_cards": status_cards,
@@ -78,6 +80,8 @@ def dashboard_view(request):
         "chart_consumption_trend": get_chart_consumption_trend(motorcycle),
         "health": health_score(motorcycle=motorcycle),
         "recent_events": timeline_events(user=request.user, motorcycle=motorcycle, limit=5),
+        "setup_progress": setup_progress,
+        "setup_incomplete": any(not v for v in setup_progress.values()),
     }
     return render(request, "core/dashboard.html", context)
 

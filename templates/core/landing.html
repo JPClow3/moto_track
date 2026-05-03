@@ -32,7 +32,7 @@
       <section class="py-16 md:py-24" aria-labelledby="hero-title">
         <div class="mx-auto w-[min(1280px,94%)] grid gap-10 md:grid-cols-[1.2fr_0.8fr] items-center">
           <div class="space-y-6">
-            <span class="ui-eyebrow">Controle de precisão para motociclistas</span>
+            <span class="ui-eyebrow">Controle da sua moto</span>
             <h1 id="hero-title" class="font-headline text-4xl md:text-5xl font-bold tracking-tight text-on-surface">
               Controle sua moto com precisão
             </h1>
@@ -87,7 +87,7 @@
             </div>
             <div class="space-y-1.5">
               <h3 class="text-base font-semibold text-on-surface">Relatórios</h3>
-              <p class="text-sm text-on-surface-variant">Visualize gastos, tendência de consumo e health score.</p>
+              <p class="text-sm text-on-surface-variant">Visualize gastos, tendência de consumo e estado geral.</p>
             </div>
           </div>
         </div>
@@ -148,9 +148,11 @@
       <div class="mx-auto w-[min(1280px,94%)] flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-on-surface-variant">
         <p>© {% now "Y" %} Moto Track. Todos os direitos reservados.</p>
         <nav aria-label="Links legais">
-          <ul class="flex items-center gap-4">
+          <ul class="flex flex-wrap items-center gap-4">
             <li><a class="hover:text-on-surface transition" href="{% url 'privacy_policy' %}">Privacidade</a></li>
             <li><a class="hover:text-on-surface transition" href="{% url 'terms_of_service' %}">Termos</a></li>
+            <li><a class="hover:text-on-surface transition" href="{% url 'lgpd' %}">LGPD</a></li>
+            <li><a class="hover:text-on-surface transition" href="{% url 'cancellation_policy' %}">Cancelamento</a></li>
           </ul>
         </nav>
       </div>

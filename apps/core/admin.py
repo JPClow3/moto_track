@@ -1,7 +1,10 @@
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
 from django.contrib import admin
 from django.contrib.auth.models import Group
+from django.db import OperationalError, ProgrammingError
 from unfold.admin import ModelAdmin
+
+from apps.core.models import SiteSettings
 
 
 class UserScopedAdmin(ModelAdmin):
@@ -43,3 +46,25 @@ def _safe_unregister(model) -> None:
 
 for _model in (Group, SocialAccount, SocialApp, SocialToken):
     _safe_unregister(_model)
+
+
+@admin.register(SiteSettings)
+class SiteSettingsAdmin(ModelAdmin):
+    fieldsets = (
+        ("Empresa", {"fields": ("company_name", "cnpj")}),
+        ("Contato / Suporte", {"fields": ("support_email", "support_phone", "support_whatsapp")}),
+        ("Endereço", {"fields": ("address_street", "address_city", "address_state", "address_zip")}),
+        ("LGPD / DPO", {"fields": ("dpo_name", "dpo_email")}),
+        ("Datas de atualização dos documentos legais", {"fields": (
+            "terms_last_updated", "privacy_last_updated", "lgpd_last_updated", "cancellation_last_updated",
+        )}),
+    )
+
+    def has_add_permission(self, request):
+        try:
+            return not SiteSettings.objects.exists()
+        except (OperationalError, ProgrammingError):
+            return True
+
+    def has_delete_permission(self, request, obj=None):
+        return False

@@ -12,10 +12,11 @@
 
     <div class="mt-6 grid grid-cols-1 gap-3">
       <a
-        class="flex items-center justify-between gap-4 rounded-md border border-outline-variant/20 bg-surface-low px-4 py-4 transition hover:bg-surface-high"
+        class="group flex min-h-[3.5rem] items-center justify-between gap-4 rounded-md border border-outline-variant/20 bg-surface-low px-4 py-5 transition hover:bg-surface-high"
         hx-get="{% url 'fuel:quick_create' %}?next={{ next_url|urlencode }}"
         hx-target="#quick-form-root"
         hx-swap="innerHTML"
+        hx-indicator="#quick-form-skeleton"
       >
         <span class="flex items-center gap-4 min-w-0">
           <i data-lucide="fuel" class="h-5 w-5 text-on-surface-variant shrink-0" aria-hidden="true"></i>
@@ -24,14 +25,15 @@
             <small class="block text-sm text-on-surface-variant truncate">Registro rápido</small>
           </span>
         </span>
-        <i data-lucide="chevron-right" class="h-5 w-5 text-on-surface-variant shrink-0" aria-hidden="true"></i>
+        <i data-lucide="chevron-right" class="h-5 w-5 text-on-surface-variant shrink-0 transition group-hover:text-on-surface" aria-hidden="true"></i>
       </a>
 
       <a
-        class="flex items-center justify-between gap-4 rounded-md border border-outline-variant/20 bg-surface-low px-4 py-4 transition hover:bg-surface-high"
+        class="group flex min-h-[3.5rem] items-center justify-between gap-4 rounded-md border border-outline-variant/20 bg-surface-low px-4 py-5 transition hover:bg-surface-high"
         hx-get="{% url 'maintenance:quick_create' %}?next={{ next_url|urlencode }}"
         hx-target="#quick-form-root"
         hx-swap="innerHTML"
+        hx-indicator="#quick-form-skeleton"
       >
         <span class="flex items-center gap-4 min-w-0">
           <i data-lucide="wrench" class="h-5 w-5 text-on-surface-variant shrink-0" aria-hidden="true"></i>
@@ -40,10 +42,27 @@
             <small class="block text-sm text-on-surface-variant truncate">Preventiva ou corretiva</small>
           </span>
         </span>
-        <i data-lucide="chevron-right" class="h-5 w-5 text-on-surface-variant shrink-0" aria-hidden="true"></i>
+        <i data-lucide="chevron-right" class="h-5 w-5 text-on-surface-variant shrink-0 transition group-hover:text-on-surface" aria-hidden="true"></i>
       </a>
 
-      <a class="flex items-center justify-between gap-4 rounded-md border border-outline-variant/20 bg-surface-low px-4 py-4 transition hover:bg-surface-high" href="{% url 'reminders:create' %}">
+      <a
+        class="group flex min-h-[3.5rem] items-center justify-between gap-4 rounded-md border border-outline-variant/20 bg-surface-low px-4 py-5 transition hover:bg-surface-high"
+        hx-get="{% url 'quick_odometer_update' %}?next={{ next_url|urlencode }}"
+        hx-target="#quick-form-root"
+        hx-swap="innerHTML"
+        hx-indicator="#quick-form-skeleton"
+      >
+        <span class="flex items-center gap-4 min-w-0">
+          <i data-lucide="gauge" class="h-5 w-5 text-on-surface-variant shrink-0" aria-hidden="true"></i>
+          <span class="min-w-0">
+            <strong class="block font-semibold truncate">Odômetro</strong>
+            <small class="block text-sm text-on-surface-variant truncate">Atualizar quilometragem</small>
+          </span>
+        </span>
+        <i data-lucide="chevron-right" class="h-5 w-5 text-on-surface-variant shrink-0 transition group-hover:text-on-surface" aria-hidden="true"></i>
+      </a>
+
+      <a class="group flex min-h-[3.5rem] items-center justify-between gap-4 rounded-md border border-outline-variant/20 bg-surface-low px-4 py-5 transition hover:bg-surface-high" href="{% url 'reminders:create' %}">
         <span class="flex items-center gap-4 min-w-0">
           <i data-lucide="bell-ring" class="h-5 w-5 text-on-surface-variant shrink-0" aria-hidden="true"></i>
           <span class="min-w-0">
@@ -51,10 +70,21 @@
             <small class="block text-sm text-on-surface-variant truncate">Por data, km ou intervalo</small>
           </span>
         </span>
-        <i data-lucide="chevron-right" class="h-5 w-5 text-on-surface-variant shrink-0" aria-hidden="true"></i>
+        <i data-lucide="chevron-right" class="h-5 w-5 text-on-surface-variant shrink-0 transition group-hover:text-on-surface" aria-hidden="true"></i>
       </a>
 
-      <a class="flex items-center justify-between gap-4 rounded-md border border-outline-variant/20 bg-surface-low px-4 py-4 transition hover:bg-surface-high" href="{% url 'documents:list' %}#documents-upload-form">
+      <a class="group flex min-h-[3.5rem] items-center justify-between gap-4 rounded-md border border-outline-variant/20 bg-surface-low px-4 py-5 transition hover:bg-surface-high" href="{% url 'expenses:list' %}">
+        <span class="flex items-center gap-4 min-w-0">
+          <i data-lucide="receipt" class="h-5 w-5 text-on-surface-variant shrink-0" aria-hidden="true"></i>
+          <span class="min-w-0">
+            <strong class="block font-semibold truncate">Despesa</strong>
+            <small class="block text-sm text-on-surface-variant truncate">Taxas, seguros e outros</small>
+          </span>
+        </span>
+        <i data-lucide="chevron-right" class="h-5 w-5 text-on-surface-variant shrink-0 transition group-hover:text-on-surface" aria-hidden="true"></i>
+      </a>
+
+      <a class="group flex min-h-[3.5rem] items-center justify-between gap-4 rounded-md border border-outline-variant/20 bg-surface-low px-4 py-5 transition hover:bg-surface-high" href="{% url 'documents:list' %}#documents-upload-form">
         <span class="flex items-center gap-4 min-w-0">
           <i data-lucide="file-up" class="h-5 w-5 text-on-surface-variant shrink-0" aria-hidden="true"></i>
           <span class="min-w-0">
@@ -62,7 +92,7 @@
             <small class="block text-sm text-on-surface-variant truncate">Enviar e organizar</small>
           </span>
         </span>
-        <i data-lucide="chevron-right" class="h-5 w-5 text-on-surface-variant shrink-0" aria-hidden="true"></i>
+        <i data-lucide="chevron-right" class="h-5 w-5 text-on-surface-variant shrink-0 transition group-hover:text-on-surface" aria-hidden="true"></i>
       </a>
     </div>
 

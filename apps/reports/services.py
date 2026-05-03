@@ -77,6 +77,7 @@ class HealthScore:
     documents: int
     data_quality: int
     notes: list[str]
+    readable_status: str = ""
 
 
 @dataclass(frozen=True)
@@ -850,7 +851,7 @@ def timeline_events_count(
 
 def health_score(*, motorcycle) -> HealthScore:
     if not motorcycle:
-        return HealthScore(0, 0, 0, 0, 0, ["Sem moto ativa."])
+        return HealthScore(0, 0, 0, 0, 0, ["Sem moto ativa."], "Sem moto")
 
     alerts = intelligent_alerts(user=motorcycle.owner, motorcycle=motorcycle)
     critical = len([a for a in alerts if a.severity == Severity.CRITICAL])
@@ -881,4 +882,12 @@ def health_score(*, motorcycle) -> HealthScore:
     total = maintenance + tires + documents + data_quality
     if not notes:
         notes.append("Moto com registros em bom estado.")
-    return HealthScore(total=total, maintenance=maintenance, tires=tires, documents=documents, data_quality=data_quality, notes=notes)
+
+    if critical > 0 or total < 50:
+        readable_status = "Manutenção vencida"
+    elif warning > 0 or total < 80:
+        readable_status = "Atenção em breve"
+    else:
+        readable_status = "Pronta para rodar"
+
+    return HealthScore(total=total, maintenance=maintenance, tires=tires, documents=documents, data_quality=data_quality, notes=notes, readable_status=readable_status)

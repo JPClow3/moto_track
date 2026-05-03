@@ -1,5 +1,82 @@
 /* AI-NOTE: justified-exception — global app utilities, PWA, accessibility, and HTMX lifecycle */
 
+function registerAppShell() {
+  if (typeof Alpine === "undefined") return;
+  Alpine.data("appShell", () => ({
+    mobileMenuOpen: false,
+    quickFormOpen: false,
+    snackbarMessage: "",
+    snackbarVisible: false,
+    snackbarTimer: null,
+    skeletonVisible: false,
+    previousFocusedElement: null,
+    kbdHelpOpen: false,
+
+    init() {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    },
+
+    openMobileMenu() {
+      this.previousFocusedElement = document.activeElement;
+      this.mobileMenuOpen = true;
+      this.$nextTick(() => {
+        const firstLink = this.$refs.mobileMenuDialog?.querySelector("a, button");
+        if (firstLink) firstLink.focus();
+      });
+    },
+
+    closeMobileMenu() {
+      this.mobileMenuOpen = false;
+      if (this.previousFocusedElement && typeof this.previousFocusedElement.focus === "function") {
+        this.previousFocusedElement.focus();
+      }
+    },
+
+    closeQuickFormModal() {
+      const quickFormRoot = document.getElementById("quick-form-root");
+      if (quickFormRoot) quickFormRoot.innerHTML = "";
+      this.quickFormOpen = false;
+    },
+
+    showSnackbar(message) {
+      this.snackbarMessage = message;
+      this.snackbarVisible = true;
+      clearTimeout(this.snackbarTimer);
+      this.snackbarTimer = setTimeout(() => {
+        this.snackbarVisible = false;
+      }, 5000);
+    },
+
+    openKbdHelp() {
+      this.kbdHelpOpen = true;
+    },
+
+    closeKbdHelp() {
+      this.kbdHelpOpen = false;
+    },
+
+    triggerQuickForm(url) {
+      if (typeof htmx !== "undefined" && url) {
+        htmx.ajax("GET", url, { target: "#quick-form-root", swap: "innerHTML", indicator: "#quick-form-skeleton" });
+      }
+    },
+
+    isTyping() {
+      const active = document.activeElement;
+      if (!active) return false;
+      return active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "SELECT" || active.isContentEditable;
+    },
+  }));
+}
+
+if (typeof Alpine !== "undefined") {
+  registerAppShell();
+} else {
+  document.addEventListener("alpine:init", registerAppShell);
+}
+
 (function () {
   let previousFocusedElement = null;
 

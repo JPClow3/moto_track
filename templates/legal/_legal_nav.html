@@ -1,0 +1,7 @@
+{# Shared legal page cross-navigation. Include after the header <p> intro on every legal page. #}
+<nav aria-label="Documentos legais" class="flex flex-wrap gap-2 text-sm">
+  <a class="rounded-md border border-outline-variant/40 px-3 py-1.5 font-medium transition hover:bg-surface-high hover:border-primary/30 {% if active == 'terms' %}bg-primary/10 text-primary border-primary/20{% else %}text-on-surface-variant{% endif %}" href="{% url 'terms_of_service' %}">Termos de Uso</a>
+  <a class="rounded-md border border-outline-variant/40 px-3 py-1.5 font-medium transition hover:bg-surface-high hover:border-primary/30 {% if active == 'privacy' %}bg-primary/10 text-primary border-primary/20{% else %}text-on-surface-variant{% endif %}" href="{% url 'privacy_policy' %}">Privacidade</a>
+  <a class="rounded-md border border-outline-variant/40 px-3 py-1.5 font-medium transition hover:bg-surface-high hover:border-primary/30 {% if active == 'lgpd' %}bg-primary/10 text-primary border-primary/20{% else %}text-on-surface-variant{% endif %}" href="{% url 'lgpd' %}">LGPD</a>
+  <a class="rounded-md border border-outline-variant/40 px-3 py-1.5 font-medium transition hover:bg-surface-high hover:border-primary/30 {% if active == 'cancellation' %}bg-primary/10 text-primary border-primary/20{% else %}text-on-surface-variant{% endif %}" href="{% url 'cancellation_policy' %}">Cancelamento</a>
+</nav>

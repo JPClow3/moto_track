@@ -56,5 +56,15 @@ class Command(BaseCommand):
 
         user.save()
 
+        if user.email:
+            from allauth.account.models import EmailAddress
+
+            EmailAddress.objects.filter(user=user, primary=True).update(primary=False)
+            EmailAddress.objects.update_or_create(
+                user=user,
+                email=user.email,
+                defaults={"primary": True, "verified": True},
+            )
+
         action = "created" if created else "updated"
         self.stdout.write(self.style.SUCCESS(f"Admin user {action}: {username}"))

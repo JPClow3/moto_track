@@ -7,111 +7,137 @@
 {% block topbar_title %}{% if motorcycle %}{{ motorcycle.name }}{% else %}Painel{% endif %}{% endblock %}
 
 {% block content %}
+{% if motorcycle %}
 <section class="page-shell" aria-labelledby="dashboard-title">
   <header class="page-hero">
     <div class="space-y-4">
-      <span class="page-kicker">Operação atual</span>
+      <span class="page-kicker">Veículo ativo</span>
       <div>
-        <h2 id="dashboard-title" class="page-title">
-          {% if motorcycle %}
-            {{ motorcycle.name }}
-          {% else %}
-            Painel principal
-          {% endif %}
-        </h2>
-        <p class="page-copy">
-          Veja primeiro o que exige atenção, o último registro importante e o próximo passo para manter a moto em ordem.
-        </p>
-      </div>
-      {% if motorcycle %}
-        <div class="record-card-meta">
-          {% if motorcycle.previous_owners is not None %}
-            <span>{{ motorcycle.previous_owners }} dono{{ motorcycle.previous_owners|pluralize:" anterior, anteriores" }}</span>
-          {% endif %}
-          {% if motorcycle.purchase_date %}
-            <span>Comprada em {{ motorcycle.purchase_date }}</span>
-          {% endif %}
-          {% if motorcycle.purchase_price %}
-            <span>Valor {{ motorcycle.purchase_price }}</span>
-          {% endif %}
-        </div>
-      {% endif %}
-    </div>
-
-    <div class="grid w-full gap-6 md:max-w-md">
-      <div>
-        <p class="metric-card-label">Odômetro atual</p>
-        <p class="metric-card-value mt-1">
-          {% if motorcycle %}
-            {{ motorcycle.current_odometer_km }} km
-          {% else %}
-            Sem moto cadastrada
-          {% endif %}
-        </p>
-        <p class="metric-card-copy mt-1">Base para consumo, manutenção, pneus e alertas.</p>
+        <h2 id="dashboard-title" class="page-title">{{ motorcycle.name }}</h2>
+        <p class="metric-card-value mt-2">{{ motorcycle.current_odometer_km }} km</p>
       </div>
       {% if health %}
-        <div>
-          <div class="flex items-center justify-between gap-4">
-            <div>
-              <p class="metric-card-label">Health score</p>
-              <p class="metric-card-value mt-1">{{ health.total }}</p>
-            </div>
-            <span class="severity-badge {% if health.total >= 80 %}severity-success{% elif health.total >= 50 %}severity-warning{% else %}severity-critical{% endif %}">
-              {% if health.total >= 80 %}Estável{% elif health.total >= 50 %}Atenção{% else %}Crítico{% endif %}
-            </span>
-          </div>
-          <p class="metric-card-copy mt-1">Resumo de manutenção, pneus, documentos e qualidade de dados.</p>
+        <div class="mt-2 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold
+          {% if health.total >= 80 %}border-success/30 bg-success/10 text-success{% elif health.total >= 50 %}border-warning/30 bg-warning/10 text-warning{% else %}border-error/30 bg-error/10 text-error{% endif %}">
+          <i data-lucide="{% if health.total >= 80 %}check-circle{% elif health.total >= 50 %}alert-circle{% else %}alert-triangle{% endif %}" class="h-4 w-4" aria-hidden="true"></i>
+          {{ health.readable_status }}
         </div>
       {% endif %}
     </div>
   </header>
 
-  <section aria-label="Indicadores principais">
-    <div class="grid grid-cols-1 gap-5 md:grid-cols-3" role="list">
-      {% for card in status_cards %}
-        {% include "core/partials/status_card.html" with card=card %}
-      {% endfor %}
+  <section aria-label="Ações rápidas">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <a
+        class="ui-btn-primary min-h-[3.5rem] justify-center text-base"
+        hx-get="{% url 'fuel:quick_create' %}?next={% url 'dashboard' %}"
+        hx-target="#quick-form-root"
+        hx-swap="innerHTML"
+        hx-indicator="#quick-form-skeleton"
+      >
+        <i data-lucide="fuel" aria-hidden="true"></i>Abastecimento
+      </a>
+      <a
+        class="ui-btn-primary min-h-[3.5rem] justify-center text-base"
+        hx-get="{% url 'maintenance:quick_create' %}?next={% url 'dashboard' %}"
+        hx-target="#quick-form-root"
+        hx-swap="innerHTML"
+        hx-indicator="#quick-form-skeleton"
+      >
+        <i data-lucide="wrench" aria-hidden="true"></i>Manutenção
+      </a>
+      <a
+        class="ui-btn-primary min-h-[3.5rem] justify-center text-base"
+        hx-get="{% url 'quick_odometer_update' %}?next={% url 'dashboard' %}"
+        hx-target="#quick-form-root"
+        hx-swap="innerHTML"
+        hx-indicator="#quick-form-skeleton"
+      >
+        <i data-lucide="gauge" aria-hidden="true"></i>Odômetro
+      </a>
     </div>
   </section>
 
-  <section class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]" aria-label="Ações rápidas e lembretes">
-    <article class="space-y-4">
-      <div class="flex items-center justify-between gap-4">
-        <h3 class="font-headline text-2xl font-semibold tracking-tight">O que registrar agora</h3>
-        <span class="ui-eyebrow">Fluxo rápido</span>
+  {% if setup_incomplete %}
+  <section class="space-y-4" aria-label="Complete sua moto" x-data="{ dismissed: {} }">
+    <div class="flex items-center justify-between gap-4">
+      <h3 class="font-headline text-2xl font-semibold tracking-tight">Complete sua moto</h3>
+    </div>
+    <div class="grid grid-cols-1 gap-3">
+      {% if not setup_progress.has_maintenance_plan %}
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex items-start justify-between gap-4" x-show="!dismissed.maintenance" x-cloak>
+        <div>
+          <p class="text-sm font-semibold text-on-surface">Quer configurar óleo e revisão?</p>
+          <p class="text-xs text-on-surface-variant mt-1">Ajuda o app a prever quando sua próxima manutenção vence.</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2" href="{% url 'maintenance:list' %}">Configurar agora</a>
+          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.maintenance = true">Depois</button>
+        </div>
       </div>
-      <div class="space-y-2">
-        {% for action in quick_actions %}
-          <a
-            class="group flex items-center justify-between gap-4 rounded-md border border-outline-variant/40 bg-surface-lowest px-4 py-3 transition-all duration-200 hover:border-primary/20 hover:shadow-sm"
-            href="{{ action.url }}"
-            {% if action.htmx_url %}
-            hx-get="{{ action.htmx_url }}?next={% url 'dashboard' %}"
-            hx-target="#quick-form-root"
-            hx-swap="innerHTML"
-            {% endif %}
-          >
-            <div>
-              <p class="text-sm font-semibold text-on-surface">{{ action.label }}</p>
-              <p class="text-xs text-on-surface-variant">{{ action.hint }}</p>
-            </div>
-            <i data-lucide="chevron-right" class="text-on-surface-variant transition group-hover:text-on-surface" aria-hidden="true"></i>
-          </a>
-        {% endfor %}
+      {% endif %}
+      {% if not setup_progress.has_tires %}
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex items-start justify-between gap-4" x-show="!dismissed.tires" x-cloak>
+        <div>
+          <p class="text-sm font-semibold text-on-surface">Quer adicionar pneus?</p>
+          <p class="text-xs text-on-surface-variant mt-1">Monitore desgaste e saiba quando trocar.</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2" href="{% url 'tires:list' %}">Adicionar</a>
+          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.tires = true">Depois</button>
+        </div>
       </div>
-    </article>
+      {% endif %}
+      {% if not setup_progress.has_documents %}
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex items-start justify-between gap-4" x-show="!dismissed.documents" x-cloak>
+        <div>
+          <p class="text-sm font-semibold text-on-surface">Quer adicionar um documento?</p>
+          <p class="text-xs text-on-surface-variant mt-1">Guarde CRLV, seguro e notas fiscais com data de validade.</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2" href="{% url 'documents:list' %}">Adicionar</a>
+          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.documents = true">Depois</button>
+        </div>
+      </div>
+      {% endif %}
+      {% if not setup_progress.has_reminders %}
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex items-start justify-between gap-4" x-show="!dismissed.reminders" x-cloak>
+        <div>
+          <p class="text-sm font-semibold text-on-surface">Quer criar um lembrete?</p>
+          <p class="text-xs text-on-surface-variant mt-1">Receba alertas de troca de óleo, revisão e documentos.</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2" href="{% url 'reminders:list' %}">Criar</a>
+          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.reminders = true">Depois</button>
+        </div>
+      </div>
+      {% endif %}
+      {% if not setup_progress.has_fuel %}
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex items-start justify-between gap-4" x-show="!dismissed.fuel" x-cloak>
+        <div>
+          <p class="text-sm font-semibold text-on-surface">Quer importar ou registrar abastecimentos?</p>
+          <p class="text-xs text-on-surface-variant mt-1">Acompanhe consumo e gasto por km rodado.</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2" href="{% url 'fuel:list' %}">Registrar</a>
+          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.fuel = true">Depois</button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
 
-    <article class="space-y-4">
-      <div class="flex items-center justify-between gap-4">
-        <h3 class="font-headline text-2xl font-semibold tracking-tight">O que precisa atenção</h3>
-        <a class="text-link text-sm" href="{% url 'reminders:list' %}">Abrir lembretes</a>
-      </div>
+  <section class="space-y-4" aria-label="Lembretes e alertas">
+    <div class="flex items-center justify-between gap-4">
+      <h3 class="font-headline text-2xl font-semibold tracking-tight">O que precisa atenção</h3>
+      <a class="text-link text-sm" href="{% url 'reminders:list' %}">Abrir lembretes</a>
+    </div>
       {% if active_reminders %}
         <div class="divide-y divide-outline-variant/40">
           {% for entry in active_reminders %}
             {% with reminder=entry.reminder evaluation=entry.evaluation %}
-              <div id="reminder-row-{{ reminder.pk }}" class="flex items-start justify-between gap-4 py-3">
+              <div id="reminder-row-{{ reminder.pk }}" class="flex items-start justify-between gap-4 rounded-md border-l-4 px-3 py-3 {% if evaluation.status == 'overdue' %}bg-red-500/10 border-red-500{% elif evaluation.status == 'due_soon' %}bg-amber-500/10 border-amber-500{% else %}border-transparent{% endif %}">
                 <div>
                   <p class="text-sm font-semibold text-on-surface">{{ reminder.title }}</p>
                   <p class="text-xs text-on-surface-variant">
@@ -125,7 +151,7 @@
                   </p>
                   <div class="mt-2 flex items-center gap-2">
                     <button
-                      class="ui-btn-ghost text-xs"
+                      class="ui-btn-ghost min-h-[2.5rem] px-3 py-2 text-xs"
                       hx-post="{% url 'reminders:concluir' reminder.pk %}"
                       hx-target="#reminder-row-{{ reminder.pk }}"
                       hx-swap="outerHTML"
@@ -133,7 +159,7 @@
                     >Concluir</button>
                     {% if reminder.trigger_type == 'by_km' or reminder.trigger_type == 'by_interval' %}
                       <button
-                        class="ui-btn-ghost text-xs"
+                        class="ui-btn-ghost min-h-[2.5rem] px-3 py-2 text-xs"
                         hx-post="{% url 'reminders:snooze_km' reminder.pk 500 %}"
                         hx-target="#reminder-row-{{ reminder.pk }}"
                         hx-swap="outerHTML"
@@ -157,13 +183,12 @@
       {% else %}
         <div class="empty-state">Nenhum lembrete ativo no momento.</div>
       {% endif %}
-    </article>
   </section>
 
   <section aria-label="Saúde dos pneus" class="space-y-4">
     <div class="flex items-center justify-between gap-4">
       <h3 class="font-headline text-2xl font-semibold tracking-tight">Saúde dos pneus</h3>
-      <a class="text-link text-sm" href="{% url 'tires:list' %}">Abrir modulo</a>
+      <a class="text-link text-sm" href="{% url 'tires:list' %}">Abrir pneus</a>
     </div>
     {% if tire_cards %}
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2" role="list">
@@ -237,7 +262,7 @@
             <p class="text-xs font-medium text-on-surface-variant">Distribuição de gastos</p>
             <p class="text-sm text-on-surface-variant mt-1">Combustível, manutenção e taxas no período atual.</p>
           </div>
-          <span class="severity-badge severity-neutral">Analítico</span>
+          <span class="severity-badge severity-neutral">Custo da sua moto</span>
         </div>
         <div class="h-48">
           <canvas id="spendingChart" role="img" aria-label="Distribuição de gastos por combustível, manutenção e taxas" aria-describedby="spendingChartSummary"></canvas>
@@ -261,8 +286,8 @@
 
       <div class="space-y-3">
         <div class="flex items-center justify-between gap-4">
-          <h4 class="font-headline text-xl font-semibold tracking-tight">Catálogos</h4>
-          <span class="text-xs font-medium text-on-surface-variant">Base rápida</span>
+          <h4 class="font-headline text-xl font-semibold tracking-tight">Meus postos, peças e combustíveis</h4>
+          <span class="text-xs font-medium text-on-surface-variant">Preferências</span>
         </div>
         <ul class="space-y-2">
           {% for link in catalog_links %}
@@ -274,65 +299,29 @@
   </section>
 </section>
 
-{% if motorcycle %}
-<div class="fixed bottom-6 right-6 z-50 md:hidden" x-data="{ open: false }" @click.outside="open = false">
-  <div class="relative">
-    <div class="absolute bottom-full right-0 mb-3 flex flex-col items-end gap-2" x-show="open" x-cloak
-         x-transition:enter="transition ease-out duration-150"
-         x-transition:enter-start="opacity-0 translate-y-4"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         x-transition:leave="transition ease-in duration-100"
-         x-transition:leave-start="opacity-100 translate-y-0"
-         x-transition:leave-end="opacity-0 translate-y-4">
-      <button
-        type="button"
-        class="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-on-primary shadow-lg"
-        hx-get="{% url 'fuel:quick_create' %}?next={% url 'dashboard' %}"
-        hx-target="#quick-form-root"
-        hx-swap="innerHTML"
-        hx-indicator="#quick-form-skeleton"
-        @click="open = false"
-      >
-        <i data-lucide="fuel" aria-hidden="true"></i> Abastecimento
-      </button>
-      <button
-        type="button"
-        class="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-on-primary shadow-lg"
-        hx-get="{% url 'maintenance:quick_create' %}?next={% url 'dashboard' %}"
-        hx-target="#quick-form-root"
-        hx-swap="innerHTML"
-        hx-indicator="#quick-form-skeleton"
-        @click="open = false"
-      >
-        <i data-lucide="wrench" aria-hidden="true"></i> Manutenção
-      </button>
-      <button
-        type="button"
-        class="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-on-primary shadow-lg"
-        hx-get="{% url 'quick_odometer_update' %}?next={% url 'dashboard' %}"
-        hx-target="#quick-form-root"
-        hx-swap="innerHTML"
-        hx-indicator="#quick-form-skeleton"
-        @click="open = false"
-      >
-        <i data-lucide="gauge" aria-hidden="true"></i> Odômetro
-      </button>
-    </div>
-    <button
-      type="button"
-      class="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg"
-      aria-label="Adicionar registro"
-      @click="open = !open"
-      :aria-expanded="open"
-    >
-      <i data-lucide="plus" class="h-6 w-6 transition-transform" :class="open ? 'rotate-45' : ''" aria-hidden="true"></i>
-    </button>
+{% else %}
+<section class="flex min-h-[60vh] flex-col items-center justify-center gap-6 px-4 text-center" aria-labelledby="empty-state-title">
+  <div class="rounded-full bg-primary/10 p-5">
+    <i data-lucide="bike" class="h-10 w-10 text-primary" aria-hidden="true"></i>
   </div>
-</div>
+  <div class="max-w-xs space-y-2">
+    <h2 id="empty-state-title" class="font-headline text-2xl font-semibold tracking-tight text-on-surface">Comece adicionando sua moto</h2>
+    <p class="text-sm text-on-surface-variant">Cadastre sua primeira motocicleta para liberar o painel de controle.</p>
+  </div>
+  <a href="{% url 'garage:create' %}" class="ui-btn-primary min-h-[3.5rem] px-6 py-5 text-lg font-semibold shadow-lg">
+    Adicionar primeira moto
+  </a>
+</section>
 {% endif %}
+
+
 
 {{ chart_spending_distribution|json_script:"spendingData" }}
 {{ chart_consumption_trend|json_script:"consumptionData" }}
 
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 <script src="{% static 'js/dashboard-charts.js' %}" defer></script>
 {% endblock %}

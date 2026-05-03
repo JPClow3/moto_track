@@ -1,14 +1,11 @@
-import json
-
 from dal import autocomplete
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import Q
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -16,12 +13,9 @@ from django.utils.html import escape
 from django.views.decorators.http import require_POST
 
 from apps.core.active_motorcycle import get_active_motorcycle, set_active_motorcycle
-from apps.core.exports import safe_next_url
-from apps.core.forms import OnboardingForm, configure_form_accessibility
-from apps.core.models import PushSubscription
+from apps.core.forms import MinimalOnboardingForm, configure_form_accessibility
 from apps.core.services.demo_bike import create_demo_motorcycle
-from apps.core.services.onboarding import create_motorcycle_from_onboarding
-from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY, consume_undo_token
+from apps.core.services.onboarding import create_motorcycle_from_minimal_onboarding
 from apps.garage.models import Motorcycle, MotorcycleTemplate
 
 
@@ -109,74 +103,27 @@ def onboarding_view(request):
     if get_active_motorcycle(request):
         return redirect("dashboard")
     if Motorcycle.objects.filter(owner=request.user, is_active=False).exists():
-        messages.info(request, "Voce ja tem moto arquivada. Reative uma moto existente ou crie uma nova pela garagem.")
+        messages.info(request, "Você já tem uma moto arquivada. Reative uma moto existente ou crie uma nova pela garagem.")
         return redirect("garage:list")
 
     if request.method == "POST":
-        form = OnboardingForm(request.POST)
+        form = MinimalOnboardingForm(request.POST)
         if form.is_valid():
-            motorcycle, warnings = create_motorcycle_from_onboarding(
+            motorcycle, warnings = create_motorcycle_from_minimal_onboarding(
                 form.cleaned_data,
                 user=request.user,
-                spec_payload=form.spec_payload(),
             )
-
             for warning in warnings:
                 messages.warning(request, warning)
             set_active_motorcycle(request, motorcycle.id)
-            messages.success(request, "Onboarding concluído. Sua moto já está pronta para acompanhar.")
+            messages.success(request, "Sua moto está cadastrada. Vamos completar o painel.")
             return redirect("dashboard")
     else:
-        form = OnboardingForm()
+        form = MinimalOnboardingForm()
 
     configure_form_accessibility(form)
 
-    step_field_names = {
-        1: ["template", "template_not_listed"],
-        2: ["motorcycle_name", "current_odometer_km", "brand", "model", "year", "template_variant", "riding_profile"],
-        3: OnboardingForm.SPEC_FIELD_NAMES,
-        4: [
-            "fuel_date",
-            "fuel_odometer_km",
-            "fuel_liters",
-            "fuel_total_price",
-            "service_date",
-            "service_odometer_km",
-            "service_cost",
-            "tire_installed_at",
-            "tire_odometer_km",
-            "front_tire",
-            "rear_tire",
-        ],
-    }
-    step_errors = {step: any(form.errors.get(name) for name in names) for step, names in step_field_names.items()}
-    first_error_step = next((step for step in [1, 2, 3, 4] if step_errors[step]), None)
-
-    def normalize(value):
-        return "" if value is None else str(value).strip()
-
-    spec_rows = []
-    for field_name in OnboardingForm.SPEC_FIELD_NAMES:
-        bound_field = form[field_name]
-        prefilled_value = bound_field.field.widget.attrs.get("data-prefilled-value", "")
-        current_value = normalize(bound_field.value())
-        original_value = normalize(prefilled_value)
-        spec_rows.append(
-            {
-                "field": bound_field,
-                "is_prefilled": bool(original_value) and current_value == original_value,
-                "is_override": bool(original_value) and current_value != original_value,
-            }
-        )
-
     context = {
         "form": form,
-        "selected_template": form.selected_template,
-        "spec_fields": spec_rows,
-        "step1_has_errors": step_errors[1],
-        "step2_has_errors": step_errors[2],
-        "step3_has_errors": step_errors[3],
-        "step4_has_errors": step_errors[4],
-        "first_error_step": first_error_step or 1,
     }
     return render(request, "core/onboarding.html", context)

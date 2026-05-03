@@ -12,6 +12,48 @@ from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.tires.models import TirePosition, TireRecord
 
 
+def create_motorcycle_from_minimal_onboarding(data: dict, user) -> tuple[Motorcycle, list[str]]:
+    """Create a Motorcycle from the minimal onboarding form (name, brand, model, year, odometer).
+
+    Returns (motorcycle, warnings).
+    """
+    template = data.get("template")
+    now = timezone.now()
+
+    manual_prefetch = None
+    if template and getattr(template.spec, "manual_url", None):
+        from apps.garage.services import _read_manual_content
+        try:
+            manual_prefetch = _read_manual_content(template.spec.manual_url)
+        except Exception:
+            manual_prefetch = None
+
+    with transaction.atomic():
+        motorcycle = Motorcycle.objects.create(
+            owner=user,
+            name=data["motorcycle_name"],
+            brand=data["brand"],
+            model=data["model"],
+            year=data["year"],
+            source_template=template,
+            odometer_override_km=data["current_odometer_km"],
+            odometer_override_at=now,
+            current_odometer_km=data["current_odometer_km"],
+            current_odometer_updated_at=now,
+            riding_profile="auto",
+        )
+
+        warnings = apply_template_to_motorcycle(
+            motorcycle=motorcycle,
+            owner=user,
+            template=template,
+            spec_payload={},
+            manual_prefetch=manual_prefetch,
+        )
+
+    return motorcycle, warnings
+
+
 def create_motorcycle_from_onboarding(data: dict, user, spec_payload: dict | None = None) -> tuple[Motorcycle, list[str]]:
     """Create a Motorcycle and optional initial records from validated onboarding form data.
 

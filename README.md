@@ -1,177 +1,169 @@
 # Moto Track
 
-Plataforma pessoal de gestão de motocicleta criada para centralizar uso, custos, manutenção e documentação em um único lugar.
+## Your motorcycle's command center
 
-A proposta é transformar o controle da moto em algo simples, confiável e útil no dia a dia, sem planilhas soltas, anotações dispersas ou ferramentas complexas.
+**Fuel · Maintenance · Tires · Documents · Expenses — all in one dashboard.**
 
----
-
-## Módulos
-
-| Módulo | O que faz |
-| --- | --- |
-| **Painel** | Resumo da situação atual, últimos eventos e alertas |
-| **Abastecimentos** | Histórico de reabastecimentos, consumo e gastos |
-| **Manutenções** | Serviços realizados, peças usadas e intervalos preventivos |
-| **Pneus** | Catálogo estruturado e histórico de instalação/desgaste |
-| **Documentos** | Arquivos, metadados e acesso rápido (CRLV, seguro, manual) |
-| **Lembretes** | Alertas por data, km ou intervalo |
-| **Despesas** | Taxas anuais (IPVA, DPVAT, licenciamento) |
-| **Inventário** | Estoque de peças e itens de manutenção |
-| **Blog** | Artigos e guias públicos (SEO/forum) |
-| **Relatórios** | Evolução de custos e uso ao longo do tempo |
-| **API** | Endpoints REST para dados principais |
-| **Contas** | Autenticação e adaptadores de conta (django-allauth) |
+[![Django](https://img.shields.io/badge/Django-5.x-092E20?logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.x-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![HTMX](https://img.shields.io/badge/HTMX-2.x-3366CC?logo=htmx&logoColor=white)](https://htmx.org/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-Private-gray)](https://github.com/JPClow3/moto_track)
 
 ---
 
-## Stack
+Moto Track is a personal motorcycle management platform built for riders who want **one place** to track fuel economy, schedule maintenance, monitor tire wear, store documents, and visualize costs — no spreadsheets, no scattered notes, no clutter.
 
-- **Backend**: Django (monolith), django-environ, django-money, django-bleach, django-autocomplete-light
-- **Auth**: django-allauth + django-allauth-ui
-- **Forms**: django-crispy-forms + crispy-tailwind
-- **Templates**: django-cotton, HTMX, Alpine.js
-- **Frontend**: Tailwind CSS, Chart.js, Lucide icons
-- **Banco**: SQLite (dev) · PostgreSQL (prod)
-- **Infraestrutura**: Docker, Gunicorn, Nginx, S3 (media)
-
-### Frontend Stack (Locked)
-
-The frontend is **strictly limited** to three technologies. Any deviation requires explicit approval and justification:
-
-| Technology | Purpose |
-|-----------|---------|
-| **HTMX** | Server-rendered AJAX, partial page updates, form submissions |
-| **Alpine.js** | Reactive UI state: modals, menus, snackbars, wizards, toggles, `@click` handlers |
-| **Tailwind CSS** | All styling via utility classes |
-
-**Allowed with restrictions:**
-- Chart.js — dashboard charts only, initialized via Alpine.js `x-init`
-- Lucide — icons only
-- Vanilla JS — **only** for: Service Workers, Push API, Web Crypto, HTMX event glue, Chart.js init
-
-**Forbidden:**
-- jQuery (isolate and remove; only tolerated for django-autocomplete-light third-party dep)
-- Bootstrap, Bulma, Foundation, or any other CSS framework
-- React, Vue, Svelte, Angular
-- Inline `onclick=`, `onchange=`, `onload=` attributes (use Alpine.js)
-- `<script>` blocks in templates for UI state (use Alpine.js `x-data`)
-- Inline `<style>` blocks in templates (use Tailwind or `static/css/input.css`)
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full frontend rules and contributor checklist.
+> *"Ride more. Worry less. Let the dashboard handle the rest."*
 
 ---
 
-## Como rodar localmente
+## What You Get
 
-### Sem Docker
+### Ride & Cost Tracking
+
+- Real-time fuel economy (km/L, cost/km)
+- Maintenance history with interval alerts
+- Annual expenses (registration, insurance, taxes)
+- Tire lifecycle & wear monitoring
+
+### Organization & Insights
+
+- Document vault (license, insurance, receipts)
+- Smart reminders by date, km, or interval
+- Parts inventory management
+- Cost evolution charts & health score
+
+**Plus:** public blog/guides for SEO, REST API, Google OAuth, PWA install prompt, dark mode, and full accessibility (keyboard + screen reader).
+
+---
+
+## Modules
+
+| Module | Description |
+| :--- | :--- |
+| **Dashboard** | Live overview — recent events, alerts, health score |
+| **Garage** | Motorcycle profiles, specs, and odometer tracking |
+| **Fuel** | Fill-up history, consumption trends, price tracking |
+| **Maintenance** | Service records, parts used, preventive intervals |
+| **Tires** | Structured catalog, installation & wear history |
+| **Documents** | File attachments with metadata (license, insurance, manual) |
+| **Reminders** | Trigger-based alerts (date, km, interval) |
+| **Expenses** | Annual taxes & fees (IPVA, DPVAT, licensing) |
+| **Inventory** | Spare parts & maintenance items stock |
+| **Reports** | Cost evolution, usage trends, data visualizations |
+| **Blog** | Public articles & guides (SEO-ready) |
+| **API** | REST endpoints for core data |
+
+---
+
+## Tech Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Backend** | Django 5 · django-environ · django-money · django-bleach · django-autocomplete-light |
+| **Auth** | django-allauth + allauth-ui · Google OAuth |
+| **Frontend** | Tailwind CSS · HTMX · Alpine.js · Chart.js · Lucide Icons |
+| **Forms** | django-crispy-forms + crispy-tailwind · django-cotton |
+| **Database** | SQLite (dev) · PostgreSQL (prod) |
+| **Infra** | Docker · Gunicorn · Caddy/Nginx · S3 (media) · WhiteNoise (static) |
+| **Monitoring** | Sentry (errors + tracing + profiling) |
+| **CI/CD** | GitHub Actions · pytest · Bandit · pip-audit |
+
+> **Frontend philosophy:** server-rendered HTML with progressive enhancement. No SPA frameworks — just HTMX for AJAX, Alpine.js for reactive state, and Tailwind for styling. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full rules.
+
+---
+
+## Quick Start
+
+### Without Docker
 
 ```bash
-# 1. Instalar dependências Python
 pip install -r requirements/dev.txt
-
-# 2. Copiar e ajustar variáveis de ambiente
 cp .env.example .env
-
-# 3. Instalar dependências de frontend
 npm install
-
-# 4. Aplicar migrações
 python manage.py migrate
-
-# 5. Em um terminal: compilar CSS em modo observação
-npm run watch:css
-
-# 6. Em outro terminal: subir o servidor
-python manage.py runserver
+npm run watch:css          # Terminal 1 — live CSS rebuild
+python manage.py runserver # Terminal 2 — dev server
 ```
 
-> Para builds de produção ou antes de `collectstatic`, use `npm run build:css`.
-
-### Com Docker
+### With Docker
 
 ```bash
 cp .env.example .env
 docker compose --profile dev up --build
-
-# Em outro terminal, aplicar migrações
 docker compose --profile dev exec web python manage.py migrate
 ```
 
-Acesse em `http://localhost:8000`.
-
-### Com Docker + HTTPS (VPS sem proxy externo)
-
-Use o profile `edge` para subir Caddy na frente do Django com certificado TLS automatico:
+### With Docker + HTTPS (self-hosted VPS)
 
 ```bash
 cp .env.example .env
-# ajuste pelo menos: SITE_DOMAIN, DJANGO_ALLOWED_HOSTS, DJANGO_SECRET_KEY,
-# AWS_STORAGE_BUCKET_NAME e POSTGRES_PASSWORD
+# Set: SITE_DOMAIN, DJANGO_ALLOWED_HOSTS, DJANGO_SECRET_KEY,
+#      AWS_STORAGE_BUCKET_NAME, POSTGRES_PASSWORD
 docker compose --profile prod --profile edge up -d --build
 ```
 
-Isso publica `80/443` no host, redireciona `www` para o dominio principal e entrega o app em HTTPS.
+Caddy auto-provisions TLS certificates — ports `80/443` exposed, `www` redirects to apex.
+
+> Open **<http://localhost:8000>** after starting.
 
 ---
 
-## Acesso inicial
+## First Login
 
 ```bash
-# Criar superusuário sem prompt de e-mail (recomendado)
-python manage.py createadmin
-
-# Alternativa padrão Django
-python manage.py createsuperuser
+python manage.py createadmin    # No-prompt superuser
+python manage.py createsuperuser # Standard Django alternative
 ```
 
-Entre em `/accounts/login/` · Admin em `/admin/`.
+Login at `/accounts/login/` · Admin panel at `/admin/`.
 
 ---
 
-## Dados de demonstração
+## Demo Data
 
 ```bash
 python manage.py seed_demo_data
 ```
 
-Cria, de forma idempotente: usuário demo, moto, especificações, posto, combustível, abastecimento, manutenção, pneu, lembrete e documento manual.
+Idempotently creates: demo user, motorcycle, specs, gas station, fuel type, fill-up, maintenance record, tire, reminder, and sample document.
 
 ---
 
-## Estrutura do projeto
+## Project Structure
 
 ```text
 apps/
-  core/        — modelos base, dashboard e utilitários compartilhados
-  garage/      — motocicleta e especificações estruturadas
-  fuel/        — abastecimentos, postos e combustíveis
-  maintenance/ — manutenções, peças e itens recorrentes
-  tires/       — pneus e histórico de instalação
-  documents/   — documentos e arquivos da moto
-  reminders/   — lembretes por gatilho
-  reports/     — agregações e indicadores
-  expenses/    — taxas anuais (IPVA, DPVAT, licenciamento)
-  inventory/   — estoque de peças e itens
-  forum/       — artigos públicos e blog
-  api/         — endpoints REST internos
-  accounts/    — autenticação (django-allauth)
+  core/         Dashboard, base models, shared utilities
+  garage/       Motorcycle profiles & structured specs
+  fuel/         Fill-ups, gas stations & fuel types
+  maintenance/  Service records, parts & recurring items
+  tires/        Tire catalog & installation history
+  documents/    Document vault & file attachments
+  reminders/    Trigger-based alerts
+  reports/      Aggregations & KPIs
+  expenses/     Annual taxes & fees
+  inventory/    Parts stock management
+  forum/        Public blog & articles
+  api/          REST API endpoints
+  accounts/     Authentication (django-allauth)
 ```
 
 ---
 
-## Regras de negócio
+## Business Rules
 
-- Todo dado é associado ao usuário dono (owner-scoped).
-- O odômetro é derivado do histórico; override manual é opcional (`odometer_override_km`).
-- Abastecimentos exigem quilometragem, litros, valor total e flag `tank_full`.
-- Manutenções trabalham com intervalos em km e dias (`interval_km`, `interval_days`).
-- Lembretes usam gatilhos explícitos por tipo (data, km, intervalo).
-- Catálogos (postos, peças, pneus) são reutilizáveis e reduzem digitação repetida.
+- All data is **owner-scoped** — users only see their own records.
+- Odometer is **derived from history**; manual override is optional.
+- Fill-ups require mileage, liters, total cost, and a `tank_full` flag.
+- Maintenance intervals track both **km** and **days**.
+- Reminders use explicit trigger types (date, km, interval).
+- Catalogs (stations, parts, tires) are **reusable** to reduce repeated input.
 
 ---
 
-## Verificação
+## Verification
 
 ```bash
 npm run build:css
@@ -184,35 +176,33 @@ python manage.py test
 
 ## Deploy
 
-Guia completo: [docs/deploy.md](docs/deploy.md)
+Full guide: **[docs/deploy.md](docs/deploy.md)**
 
-Deploy com Coolify usa apenas `--profile prod` (proxy HTTPS do proprio Coolify).
-Para VPS com Docker Compose direto (sem Coolify/Traefik/Nginx externo), use `--profile prod --profile edge`.
-
----
-
-## Roadmap — funcionalidades planejadas
-
-Itens abaixo estão documentados como planejados. Nenhum está implementado ainda.
-
-### 🔍 OCR de Recibos de Combustível
-
-Aproveitar o campo `receipt_file` já existente no modelo de abastecimento para integrar uma API de OCR (ex: Google Vision API ou AWS Textract). Com uma foto do cupom fiscal, o sistema extrairia automaticamente o posto, a quantidade de litros e o valor total, eliminando a digitação manual.
-
-### 🔗 Dossiê Público / Link Compartilhável
-
-Além da exportação em PDF, gerar uma URL temporária e pública (ex: `mototrack.app/view/abc-123`) para o proprietário compartilhar o histórico completo da moto com um mecânico ou comprador em potencial, sem precisar expor credenciais.
-
-### 🤖 Predição de Manutenção com IA
-
-Usar a média de rodagem mensal do usuário — já calculável a partir do histórico de abastecimentos — para prever a data aproximada da próxima revisão. Em vez de apenas mostrar "próxima troca em X km", o sistema diria: _"Com base no seu uso, sua próxima troca de óleo deve ocorrer em meados de julho."_
-
-### 🛒 Catálogo de Peças Integrado
-
-Vincular itens de manutenção recomendados a buscas em marketplaces (Amazon, Mercado Livre) ou manuais de peças oficiais, facilitando a compra das peças corretas direto do histórico de manutenção.
+| Path | Command |
+| :--- | :--- |
+| **Coolify / managed proxy** | `docker compose --profile prod up -d` |
+| **Self-hosted VPS (Caddy TLS)** | `docker compose --profile prod --profile edge up -d --build` |
+| **Bare metal (Nginx + Gunicorn)** | See [deploy.md](docs/deploy.md) for systemd + Nginx setup |
 
 ---
 
-## Acessibilidade
+## Roadmap
 
-A interface mantém foco visível, landmarks semânticos e labels descritivos. Desenhada para uso confortável por teclado e leitores de tela. Revisão manual periódica ainda recomendada.
+> These features are **planned** — none are implemented yet.
+
+| Feature | Description |
+| :--- | :--- |
+| **Receipt OCR** | Scan fuel receipts to auto-fill station, liters, and cost via Google Vision / AWS Textract |
+| **Shareable Dossier** | Generate a temporary public URL for mechanics or buyers to review full bike history |
+| **AI Maintenance Prediction** | Use monthly riding averages to predict the approximate date of the next service |
+| **Parts Marketplace Integration** | Link recommended parts to Amazon / Mercado Livre searches from maintenance history |
+
+---
+
+## Accessibility
+
+The interface maintains visible focus indicators, semantic landmarks, and descriptive labels. Designed for comfortable use with keyboards and screen readers. Periodic manual audits are still recommended.
+
+---
+
+> *Built with caffeine and two wheels.*

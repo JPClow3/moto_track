@@ -85,6 +85,40 @@ class ApiToken(TimeStampedModel):
         else:
             super().save(*args, **kwargs)
 
+class SiteSettings(models.Model):
+    company_name = models.CharField(max_length=200, default="Moto Track")
+    cnpj = models.CharField("CNPJ", max_length=20, blank=True, default="")
+    support_email = models.EmailField(default="suporte@moto-track.net")
+    support_phone = models.CharField(max_length=30, blank=True, default="")
+    support_whatsapp = models.CharField(max_length=30, blank=True, default="")
+    address_street = models.CharField(max_length=300, blank=True, default="")
+    address_city = models.CharField(max_length=100, blank=True, default="")
+    address_state = models.CharField(max_length=2, blank=True, default="")
+    address_zip = models.CharField("CEP", max_length=10, blank=True, default="")
+    dpo_name = models.CharField("Encarregado de Dados (DPO)", max_length=200, blank=True, default="")
+    dpo_email = models.EmailField("E-mail do DPO", blank=True, default="")
+    terms_last_updated = models.DateField("Termos atualizados em", null=True, blank=True)
+    privacy_last_updated = models.DateField("Privacidade atualizada em", null=True, blank=True)
+    lgpd_last_updated = models.DateField("LGPD atualizada em", null=True, blank=True)
+    cancellation_last_updated = models.DateField("Cancelamento atualizado em", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Configurações do Site"
+        verbose_name_plural = "Configurações do Site"
+
+    def __str__(self) -> str:
+        return "Configurações do Site"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class PushSubscription(TimeStampedModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="push_subscriptions")
     endpoint = models.URLField(max_length=500)

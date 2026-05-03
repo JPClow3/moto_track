@@ -14,6 +14,108 @@ def _resolve_template_year(template: MotorcycleTemplate) -> int:
     return max(template.year_from, min(current_year, template.year_to))
 
 
+class MinimalOnboardingForm(forms.Form):
+    template = forms.ModelChoiceField(
+        label="Template da moto (opcional)",
+        queryset=MotorcycleTemplate.objects.none(),
+        required=False,
+        widget=autocomplete.ModelSelect2(url="onboarding_template_autocomplete"),
+        help_text="Busque por marca/modelo/ano. Se não encontrar, preencha manualmente.",
+    )
+    template_not_listed = forms.BooleanField(
+        label="Minha moto não está na lista",
+        required=False,
+    )
+
+    motorcycle_name = forms.CharField(label="Nome da moto", max_length=120)
+    brand = forms.CharField(label="Marca", max_length=80)
+    model = forms.CharField(label="Modelo", max_length=120)
+    year = forms.IntegerField(
+        label="Ano",
+        min_value=1900,
+        widget=forms.NumberInput(attrs={"inputmode": "numeric"}),
+    )
+    current_odometer_km = forms.IntegerField(
+        label="Km atual",
+        min_value=0,
+        widget=forms.NumberInput(attrs={"inputmode": "numeric"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["template"].queryset = MotorcycleTemplate.objects.order_by("brand", "model", "year_from")
+        for field in self.visible_fields():
+            if field.field.required:
+                field.field.widget.attrs["aria-required"] = "true"
+        for name in ["brand", "model"]:
+            self.fields[name].widget.attrs.setdefault("autocomplete", "off")
+        self._apply_template_defaults()
+
+    def _resolve_selected_template(self) -> MotorcycleTemplate | None:
+        template_id = None
+        if self.is_bound:
+            template_id = self.data.get("template")
+        else:
+            initial_template = self.initial.get("template")
+            if hasattr(initial_template, "pk"):
+                template_id = initial_template.pk
+            else:
+                template_id = initial_template
+        if not template_id:
+            return None
+        try:
+            template_id = int(template_id)
+        except (ValueError, TypeError):
+            return None
+        return MotorcycleTemplate.objects.select_related("spec").filter(pk=template_id).first()
+
+    def _apply_template_defaults(self):
+        template = self._resolve_selected_template()
+        if not template or self.is_bound:
+            return
+        self.fields["brand"].initial = template.brand
+        self.fields["model"].initial = template.model
+        default_year = _resolve_template_year(template)
+        self.fields["year"].initial = default_year
+
+    def clean_motorcycle_name(self):
+        value = sanitize_text(self.cleaned_data.get("motorcycle_name"))
+        if not value:
+            raise forms.ValidationError("Informe o nome da moto.")
+        return value
+
+    def clean_brand(self):
+        value = sanitize_text(self.cleaned_data.get("brand"))
+        if not value:
+            raise forms.ValidationError("Informe a marca da moto.")
+        return value
+
+    def clean_model(self):
+        value = sanitize_text(self.cleaned_data.get("model"))
+        if not value:
+            raise forms.ValidationError("Informe o modelo da moto.")
+        return value
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("template_not_listed"):
+            cleaned_data["template"] = None
+        if not cleaned_data.get("brand") and "brand" not in self.errors:
+            self.add_error("brand", "Informe a marca da moto.")
+        if not cleaned_data.get("model") and "model" not in self.errors:
+            self.add_error("model", "Informe o modelo da moto.")
+        template = cleaned_data.get("template")
+        year = cleaned_data.get("year")
+        if template and year:
+            valid = (year >= template.year_from) and (template.year_to is None or year <= template.year_to)
+            if not valid:
+                self.add_error(
+                    "year",
+                    f"Ano fora do intervalo do template: {template.year_from} a {template.year_to or 'atual'}.",
+                )
+        return cleaned_data
+
+
 class OdometerOverrideForm(forms.Form):
     odometer_override_km = forms.IntegerField(min_value=0, label="Odômetro atual (km)")
 

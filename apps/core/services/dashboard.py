@@ -7,11 +7,12 @@ from django.urls import reverse
 from django.utils import timezone
 from djmoney.money import Money
 
+from apps.documents.models import MotorcycleDocument
 from apps.expenses.models import AnnualFee, InsurancePolicy
 from apps.fuel.models import FuelRecord
 from apps.fuel.services import compute_average_consumption_km_per_liter, estimate_next_fill_up, monthly_fuel_trend
 from apps.garage.models import Motorcycle
-from apps.maintenance.models import MaintenanceRecord, MaintenanceType
+from apps.maintenance.models import MaintenancePlanItem, MaintenanceRecord, MaintenanceType
 from apps.reminders.models import Reminder
 from apps.reminders.services import evaluate_reminder
 from apps.tires.models import TirePosition, TireRecord
@@ -221,6 +222,25 @@ def get_dashboard_cards(motorcycle: Motorcycle, current_odometer: int, month_tot
     ]
 
 
+def get_setup_progress(motorcycle: Motorcycle) -> dict[str, bool]:
+    """Return checklist of what the user has already configured for a motorcycle."""
+    if not motorcycle:
+        return {
+            "has_maintenance_plan": False,
+            "has_tires": False,
+            "has_documents": False,
+            "has_reminders": False,
+            "has_fuel": False,
+        }
+    return {
+        "has_maintenance_plan": MaintenancePlanItem.objects.filter(motorcycle=motorcycle, is_active=True).exists(),
+        "has_tires": TireRecord.objects.filter(motorcycle=motorcycle, is_active=True).exists(),
+        "has_documents": MotorcycleDocument.objects.filter(motorcycle=motorcycle).exists(),
+        "has_reminders": Reminder.objects.filter(motorcycle=motorcycle, is_active=True).exists(),
+        "has_fuel": FuelRecord.objects.filter(motorcycle=motorcycle).exists(),
+    }
+
+
 def get_quick_actions() -> list[dict]:
     return [
         {
@@ -253,9 +273,9 @@ def get_quick_actions() -> list[dict]:
 
 def get_catalog_links() -> list[dict]:
     return [
-        {"label": "Catálogos de combustível", "hint": "Postos e combustíveis", "url": reverse("fuel:catalogs")},
-        {"label": "Catálogos de manutenção", "hint": "Peças e insumos", "url": reverse("maintenance:catalogs")},
-        {"label": "Catálogos de pneus", "hint": "Produtos e especificações", "url": reverse("tires:catalogs")},
+        {"label": "Meus postos e combustíveis", "hint": "Postos e combustíveis salvos", "url": reverse("fuel:catalogs")},
+        {"label": "Peças e insumos salvos", "hint": "Peças e insumos", "url": reverse("maintenance:catalogs")},
+        {"label": "Pneus salvos", "hint": "Produtos e especificações", "url": reverse("tires:catalogs")},
     ]
 
 
