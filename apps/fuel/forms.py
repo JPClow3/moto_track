@@ -59,8 +59,6 @@ class FuelRecordBaseForm(forms.ModelForm):
             "date": forms.DateInput(attrs={"type": "date"}),
             "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "liters": CommaNormalizedDecimalInput(attrs={"inputmode": "decimal", "step": "0.001"}),
-            "total_price": CommaNormalizedDecimalInput(attrs={"inputmode": "decimal"}),
-            "price_per_liter": CommaNormalizedDecimalInput(attrs={"inputmode": "decimal"}),
             "receipt_file": forms.ClearableFileInput(attrs={"accept": "image/*,.pdf"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
@@ -84,10 +82,9 @@ class FuelRecordBaseForm(forms.ModelForm):
         self.fields["tank_full"].help_text = (
             "Marque quando completar o tanque. O consumo médio precisa de pelo menos dois tanques cheios."
         )
-        for name in ["liters", "total_price", "price_per_liter"]:
-            widget = self.fields[name].widget
-            for subwidget in getattr(widget, "widgets", [widget]):
-                subwidget.attrs.setdefault("inputmode", "decimal")
+        widget = self.fields["liters"].widget
+        for subwidget in getattr(widget, "widgets", [widget]):
+            subwidget.attrs.setdefault("inputmode", "decimal")
 
         if motorcycle_field.queryset.count() == 1:
             self.fields["motorcycle"].widget = forms.HiddenInput()

@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from apps.fuel.models import FuelRecord
 from apps.garage.models import Motorcycle
-from apps.garage.services import apply_template_to_motorcycle, variant_observation_text
+from apps.garage.services import SPEC_FIELDS, apply_template_to_motorcycle, variant_observation_text
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.tires.models import TirePosition, TireRecord
 
@@ -28,6 +28,14 @@ def create_motorcycle_from_minimal_onboarding(data: dict, user) -> tuple[Motorcy
         except Exception:
             manual_prefetch = None
 
+    spec_payload = {}
+    if template and getattr(template, "spec", None):
+        template_spec = template.spec
+        for field_name in SPEC_FIELDS:
+            value = getattr(template_spec, field_name, None)
+            if value is not None:
+                spec_payload[field_name] = value
+
     with transaction.atomic():
         motorcycle = Motorcycle.objects.create(
             owner=user,
@@ -47,7 +55,7 @@ def create_motorcycle_from_minimal_onboarding(data: dict, user) -> tuple[Motorcy
             motorcycle=motorcycle,
             owner=user,
             template=template,
-            spec_payload={},
+            spec_payload=spec_payload,
             manual_prefetch=manual_prefetch,
         )
 
