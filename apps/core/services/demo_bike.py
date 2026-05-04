@@ -59,7 +59,7 @@ def create_demo_motorcycle(user) -> Motorcycle:
         MaintenanceRecord.objects.create(
             motorcycle=motorcycle,
             maintenance_type=MaintenanceType.OIL_CHANGE,
-            date=today - timedelta(days=60),
+            date=today - timedelta(days=59),
             odometer_km=2400,
             cost=Decimal("120.00"),
             interval_km=3000,
@@ -69,7 +69,7 @@ def create_demo_motorcycle(user) -> Motorcycle:
         MaintenanceRecord.objects.create(
             motorcycle=motorcycle,
             maintenance_type=MaintenanceType.CHAIN_SET,
-            date=today - timedelta(days=30),
+            date=today - timedelta(days=27),
             odometer_km=6500,
             cost=Decimal("80.00"),
             interval_km=5000,
@@ -79,7 +79,7 @@ def create_demo_motorcycle(user) -> Motorcycle:
         MaintenanceRecord.objects.create(
             motorcycle=motorcycle,
             maintenance_type=MaintenanceType.REVIEW,
-            date=today - timedelta(days=10),
+            date=today - timedelta(days=9),
             odometer_km=8000,
             cost=Decimal("0.00"),
             description="Revisão rápida de rotina.",

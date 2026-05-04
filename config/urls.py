@@ -6,6 +6,8 @@ from django.http import Http404
 from django.urls import include, path
 from django.views.generic import RedirectView, TemplateView
 
+from apps.billing.views import pricing_view
+
 from .error_views import status_preview_view
 from .sitemaps import ForumArticleSitemap, StaticViewSitemap, sitemap_view
 
@@ -22,6 +24,9 @@ def debug_status_preview_view(request, status_code):
 
 urlpatterns = [
     path("", include("apps.core.urls")),
+    path("precos/", pricing_view, name="pricing"),
+    path("billing/", include("apps.billing.urls")),
+    path("trabalho/", include("apps.work.urls")),
     path("garage/", include("apps.garage.urls")),
     path("fuel/", include("apps.fuel.urls")),
     path("maintenance/", include("apps.maintenance.urls")),

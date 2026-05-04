@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Trabalho - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Profissional{% endblock %}
+{% block topbar_title %}Turnos e lucro{% endblock %}
+
+{% block content %}
+<section class="page-shell" aria-labelledby="work-title">
+  <header class="page-hero">
+    <div>
+      <span class="page-kicker">Motoboy e mototaxi</span>
+      <h2 id="work-title" class="page-title">Fechamento rapido do dia.</h2>
+      <p class="page-copy">Registre ganhos, km e tempo trabalhado para enxergar lucro, R$/km e reserva de manutencao.</p>
+    </div>
+    <div class="page-actions">
+      {% if motorcycle and has_pro %}<a class="ui-btn-secondary" href="{% url 'work:cost_settings' motorcycle.pk %}">Custos</a>{% endif %}
+      <a class="ui-btn-primary" href="{% url 'work:session_create' %}">Novo turno</a>
+    </div>
+  </header>
+
+  {% if summary %}
+  <section class="grid gap-4 md:grid-cols-4" aria-label="Resumo profissional">
+    <div class="rounded-md border border-outline-variant/20 bg-surface-low p-5">
+      <p class="text-xs font-semibold text-on-surface-variant">Receita</p>
+      <p class="mt-2 font-headline text-3xl font-semibold">R$ {{ summary.revenue|floatformat:2 }}</p>
+    </div>
+    <div class="rounded-md border border-outline-variant/20 bg-surface-low p-5">
+      <p class="text-xs font-semibold text-on-surface-variant">Lucro estimado</p>
+      <p class="mt-2 font-headline text-3xl font-semibold">{% if has_pro %}R$ {{ summary.estimated_profit|floatformat:2 }}{% else %}Pro{% endif %}</p>
+    </div>
+    <div class="rounded-md border border-outline-variant/20 bg-surface-low p-5">
+      <p class="text-xs font-semibold text-on-surface-variant">R$/km</p>
+      <p class="mt-2 font-headline text-3xl font-semibold">{% if has_pro and summary.profit_per_km %}R$ {{ summary.profit_per_km }}{% else %}-{% endif %}</p>
+    </div>
+    <div class="rounded-md border border-outline-variant/20 bg-surface-low p-5">
+      <p class="text-xs font-semibold text-on-surface-variant">R$/hora</p>
+      <p class="mt-2 font-headline text-3xl font-semibold">{% if has_pro and summary.profit_per_hour %}R$ {{ summary.profit_per_hour }}{% else %}-{% endif %}</p>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if not has_pro %}
+    <section class="rounded-md border border-primary/20 bg-primary/10 p-5">
+      <h3 class="font-headline text-2xl font-semibold tracking-tight">O Free registra ate 3 turnos por mes.</h3>
+      <p class="mt-2 text-sm text-on-surface-variant">O Pro libera historico ilimitado, lucro mensal, custo por km e reserva de manutencao.</p>
+      <a class="ui-btn-primary mt-4" href="{% url 'pricing' %}">Ver Plano Pro</a>
+    </section>
+  {% endif %}
+
+  <section class="rounded-md border border-outline-variant/20 bg-surface-low p-5">
+    <h3 class="font-headline text-2xl font-semibold tracking-tight">Turnos recentes</h3>
+    <div class="mt-4 divide-y divide-outline-variant/40">
+      {% for session in sessions %}
+        <a class="block py-4" href="{% url 'work:session_update' session.pk %}">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-sm font-semibold text-on-surface">{{ session.work_date|date:"d/m/Y" }} - {{ session.get_platform_source_display }}</p>
+              <p class="text-xs text-on-surface-variant">{{ session.distance_km }} km - {{ session.duration_hours }} h</p>
+            </div>
+            <strong class="text-sm text-on-surface">R$ {{ session.total_revenue|floatformat:2 }}</strong>
+          </div>
+        </a>
+      {% empty %}
+        <div class="empty-state">Nenhum turno registrado.</div>
+      {% endfor %}
+    </div>
+  </section>
+</section>
+{% endblock %}

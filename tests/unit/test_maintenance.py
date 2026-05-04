@@ -96,6 +96,63 @@ class MaintenanceModelTests(TestCase):
         self.assertEqual(response.status_code, 422)
         self.assertIn("Registrar", response.content.decode())
 
+    def test_quick_create_get_marks_form_for_offline_queue(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("maintenance:quick_create"), HTTP_HX_REQUEST="true", HTTP_HOST="localhost")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-offline-queue="maintenance:quick_create"')
+        self.assertContains(response, 'name="client_submission_id"')
+
+    def test_quick_create_replay_with_same_client_submission_is_idempotent(self):
+        ClientSubmission = self.motorcycle._meta.apps.get_model("core", "ClientSubmission")
+        token = "maintenance-replay-token"
+        payload = {
+            "motorcycle": self.motorcycle.pk,
+            "maintenance_type": MaintenanceType.OIL_CHANGE,
+            "date": "2026-04-13",
+            "odometer_km": 1000,
+            "cost_0": "50.00",
+            "cost_1": "BRL",
+            "parts": [self.part.pk],
+            "client_submission_id": token,
+        }
+
+        self.client.force_login(self.user)
+        first = self.client.post(reverse("maintenance:quick_create"), payload, HTTP_HOST="localhost")
+        second = self.client.post(reverse("maintenance:quick_create"), payload, HTTP_HOST="localhost")
+
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(second.status_code, 302)
+        self.assertEqual(MaintenanceRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=1000).count(), 1)
+        record = MaintenanceRecord.objects.get(motorcycle=self.motorcycle, odometer_km=1000)
+        submission = ClientSubmission.objects.get(owner=self.user, token=token)
+        self.assertEqual(submission.action, "maintenance:quick_create")
+        self.assertEqual(submission.result_model, "maintenance.MaintenanceRecord")
+        self.assertEqual(submission.result_pk, record.pk)
+
+    def test_quick_create_replay_with_claimed_client_submission_skips_duplicate_side_effect(self):
+        ClientSubmission = self.motorcycle._meta.apps.get_model("core", "ClientSubmission")
+        token = "maintenance-claimed-token"
+        ClientSubmission.objects.create(owner=self.user, token=token, action="maintenance:quick_create")
+        payload = {
+            "motorcycle": self.motorcycle.pk,
+            "maintenance_type": MaintenanceType.OIL_CHANGE,
+            "date": "2026-04-13",
+            "odometer_km": 1000,
+            "cost_0": "50.00",
+            "cost_1": "BRL",
+            "parts": [self.part.pk],
+            "client_submission_id": token,
+        }
+
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("maintenance:quick_create"), payload, HTTP_HOST="localhost")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(MaintenanceRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=1000).exists())
+
     def test_maintenance_plan_item_shows_on_list(self):
         MaintenancePlanItem.objects.create(
             motorcycle=self.motorcycle,

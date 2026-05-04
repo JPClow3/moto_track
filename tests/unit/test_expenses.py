@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.billing.models import BillingPlan, SubscriptionProfile
 from apps.expenses.models import AnnualFee, AnnualFeeType, InsurancePolicy
 from apps.garage.models import Motorcycle
 
@@ -59,6 +60,11 @@ class ExpensesExportTests(TestCase):
             due_date=date(2026, 3, 1),
             amount=Decimal("900.00"),
             notes="Não deve aparecer",
+        )
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.PRO,
+            stripe_subscription_status="active",
         )
 
         self.client.force_login(self.user)

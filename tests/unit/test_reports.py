@@ -2,14 +2,16 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db import connection
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from apps.billing.models import BillingPlan, SubscriptionProfile
 from apps.expenses.models import AnnualFee, InsurancePolicy
 from apps.fuel.models import FuelRecord, FuelStation
 from apps.garage.models import Motorcycle
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
+from apps.reminders.models import Reminder, TriggerType
 from apps.reports.services import (
     cost_summary,
     health_score,
@@ -60,11 +62,18 @@ class ReportOverviewTests(TestCase):
             price_per_liter=Decimal("6.250"),
         )
 
+    def _grant_pro(self):
+        SubscriptionProfile.objects.update_or_create(
+            user=self.user,
+            defaults={"plan": BillingPlan.PRO, "stripe_subscription_status": "active"},
+        )
+
     def test_report_overview_requires_login(self):
         response = self.client.get(reverse("reports:overview"))
         self.assertEqual(response.status_code, 302)
 
     def test_report_overview_returns_owner_aggregates(self):
+        self._grant_pro()
         self.client.force_login(self.user)
         response = self.client.get(reverse("reports:overview"))
 
@@ -97,6 +106,7 @@ class ReportOverviewTests(TestCase):
         self.assertGreaterEqual(score.total, 0)
 
     def test_timeline_view_and_exports(self):
+        self._grant_pro()
         self.client.force_login(self.user)
 
         timeline = self.client.get(reverse("reports:timeline"))
@@ -126,6 +136,48 @@ class ReportOverviewTests(TestCase):
 
         self.assertEqual(total, 12)
         self.assertEqual(len(events), 5)
+
+    @override_settings(
+        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "test-reports"}}
+    )
+    def test_timeline_events_refresh_after_new_write(self):
+        initial = timeline_events(user=self.user, motorcycle=self.motorcycle)
+
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date="2026-04-20",
+            odometer_km=10400,
+            liters=Decimal("7.000"),
+            total_price=Decimal("49.00"),
+            price_per_liter=Decimal("7.000"),
+        )
+
+        refreshed = timeline_events(user=self.user, motorcycle=self.motorcycle)
+
+        self.assertEqual(len(refreshed), len(initial) + 1)
+        self.assertEqual(refreshed[0].odometer_km, 10400)
+
+    @override_settings(
+        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "test-reports"}}
+    )
+    def test_intelligent_alerts_refresh_after_new_write(self):
+        initial = intelligent_alerts(user=self.user, motorcycle=self.motorcycle)
+
+        Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Troca urgente",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=9800,
+            is_active=True,
+        )
+        self.motorcycle.current_odometer_km = 10000
+        self.motorcycle.save(update_fields=["current_odometer_km"])
+
+        refreshed = intelligent_alerts(user=self.user, motorcycle=self.motorcycle)
+
+        self.assertGreater(len(refreshed), len(initial))
+        self.assertTrue(any(alert.title == "Troca urgente" for alert in refreshed))
 
     def test_intelligent_alerts_query_count_is_bounded_across_motorcycles(self):
         for idx in range(3):
@@ -255,6 +307,7 @@ class ReportOverviewTests(TestCase):
 
     def test_sale_pdf_weasyprint_import_error(self):
         import sys
+        self._grant_pro()
         self.client.force_login(self.user)
         # Simulate weasyprint not installed
         real_module = sys.modules.get("weasyprint")

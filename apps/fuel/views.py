@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Max, Min, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -11,7 +12,15 @@ from django.urls import reverse
 from django.utils import timezone
 from djmoney.money import Money
 
+from apps.billing.decorators import pro_required
+from apps.billing.entitlements import can_add_uploads
 from apps.core.active_motorcycle import get_active_motorcycle
+from apps.core.client_submissions import (
+    claim_client_submission,
+    client_submission_token_for_form,
+    completed_client_submission,
+    record_client_submission,
+)
 from apps.core.exports import parse_date_param, safe_next_url
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
@@ -159,6 +168,7 @@ def fuel_list_view(request):
 
 
 @login_required
+@pro_required("Exportacao de abastecimentos")
 def fuel_export_view(request):
     fmt = (request.GET.get("format") or "csv").strip().lower()
     if fmt not in {"csv", "xlsx", "pdf"}:
@@ -443,6 +453,12 @@ def _save_fuel_record_from_form(request, form, *, success_message: str) -> FuelR
         )
         if warnings:
             messages.warning(request, " • ".join(warnings))
+    if request.FILES.get("receipt_file") and not can_add_uploads(request.user):
+        form.instance.receipt_file = ""
+        messages.info(
+            request,
+            "Abastecimento salvo sem recibo: o Plano Free permite ate 3 documentos, fotos ou recibos. O Plano Pro libera armazenamento profissional.",
+        )
     record = form.save()
     record.motorcycle.refresh_from_db(fields=["current_odometer_km"])
     remember_fuel_preference(record)
@@ -472,8 +488,14 @@ def _save_fuel_record_from_form(request, form, *, success_message: str) -> FuelR
 def fuel_record_update_view(request, pk: int):
     record = get_object_or_404(FuelRecord, pk=pk, motorcycle__owner=request.user)
     if request.method == "POST":
+        existing_receipt_name = record.receipt_file.name
         form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user, instance=record)
         if form.is_valid():
+            if request.FILES.get("receipt_file") and not can_add_uploads(
+                request.user, incoming_count=0 if existing_receipt_name else 1
+            ):
+                form.instance.receipt_file = existing_receipt_name
+                messages.info(request, "Alteracao salva sem novo recibo porque o limite do Plano Free foi atingido.")
             updated = form.save()
             remember_fuel_preference(updated)
             _add_fuel_save_alerts(request, updated)
@@ -537,28 +559,49 @@ def fuel_quick_create_view(request):
     prefill = (request.GET.get("prefill") or "").strip().lower()
 
     if request.method == "POST":
-        form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user)
-        if form.is_valid():
-            _save_fuel_record_from_form(
-                request,
-                form,
-                success_message="Abastecimento registrado para {record.motorcycle.name}.",
-            )
+        completed, submission_token = completed_client_submission(request, action="fuel:quick_create")
+        next_url = safe_next_url(
+            request=request,
+            candidate=request.GET.get("next") or request.POST.get("next"),
+            fallback="/" if is_htmx else "fuel:list",
+        )
+        if completed:
             if is_htmx:
                 response = HttpResponse()
-                response["HX-Redirect"] = safe_next_url(
-                    request=request,
-                    candidate=request.GET.get("next") or request.POST.get("next"),
-                    fallback="/",
-                )
+                response["HX-Redirect"] = next_url
                 return response
-            return redirect(
-                safe_next_url(
-                    request=request,
-                    candidate=request.POST.get("next"),
-                    fallback="fuel:list",
+            return redirect(next_url)
+        form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user)
+        if form.is_valid():
+            with transaction.atomic():
+                submission, should_process = claim_client_submission(
+                    request,
+                    token=submission_token,
+                    action="fuel:quick_create",
                 )
-            )
+                if not should_process:
+                    if is_htmx:
+                        response = HttpResponse()
+                        response["HX-Redirect"] = next_url
+                        return response
+                    return redirect(next_url)
+                record = _save_fuel_record_from_form(
+                    request,
+                    form,
+                    success_message="Abastecimento registrado para {record.motorcycle.name}.",
+                )
+                record_client_submission(
+                    request,
+                    token=submission_token,
+                    action="fuel:quick_create",
+                    result=record,
+                    submission=submission,
+                )
+            if is_htmx:
+                response = HttpResponse()
+                response["HX-Redirect"] = next_url
+                return response
+            return redirect(next_url)
         status = 422 if is_htmx else 200
     else:
         initial = {"next": request.GET.get("next") or ""}
@@ -615,6 +658,7 @@ def fuel_quick_create_view(request):
         "can_prefill_last": bool(active_motorcycle),
         "form_action_url": reverse("fuel:quick_create"),
         "last_odometer_km": last_odometer_km,
+        "client_submission_id": client_submission_token_for_form(request),
     }
     configure_form_accessibility(form)
     return render(request, "fuel/partials/quick_form.html", context, status=status)

@@ -163,6 +163,26 @@ class OnboardingTests(TestCase):
             )
             self.assertEqual(manual_doc.count(), 1)
 
+    def test_onboarding_with_template_without_spec_does_not_crash(self):
+        self.template.spec.delete()
+
+        self.client.force_login(self.user)
+        payload = self._base_payload()
+        payload["template"] = str(self.template.pk)
+
+        response = self.client.post(reverse("onboarding"), payload)
+
+        self.assertEqual(response.status_code, 302)
+        motorcycle = Motorcycle.objects.get(owner=self.user)
+        self.assertEqual(motorcycle.source_template_id, self.template.id)
+        self.assertEqual(
+            MotorcycleDocument.objects.filter(
+                motorcycle=motorcycle,
+                document_type=DocumentType.MANUAL,
+            ).count(),
+            0,
+        )
+
     def test_onboarding_template_part_get_or_create_avoids_duplicates(self):
         MaintenancePart.objects.create(owner=self.user, name="Filtro de oleo OEM", manufacturer="Outro")
 

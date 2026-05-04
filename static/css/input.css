@@ -93,6 +93,11 @@
   html {
     font-family: "Inter", ui-sans-serif, system-ui, "Segoe UI", Tahoma, sans-serif;
     background-color: rgb(var(--color-surface));
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
   }
 
   body {
@@ -111,6 +116,16 @@
 
   ::selection {
     background: rgba(220, 38, 38, 0.18);
+  }
+
+  html[data-theme="dark"] ::selection {
+    background: rgba(239, 68, 68, 0.28);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html[data-theme="system"] ::selection {
+      background: rgba(239, 68, 68, 0.28);
+    }
   }
 
   [hidden] {
@@ -217,7 +232,7 @@
     @apply min-h-11 w-full rounded-md border border-outline-variant/60 bg-surface-lowest px-4 py-2.5 text-base font-medium leading-6 text-on-surface;
     @apply shadow-none placeholder:text-on-surface-variant/60;
     @apply transition-colors duration-200;
-    @apply focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/10;
+    @apply focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15;
   }
 
   .ui-textarea {
@@ -236,12 +251,12 @@
   .ui-icon-btn {
     @apply inline-grid h-11 w-11 place-items-center rounded-md border border-outline-variant/60 bg-surface-lowest text-on-surface-variant transition-all duration-200;
     @apply hover:border-primary/20 hover:text-on-surface hover:bg-surface-low;
-    @apply focus:outline-none focus:ring-2 focus:ring-primary/10 active:translate-y-px;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/30 active:translate-y-px;
   }
 
   .ui-toolbar-btn {
     @apply inline-flex min-h-11 items-center gap-2 rounded-md border border-outline-variant/60 bg-surface-lowest px-4 py-2 text-sm font-semibold leading-none text-on-surface transition-all duration-200;
-    @apply hover:border-primary/20 hover:bg-surface-low focus:outline-none focus:ring-2 focus:ring-primary/10 active:translate-y-px;
+    @apply hover:border-primary/20 hover:bg-surface-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/30 active:translate-y-px;
   }
 
   .ui-toolbar-btn .ui-icon-dot {
@@ -250,7 +265,8 @@
 
   .ui-btn-primary {
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold leading-none text-on-primary transition-all duration-200;
-    @apply hover:bg-primary-dim focus:outline-none focus:ring-2 focus:ring-primary/20 active:translate-y-px;
+    @apply hover:bg-primary-dim focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:translate-y-px;
+    @apply disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .ui-btn-primary-lg {
@@ -259,7 +275,8 @@
 
   .ui-btn-secondary {
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-outline-variant/60 bg-surface-lowest px-5 py-2.5 text-sm font-semibold leading-none text-on-surface transition-all duration-200;
-    @apply hover:border-primary/20 hover:bg-surface-low focus:outline-none focus:ring-2 focus:ring-primary/10 active:translate-y-px;
+    @apply hover:border-primary/20 hover:bg-surface-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/30 active:translate-y-px;
+    @apply disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .ui-btn-secondary-lg {
@@ -280,7 +297,8 @@
 
   .ui-btn-ghost {
     @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-transparent px-3 py-1.5 text-sm font-semibold text-on-surface-variant transition-all duration-200;
-    @apply hover:border-outline-variant/40 hover:bg-surface-low hover:text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/10 active:translate-y-px;
+    @apply hover:border-outline-variant/40 hover:bg-surface-low hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 active:translate-y-px;
+    @apply disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .inline-actions {
@@ -308,7 +326,8 @@
 
   .danger-btn {
     @apply inline-flex min-h-10 items-center justify-center rounded-md border border-error/25 bg-error/10 px-5 py-2.5 text-sm font-semibold text-error transition-all duration-200;
-    @apply hover:bg-error hover:text-on-error focus:outline-none focus:ring-2 focus:ring-error/20 active:translate-y-px;
+    @apply hover:bg-error hover:text-on-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 active:translate-y-px;
+    @apply disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .status-chip,
@@ -361,8 +380,25 @@
     @apply space-y-2;
   }
 
+  .form-actions,
   .data-form .form-actions {
-    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end;
+    @apply flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-end;
+  }
+
+  .form-card {
+    @apply rounded-md border border-outline-variant/20 bg-surface-low p-6 space-y-4;
+  }
+
+  .field-group {
+    @apply space-y-2;
+  }
+
+  .field-group > label {
+    @apply block text-sm font-medium text-on-surface-variant;
+  }
+
+  .field-help {
+    @apply text-xs text-on-surface-variant;
   }
 
   .data-form :is(input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="url"], input[type="search"], textarea, select) {
@@ -407,7 +443,19 @@
   }
 
   .text-link {
-    @apply font-semibold text-primary hover:text-primary-dim hover:underline;
+    @apply font-semibold text-primary hover:text-primary-dim hover:underline underline-offset-2;
+  }
+
+  .progress-bar-fill {
+    @apply transition-all duration-700 ease-out;
+  }
+
+  @keyframes bar-grow {
+    from { width: 0%; }
+  }
+
+  .animate-bar {
+    animation: bar-grow 0.8s ease-out forwards;
   }
 
   .auth-local-header {
@@ -435,16 +483,18 @@
   }
 
   .empty-state {
-    @apply rounded-md border border-outline-variant/40 bg-surface-low p-5 text-sm leading-6 text-on-surface-variant;
+    @apply rounded-md border border-dashed border-outline-variant/50 bg-surface-low/60 p-6 text-sm leading-6 text-on-surface-variant text-center;
   }
 
   .responsive-table { @apply w-full text-sm; }
   .responsive-table th {
-    @apply text-left text-xs font-medium text-on-surface-variant;
+    @apply text-left text-xs font-medium uppercase tracking-wider text-on-surface-variant;
     border-bottom: 1px solid rgb(var(--color-outline-variant) / 0.5);
     padding-bottom: 0.5rem;
   }
   .responsive-table td { @apply text-sm text-on-surface; }
+  .responsive-table tbody tr { @apply transition-colors duration-100; }
+  .responsive-table tbody tr:hover { background-color: rgb(var(--color-surface-low) / 0.5); }
 }
 
 @media (max-width: 767px) {

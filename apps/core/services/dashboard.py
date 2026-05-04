@@ -231,6 +231,7 @@ def get_setup_progress(motorcycle: Motorcycle) -> dict[str, bool]:
             "has_documents": False,
             "has_reminders": False,
             "has_fuel": False,
+            "has_expenses": False,
         }
     return {
         "has_maintenance_plan": MaintenancePlanItem.objects.filter(motorcycle=motorcycle, is_active=True).exists(),
@@ -238,6 +239,10 @@ def get_setup_progress(motorcycle: Motorcycle) -> dict[str, bool]:
         "has_documents": MotorcycleDocument.objects.filter(motorcycle=motorcycle).exists(),
         "has_reminders": Reminder.objects.filter(motorcycle=motorcycle, is_active=True).exists(),
         "has_fuel": FuelRecord.objects.filter(motorcycle=motorcycle).exists(),
+        "has_expenses": (
+            AnnualFee.objects.filter(motorcycle=motorcycle).exists()
+            or InsurancePolicy.objects.filter(motorcycle=motorcycle).exists()
+        ),
     }
 
 

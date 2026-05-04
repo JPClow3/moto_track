@@ -12,7 +12,10 @@ PAGES = ["/", "/accounts/login/"]
 
 
 def _lighthouse_available():
-    return subprocess.run(["npx", "lighthouse", "--version"], capture_output=True).returncode == 0
+    try:
+        return subprocess.run(["npx", "lighthouse", "--version"], capture_output=True).returncode == 0
+    except FileNotFoundError:
+        return False
 
 
 @pytest.mark.skipif(not _lighthouse_available(), reason="Lighthouse CLI not available")

@@ -117,7 +117,7 @@ class DashboardServiceTests(TestCase):
         self.assertEqual(response["Cache-Control"], "no-cache")
         self.assertContains(response, "moto-track-shell-test\\u002Dbuild\\u002D123")
         self.assertContains(response, "indexedDB")
-        self.assertContains(response, "sync-offline-requests")
+        self.assertContains(response, "moto-track-offline-queue")
         self.assertContains(response, "showNotification")
         self.assertContains(response, "notificationclick")
 

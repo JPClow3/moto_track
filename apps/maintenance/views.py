@@ -11,7 +11,15 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from djmoney.money import Money
 
+from apps.billing.decorators import pro_required
+from apps.billing.entitlements import remaining_upload_slots
 from apps.core.active_motorcycle import get_active_motorcycle
+from apps.core.client_submissions import (
+    claim_client_submission,
+    client_submission_token_for_form,
+    completed_client_submission,
+    record_client_submission,
+)
 from apps.core.exports import parse_date_param, safe_next_url
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
@@ -247,6 +255,7 @@ def maintenance_list_view(request):
 
 
 @login_required
+@pro_required("Exportacao de manutencoes")
 def maintenance_export_view(request):
     fmt = (request.GET.get("format") or "csv").strip().lower()
     if fmt not in {"csv", "xlsx"}:
@@ -365,10 +374,33 @@ def maintenance_quick_create_view(request):
     active_motorcycle = get_active_motorcycle(request)
 
     if request.method == "POST":
+        completed, submission_token = completed_client_submission(request, action="maintenance:quick_create")
+        next_url = safe_next_url(
+            request=request,
+            candidate=request.GET.get("next") or request.POST.get("next"),
+            fallback="/" if is_htmx else "maintenance:list",
+        )
+        if completed:
+            if is_htmx:
+                response = HttpResponse()
+                response["HX-Redirect"] = next_url
+                return response
+            return redirect(next_url)
         form = MaintenanceRecordQuickForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             parts = form.cleaned_data.pop("parts", [])
             with transaction.atomic():
+                submission, should_process = claim_client_submission(
+                    request,
+                    token=submission_token,
+                    action="maintenance:quick_create",
+                )
+                if not should_process:
+                    if is_htmx:
+                        response = HttpResponse()
+                        response["HX-Redirect"] = next_url
+                        return response
+                    return redirect(next_url)
                 record = form.save()  # parts & photos are not model fields, so this is safe
                 if parts:
                     for part in parts:
@@ -376,12 +408,28 @@ def maintenance_quick_create_view(request):
                 photos = request.FILES.getlist("photos") if request.FILES else []
                 if photos:
                     img_validator = forms.ImageField(required=False)
-                    for photo in photos:
+                    slots = remaining_upload_slots(request.user)
+                    allowed_photos = photos if slots is None else photos[:slots]
+                    if slots == 0:
+                        messages.info(
+                            request,
+                            "Manutencao salva sem fotos: o Plano Free permite ate 3 documentos, fotos ou recibos.",
+                        )
+                    elif slots is not None and len(photos) > len(allowed_photos):
+                        messages.info(request, "Algumas fotos nao foram anexadas porque o limite do Plano Free foi atingido.")
+                    for photo in allowed_photos:
                         try:
                             img_validator.clean(photo, None)
                         except forms.ValidationError:
                             continue
                         MaintenancePhoto.objects.create(maintenance_record=record, image=photo)
+                record_client_submission(
+                    request,
+                    token=submission_token,
+                    action="maintenance:quick_create",
+                    result=record,
+                    submission=submission,
+                )
             create_undo_token(
                 request,
                 model_label="maintenance.MaintenanceRecord",
@@ -402,19 +450,9 @@ def maintenance_quick_create_view(request):
             messages.success(request, f"Manutenção registrada para {record.motorcycle.name}.")
             if is_htmx:
                 response = HttpResponse()
-                response["HX-Redirect"] = safe_next_url(
-                    request=request,
-                    candidate=request.GET.get("next") or request.POST.get("next"),
-                    fallback="/",
-                )
+                response["HX-Redirect"] = next_url
                 return response
-            return redirect(
-                safe_next_url(
-                    request=request,
-                    candidate=request.POST.get("next"),
-                    fallback="maintenance:list",
-                )
-            )
+            return redirect(next_url)
         status = 422 if is_htmx else 200
     else:
         initial = {"next": request.GET.get("next") or ""}
@@ -428,6 +466,7 @@ def maintenance_quick_create_view(request):
         "title": "Registrar manutenção",
         "submit_label": "Salvar manutenção",
         "next_url": request.GET.get("next") or request.POST.get("next") or "",
+        "client_submission_id": client_submission_token_for_form(request),
     }
     configure_form_accessibility(form)
     return render(request, "maintenance/partials/quick_form.html", context, status=status)

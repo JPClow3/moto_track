@@ -4,12 +4,21 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
+from django.middleware.csrf import get_token
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from apps.billing.entitlements import has_pro_access
 from apps.core.active_motorcycle import get_active_motorcycle, set_active_motorcycle
+from apps.core.client_submissions import (
+    claim_client_submission,
+    client_submission_token_for_form,
+    completed_client_submission,
+    record_client_submission,
+)
 from apps.core.exports import safe_next_url
 from apps.core.forms import OdometerOverrideForm
 from apps.core.services.dashboard import (
@@ -28,6 +37,15 @@ from apps.core.models import PushSubscription
 from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY, consume_undo_token
 from apps.garage.models import Motorcycle
 from apps.reports.services import health_score, timeline_events
+from apps.work.services import professional_summary
+
+
+def _redirect_or_hx(request, next_url: str):
+    if request.headers.get("HX-Request") == "true":
+        response = HttpResponse()
+        response["HX-Redirect"] = next_url
+        return response
+    return redirect(next_url)
 
 
 def landing_view(request):
@@ -66,6 +84,8 @@ def dashboard_view(request):
     status_cards, pending_alerts = get_status_cards(motorcycle, current_odometer_km, active_reminders)
 
     setup_progress = get_setup_progress(motorcycle)
+    professional = professional_summary(user=request.user, motorcycle=motorcycle)
+    user_has_pro = has_pro_access(request.user)
     context = {
         "motorcycle": motorcycle,
         "status_cards": status_cards,
@@ -82,6 +102,8 @@ def dashboard_view(request):
         "recent_events": timeline_events(user=request.user, motorcycle=motorcycle, limit=5),
         "setup_progress": setup_progress,
         "setup_incomplete": any(not v for v in setup_progress.values()),
+        "professional_summary": professional,
+        "has_pro": user_has_pro,
     }
     return render(request, "core/dashboard.html", context)
 
@@ -102,21 +124,34 @@ def odometer_quick_update_view(request):
     current_odometer_km = motorcycle.current_odometer_km
 
     if request.method == "POST":
+        completed, submission_token = completed_client_submission(request, action="quick_odometer_update")
+        next_url = safe_next_url(
+            request=request,
+            candidate=request.GET.get("next") or request.POST.get("next"),
+            fallback=reverse("dashboard"),
+        )
+        if completed:
+            return _redirect_or_hx(request, next_url)
         form = OdometerOverrideForm(request.POST, motorcycle=motorcycle)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Odometro atualizado com sucesso.")
-            if is_htmx:
-                response = HttpResponse()
-                response["HX-Redirect"] = safe_next_url(
-                    request=request,
-                    candidate=request.GET.get("next") or request.POST.get("next"),
-                    fallback=reverse("dashboard"),
+            with transaction.atomic():
+                submission, should_process = claim_client_submission(
+                    request,
+                    token=submission_token,
+                    action="quick_odometer_update",
                 )
-                return response
-            return redirect(
-                safe_next_url(request=request, candidate=request.POST.get("next"), fallback=reverse("dashboard"))
-            )
+                if not should_process:
+                    return _redirect_or_hx(request, next_url)
+                updated = form.save()
+                record_client_submission(
+                    request,
+                    token=submission_token,
+                    action="quick_odometer_update",
+                    result=updated,
+                    submission=submission,
+                )
+            messages.success(request, "Odometro atualizado com sucesso.")
+            return _redirect_or_hx(request, next_url)
         status = 422 if is_htmx else 200
     else:
         form = OdometerOverrideForm(
@@ -134,6 +169,7 @@ def odometer_quick_update_view(request):
             candidate=request.GET.get("next") or request.POST.get("next"),
             fallback=reverse("dashboard"),
         ),
+        "client_submission_id": client_submission_token_for_form(request),
     }
     return render(request, "core/partials/odometer_form.html", context, status=status)
 
@@ -144,9 +180,10 @@ def quick_add_selector_view(request):
     return render(request, "core/partials/quick_add_selector.html", {"next_url": next_url})
 
 
-@login_required
 def offline_view(request):
-    return render(request, "offline.html")
+    response = render(request, "offline.html")
+    response["Cache-Control"] = "public, max-age=3600"
+    return response
 
 
 def manifest_view(request):
@@ -158,14 +195,26 @@ def manifest_view(request):
     resolved = (request.GET.get("resolved") or "").strip().lower()
     resolved_theme = resolved if resolved in palettes else ("dark" if mode == "dark" else "light")
     manifest = {
+        "id": "/",
         "name": "Moto Track",
         "short_name": "Moto Track",
-        "start_url": "/",
+        "description": "Controle garagem, abastecimentos, manutencoes, pneus e documentos da sua moto.",
+        "start_url": "/dashboard/?source=pwa",
+        "scope": "/",
         "display": "standalone",
+        "orientation": "portrait-primary",
+        "categories": ["productivity", "utilities", "lifestyle"],
+        "prefer_related_applications": False,
         **palettes[resolved_theme],
         "icons": [
             {
-                "src": "/static/brand/moto-track-icon.png",
+                "src": "/static/brand/web/android-chrome-192x192.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any",
+            },
+            {
+                "src": "/static/brand/web/android-chrome-512x512.png",
                 "sizes": "512x512",
                 "type": "image/png",
                 "purpose": "any maskable",
@@ -182,6 +231,16 @@ def manifest_view(request):
     response["Content-Type"] = "application/manifest+json"
     response["Cache-Control"] = "no-cache"
     return response
+
+
+def pwa_status_view(request):
+    return JsonResponse(
+        {
+            "authenticated": request.user.is_authenticated,
+            "csrf_token": get_token(request),
+            "login_url": reverse("account_login"),
+        }
+    )
 
 
 def service_worker_view(request):

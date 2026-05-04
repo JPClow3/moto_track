@@ -6,6 +6,14 @@ from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.billing.decorators import pro_required
+from apps.billing.entitlements import can_add_active_reminder, can_add_uploads
+from apps.core.client_submissions import (
+    claim_client_submission,
+    client_submission_token_for_form,
+    completed_client_submission,
+    record_client_submission,
+)
 from apps.core.exports import parse_date_param
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
@@ -25,11 +33,32 @@ def list_documents(request):
     )
 
     if request.method == "POST":
+        completed, submission_token = completed_client_submission(request, action="documents:list")
+        if completed:
+            return redirect("documents:list")
         form = DocumentUploadForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
-            doc = form.save()
-            messages.success(request, f"Documento '{doc.name}' enviado com sucesso.")
-            return redirect("documents:list")
+            if not can_add_uploads(request.user):
+                form.add_error("file", "O Plano Free permite ate 3 documentos, fotos ou recibos. O Plano Pro libera mais armazenamento.")
+            else:
+                with transaction.atomic():
+                    submission, should_process = claim_client_submission(
+                        request,
+                        token=submission_token,
+                        action="documents:list",
+                    )
+                    if not should_process:
+                        return redirect("documents:list")
+                    doc = form.save()
+                    record_client_submission(
+                        request,
+                        token=submission_token,
+                        action="documents:list",
+                        result=doc,
+                        submission=submission,
+                    )
+                messages.success(request, f"Documento '{doc.name}' enviado com sucesso.")
+                return redirect("documents:list")
     else:
         form = DocumentUploadForm(user=request.user)
 
@@ -79,6 +108,7 @@ def list_documents(request):
         "category_cards": category_cards,
         "density": density,
         "upload_has_errors": form.is_bound and form.errors,
+        "client_submission_id": client_submission_token_for_form(request),
     }
     return render(request, "documents/list.html", context)
 
@@ -100,6 +130,7 @@ def delete_document(request, pk: int):
 
 
 @login_required
+@pro_required("Exportacao de documentos")
 def document_export_view(request):
     fmt = (request.GET.get("format") or "csv").strip().lower()
     if fmt not in {"csv", "xlsx"}:
@@ -118,6 +149,9 @@ def create_document_reminder(request, pk: int):
 
     if not document.valid_until:
         messages.error(request, "Defina uma validade antes de criar um lembrete.")
+        return redirect("documents:list")
+    if not can_add_active_reminder(request.user):
+        messages.info(request, "O Plano Free permite ate 3 lembretes ativos. O Plano Pro libera lembretes profissionais.")
         return redirect("documents:list")
 
     # Due date = valid_until. We model this as reference_date + trigger_value_days.

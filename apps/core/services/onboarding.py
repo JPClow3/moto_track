@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.utils import timezone
 
@@ -12,6 +13,15 @@ from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.tires.models import TirePosition, TireRecord
 
 
+def _template_spec_or_none(template):
+    if not template:
+        return None
+    try:
+        return template.spec
+    except ObjectDoesNotExist:
+        return None
+
+
 def create_motorcycle_from_minimal_onboarding(data: dict, user) -> tuple[Motorcycle, list[str]]:
     """Create a Motorcycle from the minimal onboarding form (name, brand, model, year, odometer).
 
@@ -19,18 +29,18 @@ def create_motorcycle_from_minimal_onboarding(data: dict, user) -> tuple[Motorcy
     """
     template = data.get("template")
     now = timezone.now()
+    template_spec = _template_spec_or_none(template)
 
     manual_prefetch = None
-    if template and getattr(template.spec, "manual_url", None):
+    if getattr(template_spec, "manual_url", None):
         from apps.garage.services import _read_manual_content
         try:
-            manual_prefetch = _read_manual_content(template.spec.manual_url)
+            manual_prefetch = _read_manual_content(template_spec.manual_url)
         except Exception:
             manual_prefetch = None
 
     spec_payload = {}
-    if template and getattr(template, "spec", None):
-        template_spec = template.spec
+    if template_spec:
         for field_name in SPEC_FIELDS:
             value = getattr(template_spec, field_name, None)
             if value is not None:
@@ -69,14 +79,15 @@ def create_motorcycle_from_onboarding(data: dict, user, spec_payload: dict | Non
     """
     template = data.get("template")
     now = timezone.now()
+    template_spec = _template_spec_or_none(template)
 
     # Pre-fetch manual content outside the DB transaction so slow HTTP fetches
     # do not hold database locks open.
     manual_prefetch = None
-    if template and getattr(template.spec, "manual_url", None):
+    if getattr(template_spec, "manual_url", None):
         from apps.garage.services import _read_manual_content
         try:
-            manual_prefetch = _read_manual_content(template.spec.manual_url)
+            manual_prefetch = _read_manual_content(template_spec.manual_url)
         except Exception:
             manual_prefetch = None
 

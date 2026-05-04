@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 
 {% block title %}Excluir combustível - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Combustíveis{% endblock %}
+{% block topbar_title %}Excluir combustível{% endblock %}
 
 {% block content %}
 <section class="list-section" aria-labelledby="delete-grade-title">
@@ -12,12 +14,12 @@
   </header>
 
   <article class="panel">
-    <p>Tem certeza que desejá excluir <strong>{{ grade.name }}</strong>?</p>
+    <p class="text-sm text-on-surface-variant">Tem certeza que desejá excluir <strong>{{ grade.name }}</strong>?</p>
     <form method="post" class="data-form">
       {% csrf_token %}
       <div class="quick-actions-row-split">
         <a class="secondary-btn" href="{% url 'fuel:catalogs' %}">Cancelar</a>
-        <button type="submit" class="primary-btn">Excluir</button>
+        <button type="submit" class="danger-btn">Excluir</button>
       </div>
     </form>
   </article>

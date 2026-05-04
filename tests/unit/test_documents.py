@@ -84,3 +84,64 @@ class DocumentsTests(TestCase):
         self.assertTrue(response.context["upload_has_errors"])
         self.assertContains(response, 'id="documents-upload-form"')
         self.assertContains(response, 'data-upload-has-errors="true"')
+
+    def test_upload_form_is_marked_for_offline_queue(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("documents:list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-offline-queue="documents:list"')
+        self.assertContains(response, 'name="client_submission_id"')
+
+    def test_upload_replay_with_same_client_submission_is_idempotent(self):
+        ClientSubmission = self.motorcycle._meta.apps.get_model("core", "ClientSubmission")
+        token = "documents-replay-token"
+
+        self.client.force_login(self.user)
+        for _ in range(2):
+            response = self.client.post(
+                reverse("documents:list"),
+                {
+                    "motorcycle": self.motorcycle.pk,
+                    "name": "Cupom offline",
+                    "document_type": DocumentType.RECEIPT,
+                    "file": SimpleUploadedFile("cupom.pdf", b"pdf", content_type="application/pdf"),
+                    "notify_before_days": 30,
+                    "client_submission_id": token,
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+
+        self.assertEqual(MotorcycleDocument.objects.filter(motorcycle=self.motorcycle, name="Cupom offline").count(), 1)
+        document = MotorcycleDocument.objects.get(motorcycle=self.motorcycle, name="Cupom offline")
+        submission = ClientSubmission.objects.get(owner=self.user, token=token)
+        self.assertEqual(submission.action, "documents:list")
+        self.assertEqual(submission.result_model, "documents.MotorcycleDocument")
+        self.assertEqual(submission.result_pk, document.pk)
+
+    def test_upload_replay_with_claimed_client_submission_skips_duplicate_side_effect(self):
+        ClientSubmission = self.motorcycle._meta.apps.get_model("core", "ClientSubmission")
+        token = "documents-claimed-token"
+        ClientSubmission.objects.create(owner=self.user, token=token, action="documents:list")
+
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("documents:list"),
+            {
+                "motorcycle": self.motorcycle.pk,
+                "name": "Cupom offline concorrente",
+                "document_type": DocumentType.RECEIPT,
+                "file": SimpleUploadedFile("cupom.pdf", b"pdf", content_type="application/pdf"),
+                "notify_before_days": 30,
+                "client_submission_id": token,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            MotorcycleDocument.objects.filter(
+                motorcycle=self.motorcycle,
+                name="Cupom offline concorrente",
+            ).exists()
+        )

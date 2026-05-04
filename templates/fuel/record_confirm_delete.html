@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 
 {% block title %}Excluir abastecimento - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Abastecimentos{% endblock %}
+{% block topbar_title %}Excluir abastecimento{% endblock %}
 
 {% block content %}
 <section class="list-section" aria-labelledby="delete-fuel-record-title">
@@ -12,16 +14,12 @@
   </header>
 
   <article class="panel">
-    <p>
-      Tem certeza que desejá excluir o abastecimento de
-      <strong>{{ record.motorcycle.name }}</strong>
-      em <strong>{{ record.date|date:"d/m/Y" }}</strong>?
-    </p>
+    <p class="text-sm text-on-surface-variant">Tem certeza que desejá excluir o abastecimento de <strong>{{ record.motorcycle.name }}</strong> em <strong>{{ record.date|date:"d/m/Y" }}</strong>?</p>
     <form method="post" class="data-form">
       {% csrf_token %}
       <div class="quick-actions-row-split">
         <a class="secondary-btn" href="{% url 'fuel:list' %}">Cancelar</a>
-        <button type="submit" class="primary-btn">Excluir</button>
+        <button type="submit" class="danger-btn">Excluir</button>
       </div>
     </form>
   </article>

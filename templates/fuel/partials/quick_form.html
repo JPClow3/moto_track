@@ -51,6 +51,7 @@
       class="mt-6 data-form"
       data-fuel-defaults
       data-defaults-url="{% url 'fuel:defaults' %}"
+      data-offline-queue="fuel:quick_create"
       enctype="multipart/form-data"
       action="{{ form_action_url }}"
       hx-post="{{ form_action_url }}"
@@ -60,6 +61,7 @@
     >
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ next_url }}" />
+      <input type="hidden" name="client_submission_id" value="{{ client_submission_id }}" />
       {% if form.non_field_errors %}
         <div class="form-errors">{{ form.non_field_errors }}</div>
       {% endif %}
