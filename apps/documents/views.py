@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from apps.billing.decorators import pro_required
 from apps.billing.entitlements import can_add_active_reminder, can_add_uploads
 from apps.core.client_submissions import (
+    claim_client_submission,
     client_submission_token_for_form,
     completed_client_submission,
     record_client_submission,
@@ -40,13 +41,22 @@ def list_documents(request):
             if not can_add_uploads(request.user):
                 form.add_error("file", "O Plano Free permite ate 3 documentos, fotos ou recibos. O Plano Pro libera mais armazenamento.")
             else:
-                doc = form.save()
-                record_client_submission(
-                    request,
-                    token=submission_token,
-                    action="documents:list",
-                    result=doc,
-                )
+                with transaction.atomic():
+                    submission, should_process = claim_client_submission(
+                        request,
+                        token=submission_token,
+                        action="documents:list",
+                    )
+                    if not should_process:
+                        return redirect("documents:list")
+                    doc = form.save()
+                    record_client_submission(
+                        request,
+                        token=submission_token,
+                        action="documents:list",
+                        result=doc,
+                        submission=submission,
+                    )
                 messages.success(request, f"Documento '{doc.name}' enviado com sucesso.")
                 return redirect("documents:list")
     else:

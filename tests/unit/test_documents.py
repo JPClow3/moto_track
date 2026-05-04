@@ -119,3 +119,29 @@ class DocumentsTests(TestCase):
         self.assertEqual(submission.action, "documents:list")
         self.assertEqual(submission.result_model, "documents.MotorcycleDocument")
         self.assertEqual(submission.result_pk, document.pk)
+
+    def test_upload_replay_with_claimed_client_submission_skips_duplicate_side_effect(self):
+        ClientSubmission = self.motorcycle._meta.apps.get_model("core", "ClientSubmission")
+        token = "documents-claimed-token"
+        ClientSubmission.objects.create(owner=self.user, token=token, action="documents:list")
+
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("documents:list"),
+            {
+                "motorcycle": self.motorcycle.pk,
+                "name": "Cupom offline concorrente",
+                "document_type": DocumentType.RECEIPT,
+                "file": SimpleUploadedFile("cupom.pdf", b"pdf", content_type="application/pdf"),
+                "notify_before_days": 30,
+                "client_submission_id": token,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            MotorcycleDocument.objects.filter(
+                motorcycle=self.motorcycle,
+                name="Cupom offline concorrente",
+            ).exists()
+        )

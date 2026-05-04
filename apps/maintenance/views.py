@@ -15,6 +15,7 @@ from apps.billing.decorators import pro_required
 from apps.billing.entitlements import remaining_upload_slots
 from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.client_submissions import (
+    claim_client_submission,
     client_submission_token_for_form,
     completed_client_submission,
     record_client_submission,
@@ -389,6 +390,17 @@ def maintenance_quick_create_view(request):
         if form.is_valid():
             parts = form.cleaned_data.pop("parts", [])
             with transaction.atomic():
+                submission, should_process = claim_client_submission(
+                    request,
+                    token=submission_token,
+                    action="maintenance:quick_create",
+                )
+                if not should_process:
+                    if is_htmx:
+                        response = HttpResponse()
+                        response["HX-Redirect"] = next_url
+                        return response
+                    return redirect(next_url)
                 record = form.save()  # parts & photos are not model fields, so this is safe
                 if parts:
                     for part in parts:
@@ -411,12 +423,13 @@ def maintenance_quick_create_view(request):
                         except forms.ValidationError:
                             continue
                         MaintenancePhoto.objects.create(maintenance_record=record, image=photo)
-            record_client_submission(
-                request,
-                token=submission_token,
-                action="maintenance:quick_create",
-                result=record,
-            )
+                record_client_submission(
+                    request,
+                    token=submission_token,
+                    action="maintenance:quick_create",
+                    result=record,
+                    submission=submission,
+                )
             create_undo_token(
                 request,
                 model_label="maintenance.MaintenanceRecord",

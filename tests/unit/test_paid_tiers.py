@@ -351,6 +351,40 @@ class BillingFlowTests(TestCase):
         self.user.refresh_from_db()
         self.assertFalse(has_pro_access(self.user))
 
+    def test_invoice_paid_string_subscription_restores_past_due_access(self):
+        from apps.billing.entitlements import has_pro_access
+        from apps.billing.models import BillingPlan, SubscriptionProfile
+        from apps.billing.webhooks import process_stripe_event
+
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.PRO,
+            stripe_customer_id="cus_123",
+            stripe_subscription_id="sub_123",
+            stripe_subscription_status="active",
+        )
+        process_stripe_event(
+            {
+                "id": "evt_failed_then_paid_failed",
+                "type": "invoice.payment_failed",
+                "data": {"object": {"customer": "cus_123", "subscription": "sub_123"}},
+            }
+        )
+        process_stripe_event(
+            {
+                "id": "evt_failed_then_paid_ok",
+                "type": "invoice.paid",
+                "data": {"object": {"customer": "cus_123", "subscription": "sub_123"}},
+            }
+        )
+
+        profile = SubscriptionProfile.objects.get(user=self.user)
+        self.assertEqual(profile.plan, BillingPlan.PRO)
+        self.assertEqual(profile.stripe_subscription_status, "active")
+        self.assertIsNone(profile.grace_until)
+        self.user.refresh_from_db()
+        self.assertTrue(has_pro_access(self.user))
+
     def test_invoice_paid_keeps_active_subscription_access(self):
         from apps.billing.entitlements import has_pro_access
         from apps.billing.models import BillingPlan, SubscriptionProfile
@@ -612,6 +646,43 @@ class WorkSessionTests(TestCase):
         self.assertIn("motorcycle", form.errors)
         self.assertIn("ended_at", form.errors)
         self.assertIn("odometer_end_km", form.errors)
+
+    def test_work_session_form_allows_editing_archived_motorcycle_session(self):
+        from apps.work.forms import WorkSessionForm
+        from apps.work.models import PlatformSource, WorkSession
+
+        session = WorkSession.objects.create(
+            owner=self.user,
+            motorcycle=self.motorcycle,
+            work_date=date(2026, 5, 3),
+            odometer_start_km=10000,
+            odometer_end_km=10100,
+            gross_income=Decimal("200.00"),
+            platform_source=PlatformSource.IFOOD,
+        )
+        self.motorcycle.is_active = False
+        self.motorcycle.save(update_fields=["is_active"])
+
+        form = WorkSessionForm(
+            data={
+                "motorcycle": self.motorcycle.pk,
+                "work_date": "2026-05-03",
+                "started_at": "",
+                "ended_at": "",
+                "odometer_start_km": "10000",
+                "odometer_end_km": "10100",
+                "gross_income": "200.00",
+                "tips": "0.00",
+                "deliveries_count": "0",
+                "platform_source": "ifood",
+                "payment_method": "pix",
+                "notes": "",
+            },
+            user=self.user,
+            instance=session,
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_professional_cost_settings_form_rejects_negative_values(self):
         from apps.work.forms import ProfessionalCostSettingsForm

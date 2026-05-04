@@ -53,6 +53,13 @@ def _subscription_status_from_invoice(invoice) -> str:
     return str(getattr(subscription, "status", "") or "")
 
 
+def _paid_invoice_confirms_access(invoice, profile: SubscriptionProfile) -> bool:
+    subscription_status = _subscription_status_from_invoice(invoice)
+    if subscription_status:
+        return subscription_status == "active"
+    return profile.stripe_subscription_status not in {"canceled", "incomplete_expired"}
+
+
 def _timestamp(value):
     if not value:
         return None
@@ -151,8 +158,7 @@ def _apply_invoice(invoice, *, paid: bool) -> None:
     if _get(invoice, "invoice_pdf"):
         profile.latest_receipt_url = _get(invoice, "invoice_pdf")
     if paid:
-        subscription_status = _subscription_status_from_invoice(invoice) or profile.stripe_subscription_status
-        if subscription_status == "active":
+        if _paid_invoice_confirms_access(invoice, profile):
             profile.plan = BillingPlan.PRO
             profile.stripe_subscription_status = "active"
             profile.grace_until = None

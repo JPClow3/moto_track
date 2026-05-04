@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from django.middleware.csrf import get_token
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
@@ -13,6 +14,7 @@ from django.views.decorators.http import require_POST
 from apps.billing.entitlements import has_pro_access
 from apps.core.active_motorcycle import get_active_motorcycle, set_active_motorcycle
 from apps.core.client_submissions import (
+    claim_client_submission,
     client_submission_token_for_form,
     completed_client_submission,
     record_client_submission,
@@ -132,13 +134,22 @@ def odometer_quick_update_view(request):
             return _redirect_or_hx(request, next_url)
         form = OdometerOverrideForm(request.POST, motorcycle=motorcycle)
         if form.is_valid():
-            updated = form.save()
-            record_client_submission(
-                request,
-                token=submission_token,
-                action="quick_odometer_update",
-                result=updated,
-            )
+            with transaction.atomic():
+                submission, should_process = claim_client_submission(
+                    request,
+                    token=submission_token,
+                    action="quick_odometer_update",
+                )
+                if not should_process:
+                    return _redirect_or_hx(request, next_url)
+                updated = form.save()
+                record_client_submission(
+                    request,
+                    token=submission_token,
+                    action="quick_odometer_update",
+                    result=updated,
+                    submission=submission,
+                )
             messages.success(request, "Odometro atualizado com sucesso.")
             return _redirect_or_hx(request, next_url)
         status = 422 if is_htmx else 200

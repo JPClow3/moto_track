@@ -1,5 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 from apps.core.sanitizers import sanitize_text
 from apps.garage.models import Motorcycle
@@ -55,7 +56,12 @@ class WorkSessionForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
-        self.fields["motorcycle"].queryset = Motorcycle.objects.filter(owner=user, is_active=True).order_by("name")
+        motorcycle_qs = Motorcycle.objects.filter(owner=user, is_active=True)
+        if self.instance and self.instance.pk and self.instance.motorcycle_id:
+            motorcycle_qs = Motorcycle.objects.filter(
+                Q(owner=user, is_active=True) | Q(owner=user, pk=self.instance.motorcycle_id)
+            )
+        self.fields["motorcycle"].queryset = motorcycle_qs.order_by("name")
         self.fields["started_at"].required = False
         self.fields["ended_at"].required = False
         self.fields["started_at"].input_formats = DATETIME_LOCAL_FORMATS + list(self.fields["started_at"].input_formats)

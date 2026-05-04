@@ -469,6 +469,18 @@ class FuelModelTests(TestCase):
         self.assertEqual(submission.result_model, "fuel.FuelRecord")
         self.assertEqual(submission.result_pk, record.pk)
 
+    def test_quick_create_replay_with_claimed_client_submission_skips_duplicate_side_effect(self):
+        ClientSubmission = self.motorcycle._meta.apps.get_model("core", "ClientSubmission")
+        token = "fuel-claimed-token"
+        ClientSubmission.objects.create(owner=self.user, token=token, action="fuel:quick_create")
+        payload = self._fuel_payload(next=reverse("fuel:list"), client_submission_id=token)
+
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("fuel:quick_create"), payload, HTTP_HOST="localhost")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(FuelRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=1000).exists())
+
     def test_quick_create_persists_receipt_from_form_submission(self):
         receipt = SimpleUploadedFile("cupom.jpg", b"fake image", content_type="image/jpeg")
 

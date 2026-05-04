@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Max, Min, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,6 +16,7 @@ from apps.billing.decorators import pro_required
 from apps.billing.entitlements import can_add_uploads
 from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.client_submissions import (
+    claim_client_submission,
     client_submission_token_for_form,
     completed_client_submission,
     record_client_submission,
@@ -569,17 +571,30 @@ def fuel_quick_create_view(request):
             return redirect(next_url)
         form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
-            record = _save_fuel_record_from_form(
-                request,
-                form,
-                success_message="Abastecimento registrado para {record.motorcycle.name}.",
-            )
-            record_client_submission(
-                request,
-                token=submission_token,
-                action="fuel:quick_create",
-                result=record,
-            )
+            with transaction.atomic():
+                submission, should_process = claim_client_submission(
+                    request,
+                    token=submission_token,
+                    action="fuel:quick_create",
+                )
+                if not should_process:
+                    if is_htmx:
+                        response = HttpResponse()
+                        response["HX-Redirect"] = next_url
+                        return response
+                    return redirect(next_url)
+                record = _save_fuel_record_from_form(
+                    request,
+                    form,
+                    success_message="Abastecimento registrado para {record.motorcycle.name}.",
+                )
+                record_client_submission(
+                    request,
+                    token=submission_token,
+                    action="fuel:quick_create",
+                    result=record,
+                    submission=submission,
+                )
             if is_htmx:
                 response = HttpResponse()
                 response["HX-Redirect"] = next_url
