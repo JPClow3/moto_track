@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.billing.decorators import pro_required
 from apps.core.exports import parse_date_param
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
@@ -133,6 +134,7 @@ def tire_pressure_create_view(request):
 
 
 @login_required
+@pro_required("Exportacao de pneus")
 def tire_export_view(request):
     fmt = (request.GET.get("format") or "csv").strip().lower()
     if fmt not in {"csv", "xlsx"}:

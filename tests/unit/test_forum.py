@@ -3,6 +3,7 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from apps.core.models import SiteSettings
 from apps.forum.models import ForumArticle
 
 
@@ -83,6 +84,14 @@ class ForumViewsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertLessEqual(len(query_context), 2)
+
+    def test_forum_list_does_not_create_site_settings(self):
+        self.assertFalse(SiteSettings.objects.exists())
+
+        response = self.client.get(reverse("blog:list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SiteSettings.objects.exists())
 
     def test_forum_admin_add_requires_authentication(self):
         response = self.client.get(reverse("admin:forum_forumarticle_add"))

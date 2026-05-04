@@ -15,6 +15,7 @@ DATABASES = {
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+SITE_DOMAIN = ""
 
 # Ensure allauth doesn't require email verification in tests
 ACCOUNT_EMAIL_VERIFICATION = "none"

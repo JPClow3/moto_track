@@ -58,6 +58,56 @@
     </div>
   </section>
 
+  <section class="space-y-4" aria-labelledby="professional-title">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-xs font-medium text-on-surface-variant">Trabalho e lucro</p>
+        <h3 id="professional-title" class="font-headline text-2xl font-semibold tracking-tight">A moto esta pagando a conta?</h3>
+      </div>
+      {% if has_pro %}
+        <a class="ui-btn-secondary !min-h-10 !px-4 text-sm" href="{% url 'work:dashboard' %}">Abrir trabalho</a>
+      {% else %}
+        <a class="ui-btn-primary !min-h-10 !px-4 text-sm" href="{% url 'pricing' %}">Ver Plano Pro</a>
+      {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <article class="rounded-md border border-outline-variant/20 bg-surface-low p-4">
+        <p class="text-xs font-semibold text-on-surface-variant">Receita do mes</p>
+        <p class="mt-2 font-headline text-3xl font-semibold text-on-surface">R$ {{ professional_summary.revenue|floatformat:2 }}</p>
+        <p class="mt-1 text-xs text-on-surface-variant">{{ professional_summary.sessions_count }} turno(s) registrado(s)</p>
+      </article>
+      <article class="rounded-md border border-outline-variant/20 bg-surface-low p-4">
+        <p class="text-xs font-semibold text-on-surface-variant">Lucro estimado</p>
+        {% if has_pro %}
+          <p class="mt-2 font-headline text-3xl font-semibold text-on-surface">R$ {{ professional_summary.estimated_profit|floatformat:2 }}</p>
+          <p class="mt-1 text-xs text-on-surface-variant">Receita menos combustivel, reserva e custos fixos.</p>
+        {% else %}
+          <p class="mt-2 font-headline text-3xl font-semibold text-on-surface">Pro</p>
+          <p class="mt-1 text-xs text-on-surface-variant">Use seus registros reais para ver se a moto da lucro.</p>
+        {% endif %}
+      </article>
+      <article class="rounded-md border border-outline-variant/20 bg-surface-low p-4">
+        <p class="text-xs font-semibold text-on-surface-variant">R$/km</p>
+        {% if has_pro and professional_summary.profit_per_km %}
+          <p class="mt-2 font-headline text-3xl font-semibold text-on-surface">R$ {{ professional_summary.profit_per_km|floatformat:2 }}</p>
+        {% else %}
+          <p class="mt-2 font-headline text-3xl font-semibold text-on-surface">Bloqueado</p>
+        {% endif %}
+        <p class="mt-1 text-xs text-on-surface-variant">{{ professional_summary.distance_km }} km em turnos no mes.</p>
+      </article>
+      <article class="rounded-md border border-outline-variant/20 bg-surface-low p-4">
+        <p class="text-xs font-semibold text-on-surface-variant">R$/hora</p>
+        {% if has_pro and professional_summary.profit_per_hour %}
+          <p class="mt-2 font-headline text-3xl font-semibold text-on-surface">R$ {{ professional_summary.profit_per_hour|floatformat:2 }}</p>
+        {% else %}
+          <p class="mt-2 font-headline text-3xl font-semibold text-on-surface">Bloqueado</p>
+        {% endif %}
+        <p class="mt-1 text-xs text-on-surface-variant">{{ professional_summary.hours|floatformat:1 }} h registradas.</p>
+      </article>
+    </div>
+  </section>
+
   {% if setup_incomplete %}
   <section class="space-y-4" aria-label="Complete sua moto" x-data="{ dismissed: {} }">
     <div class="flex items-center justify-between gap-4">
@@ -322,6 +372,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+<script src="{% static 'vendor/chart/chart.umd.js' %}" defer></script>
 <script src="{% static 'js/dashboard-charts.js' %}" defer></script>
 {% endblock %}

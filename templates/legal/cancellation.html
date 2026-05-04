@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Política de Cancelamento e Faturamento — Moto Track{% endblock %}
-{% block meta_description %}Política de cancelamento, reembolso, faturamento e emissão de nota fiscal do Moto Track. Direito de arrependimento, cancelamento de assinaturas e contato com o suporte.{% endblock %}
+{% block meta_description %}Política de cancelamento, reembolso, faturamento e recibos do Moto Track. Direito de arrependimento, cancelamento de assinaturas e contato com o suporte.{% endblock %}
 {% block topbar_eyebrow %}Legal{% endblock %}
 {% block topbar_title %}Política de Cancelamento e Faturamento{% endblock %}
 
@@ -22,7 +22,7 @@
   <section class="panel space-y-4">
     <h3 class="font-headline text-2xl font-semibold tracking-tight">1. Escopo e Definições</h3>
     <ul class="list-disc pl-5 space-y-2 text-sm leading-6 text-on-surface-variant">
-      <li><strong>"Assinatura"</strong> ou <strong>"Plano"</strong>: contratação de funcionalidades pagas na Plataforma Moto Track (ex.: Plano Pro, Fleet), com periodicidade mensal ou anual.</li>
+      <li><strong>"Assinatura"</strong> ou <strong>"Plano"</strong>: contratação do Plano Pro na Plataforma Moto Track, com periodicidade mensal ou anual. Planos Fleet/Business podem ser anunciados como futuros, mas não integram a v1.</li>
       <li><strong>"Período de faturamento"</strong>: intervalo de 30 dias (mensal) ou 12 meses (anual) contados a partir da data de ativação ou renovação automática.</li>
       <li><strong>"Consumidor"</strong>: pessoa física que adquire o Plano para fins não empresariais, nos termos do CDC.</li>
       <li><strong>"Pessoa jurídica"</strong>: empresa, MEI ou organização que adquire o Plano para fins empresariais.</li>
@@ -32,9 +32,9 @@
   <section class="panel space-y-4">
     <h3 class="font-headline text-2xl font-semibold tracking-tight">2. Contratação e Ativação</h3>
     <ul class="list-disc pl-5 space-y-2 text-sm leading-6 text-on-surface-variant">
-      <li>A contratação de Planos pagos é realizada diretamente na Plataforma ou por meio do processador de pagamentos autorizado (Stripe, Mercado Pago, ou outro conforme indicado no momento da compra).</li>
-      <li>O processamento de pagamentos com cartão de crédito, débito, Pix e demais meios é realizado pelo processador terceirizado. O Moto Track <strong>não armazena</strong> número completo de cartão de crédito, CVV ou senhas de transação.</li>
-      <li>Após a confirmação do pagamento, o Plano é ativado automaticamente e as funcionalidades Pro/Fleet ficam disponíveis imediatamente.</li>
+      <li>A contratação do Plano Pro é realizada pela Plataforma por meio do Stripe Checkout, processado pela <strong>Stripe, Inc.</strong>.</li>
+      <li>O processamento de pagamentos com Pix, cartão e demais meios disponíveis no Checkout é realizado pela Stripe. O Moto Track <strong>não armazena</strong> número completo de cartão de crédito, CVV ou senhas de transação.</li>
+      <li>Após a confirmação do pagamento e do webhook de assinatura, o Plano Pro é ativado automaticamente.</li>
       <li>Em caso de falha no processamento do pagamento, a Plataforma notificará o Usuário por e-mail e manterá as funcionalidades gratuitas acessíveis.</li>
       <li>Assinaturas anuais podem incluir desconto em relação ao preço mensal. O valor total é cobrado antecipadamente.</li>
     </ul>
@@ -61,7 +61,7 @@
 
     <h4 class="text-base font-semibold text-on-surface mt-4">4.1 Pelo Usuário</h4>
     <ul class="list-disc pl-5 space-y-2 text-sm leading-6 text-on-surface-variant">
-      <li>O Usuário pode cancelar sua Assinatura a qualquer momento, através da página de "Configurações > Assinatura" na Plataforma, ou mediante solicitação ao suporte.</li>
+      <li>O Usuário pode cancelar sua Assinatura a qualquer momento pela página "Plano e dados" da Plataforma, que abre o Stripe Customer Portal, ou mediante solicitação ao suporte.</li>
       <li>O cancelamento pelo Usuário não gera reembolso proporcional para assinaturas mensais já pagas, salvo nos casos do direito de arrependimento (item 3) ou defeito do serviço (item 6).</li>
       <li>Para assinaturas anuais, em caso de cancelamento antes do término do período, o Usuário terá direito a <strong>reembolso proporcional</strong> aos meses não utilizados, deduzidos descontos promocionais e taxas de processamento (quando aplicável).</li>
       <li>Após o cancelamento, o Usuário continuará com acesso ao Plano pago até o final do período de faturamento vigente. Após esse prazo, a conta migrará automaticamente para o Plano gratuito, com as funcionalidades gratuitas preservadas.</li>
@@ -138,29 +138,25 @@
   </section>
 
   <section class="panel space-y-4">
-    <h3 class="font-headline text-2xl font-semibold tracking-tight">7. Faturamento e Nota Fiscal</h3>
+    <h3 class="font-headline text-2xl font-semibold tracking-tight">7. Faturamento e Recibos</h3>
     <ul class="list-disc pl-5 space-y-2 text-sm leading-6 text-on-surface-variant">
-      <li>Toda cobrança de Assinatura paga é acompanhada de <strong>Nota Fiscal de Serviços Eletrônica (NFS-e)</strong>, conforme a legislação municipal do domicílio do {{ site_settings.company_name|default:"Moto Track" }}.</li>
-      <li>A nota fiscal será emitida automaticamente e disponibilizada na página "Configurações > Faturas" da Plataforma, além de ser enviada por e-mail para o endereço cadastrado.</li>
-      <li>Para Pessoas Jurídicas (CNPJ) que necessitem de Nota Fiscal em nome da empresa, o Usuário deve cadastrar os dados da empresa (Razão Social, CNPJ, Inscrição Municipal/Estadual, endereço) nas configurações de faturamento antes da renovação.</li>
-      <li>O {{ site_settings.company_name|default:"Moto Track" }} utiliza processadores de pagamento (Stripe, Mercado Pago, Asaas) para processar transações. O comprovante de pagamento (recibo) é emitido pelo processador e não substitui a Nota Fiscal emitida pelo Moto Track.</li>
-      <li>Dúvidas sobre faturas, notas fiscais, troca de CPF para CNPJ ou correção de dados fiscais devem ser encaminhadas ao suporte.</li>
+      <li>Na v1, cobranças de Assinatura paga são acompanhadas por recibos e faturas emitidos pela Stripe.</li>
+      <li>O Moto Track ainda não possui integração automática com provedor de Nota Fiscal de Serviços Eletrônica (NFS-e).</li>
+      <li>Os links de fatura/recibo Stripe ficam disponíveis na página "Plano e dados" quando retornados pela Stripe.</li>
+      <li>Dúvidas sobre recibos, dados de cobrança ou correção de dados devem ser encaminhadas ao suporte.</li>
     </ul>
   </section>
 
   <section class="panel space-y-4">
     <h3 class="font-headline text-2xl font-semibold tracking-tight">8. Provedores de Pagamento</h3>
     <p class="text-sm leading-6 text-on-surface-variant">
-      O Moto Track pode utilizar um ou mais dos seguintes processadores de pagamento, conforme indicado no momento da contratação:
+      Na v1, o Moto Track utiliza a Stripe como processador de pagamento:
     </p>
     <ul class="list-disc pl-5 space-y-2 text-sm leading-6 text-on-surface-variant">
-      <li><strong>Stripe, Inc.</strong> — cartões de crédito e débito internacionais, Pix (via parceiros).</li>
-      <li><strong>Mercado Pago</strong> — cartões, Pix, boleto bancário.</li>
-      <li><strong>Asaas</strong> — cobranças recorrentes, Pix, boleto.</li>
-      <li><strong>Pagar.me</strong> — gateway de pagamentos.</li>
+      <li><strong>Stripe, Inc.</strong> — Checkout, Billing, Customer Portal, recibos/faturas e meios de pagamento disponíveis para a conta configurada.</li>
     </ul>
     <p class="text-sm leading-6 text-on-surface-variant mt-2">
-      Cada processador possui seus próprios termos de uso e políticas de privacidade. O Moto Track não se responsabiliza por falhas técnicas, indisponibilidade ou políticas dos processadores, mas empenhará esforços para garantir a melhor experiência ao Usuário.
+      A Stripe possui seus próprios termos de uso e políticas de privacidade. O Moto Track não se responsabiliza por indisponibilidades da Stripe, mas empenhará esforços para garantir a melhor experiência ao Usuário.
     </p>
   </section>
 
@@ -188,7 +184,7 @@
       {% if site_settings.support_whatsapp %}<li><strong>WhatsApp:</strong> {{ site_settings.support_whatsapp }}</li>{% endif %}
     </ul>
     <p class="text-sm leading-6 text-on-surface-variant mt-2">
-      Para solicitar cancelamento, reembolso, alterar dados de faturamento ou emitir Nota Fiscal em nome de pessoa jurídica, entre em contato pelo canal acima. Para cancelamento imediato, você também pode usar a opção "Cancelar Assinatura" em Configurações > Assinatura.
+      Para solicitar cancelamento, reembolso ou ajuste de dados de faturamento, entre em contato pelo canal acima. Para cancelamento direto, você também pode usar o Stripe Customer Portal a partir da página "Plano e dados".
     </p>
   </section>
 

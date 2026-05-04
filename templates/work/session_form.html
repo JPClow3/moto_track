@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} - Moto Track{% endblock %}
+{% block topbar_eyebrow %}Turno{% endblock %}
+{% block topbar_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="list-section" aria-labelledby="work-session-form-title">
+  <header class="list-header">
+    <div>
+      <h2 id="work-session-form-title">{{ title }}</h2>
+      <p class="section-subtitle">Feche o dia com km, ganhos e tempo trabalhado.</p>
+    </div>
+    <a class="inline-cta" href="{% url 'work:dashboard' %}">Voltar</a>
+  </header>
+  <article class="panel">
+    <form method="post" class="data-form" novalidate>
+      {% csrf_token %}
+      {{ form|crispy }}
+      <div class="quick-actions-row-split">
+        <a class="secondary-btn" href="{% url 'work:dashboard' %}">Cancelar</a>
+        <button type="submit" class="primary-btn">{{ submit_label }}</button>
+      </div>
+    </form>
+  </article>
+</section>
+{% endblock %}

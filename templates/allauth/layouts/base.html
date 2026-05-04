@@ -66,8 +66,8 @@
     <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
     <link rel="stylesheet" href="{% static 'css/app.css' %}" />
     <style>[x-cloak] { display: none !important; }</style>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
+    <script src="{% static 'vendor/alpine/alpine.min.js' %}" defer></script>
+    <script src="{% static 'vendor/lucide/lucide.min.js' %}" defer></script>
     <script src="{% static 'js/theme.js' %}" defer></script>
   {% endblock extra_head %}
 </head>

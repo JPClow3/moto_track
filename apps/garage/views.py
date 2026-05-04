@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from djmoney.money import Money
 
+from apps.billing.entitlements import can_add_active_motorcycle
 from apps.core.forms import configure_form_accessibility
 from apps.fuel.models import FuelRecord
 from apps.reports.services import health_score
@@ -33,11 +34,14 @@ def garage_create_view(request):
     if request.method == "POST":
         form = MotorcycleForm(request.POST, request.FILES)
         if form.is_valid():
-            motorcycle = form.save(commit=False)
-            motorcycle.owner = request.user
-            motorcycle.save()
-            messages.success(request, f"Moto {motorcycle.name} cadastrada com sucesso.")
-            return redirect("garage:list")
+            if not can_add_active_motorcycle(request.user):
+                form.add_error(None, "O Plano Free permite 1 moto ativa. O Plano Pro libera multiplas motos.")
+            else:
+                motorcycle = form.save(commit=False)
+                motorcycle.owner = request.user
+                motorcycle.save()
+                messages.success(request, f"Moto {motorcycle.name} cadastrada com sucesso.")
+                return redirect("garage:list")
     else:
         form = MotorcycleForm()
     configure_form_accessibility(form)

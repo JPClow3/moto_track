@@ -6,6 +6,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.billing.models import BillingPlan, SubscriptionProfile
 from apps.fuel.models import FuelRecord
 from apps.garage.models import (
     Motorcycle,
@@ -110,6 +111,11 @@ class GarageViewTests(TestCase):
         self.assertNotContains(response, "Moto de outro")
 
     def test_create_view_persists_owner(self):
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.PRO,
+            stripe_subscription_status="active",
+        )
         self.client.force_login(self.user)
         response = self.client.post(
             reverse("garage:create"),

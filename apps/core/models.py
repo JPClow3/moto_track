@@ -115,8 +115,8 @@ class SiteSettings(models.Model):
 
     @classmethod
     def load(cls):
-        obj, _ = cls.objects.get_or_create(pk=1)
-        return obj
+        obj = cls.objects.filter(pk=1).first()
+        return obj if obj is not None else cls(pk=1)
 
 
 class PushSubscription(TimeStampedModel):
@@ -133,3 +133,20 @@ class PushSubscription(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"Subscription for {self.owner} ({self.created_at.date()})"
+
+
+class ClientSubmission(TimeStampedModel):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="client_submissions")
+    token = models.CharField(max_length=80)
+    action = models.CharField(max_length=80)
+    result_model = models.CharField(max_length=120, blank=True, default="")
+    result_pk = models.PositiveBigIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "token"], name="core_client_submission_owner_token_uniq"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.action}:{self.token}"

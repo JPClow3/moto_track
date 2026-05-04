@@ -85,6 +85,8 @@ INSTALLED_APPS = [
     "apps.expenses",
     "apps.inventory",
     "apps.forum",
+    "apps.billing",
+    "apps.work",
 ]
 
 MIDDLEWARE = [
@@ -114,6 +116,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.core.context_processors.site_settings_context",
                 "apps.core.context_processors.garage_context",
+                "apps.billing.context_processors.billing_context",
             ],
         },
     }
@@ -160,6 +163,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "account_login"
+SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=60 * 60 * 24 * 30)
 
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@motoapp.local")
@@ -330,6 +334,14 @@ BLEACH_STRIP_COMMENTS = True
 
 DEFAULT_CURRENCY = "BRL"
 CURRENCIES = ("BRL",)
+
+STRIPE_API_VERSION = env("STRIPE_API_VERSION", default="2026-02-25.clover")
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+STRIPE_PRO_MONTHLY_PRICE_ID = env("STRIPE_PRO_MONTHLY_PRICE_ID", default="")
+STRIPE_PRO_YEARLY_PRICE_ID = env("STRIPE_PRO_YEARLY_PRICE_ID", default="")
+STRIPE_PAYMENT_METHOD_TYPES = env.list("STRIPE_PAYMENT_METHOD_TYPES", default=["pix", "card"])
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

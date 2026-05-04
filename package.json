@@ -1,0 +1,17 @@
+{
+  "name": "moto-track",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build:css": "python scripts/build_css.py --build && npm run vendor:assets",
+    "watch:css": "python scripts/build_css.py --watch",
+    "vendor:assets": "node scripts/copy_vendor_assets.mjs",
+    "postinstall": "npm run vendor:assets"
+  },
+  "dependencies": {
+    "alpinejs": "3.15.0",
+    "chart.js": "4.5.1",
+    "htmx.org": "2.0.4",
+    "lucide": "0.539.0"
+  }
+}

@@ -81,8 +81,9 @@
         <p>Corrijá os erros destacados para concluir o envio.</p>
       </div>
     {% endif %}
-    <form method="post" enctype="multipart/form-data" class="mt-4 data-form" novalidate>
+    <form method="post" enctype="multipart/form-data" class="mt-4 data-form" data-offline-queue="documents:list" novalidate>
       {% csrf_token %}
+      <input type="hidden" name="client_submission_id" value="{{ client_submission_id }}" />
       {% for field in upload_form.visible_fields %}
         <div class="form-field">
           <label for="{{ field.id_for_label }}">{{ field.label }}</label>

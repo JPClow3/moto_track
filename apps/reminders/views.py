@@ -12,6 +12,8 @@ from apps.core.exports import parse_date_param
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
+from apps.billing.decorators import pro_required
+from apps.billing.entitlements import can_add_active_reminder
 
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 
@@ -77,9 +79,12 @@ def reminder_create_view(request):
     if request.method == "POST":
         form = ReminderForm(request.POST, user=request.user)
         if form.is_valid():
-            reminder = form.save()
-            messages.success(request, f"Lembrete {reminder.title} criado com sucesso.")
-            return redirect("reminders:list")
+            if not can_add_active_reminder(request.user, will_be_active=form.cleaned_data.get("is_active", True)):
+                form.add_error(None, "O Plano Free permite ate 3 lembretes ativos. O Plano Pro libera lembretes profissionais.")
+            else:
+                reminder = form.save()
+                messages.success(request, f"Lembrete {reminder.title} criado com sucesso.")
+                return redirect("reminders:list")
     else:
         form = ReminderForm(user=request.user)
     configure_form_accessibility(form)
@@ -99,9 +104,16 @@ def reminder_update_view(request, pk):
     if request.method == "POST":
         form = ReminderForm(request.POST, instance=reminder, user=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, f"Lembrete {reminder.title} atualizado com sucesso.")
-            return redirect("reminders:list")
+            if not can_add_active_reminder(
+                request.user,
+                instance=reminder,
+                will_be_active=form.cleaned_data.get("is_active", True),
+            ):
+                form.add_error(None, "O Plano Free permite ate 3 lembretes ativos. O Plano Pro libera lembretes profissionais.")
+            else:
+                form.save()
+                messages.success(request, f"Lembrete {reminder.title} atualizado com sucesso.")
+                return redirect("reminders:list")
     else:
         form = ReminderForm(instance=reminder, user=request.user)
     configure_form_accessibility(form)
@@ -129,6 +141,7 @@ def reminder_delete_view(request, pk):
 
 
 @login_required
+@pro_required("Exportacao de lembretes")
 def reminder_export_view(request):
     fmt = (request.GET.get("format") or "csv").strip().lower()
     if fmt not in {"csv", "xlsx"}:

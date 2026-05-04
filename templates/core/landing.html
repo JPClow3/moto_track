@@ -21,6 +21,7 @@
         </a>
         <nav aria-label="Navegação principal">
           <ul class="flex items-center gap-4 text-sm font-semibold">
+            <li><a class="text-on-surface-variant hover:text-on-surface transition" href="{% url 'pricing' %}">Precos</a></li>
             <li><a class="text-on-surface-variant hover:text-on-surface transition" href="{% url 'account_login' %}">Entrar</a></li>
             <li><a class="ui-btn-primary !min-h-10 !px-5" href="{% url 'account_signup' %}">Criar conta</a></li>
           </ul>
@@ -46,6 +47,9 @@
               </a>
               <a class="ui-btn-secondary !min-h-12 !px-7 text-sm font-semibold" href="{% url 'account_login' %}">
                 Entrar
+              </a>
+              <a class="ui-btn-secondary !min-h-12 !px-7 text-sm font-semibold" href="{% url 'pricing' %}">
+                Ver precos
               </a>
             </div>
           </div>

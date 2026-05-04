@@ -7,6 +7,7 @@ from .views import (
     message_list_view,
     odometer_quick_update_view,
     offline_view,
+    pwa_status_view,
     push_subscribe_view,
     quick_add_selector_view,
     service_worker_view,
@@ -38,6 +39,7 @@ urlpatterns = [
     path("manifest.webmanifest", manifest_view, name="manifest"),
     path("sw.js", service_worker_view, name="service_worker"),
     path("api/push/subscribe/", push_subscribe_view, name="push_subscribe"),
+    path("api/pwa/status/", pwa_status_view, name="pwa_status"),
     path("api/theme/", theme_preference_view, name="theme_preference"),
     path("api/messages/", message_list_view, name="message_list"),
 ]

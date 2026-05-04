@@ -67,11 +67,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
-  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <script src="https://unpkg.com/lucide@0.539.0/dist/umd/lucide.min.js" defer></script>
+  <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
+  <script src="{% static 'vendor/alpine/alpine.min.js' %}" defer></script>
+  <script src="{% static 'vendor/lucide/lucide.min.js' %}" defer></script>
   <script src="{% static 'js/theme.js' %}" defer></script>
   <script src="{% static 'js/app.js' %}" defer></script>
+  <script src="{% static 'js/offline-queue.js' %}" defer></script>
   {% block extra_scripts %}{% endblock %}
 </head>
 <body class="min-h-full overflow-x-hidden"
@@ -156,6 +157,12 @@
             </a>
           </li>
           <li>
+            <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'work' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
+               href="{% url 'work:dashboard' %}" {% if request.resolver_match.namespace == 'work' %}aria-current="page"{% endif %}>
+              <i data-lucide="briefcase-business" aria-hidden="true"></i><span>Trabalho</span>
+            </a>
+          </li>
+          <li>
             <a class="flex items-center gap-3 rounded-md px-3 py-3 transition {% if request.resolver_match.namespace == 'garage' %}bg-primary/10 text-primary{% else %}text-on-surface-variant hover:bg-surface-lowest hover:text-on-surface{% endif %}"
                href="{% url 'garage:list' %}" {% if request.resolver_match.namespace == 'garage' %}aria-current="page"{% endif %}>
               <i data-lucide="bike" aria-hidden="true"></i><span>Garagem</span>
@@ -219,6 +226,7 @@
           <a class="hover:text-primary" href="{% url 'terms_of_service' %}">Termos</a>
           <a class="hover:text-primary" href="{% url 'lgpd' %}">LGPD</a>
           <a class="hover:text-primary" href="{% url 'cancellation_policy' %}">Cancelamento</a>
+          <a class="hover:text-primary" href="{% url 'billing:account' %}">Plano {{ billing_plan_label|default:"Free" }}</a>
         </nav>
       </div>
     </aside>
@@ -309,7 +317,7 @@
             <button
               id="push-subscribe-button"
               type="button"
-              class="ui-icon-btn hidden sm:inline-grid"
+              class="ui-icon-btn inline-grid"
               @click="subscribeToPush(this)"
               data-vapid-key="{{ web_push_public_key|default:''|escapejs }}"
               aria-label="Ativar notificações"
@@ -335,6 +343,26 @@
       </main>
 
       {% if request.user.is_authenticated %}
+      <div
+        class="fixed inset-x-3 bottom-[4.75rem] z-[55] hidden rounded-md border border-outline-variant/40 bg-surface-lowest p-3 text-sm shadow-lg lg:bottom-4 lg:left-auto lg:right-4 lg:w-96"
+        data-offline-banner
+        role="status"
+        aria-live="polite"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="font-semibold text-on-surface">Fila offline</p>
+            <p class="mt-0.5 text-xs text-on-surface-variant">
+              <span data-offline-pending-count>0</span> pendente(s)
+              <span class="mx-1">/</span>
+              <span data-offline-failed-count>0</span> precisa(m) de atenção
+            </p>
+          </div>
+          <button type="button" class="ui-btn-secondary !min-h-9 !px-3 !py-2 !text-xs" data-offline-sync-now>
+            Sincronizar agora
+          </button>
+        </div>
+      </div>
       <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-outline-variant/80 bg-surface/92 backdrop-blur lg:hidden print:hidden" aria-label="Navegação rápida">
         <div class="mx-auto grid w-[min(1280px,94%)] grid-cols-5 gap-1 py-2 text-xs font-medium">
           <a class="flex min-h-[3rem] flex-col items-center justify-center gap-1 rounded-md py-3 {% if request.resolver_match.url_name == 'dashboard' %}bg-primary/10 text-primary{% else %}text-on-surface-variant{% endif %}"
@@ -395,7 +423,9 @@
         <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'tires:list' %}"><i data-lucide="circle-dot" class="inline text-on-surface-variant" aria-hidden="true"></i>Pneus</a>
         <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'documents:list' %}"><i data-lucide="file-text" class="inline text-on-surface-variant" aria-hidden="true"></i>Documentos</a>
         <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'expenses:list' %}"><i data-lucide="shield-check" class="inline text-on-surface-variant" aria-hidden="true"></i>Taxas</a>
+        <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'work:dashboard' %}"><i data-lucide="briefcase-business" class="inline text-on-surface-variant" aria-hidden="true"></i>Trabalho</a>
         <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'reports:overview' %}"><i data-lucide="chart-column" class="inline text-on-surface-variant" aria-hidden="true"></i>Relatórios</a>
+        <a class="flex items-center gap-2 rounded-md bg-surface-low px-4 py-3 text-on-surface" href="{% url 'billing:account' %}"><i data-lucide="wallet-cards" class="inline text-on-surface-variant" aria-hidden="true"></i>Plano</a>
       </div>
       <div class="mt-4 flex gap-3">
         <button type="button" class="ui-toolbar-btn w-full justify-center" data-theme-toggle>

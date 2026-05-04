@@ -1,0 +1,86 @@
+{% extends "allauth/layouts/base.html" %}
+{% load static %}
+
+{% block head_title %}Precos - Moto Track{% endblock %}
+{% block meta_description %}Planos Free e Pro do Moto Track para motoboys, mototaxis e motociclistas profissionais.{% endblock %}
+
+{% block body %}
+<main id="main-content" class="min-h-screen" tabindex="-1">
+  <header class="border-b border-outline-variant/80 bg-surface/88 backdrop-blur">
+    <div class="mx-auto flex w-[min(1180px,94%)] items-center justify-between gap-4 py-4">
+      <a class="inline-flex max-w-full" href="{% url 'landing' %}" aria-label="Moto Track">
+        <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-10 w-auto max-w-[15rem]" width="220" height="40">
+      </a>
+      <nav class="flex items-center gap-3 text-sm font-semibold">
+        {% if request.user.is_authenticated %}
+          <a class="ui-btn-secondary !min-h-10 !px-4" href="{% url 'billing:account' %}">Minha conta</a>
+          <a class="ui-btn-primary !min-h-10 !px-4" href="{% url 'dashboard' %}">Painel</a>
+        {% else %}
+          <a class="text-on-surface-variant hover:text-on-surface" href="{% url 'account_login' %}">Entrar</a>
+          <a class="ui-btn-primary !min-h-10 !px-4" href="{% url 'account_signup' %}">Criar conta</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <section class="mx-auto grid w-[min(1180px,94%)] gap-8 py-12 md:grid-cols-[0.9fr_1.1fr] md:py-16">
+    <div class="space-y-5">
+      <span class="ui-eyebrow">Free + Pro</span>
+      <h1 class="font-headline text-4xl font-bold tracking-tight text-on-surface md:text-5xl">
+        Saiba se a moto da lucro ou esta comendo dinheiro.
+      </h1>
+      <p class="max-w-xl text-base leading-7 text-on-surface-variant">
+        O plano gratis mantem o registro essencial. O Pro libera a leitura profissional: lucro por dia, custo por km,
+        reserva de manutencao, exportacoes e dossie de venda.
+      </p>
+      {% if has_pro %}
+        <a class="ui-btn-primary" href="{% url 'billing:account' %}">Gerenciar assinatura</a>
+      {% endif %}
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2">
+      <article class="rounded-md border border-outline-variant/40 bg-surface-low p-6">
+        <p class="text-sm font-semibold text-on-surface-variant">Free</p>
+        <p class="mt-2 font-headline text-4xl font-semibold">R$ 0</p>
+        <p class="mt-2 text-sm text-on-surface-variant">Para criar habito sem travar o registro.</p>
+        <ul class="mt-6 space-y-3 text-sm text-on-surface-variant">
+          <li>1 moto ativa</li>
+          <li>Abastecimentos e manutencoes livres</li>
+          <li>Historico e painel basicos</li>
+          <li>3 documentos/fotos/recibos</li>
+          <li>3 lembretes ativos</li>
+        </ul>
+        <a class="ui-btn-secondary mt-6 w-full justify-center" href="{% url 'account_signup' %}">Comecar gratis</a>
+      </article>
+
+      <article class="rounded-md border-2 border-primary bg-surface-low p-6 shadow-sm" x-data="{ interval: 'monthly' }">
+        <p class="text-sm font-semibold text-primary">Pro</p>
+        <div class="mt-4 grid grid-cols-2 rounded-md border border-outline-variant/40 bg-surface-lowest p-1 text-sm font-semibold" role="tablist" aria-label="Periodicidade">
+          <button type="button" class="rounded px-3 py-2 transition" :class="interval === 'monthly' ? 'bg-primary text-on-primary' : 'text-on-surface-variant'" @click="interval = 'monthly'">Mensal</button>
+          <button type="button" class="rounded px-3 py-2 transition" :class="interval === 'yearly' ? 'bg-primary text-on-primary' : 'text-on-surface-variant'" @click="interval = 'yearly'">Anual</button>
+        </div>
+        <p class="mt-4 font-headline text-4xl font-semibold" x-show="interval === 'monthly'">R$ {{ monthly_price }}<span class="text-base font-medium text-on-surface-variant">/mes</span></p>
+        <p class="mt-4 font-headline text-4xl font-semibold" x-show="interval === 'yearly'" x-cloak>R$ {{ yearly_price }}<span class="text-base font-medium text-on-surface-variant">/ano</span></p>
+        <p class="mt-1 text-sm font-semibold text-on-surface" x-text="interval === 'monthly' ? 'R$ 14,90 por mes' : 'Economia vs. mensal: R$ 49,80/ano'"></p>
+        <p class="mt-2 text-sm text-on-surface-variant">Para motoboys, mototaxis e uso profissional.</p>
+        <ul class="mt-6 space-y-3 text-sm text-on-surface-variant">
+          <li>Multiplas motos</li>
+          <li>Turnos, ganhos e lucro mensal</li>
+          <li>Custo por km e reserva de manutencao</li>
+          <li>Documentos, fotos e recibos sem limite pratico</li>
+          <li>CSV/PDF, dossie de venda e relatorios avancados</li>
+        </ul>
+        {% if request.user.is_authenticated %}
+          <form class="mt-6 grid gap-2" method="post" action="{% url 'billing:checkout' %}">
+            {% csrf_token %}
+            <input type="hidden" name="interval" value="monthly" :value="interval">
+            <button class="ui-btn-primary w-full justify-center" type="submit" x-text="interval === 'monthly' ? 'Assinar mensal' : 'Assinar anual'">Assinar mensal</button>
+          </form>
+        {% else %}
+          <a class="ui-btn-primary mt-6 w-full justify-center" href="{% url 'account_signup' %}">Criar conta e assinar</a>
+        {% endif %}
+      </article>
+    </div>
+  </section>
+</main>
+{% endblock body %}

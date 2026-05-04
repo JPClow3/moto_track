@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from apps.billing.models import BillingPlan, SubscriptionProfile
 from apps.expenses.models import AnnualFee, InsurancePolicy
 from apps.fuel.models import FuelRecord, FuelStation
 from apps.garage.models import Motorcycle
@@ -60,11 +61,18 @@ class ReportOverviewTests(TestCase):
             price_per_liter=Decimal("6.250"),
         )
 
+    def _grant_pro(self):
+        SubscriptionProfile.objects.update_or_create(
+            user=self.user,
+            defaults={"plan": BillingPlan.PRO, "stripe_subscription_status": "active"},
+        )
+
     def test_report_overview_requires_login(self):
         response = self.client.get(reverse("reports:overview"))
         self.assertEqual(response.status_code, 302)
 
     def test_report_overview_returns_owner_aggregates(self):
+        self._grant_pro()
         self.client.force_login(self.user)
         response = self.client.get(reverse("reports:overview"))
 
@@ -97,6 +105,7 @@ class ReportOverviewTests(TestCase):
         self.assertGreaterEqual(score.total, 0)
 
     def test_timeline_view_and_exports(self):
+        self._grant_pro()
         self.client.force_login(self.user)
 
         timeline = self.client.get(reverse("reports:timeline"))
@@ -255,6 +264,7 @@ class ReportOverviewTests(TestCase):
 
     def test_sale_pdf_weasyprint_import_error(self):
         import sys
+        self._grant_pro()
         self.client.force_login(self.user)
         # Simulate weasyprint not installed
         real_module = sys.modules.get("weasyprint")

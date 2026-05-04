@@ -10,12 +10,14 @@
     <form
       method="post"
       class="mt-6 data-form"
+      data-offline-queue="quick_odometer_update"
       hx-post="{% url 'quick_odometer_update' %}"
       hx-target="#quick-form-root"
       hx-swap="innerHTML"
     >
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ next_url }}" />
+      <input type="hidden" name="client_submission_id" value="{{ client_submission_id }}" />
       {{ form|crispy }}
 
       <div class="quick-actions-row">

@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.billing.decorators import pro_required
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
@@ -63,6 +64,7 @@ def expenses_list_view(request):
 
 
 @login_required
+@pro_required("Exportacao CSV de taxas e seguros")
 def expenses_export_view(request):
     return build_export(user=request.user)
 

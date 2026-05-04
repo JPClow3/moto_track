@@ -107,6 +107,8 @@ DJANGO_SETTINGS_MODULE=config.settings.prod
 DJANGO_DEBUG=False
 DJANGO_SECRET_KEY=<gere-um-valor-longo-aleatorio>
 DJANGO_ALLOWED_HOSTS=54.86.112.205
+APP_BUILD_ID=<git-sha-ou-release>
+SESSION_COOKIE_AGE=2592000
 
 DATABASE_URL=postgres://...
 
@@ -114,6 +116,8 @@ AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_STORAGE_BUCKET_NAME=moto-track
 AWS_S3_REGION_NAME=us-east-1
+WEB_PUSH_PUBLIC_KEY=...
+PUSH_ENCRYPTION_KEY=...
 
 # Opcional:
 # Para AWS "puro", normalmente você pode OMITIR isso.
@@ -237,6 +241,10 @@ O Compose file deste repo separa o reverse proxy (Caddy) em um profile `edge` pa
 - `DJANGO_ALLOWED_HOSTS`: hosts separados por vírgula (seu(s) domínio(s) + opcionalmente o IP do servidor)
 - `AWS_STORAGE_BUCKET_NAME`: bucket S3 para uploads (default file storage usa django-storages)
 - `AWS_S3_REGION_NAME`: ex: `us-east-1` (opcional; default no app é `us-east-1`)
+- `APP_BUILD_ID`: identificador do deploy usado pelo service worker para limpar caches antigos
+- `WEB_PUSH_PUBLIC_KEY`: chave pública VAPID exposta ao navegador para inscrição push
+- `PUSH_ENCRYPTION_KEY`: chave dedicada para criptografar dados da inscrição push no banco
+- `SESSION_COOKIE_AGE`: tempo da sessão em segundos; default do app é 30 dias (`2592000`)
 
 Opcional:
 

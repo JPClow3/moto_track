@@ -5,6 +5,8 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 
+from apps.billing.decorators import pro_required
+from apps.billing.entitlements import has_pro_access
 from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.exports import parse_date_param
 from apps.core.severity import SEVERITY_LABELS
@@ -29,6 +31,8 @@ def report_overview_view(request):
     motorcycle = get_active_motorcycle(request)
     if not motorcycle:
         return redirect("onboarding")
+    if not has_pro_access(request.user):
+        return render(request, "reports/locked.html")
 
     summary = cost_summary(user=request.user, motorcycle=motorcycle)
     comparisons = period_comparisons(user=request.user, motorcycle=motorcycle)
@@ -109,6 +113,7 @@ def report_timeline_view(request):
 
 
 @login_required
+@pro_required("Exportacao CSV detalhada")
 def detailed_export_view(request):
     return detailed_csv_response(
         user=request.user,
@@ -118,6 +123,7 @@ def detailed_export_view(request):
 
 
 @login_required
+@pro_required("Dossie de venda em PDF")
 def sale_pdf_export_view(request):
     motorcycle = get_active_motorcycle(request)
     if not motorcycle:
@@ -126,6 +132,7 @@ def sale_pdf_export_view(request):
 
 
 @login_required
+@pro_required("Dossie publico de venda")
 def sale_report_html_view(request, pk: int):
     motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user)
     data = sale_report_data(motorcycle=motorcycle)
@@ -133,6 +140,7 @@ def sale_report_html_view(request, pk: int):
 
 
 @login_required
+@pro_required("Dossie de venda em PDF")
 def sale_report_weasyprint_view(request, pk: int):
     try:
         from weasyprint import HTML  # type: ignore[import-untyped]

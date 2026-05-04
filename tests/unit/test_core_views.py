@@ -91,6 +91,29 @@ class CoreViewsTests(TestCase):
         self.motorcycle.refresh_from_db()
         self.assertEqual(self.motorcycle.odometer_override_km, 12000)
 
+    def test_odometer_quick_update_replay_is_idempotent(self):
+        ClientSubmission = self.motorcycle._meta.apps.get_model("core", "ClientSubmission")
+        token = "odometer-replay-token"
+
+        self.client.force_login(self.user)
+        for _ in range(2):
+            response = self.client.post(
+                reverse("quick_odometer_update"),
+                {
+                    "odometer_override_km": 12000,
+                    "next": reverse("dashboard"),
+                    "client_submission_id": token,
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+
+        self.motorcycle.refresh_from_db()
+        self.assertEqual(self.motorcycle.odometer_override_km, 12000)
+        submission = ClientSubmission.objects.get(owner=self.user, token=token)
+        self.assertEqual(submission.action, "quick_odometer_update")
+        self.assertEqual(submission.result_model, "garage.Motorcycle")
+        self.assertEqual(submission.result_pk, self.motorcycle.pk)
+
     def test_odometer_quick_update_allows_lower_override_above_historical_max(self):
         self.motorcycle.odometer_override_km = 15000
         self.motorcycle.save(update_fields=["odometer_override_km"])
@@ -411,11 +434,27 @@ class CoreMiscViewTests(TestCase):
         response = self.client.get(reverse("offline"))
         self.assertEqual(response.status_code, 200)
 
+    def test_offline_page_is_public_and_cacheable(self):
+        response = self.client.get(reverse("offline"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("public", response["Cache-Control"])
+        self.assertContains(response, "Sincronizar")
+
     def test_manifest_view(self):
         response = self.client.get(reverse("manifest"))
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["name"], "Moto Track")
+        self.assertEqual(data["id"], "/")
+        self.assertEqual(data["scope"], "/")
+        self.assertEqual(data["start_url"], "/dashboard/?source=pwa")
+        self.assertEqual(data["display"], "standalone")
+        self.assertIn("categories", data)
+        self.assertIn("description", data)
+        self.assertTrue(any(icon["sizes"] == "192x192" for icon in data["icons"]))
+        self.assertTrue(any(icon["sizes"] == "512x512" for icon in data["icons"]))
+        self.assertTrue(any("maskable" in icon.get("purpose", "") for icon in data["icons"]))
 
     def test_manifest_view_dark_mode(self):
         response = self.client.get(reverse("manifest"), {"mode": "dark", "resolved": "dark"})
@@ -425,6 +464,29 @@ class CoreMiscViewTests(TestCase):
         response = self.client.get(reverse("service_worker"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/javascript")
+        self.assertContains(response, "OFFLINE_QUEUE_SYNC")
+        self.assertContains(response, "/static/js/offline-queue.js")
+        self.assertContains(response, "/manifest.webmanifest")
+        self.assertContains(response, "android-chrome-192x192.png")
+        self.assertContains(response, "QUEUEABLE_PATHS.includes")
+        self.assertContains(response, "fuel:quick_create")
+
+    def test_pwa_status_requires_login(self):
+        response = self.client.get(reverse("pwa_status"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["authenticated"])
+        self.assertIn(reverse("account_login"), response.json()["login_url"])
+
+    def test_pwa_status_returns_fresh_csrf_for_authenticated_user(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("pwa_status"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["authenticated"])
+        self.assertTrue(payload["csrf_token"])
 
     def test_undo_action_missing_token(self):
         self.client.force_login(self.user)

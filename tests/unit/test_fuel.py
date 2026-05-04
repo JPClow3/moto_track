@@ -7,12 +7,13 @@ from typing import Any, cast
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.urls import reverse
 
+from apps.documents.models import DocumentType, MotorcycleDocument
 from apps.fuel.forms import FuelRecordQuickForm
 from apps.fuel.models import FuelGrade, FuelPreference, FuelRecord, FuelReviewPreference, FuelStation, FuelType
 from apps.fuel.services import (
@@ -414,6 +415,8 @@ class FuelModelTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'aria-required="true"')
+        self.assertContains(response, 'data-offline-queue="fuel:quick_create"')
+        self.assertContains(response, 'name="client_submission_id"')
 
     def test_quick_create_uses_total_price_subfield_for_live_preview(self):
         self.client.force_login(self.user)
@@ -447,6 +450,24 @@ class FuelModelTests(TestCase):
                 use_count=1,
             ).exists()
         )
+
+    def test_quick_create_replay_with_same_client_submission_is_idempotent(self):
+        ClientSubmission = self.motorcycle._meta.apps.get_model("core", "ClientSubmission")
+        token = "fuel-replay-token"
+        payload = self._fuel_payload(next=reverse("fuel:list"), client_submission_id=token)
+
+        self.client.force_login(self.user)
+        first = self.client.post(reverse("fuel:quick_create"), payload, HTTP_HOST="localhost")
+        second = self.client.post(reverse("fuel:quick_create"), payload, HTTP_HOST="localhost")
+
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(second.status_code, 302)
+        self.assertEqual(FuelRecord.objects.filter(motorcycle=self.motorcycle, odometer_km=1000).count(), 1)
+        record = FuelRecord.objects.get(motorcycle=self.motorcycle, odometer_km=1000)
+        submission = ClientSubmission.objects.get(owner=self.user, token=token)
+        self.assertEqual(submission.action, "fuel:quick_create")
+        self.assertEqual(submission.result_model, "fuel.FuelRecord")
+        self.assertEqual(submission.result_pk, record.pk)
 
     def test_quick_create_persists_receipt_from_form_submission(self):
         receipt = SimpleUploadedFile("cupom.jpg", b"fake image", content_type="image/jpeg")
@@ -502,6 +523,39 @@ class FuelModelTests(TestCase):
         self.assertEqual(record.total_price.amount, Decimal("80.50"))
         self.assertEqual(record.station_name, "Posto atualizado")
         self.assertEqual(record.notes, "Registro corrigido")
+
+    def test_record_update_preserves_existing_receipt_when_upload_limit_blocks_new_file(self):
+        record = self._create_record(
+            receipt_file=SimpleUploadedFile("recibo-original.pdf", b"%PDF-1.4\n", content_type="application/pdf")
+        )
+        original_receipt = record.receipt_file.name
+        for idx in range(2):
+            MotorcycleDocument.objects.create(
+                motorcycle=self.motorcycle,
+                name=f"Doc limite {idx}",
+                document_type=DocumentType.OTHER,
+                file=SimpleUploadedFile(f"doc-limite-{idx}.pdf", b"pdf", content_type="application/pdf"),
+            )
+
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("fuel:update", args=[record.pk]),
+            {
+                **self._fuel_payload(
+                    date="2026-04-14",
+                    odometer_km=1250,
+                    liters="11.500",
+                    total_price_0="80.50",
+                    price_per_liter_0="7.000",
+                ),
+                "receipt_file": SimpleUploadedFile("recibo-novo.pdf", b"%PDF-1.4\n", content_type="application/pdf"),
+            },
+            HTTP_HOST="localhost",
+        )
+
+        self.assertEqual(response.status_code, 302)
+        record.refresh_from_db()
+        self.assertEqual(record.receipt_file.name, original_receipt)
 
     def test_record_update_view_denies_other_user_record(self):
         other_motorcycle = Motorcycle.objects.get(owner=self.other_user)
@@ -762,8 +816,15 @@ class FuelModelTests(TestCase):
         self.assertTrue(any("revisão" in message.lower() for message in messages))
 
     def test_fuel_export_csv_respects_filters_and_includes_receipt_column(self):
+        from apps.billing.models import BillingPlan, SubscriptionProfile
+
         self._create_record(station_name="Posto visivel", date=date(2026, 4, 10), fuel_type=FuelType.PREMIUM_GASOLINE)
         self._create_record(station_name="Fora", date=date(2026, 3, 1), odometer_km=800, fuel_type=FuelType.ETHANOL)
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.PRO,
+            stripe_subscription_status="active",
+        )
 
         self.client.force_login(self.user)
         response = self.client.get(
@@ -778,7 +839,14 @@ class FuelModelTests(TestCase):
         self.assertNotIn("Fora", body)
 
     def test_fuel_export_pdf_returns_pdf_response(self):
+        from apps.billing.models import BillingPlan, SubscriptionProfile
+
         self._create_record(station_name="Posto PDF")
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.PRO,
+            stripe_subscription_status="active",
+        )
 
         self.client.force_login(self.user)
         response = self.client.get(reverse("fuel:export"), {"format": "pdf"})
