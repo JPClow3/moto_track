@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
@@ -7,7 +8,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -77,6 +78,27 @@ class PaidTierEntitlementTests(TestCase):
         self.assertEqual(FREE_UPLOAD_LIMIT, 3)
         self.assertFalse(can_add_uploads(self.user))
 
+    def test_free_upload_limit_counts_archived_motorcycle_uploads(self):
+        from apps.billing.entitlements import FREE_UPLOAD_LIMIT, can_add_uploads
+
+        archived = Motorcycle.objects.create(
+            owner=self.user,
+            name="Moto Arquivada",
+            brand="Honda",
+            model="Biz",
+            year=2021,
+            is_active=False,
+        )
+        for idx in range(FREE_UPLOAD_LIMIT):
+            MotorcycleDocument.objects.create(
+                motorcycle=archived,
+                name=f"Doc arquivado {idx}",
+                document_type=DocumentType.OTHER,
+                file=SimpleUploadedFile(f"doc-arquivado-{idx}.pdf", b"pdf", content_type="application/pdf"),
+            )
+
+        self.assertFalse(can_add_uploads(self.user))
+
 
 @override_settings(
     STRIPE_SECRET_KEY="sk_test_123",
@@ -114,8 +136,16 @@ class BillingFlowTests(TestCase):
         self.assertEqual(created_payload["line_items"][0]["price"], "price_monthly")
         self.assertEqual(created_payload["payment_method_types"], ["pix", "card"])
 
+    def test_billing_account_renders_without_subscription_profile(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("billing:account"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Plano Free")
+
     @override_settings(STRIPE_WEBHOOK_SECRET="")
-    def test_stripe_webhook_accepts_valid_json_without_secret(self):
+    def test_stripe_webhook_rejects_unsigned_payload_when_secret_missing(self):
         with patch("apps.billing.views.process_stripe_event") as process_event:
             response = self.client.post(
                 reverse("billing:stripe_webhook"),
@@ -123,21 +153,110 @@ class BillingFlowTests(TestCase):
                 content_type="application/json",
             )
 
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.content, b"Webhook endpoint is not configured.")
+        process_event.assert_not_called()
+
+    @override_settings(STRIPE_WEBHOOK_SECRET="whsec_test")
+    def test_stripe_webhook_dispatches_verified_event(self):
+        import stripe
+
+        payload = '{"id":"evt_verified","type":"invoice.paid","data":{"object":{}}}'
+        timestamp = int(time.time())
+        signature = stripe.WebhookSignature._compute_signature(f"{timestamp}.{payload}", "whsec_test")
+        with patch("apps.billing.views.process_stripe_event") as process_event:
+            response = self.client.post(
+                reverse("billing:stripe_webhook"),
+                data=payload,
+                content_type="application/json",
+                HTTP_STRIPE_SIGNATURE=f"t={timestamp},v1={signature}",
+            )
+
         self.assertEqual(response.status_code, 200)
         process_event.assert_called_once()
+        self.assertEqual(process_event.call_args.args[0].id, "evt_verified")
 
-    @override_settings(STRIPE_WEBHOOK_SECRET="")
-    def test_stripe_webhook_does_not_expose_exception_details(self):
-        with patch("apps.billing.views.process_stripe_event", side_effect=RuntimeError("database stack detail")):
+    @override_settings(STRIPE_WEBHOOK_SECRET="whsec_test")
+    def test_stripe_webhook_rejects_invalid_signature_without_processing(self):
+        from stripe._error import SignatureVerificationError
+
+        with (
+            patch(
+                "apps.billing.views.construct_webhook_event",
+                side_effect=SignatureVerificationError("signature stack detail", "t=123,v1=bad", b"{}"),
+            ),
+            patch("apps.billing.views.process_stripe_event") as process_event,
+        ):
             response = self.client.post(
                 reverse("billing:stripe_webhook"),
                 data='{"id":"evt_bad","type":"invoice.paid","data":{"object":{}}}',
                 content_type="application/json",
+                HTTP_STRIPE_SIGNATURE="t=123,v1=bad",
             )
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.content, b"Invalid webhook payload.")
-        self.assertNotContains(response, "database stack detail", status_code=400)
+        self.assertNotContains(response, "signature stack detail", status_code=400)
+        process_event.assert_not_called()
+
+    @override_settings(STRIPE_WEBHOOK_SECRET="whsec_test")
+    def test_stripe_webhook_rejects_malformed_payload_without_details(self):
+        with (
+            patch("apps.billing.views.construct_webhook_event", side_effect=ValueError("json parser stack detail")),
+            patch("apps.billing.views.process_stripe_event") as process_event,
+        ):
+            response = self.client.post(
+                reverse("billing:stripe_webhook"),
+                data="{not-json",
+                content_type="application/json",
+                HTTP_STRIPE_SIGNATURE="t=123,v1=sig",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content, b"Invalid webhook payload.")
+        self.assertNotContains(response, "json parser stack detail", status_code=400)
+        process_event.assert_not_called()
+
+    @override_settings(STRIPE_WEBHOOK_SECRET="whsec_test")
+    def test_stripe_webhook_expected_processing_error_is_generic(self):
+        from apps.billing.webhooks import WebhookProcessingError
+
+        event = {"id": "evt_expected_error", "type": "invoice.paid", "data": {"object": {}}}
+        with (
+            patch("apps.billing.views.construct_webhook_event", return_value=event),
+            patch(
+                "apps.billing.views.process_stripe_event",
+                side_effect=WebhookProcessingError("metadata processing detail"),
+            ),
+        ):
+            response = self.client.post(
+                reverse("billing:stripe_webhook"),
+                data='{"id":"evt_expected_error","type":"invoice.paid","data":{"object":{}}}',
+                content_type="application/json",
+                HTTP_STRIPE_SIGNATURE="t=123,v1=sig",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content, b"Invalid webhook payload.")
+        self.assertNotContains(response, "metadata processing detail", status_code=400)
+
+    @override_settings(STRIPE_WEBHOOK_SECRET="whsec_test")
+    def test_stripe_webhook_unexpected_processing_exception_surfaces(self):
+        event = {"id": "evt_crash", "type": "invoice.paid", "data": {"object": {}}}
+        client = Client(raise_request_exception=False)
+        with (
+            patch("apps.billing.views.construct_webhook_event", return_value=event),
+            patch("apps.billing.views.process_stripe_event", side_effect=RuntimeError("database stack detail")),
+        ):
+            response = client.post(
+                reverse("billing:stripe_webhook"),
+                data='{"id":"evt_crash","type":"invoice.paid","data":{"object":{}}}',
+                content_type="application/json",
+                HTTP_STRIPE_SIGNATURE="t=123,v1=sig",
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertNotEqual(response.content, b"Invalid webhook payload.")
 
     def test_subscription_webhook_activates_pro_idempotently(self):
         from apps.billing.models import BillingEvent, BillingPlan, SubscriptionProfile
@@ -234,7 +353,15 @@ class WorkSessionTests(TestCase):
         FuelRecord.objects.create(
             motorcycle=self.motorcycle,
             date=date(2026, 5, 3),
-            odometer_km=10100,
+            odometer_km=10000,
+            liters=Decimal("5.000"),
+            total_price=Decimal("20.00"),
+            price_per_liter=Decimal("4.000"),
+        )
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date=date(2026, 5, 4),
+            odometer_km=10200,
             liters=Decimal("5.000"),
             total_price=Decimal("20.00"),
             price_per_liter=Decimal("4.000"),
@@ -274,6 +401,78 @@ class WorkSessionTests(TestCase):
         self.assertEqual(summary.profit_per_km, Decimal("1.580"))
         self.assertEqual(summary.profit_per_hour, Decimal("19.750"))
 
+    def test_professional_summary_estimates_work_fuel_from_work_distance(self):
+        from apps.work.models import PlatformSource, WorkSession
+        from apps.work.services import professional_summary
+
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date=date(2026, 5, 1),
+            odometer_km=10000,
+            liters=Decimal("5.000"),
+            total_price=Decimal("20.00"),
+            price_per_liter=Decimal("4.000"),
+        )
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date=date(2026, 5, 31),
+            odometer_km=10200,
+            liters=Decimal("5.000"),
+            total_price=Decimal("20.00"),
+            price_per_liter=Decimal("4.000"),
+        )
+        WorkSession.objects.create(
+            owner=self.user,
+            motorcycle=self.motorcycle,
+            work_date=date(2026, 5, 3),
+            odometer_start_km=10000,
+            odometer_end_km=10100,
+            gross_income=Decimal("100.00"),
+            platform_source=PlatformSource.IFOOD,
+        )
+
+        summary = professional_summary(
+            user=self.user,
+            motorcycle=self.motorcycle,
+            start=date(2026, 5, 1),
+            end=date(2026, 5, 31),
+        )
+
+        self.assertEqual(summary.distance_km, 100)
+        self.assertEqual(summary.fuel_cost, Decimal("20.00"))
+        self.assertEqual(summary.estimated_profit, Decimal("68.00"))
+
+    def test_professional_summary_uses_zero_fuel_cost_without_history_span(self):
+        from apps.work.models import PlatformSource, WorkSession
+        from apps.work.services import professional_summary
+
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date=date(2026, 5, 1),
+            odometer_km=10000,
+            liters=Decimal("5.000"),
+            total_price=Decimal("20.00"),
+            price_per_liter=Decimal("4.000"),
+        )
+        WorkSession.objects.create(
+            owner=self.user,
+            motorcycle=self.motorcycle,
+            work_date=date(2026, 5, 3),
+            odometer_start_km=10000,
+            odometer_end_km=10100,
+            gross_income=Decimal("100.00"),
+            platform_source=PlatformSource.IFOOD,
+        )
+
+        summary = professional_summary(
+            user=self.user,
+            motorcycle=self.motorcycle,
+            start=date(2026, 5, 1),
+            end=date(2026, 5, 31),
+        )
+
+        self.assertEqual(summary.fuel_cost, Decimal("0.00"))
+
     def test_work_session_form_renders_datetime_local_values(self):
         from apps.work.forms import WorkSessionForm
         from apps.work.models import PlatformSource, WorkSession
@@ -294,6 +493,55 @@ class WorkSessionTests(TestCase):
 
         self.assertIn('value="2026-05-03T08:00"', str(form["started_at"]))
         self.assertIn('value="2026-05-03T16:00"', str(form["ended_at"]))
+
+    def test_work_session_form_rejects_invalid_owner_odometer_and_time(self):
+        from apps.work.forms import WorkSessionForm
+
+        other = get_user_model().objects.create_user(username="other-work-user", email="other-work@example.com")
+        other_motorcycle = Motorcycle.objects.create(
+            owner=other,
+            name="Moto Outra",
+            brand="Yamaha",
+            model="Factor",
+            year=2023,
+        )
+
+        form = WorkSessionForm(
+            data={
+                "motorcycle": other_motorcycle.pk,
+                "work_date": "2026-05-03",
+                "started_at": "2026-05-03T16:00",
+                "ended_at": "2026-05-03T08:00",
+                "odometer_start_km": "10100",
+                "odometer_end_km": "10000",
+                "gross_income": "100.00",
+                "tips": "0.00",
+                "deliveries_count": "0",
+                "platform_source": "ifood",
+                "payment_method": "pix",
+            },
+            user=self.user,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("motorcycle", form.errors)
+        self.assertIn("ended_at", form.errors)
+        self.assertIn("odometer_end_km", form.errors)
+
+    def test_professional_cost_settings_form_rejects_negative_values(self):
+        from apps.work.forms import ProfessionalCostSettingsForm
+
+        form = ProfessionalCostSettingsForm(
+            data={
+                "maintenance_reserve_per_km": "-0.010",
+                "depreciation_per_km": "0.000",
+                "fixed_daily_cost": "-1.00",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("maintenance_reserve_per_km", form.errors)
+        self.assertIn("fixed_daily_cost", form.errors)
 
 
 class PaidTierGateTests(TestCase):

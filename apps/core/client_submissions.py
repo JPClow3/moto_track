@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import uuid
 
-from django.db import IntegrityError
-
 from apps.core.models import ClientSubmission
 
 
@@ -36,7 +34,4 @@ def record_client_submission(request, *, token: str, action: str, result) -> Non
     result_model = result._meta.label
     result_pk = result.pk
     defaults = {"action": action, "result_model": result_model, "result_pk": result_pk}
-    try:
-        ClientSubmission.objects.update_or_create(owner=request.user, token=token, defaults=defaults)
-    except IntegrityError:
-        ClientSubmission.objects.filter(owner=request.user, token=token).update(**defaults)
+    ClientSubmission.objects.update_or_create(owner=request.user, token=token, defaults=defaults)

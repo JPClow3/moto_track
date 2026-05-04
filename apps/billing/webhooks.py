@@ -11,6 +11,10 @@ from django.utils import timezone
 from .models import BillingEvent, BillingInterval, BillingPlan, SubscriptionProfile
 
 
+class WebhookProcessingError(ValueError):
+    pass
+
+
 def _plain(value: Any):
     if isinstance(value, dict):
         return {str(k): _plain(v) for k, v in value.items()}
@@ -36,7 +40,10 @@ def _get(data: Any, key: str, default=None):
 def _timestamp(value):
     if not value:
         return None
-    return datetime.fromtimestamp(int(value), tz=timezone.get_current_timezone())
+    try:
+        return datetime.fromtimestamp(int(value), tz=timezone.get_current_timezone())
+    except (OverflowError, OSError, TypeError, ValueError) as exc:
+        raise WebhookProcessingError("Invalid Stripe timestamp.") from exc
 
 
 def _user_from_payload(obj) -> Any | None:
@@ -139,8 +146,10 @@ def _apply_invoice(invoice, *, paid: bool) -> None:
 
 @transaction.atomic
 def process_stripe_event(event: dict[str, Any]) -> BillingEvent:
-    event_id = str(_get(event, "id", ""))
-    event_type = str(_get(event, "type", ""))
+    event_id = str(_get(event, "id", "") or "")
+    event_type = str(_get(event, "type", "") or "")
+    if not event_id or not event_type:
+        raise WebhookProcessingError("Stripe event is missing id or type.")
     billing_event, created = BillingEvent.objects.get_or_create(
         stripe_event_id=event_id,
         defaults={"event_type": event_type, "payload": _plain(event)},
@@ -166,7 +175,7 @@ def process_stripe_event(event: dict[str, Any]) -> BillingEvent:
             _apply_invoice(obj, paid=True)
         elif event_type == "invoice.payment_failed":
             _apply_invoice(obj, paid=False)
-    except Exception as exc:  # noqa: BLE001
+    except WebhookProcessingError as exc:
         billing_event.processing_error = str(exc)
         billing_event.save(update_fields=["processing_error", "updated_at"])
         raise

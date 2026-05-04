@@ -4,10 +4,9 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.db.models import Sum
 from django.utils import timezone
 
-from apps.core.validation import money_amount
+from apps.fuel.services import build_fuel_period_summary
 from apps.fuel.models import FuelRecord
 from apps.garage.models import Motorcycle
 
@@ -44,6 +43,15 @@ def _month_bounds(today: date | None = None) -> tuple[date, date]:
     return start, next_month - timedelta(days=1)
 
 
+def _estimated_work_fuel_cost(fuel_records, distance_km: int) -> Decimal:
+    if distance_km <= 0:
+        return Decimal("0")
+    summary = build_fuel_period_summary(fuel_records)
+    if summary.cost_per_km is None:
+        return Decimal("0")
+    return (summary.cost_per_km * Decimal(distance_km)).quantize(Decimal("0.01"))
+
+
 def professional_summary(*, user, motorcycle: Motorcycle | None = None, start: date | None = None, end: date | None = None) -> ProfessionalSummary:
     if start is None or end is None:
         start, end = _month_bounds()
@@ -57,7 +65,8 @@ def professional_summary(*, user, motorcycle: Motorcycle | None = None, start: d
     revenue = sum((row.total_revenue for row in session_rows), Decimal("0"))
     distance_km = sum((row.distance_km for row in session_rows), 0)
     hours = sum((row.duration_hours for row in session_rows), Decimal("0"))
-    fuel_total = money_amount(fuel.aggregate(total=Sum("total_price"))["total"]) or Decimal("0")
+    fuel_records = list(fuel.order_by("date", "odometer_km", "pk"))
+    fuel_total = _estimated_work_fuel_cost(fuel_records, distance_km)
 
     settings = None
     if motorcycle:

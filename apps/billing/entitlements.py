@@ -58,15 +58,14 @@ def can_add_active_motorcycle(user, *, instance: Motorcycle | None = None) -> bo
 
 
 def upload_count(user) -> int:
-    docs = MotorcycleDocument.objects.filter(motorcycle__owner=user, motorcycle__is_active=True).count()
+    docs = MotorcycleDocument.objects.filter(motorcycle__owner=user).count()
     fuel_receipts = (
-        FuelRecord.objects.filter(motorcycle__owner=user, motorcycle__is_active=True)
+        FuelRecord.objects.filter(motorcycle__owner=user)
         .exclude(receipt_file="")
         .count()
     )
     maintenance_photos = MaintenancePhoto.objects.filter(
         maintenance_record__motorcycle__owner=user,
-        maintenance_record__motorcycle__is_active=True,
     ).count()
     return docs + fuel_receipts + maintenance_photos
 

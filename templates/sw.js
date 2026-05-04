@@ -143,11 +143,23 @@ async function queuePostWhenNetworkFails(req) {
     await saveRequest(queued);
     await registerBackgroundSync();
     await broadcastQueueState();
-    return new Response(
-      '<div class="alert-banner-main"><div class="alert-body"><span class="alert-icon"><i data-lucide="wifi-off" aria-hidden="true"></i></span><div><p class="font-semibold text-on-surface">Salvo offline.</p><p class="text-sm text-warning">Será sincronizado assim que a conexão voltar.</p></div></div></div>',
-      { headers: { "Content-Type": "text/html" } }
-    );
+    if (req.mode === "navigate") {
+      return offlineNavigationFallback();
+    }
+    return offlineQueuedFragmentResponse();
   }
+}
+
+async function offlineNavigationFallback() {
+  const cache = await caches.open(CACHE_NAME);
+  return (await cache.match(OFFLINE_URL)) || new Response("Offline", { status: 503 });
+}
+
+function offlineQueuedFragmentResponse() {
+  return new Response(
+    '<div class="alert-banner-main"><div class="alert-body"><span class="alert-icon"><i data-lucide="wifi-off" aria-hidden="true"></i></span><div><p class="font-semibold text-on-surface">Salvo offline.</p><p class="text-sm text-warning">Será sincronizado assim que a conexão voltar.</p></div></div></div>',
+    { headers: { "Content-Type": "text/html" } }
+  );
 }
 
 async function requestToQueueRecord(req) {

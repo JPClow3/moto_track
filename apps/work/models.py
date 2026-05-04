@@ -50,10 +50,6 @@ class ProfessionalCostSettings(TimeStampedModel):
         if errors:
             raise ValidationError(errors)
 
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
-
 
 class WorkSession(TimeStampedModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="work_sessions")
@@ -110,7 +106,3 @@ class WorkSession(TimeStampedModel):
             errors["tips"] = "As gorjetas nao podem ser negativas."
         if errors:
             raise ValidationError(errors)
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)

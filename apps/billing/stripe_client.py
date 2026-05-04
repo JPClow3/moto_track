@@ -5,22 +5,40 @@ from django.urls import reverse
 
 from .entitlements import ensure_subscription_profile
 
+try:
+    import stripe
+    from stripe._error import SignatureVerificationError, StripeError
+except ImportError:
+    stripe = None
+
+    class StripeError(Exception):
+        pass
+
+    class SignatureVerificationError(StripeError):
+        pass
+
 
 class BillingConfigurationError(RuntimeError):
     pass
 
 
 def get_stripe_client():
-    try:
-        import stripe
-    except ImportError as exc:
-        raise BillingConfigurationError("Instale a dependencia stripe para usar cobrancas.") from exc
-
+    if stripe is None:
+        raise BillingConfigurationError("Instale a dependencia stripe para usar cobrancas.")
     if not settings.STRIPE_SECRET_KEY:
         raise BillingConfigurationError("STRIPE_SECRET_KEY nao configurada.")
     stripe.api_key = settings.STRIPE_SECRET_KEY
     stripe.api_version = settings.STRIPE_API_VERSION
     return stripe
+
+
+def construct_webhook_event(payload: bytes, signature: str):
+    if stripe is None:
+        raise BillingConfigurationError("Instale a dependencia stripe para usar cobrancas.")
+    if not settings.STRIPE_WEBHOOK_SECRET:
+        raise BillingConfigurationError("STRIPE_WEBHOOK_SECRET nao configurada.")
+    stripe.api_version = settings.STRIPE_API_VERSION
+    return stripe.Webhook.construct_event(payload, signature, settings.STRIPE_WEBHOOK_SECRET)
 
 
 def pro_price_id(interval: str) -> str:

@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import json
-
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
@@ -11,10 +8,17 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .entitlements import has_pro_access, plan_label, remaining_upload_slots
+from .entitlements import get_subscription_profile, has_pro_access, plan_label, remaining_upload_slots
 from .models import AccountDataRequest
-from .stripe_client import BillingConfigurationError, create_checkout_session, create_portal_session, get_stripe_client
-from .webhooks import process_stripe_event
+from .stripe_client import (
+    BillingConfigurationError,
+    SignatureVerificationError,
+    StripeError,
+    construct_webhook_event,
+    create_checkout_session,
+    create_portal_session,
+)
+from .webhooks import WebhookProcessingError, process_stripe_event
 
 
 def pricing_view(request):
@@ -31,7 +35,7 @@ def pricing_view(request):
 
 @login_required
 def billing_account_view(request):
-    profile = getattr(request.user, "subscription_profile", None)
+    profile = get_subscription_profile(request.user)
     return render(
         request,
         "billing/account.html",
@@ -111,12 +115,14 @@ def stripe_webhook_view(request):
     payload = request.body
     signature = request.headers.get("Stripe-Signature", "")
     try:
-        if settings.STRIPE_WEBHOOK_SECRET:
-            stripe = get_stripe_client()
-            event = stripe.Webhook.construct_event(payload, signature, settings.STRIPE_WEBHOOK_SECRET)
-        else:
-            event = json.loads(payload.decode("utf-8"))
+        event = construct_webhook_event(payload, signature)
+    except BillingConfigurationError:
+        return HttpResponse("Webhook endpoint is not configured.", status=503)
+    except (ValueError, SignatureVerificationError, StripeError):
+        return HttpResponse("Invalid webhook payload.", status=400)
+
+    try:
         process_stripe_event(event)
-    except Exception:  # noqa: BLE001
+    except WebhookProcessingError:
         return HttpResponse("Invalid webhook payload.", status=400)
     return HttpResponse(status=200)

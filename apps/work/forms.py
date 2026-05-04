@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 
 from apps.core.sanitizers import sanitize_text
 from apps.garage.models import Motorcycle
@@ -75,6 +76,28 @@ class WorkSessionForm(forms.ModelForm):
     def clean_notes(self):
         return sanitize_text(self.cleaned_data.get("notes"))
 
+    def clean(self):
+        cleaned_data = super().clean()
+        motorcycle = cleaned_data.get("motorcycle")
+        started_at = cleaned_data.get("started_at")
+        ended_at = cleaned_data.get("ended_at")
+        odometer_start = cleaned_data.get("odometer_start_km")
+        odometer_end = cleaned_data.get("odometer_end_km")
+        gross_income = cleaned_data.get("gross_income")
+        tips = cleaned_data.get("tips")
+
+        if motorcycle and self.user and motorcycle.owner_id != self.user.id:
+            self.add_error("motorcycle", "Selecione uma moto da sua garagem.")
+        if started_at and ended_at and ended_at < started_at:
+            self.add_error("ended_at", "O fim do turno nao pode ser anterior ao inicio.")
+        if odometer_start is not None and odometer_end is not None and int(odometer_end) < int(odometer_start):
+            self.add_error("odometer_end_km", "O km final nao pode ser menor que o inicial.")
+        if gross_income is not None and gross_income < 0:
+            self.add_error("gross_income", "O faturamento nao pode ser negativo.")
+        if tips is not None and tips < 0:
+            self.add_error("tips", "As gorjetas nao podem ser negativas.")
+        return cleaned_data
+
 
 class ProfessionalCostSettingsForm(forms.ModelForm):
     class Meta:
@@ -90,3 +113,14 @@ class ProfessionalCostSettingsForm(forms.ModelForm):
             "depreciation_per_km": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.001"}),
             "fixed_daily_cost": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        errors = {}
+        for field in ("maintenance_reserve_per_km", "depreciation_per_km", "fixed_daily_cost"):
+            value = cleaned_data.get(field)
+            if value is not None and value < 0:
+                errors[field] = "O valor nao pode ser negativo."
+        if errors:
+            raise ValidationError(errors)
+        return cleaned_data

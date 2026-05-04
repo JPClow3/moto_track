@@ -114,6 +114,31 @@ class CoreViewsTests(TestCase):
         self.assertEqual(submission.result_model, "garage.Motorcycle")
         self.assertEqual(submission.result_pk, self.motorcycle.pk)
 
+    def test_record_client_submission_updates_existing_token_idempotently(self):
+        from apps.core.client_submissions import record_client_submission
+        from apps.core.models import ClientSubmission
+
+        request = RequestFactory().post("/", {"client_submission_id": "repeat-token"})
+        request.user = self.user
+
+        record_client_submission(
+            request,
+            token="repeat-token",
+            action="quick_odometer_update",
+            result=self.motorcycle,
+        )
+        record_client_submission(
+            request,
+            token="repeat-token",
+            action="quick_odometer_update",
+            result=self.motorcycle,
+        )
+
+        self.assertEqual(ClientSubmission.objects.filter(owner=self.user, token="repeat-token").count(), 1)
+        submission = ClientSubmission.objects.get(owner=self.user, token="repeat-token")
+        self.assertEqual(submission.result_model, "garage.Motorcycle")
+        self.assertEqual(submission.result_pk, self.motorcycle.pk)
+
     def test_odometer_quick_update_allows_lower_override_above_historical_max(self):
         self.motorcycle.odometer_override_km = 15000
         self.motorcycle.save(update_fields=["odometer_override_km"])
@@ -470,6 +495,9 @@ class CoreMiscViewTests(TestCase):
         self.assertContains(response, "android-chrome-192x192.png")
         self.assertContains(response, "QUEUEABLE_PATHS.includes")
         self.assertContains(response, "fuel:quick_create")
+        self.assertContains(response, "offlineQueuedFragmentResponse")
+        self.assertContains(response, 'if (req.mode === "navigate")')
+        self.assertContains(response, "cache.match(OFFLINE_URL)")
 
     def test_pwa_status_requires_login(self):
         response = self.client.get(reverse("pwa_status"))
