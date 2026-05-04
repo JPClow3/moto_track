@@ -37,6 +37,22 @@ def _get(data: Any, key: str, default=None):
     return getattr(data, key, default)
 
 
+def _stripe_id(value: Any) -> str:
+    if isinstance(value, dict):
+        return str(value.get("id", "") or "")
+    nested_id = getattr(value, "id", None)
+    if nested_id:
+        return str(nested_id)
+    return str(value or "")
+
+
+def _subscription_status_from_invoice(invoice) -> str:
+    subscription = _get(invoice, "subscription")
+    if isinstance(subscription, dict):
+        return str(subscription.get("status", "") or "")
+    return str(getattr(subscription, "status", "") or "")
+
+
 def _timestamp(value):
     if not value:
         return None
@@ -56,8 +72,9 @@ def _user_from_payload(obj) -> Any | None:
 
 
 def _profile_for(obj) -> SubscriptionProfile | None:
-    sub_id = _get(obj, "id") if str(_get(obj, "object", "")).lower() == "subscription" else _get(obj, "subscription")
-    customer_id = _get(obj, "customer")
+    raw_sub_id = _get(obj, "id") if str(_get(obj, "object", "")).lower() == "subscription" else _get(obj, "subscription")
+    sub_id = _stripe_id(raw_sub_id)
+    customer_id = _stripe_id(_get(obj, "customer"))
     query = SubscriptionProfile.objects.all()
     if sub_id:
         profile = query.filter(stripe_subscription_id=sub_id).first()
@@ -134,9 +151,11 @@ def _apply_invoice(invoice, *, paid: bool) -> None:
     if _get(invoice, "invoice_pdf"):
         profile.latest_receipt_url = _get(invoice, "invoice_pdf")
     if paid:
-        profile.plan = BillingPlan.PRO
-        profile.stripe_subscription_status = "active"
-        profile.grace_until = None
+        subscription_status = _subscription_status_from_invoice(invoice) or profile.stripe_subscription_status
+        if subscription_status == "active":
+            profile.plan = BillingPlan.PRO
+            profile.stripe_subscription_status = "active"
+            profile.grace_until = None
         profile.save()
     else:
         profile.stripe_subscription_status = "past_due"

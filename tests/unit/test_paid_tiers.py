@@ -311,6 +311,80 @@ class BillingFlowTests(TestCase):
         self.assertTrue(profile.grace_until > timezone.now())
         self.assertTrue(has_pro_access(self.user))
 
+    def test_late_invoice_paid_does_not_restore_canceled_subscription(self):
+        from apps.billing.entitlements import has_pro_access
+        from apps.billing.models import BillingPlan, SubscriptionProfile
+        from apps.billing.webhooks import process_stripe_event
+
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.PRO,
+            stripe_customer_id="cus_123",
+            stripe_subscription_id="sub_123",
+            stripe_subscription_status="active",
+        )
+        process_stripe_event(
+            {
+                "id": "evt_deleted",
+                "type": "customer.subscription.deleted",
+                "data": {"object": {"id": "sub_123", "customer": "cus_123"}},
+            }
+        )
+        process_stripe_event(
+            {
+                "id": "evt_late_paid",
+                "type": "invoice.paid",
+                "data": {
+                    "object": {
+                        "customer": "cus_123",
+                        "subscription": "sub_123",
+                        "hosted_invoice_url": "https://stripe.example/invoice",
+                    }
+                },
+            }
+        )
+
+        profile = SubscriptionProfile.objects.get(user=self.user)
+        self.assertEqual(profile.plan, BillingPlan.FREE)
+        self.assertEqual(profile.stripe_subscription_status, "canceled")
+        self.assertEqual(profile.latest_invoice_url, "https://stripe.example/invoice")
+        self.user.refresh_from_db()
+        self.assertFalse(has_pro_access(self.user))
+
+    def test_invoice_paid_keeps_active_subscription_access(self):
+        from apps.billing.entitlements import has_pro_access
+        from apps.billing.models import BillingPlan, SubscriptionProfile
+        from apps.billing.webhooks import process_stripe_event
+
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.PRO,
+            stripe_customer_id="cus_123",
+            stripe_subscription_id="sub_123",
+            stripe_subscription_status="active",
+            grace_until=timezone.now() + timedelta(days=1),
+        )
+        process_stripe_event(
+            {
+                "id": "evt_paid_active",
+                "type": "invoice.paid",
+                "data": {
+                    "object": {
+                        "customer": "cus_123",
+                        "subscription": "sub_123",
+                        "invoice_pdf": "https://stripe.example/receipt.pdf",
+                    }
+                },
+            }
+        )
+
+        profile = SubscriptionProfile.objects.get(user=self.user)
+        self.assertEqual(profile.plan, BillingPlan.PRO)
+        self.assertEqual(profile.stripe_subscription_status, "active")
+        self.assertIsNone(profile.grace_until)
+        self.assertEqual(profile.latest_receipt_url, "https://stripe.example/receipt.pdf")
+        self.assertTrue(has_pro_access(self.user))
+
     def test_invoice_paid_without_subscription_does_not_grant_pro(self):
         from apps.billing.entitlements import has_pro_access
         from apps.billing.models import SubscriptionProfile
@@ -332,6 +406,17 @@ class BillingFlowTests(TestCase):
         profile = SubscriptionProfile.objects.get(user=self.user)
         self.assertFalse(has_pro_access(self.user))
         self.assertEqual(profile.stripe_subscription_status, "")
+
+    def test_data_export_get_is_side_effect_free(self):
+        from apps.billing.models import AccountDataRequest
+
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("billing:data_export"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Disposition"], 'attachment; filename="moto_track_dados.json"')
+        self.assertEqual(AccountDataRequest.objects.filter(user=self.user).count(), 0)
 
 
 class WorkSessionTests(TestCase):

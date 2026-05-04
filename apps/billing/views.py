@@ -88,7 +88,6 @@ def data_export_view(request):
                 "documents": motorcycle.documents.count(),
             }
         )
-    AccountDataRequest.objects.create(user=request.user, request_type=AccountDataRequest.RequestType.EXPORT)
     response = JsonResponse(
         {
             "user": {"username": request.user.username, "email": request.user.email},
