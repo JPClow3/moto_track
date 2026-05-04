@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
+from django.core.cache import cache
 from django.db import IntegrityError, models, transaction
 from django.utils.crypto import get_random_string
 
@@ -86,6 +87,9 @@ class ApiToken(TimeStampedModel):
             super().save(*args, **kwargs)
 
 class SiteSettings(models.Model):
+    CACHE_KEY = "core:site-settings"
+    CACHE_MISS = False
+
     company_name = models.CharField(max_length=200, default="Moto Track")
     cnpj = models.CharField("CNPJ", max_length=20, blank=True, default="")
     support_email = models.EmailField(default="suporte@moto-track.net")
@@ -112,11 +116,27 @@ class SiteSettings(models.Model):
     def save(self, *args, **kwargs):
         self.pk = 1
         super().save(*args, **kwargs)
+        cache.delete(self.CACHE_KEY)
+
+    def delete(self, *args, **kwargs):
+        cache.delete(self.CACHE_KEY)
+        return super().delete(*args, **kwargs)
 
     @classmethod
     def load(cls):
         obj = cls.objects.filter(pk=1).first()
         return obj if obj is not None else cls(pk=1)
+
+    @classmethod
+    def get_cached(cls):
+        cached = cache.get(cls.CACHE_KEY, None)
+        if cached is cls.CACHE_MISS:
+            return None
+        if cached is not None:
+            return cached
+        obj = cls.objects.filter(pk=1).first()
+        cache.set(cls.CACHE_KEY, obj if obj is not None else cls.CACHE_MISS, 300)
+        return obj
 
 
 class PushSubscription(TimeStampedModel):

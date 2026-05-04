@@ -427,6 +427,15 @@ class FuelModelTests(TestCase):
         self.assertContains(response, "$event.target.name === 'total_price_0'")
         self.assertNotContains(response, "document.getElementById('')")
 
+    def test_quick_create_uses_total_price_subfield_for_live_preview(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("fuel:quick_create"), HTTP_HX_REQUEST="true", HTTP_HOST="localhost")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "document.querySelector('[name=total_price_0]')")
+        self.assertContains(response, "$event.target.name === 'total_price_0'")
+        self.assertNotContains(response, "document.getElementById('')")
+
     def test_quick_create_persists_record_and_preference_from_form_submission(self):
         self.client.force_login(self.user)
         response = self.client.post(

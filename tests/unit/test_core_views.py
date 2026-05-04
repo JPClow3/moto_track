@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from djmoney.money import Money
 
-from apps.core.models import ApiToken, PushSubscription
+from apps.core.models import ApiToken, PushSubscription, SiteSettings
 from apps.core.services.dashboard import get_status_cards, get_tire_cards, get_weekly_sparkline_points
 from apps.core.services.notifications import notification_alerts_for_motorcycle
 from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY
@@ -51,6 +51,14 @@ class CoreViewsTests(TestCase):
         self.assertContains(response, "Moto Track")
         self.assertContains(response, '<meta name="description"')
         self.assertContains(response, "Controle sua moto com precisão")
+
+    def test_landing_does_not_create_site_settings_row(self):
+        SiteSettings.objects.all().delete()
+
+        response = self.client.get(reverse("landing"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(SiteSettings.objects.count(), 0)
 
     def test_landing_redirects_authenticated_user_to_dashboard(self):
         self.client.force_login(self.user)

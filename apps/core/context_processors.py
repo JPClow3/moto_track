@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def site_settings_context(request):
     try:
-        return {"site_settings": SiteSettings.load()}
+        return {"site_settings": SiteSettings.get_cached()}
     except (OperationalError, ProgrammingError):
         logger.warning("SiteSettings table not available (migrations pending).")
         return {"site_settings": None}
