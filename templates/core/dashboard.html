@@ -115,61 +115,73 @@
     </div>
     <div class="grid grid-cols-1 gap-3">
       {% if not setup_progress.has_maintenance_plan %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex items-start justify-between gap-4" x-show="!dismissed.maintenance" x-cloak>
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.maintenance" x-cloak>
         <div>
           <p class="text-sm font-semibold text-on-surface">Quer configurar óleo e revisão?</p>
           <p class="text-xs text-on-surface-variant mt-1">Ajuda o app a prever quando sua próxima manutenção vence.</p>
         </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2" href="{% url 'maintenance:list' %}">Configurar agora</a>
+        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'maintenance:list' %}">Configurar agora</a>
           <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.maintenance = true">Depois</button>
         </div>
       </div>
       {% endif %}
       {% if not setup_progress.has_tires %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex items-start justify-between gap-4" x-show="!dismissed.tires" x-cloak>
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.tires" x-cloak>
         <div>
           <p class="text-sm font-semibold text-on-surface">Quer adicionar pneus?</p>
           <p class="text-xs text-on-surface-variant mt-1">Monitore desgaste e saiba quando trocar.</p>
         </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2" href="{% url 'tires:list' %}">Adicionar</a>
+        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'tires:list' %}">Adicionar</a>
           <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.tires = true">Depois</button>
         </div>
       </div>
       {% endif %}
       {% if not setup_progress.has_documents %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex items-start justify-between gap-4" x-show="!dismissed.documents" x-cloak>
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.documents" x-cloak>
         <div>
           <p class="text-sm font-semibold text-on-surface">Quer adicionar um documento?</p>
           <p class="text-xs text-on-surface-variant mt-1">Guarde CRLV, seguro e notas fiscais com data de validade.</p>
         </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2" href="{% url 'documents:list' %}">Adicionar</a>
+        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'documents:list' %}">Adicionar</a>
           <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.documents = true">Depois</button>
         </div>
       </div>
       {% endif %}
+      {% if not setup_progress.has_expenses %}
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.expenses" x-cloak>
+        <div>
+          <p class="text-sm font-semibold text-on-surface">Quer adicionar uma despesa?</p>
+          <p class="text-xs text-on-surface-variant mt-1">Documente taxas, seguros e reserva financeira.</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'expenses:list' %}">Adicionar</a>
+          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.expenses = true">Depois</button>
+        </div>
+      </div>
+      {% endif %}
       {% if not setup_progress.has_reminders %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex items-start justify-between gap-4" x-show="!dismissed.reminders" x-cloak>
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.reminders" x-cloak>
         <div>
           <p class="text-sm font-semibold text-on-surface">Quer criar um lembrete?</p>
           <p class="text-xs text-on-surface-variant mt-1">Receba alertas de troca de óleo, revisão e documentos.</p>
         </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2" href="{% url 'reminders:list' %}">Criar</a>
+        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'reminders:list' %}">Criar</a>
           <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.reminders = true">Depois</button>
         </div>
       </div>
       {% endif %}
       {% if not setup_progress.has_fuel %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex items-start justify-between gap-4" x-show="!dismissed.fuel" x-cloak>
+      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.fuel" x-cloak>
         <div>
           <p class="text-sm font-semibold text-on-surface">Quer importar ou registrar abastecimentos?</p>
           <p class="text-xs text-on-surface-variant mt-1">Acompanhe consumo e gasto por km rodado.</p>
         </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2" href="{% url 'fuel:list' %}">Registrar</a>
+        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'fuel:list' %}">Registrar</a>
           <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.fuel = true">Depois</button>
         </div>
       </div>
@@ -265,7 +277,7 @@
               </div>
             </div>
             <div class="h-1.5 overflow-hidden rounded-full bg-surface-high">
-              <span class="block h-full rounded-full {% if tire.status_tone == 'warning' %}bg-warning{% elif tire.status_tone == 'neutral' %}bg-info{% else %}bg-success{% endif %}" x-data="{ w: {{ tire.wear_percent|default:0 }} }" x-bind:style="{ width: w + '%' }"></span>
+              <span class="block h-full rounded-full animate-bar {% if tire.status_tone == 'warning' %}bg-warning{% elif tire.status_tone == 'neutral' %}bg-info{% else %}bg-success{% endif %}" x-data="{ w: {{ tire.wear_percent|default:0 }} }" x-bind:style="{ width: w + '%' }"></span>
             </div>
           </div>
         {% endfor %}

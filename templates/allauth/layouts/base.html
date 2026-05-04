@@ -4,8 +4,7 @@
 <html lang="pt-BR" class="h-full" data-theme="system">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="{% block meta_description %}Acesse o Moto Track para acompanhar garagem, manutenções, abastecimentos, pneus, documentos e relatórios.{% endblock %}" />
   <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}" />
   <meta name="theme-color" content="#F5F5F4" />
@@ -15,11 +14,11 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="{{ request.build_absolute_uri }}" />
   <meta name="twitter:card" content="summary" />
-  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/moto-track-icon.png' %}" />
-  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/moto-track-icon.png' %}" />
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}" />
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}" />
   <link rel="icon" href="{% static 'brand/favicon.ico' %}" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'brand/favicon-32x32.png' %}" />
-  <link rel="apple-touch-icon" sizes="512x512" href="{% static 'brand/moto-track-icon.png' %}" />
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'brand/web/apple-touch-icon.png' %}" />
   <link rel="manifest" href="{% url 'manifest' %}" data-base-href="{% url 'manifest' %}" />
   <title>{% block head_title %}{% endblock head_title %}</title>
   <script>

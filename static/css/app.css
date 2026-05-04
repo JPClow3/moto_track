@@ -68,14 +68,36 @@
 .htmx-request.ui-btn-primary,
 .htmx-request.ui-btn-secondary,
 .htmx-request.ui-icon-btn,
-.htmx-request.ui-toolbar-btn {
-  opacity: 0.65;
+.htmx-request.ui-toolbar-btn,
+.htmx-request .ui-btn-primary,
+.htmx-request .ui-btn-secondary {
+  opacity: 0.55;
   pointer-events: none;
   cursor: wait;
+  transition: opacity 0.15s ease;
 }
 
 [x-cloak] {
   display: none !important;
+}
+
+@keyframes snackbar-slide-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(0.75rem); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes snackbar-slide-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(0.75rem); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
 }
 
 /* Image skeleton before load */
@@ -85,6 +107,26 @@ img[loading="lazy"] {
 
 [data-theme="dark"] img[loading="lazy"] {
   background-color: rgb(39 39 42);
+}
+
+/* Scrollbar styling for dark mode */
+html[data-theme="dark"] {
+  scrollbar-color: rgb(63 63 70) rgb(39 39 42);
+  scrollbar-width: thin;
+}
+
+/* HTMX request loading states */
+.htmx-request {
+  transition: opacity 0.15s ease;
+}
+
+/* Snackbar slide-in animation */
+.snackbar-enter {
+  animation: snackbar-slide-in 0.3s ease-out forwards;
+}
+
+.snackbar-exit {
+  animation: snackbar-slide-out 0.2s ease-in forwards;
 }
 
 @media print {

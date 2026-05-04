@@ -7,7 +7,7 @@
 {% block body %}
 <main id="main-content" class="min-h-screen" tabindex="-1">
   <header class="border-b border-outline-variant/80 bg-surface/88 backdrop-blur">
-    <div class="mx-auto flex w-[min(1180px,94%)] items-center justify-between gap-4 py-4">
+    <div class="mx-auto flex w-[min(1280px,94%)] items-center justify-between gap-4 py-4">
       <a class="inline-flex max-w-full" href="{% url 'landing' %}" aria-label="Moto Track">
         <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-10 w-auto max-w-[15rem]" width="220" height="40">
       </a>
@@ -23,7 +23,7 @@
     </div>
   </header>
 
-  <section class="mx-auto grid w-[min(1180px,94%)] gap-8 py-12 md:grid-cols-[0.9fr_1.1fr] md:py-16">
+  <section class="mx-auto grid w-[min(1280px,94%)] gap-8 py-12 md:grid-cols-[0.9fr_1.1fr] md:py-16">
     <div class="space-y-5">
       <span class="ui-eyebrow">Free + Pro</span>
       <h1 class="font-headline text-4xl font-bold tracking-tight text-on-surface md:text-5xl">
@@ -44,11 +44,11 @@
         <p class="mt-2 font-headline text-4xl font-semibold">R$ 0</p>
         <p class="mt-2 text-sm text-on-surface-variant">Para criar habito sem travar o registro.</p>
         <ul class="mt-6 space-y-3 text-sm text-on-surface-variant">
-          <li>1 moto ativa</li>
-          <li>Abastecimentos e manutencoes livres</li>
-          <li>Historico e painel basicos</li>
-          <li>3 documentos/fotos/recibos</li>
-          <li>3 lembretes ativos</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="h-4 w-4 shrink-0 text-success mt-0.5" aria-hidden="true"></i>1 moto ativa</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="h-4 w-4 shrink-0 text-success mt-0.5" aria-hidden="true"></i>Abastecimentos e manutencoes livres</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="h-4 w-4 shrink-0 text-success mt-0.5" aria-hidden="true"></i>Historico e painel basicos</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="h-4 w-4 shrink-0 text-success mt-0.5" aria-hidden="true"></i>3 documentos/fotos/recibos</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="h-4 w-4 shrink-0 text-success mt-0.5" aria-hidden="true"></i>3 lembretes ativos</li>
         </ul>
         <a class="ui-btn-secondary mt-6 w-full justify-center" href="{% url 'account_signup' %}">Comecar gratis</a>
       </article>
@@ -64,11 +64,11 @@
         <p class="mt-1 text-sm font-semibold text-on-surface" x-text="interval === 'monthly' ? 'R$ 14,90 por mes' : 'Economia vs. mensal: R$ 49,80/ano'"></p>
         <p class="mt-2 text-sm text-on-surface-variant">Para motoboys, mototaxis e uso profissional.</p>
         <ul class="mt-6 space-y-3 text-sm text-on-surface-variant">
-          <li>Multiplas motos</li>
-          <li>Turnos, ganhos e lucro mensal</li>
-          <li>Custo por km e reserva de manutencao</li>
-          <li>Documentos, fotos e recibos sem limite pratico</li>
-          <li>CSV/PDF, dossie de venda e relatorios avancados</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="h-4 w-4 shrink-0 text-primary mt-0.5" aria-hidden="true"></i>Multiplas motos</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="h-4 w-4 shrink-0 text-primary mt-0.5" aria-hidden="true"></i>Turnos, ganhos e lucro mensal</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="h-4 w-4 shrink-0 text-primary mt-0.5" aria-hidden="true"></i>Custo por km e reserva de manutencao</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="h-4 w-4 shrink-0 text-primary mt-0.5" aria-hidden="true"></i>Documentos, fotos e recibos sem limite pratico</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="h-4 w-4 shrink-0 text-primary mt-0.5" aria-hidden="true"></i>CSV/PDF, dossie de venda e relatorios avancados</li>
         </ul>
         {% if request.user.is_authenticated %}
           <form class="mt-6 grid gap-2" method="post" action="{% url 'billing:checkout' %}">
@@ -82,5 +82,15 @@
       </article>
     </div>
   </section>
+
+  <footer class="border-t border-outline-variant/40 py-8">
+    <div class="mx-auto flex w-[min(1280px,94%)] items-center justify-between gap-4 text-xs text-on-surface-variant">
+      <p>&copy; {% now "Y" %} Moto Track</p>
+      <nav class="flex gap-4" aria-label="Links legais">
+        <a class="hover:text-on-surface transition-colors" href="{% url 'privacy_policy' %}">Privacidade</a>
+        <a class="hover:text-on-surface transition-colors" href="{% url 'terms_of_service' %}">Termos</a>
+      </nav>
+    </div>
+  </footer>
 </main>
 {% endblock body %}

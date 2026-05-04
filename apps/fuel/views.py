@@ -491,7 +491,9 @@ def fuel_record_update_view(request, pk: int):
         existing_receipt_name = record.receipt_file.name
         form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user, instance=record)
         if form.is_valid():
-            if request.FILES.get("receipt_file") and not can_add_uploads(request.user):
+            if request.FILES.get("receipt_file") and not can_add_uploads(
+                request.user, incoming_count=0 if existing_receipt_name else 1
+            ):
                 form.instance.receipt_file = existing_receipt_name
                 messages.info(request, "Alteracao salva sem novo recibo porque o limite do Plano Free foi atingido.")
             updated = form.save()

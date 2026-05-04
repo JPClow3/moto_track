@@ -103,10 +103,18 @@ if (typeof Alpine !== "undefined") {
     const snackbar = document.getElementById("client-snackbar");
     if (!snackbar) return;
     snackbar.textContent = message;
-    snackbar.classList.remove("hidden");
+    snackbar.classList.remove("hidden", "snackbar-exit");
+    snackbar.classList.add("snackbar-enter");
     window.clearTimeout(snackbar.dataset.hideTimer);
     const timer = window.setTimeout(() => {
-      snackbar.classList.add("hidden");
+      snackbar.classList.remove("snackbar-enter");
+      snackbar.classList.add("snackbar-exit");
+      snackbar.addEventListener("animationend", () => {
+        if (snackbar.classList.contains("snackbar-exit")) {
+          snackbar.classList.add("hidden");
+          snackbar.classList.remove("snackbar-exit");
+        }
+      }, { once: true });
     }, 5000);
     snackbar.dataset.hideTimer = timer;
   }

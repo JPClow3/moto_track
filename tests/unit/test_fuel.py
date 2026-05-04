@@ -536,11 +536,10 @@ class FuelModelTests(TestCase):
         self.assertEqual(record.station_name, "Posto atualizado")
         self.assertEqual(record.notes, "Registro corrigido")
 
-    def test_record_update_preserves_existing_receipt_when_upload_limit_blocks_new_file(self):
+    def test_record_update_allows_replacing_receipt_when_upload_limit_is_full(self):
         record = self._create_record(
             receipt_file=SimpleUploadedFile("recibo-original.pdf", b"%PDF-1.4\n", content_type="application/pdf")
         )
-        original_receipt = record.receipt_file.name
         for idx in range(2):
             MotorcycleDocument.objects.create(
                 motorcycle=self.motorcycle,
@@ -567,7 +566,37 @@ class FuelModelTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         record.refresh_from_db()
-        self.assertEqual(record.receipt_file.name, original_receipt)
+        self.assertTrue(record.receipt_file.name.endswith("recibo-novo.pdf"))
+
+    def test_record_update_blocks_new_receipt_when_upload_limit_is_full_and_no_existing_receipt(self):
+        record = self._create_record()
+        for idx in range(3):
+            MotorcycleDocument.objects.create(
+                motorcycle=self.motorcycle,
+                name=f"Doc limite {idx}",
+                document_type=DocumentType.OTHER,
+                file=SimpleUploadedFile(f"doc-limite-{idx}.pdf", b"pdf", content_type="application/pdf"),
+            )
+
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("fuel:update", args=[record.pk]),
+            {
+                **self._fuel_payload(
+                    date="2026-04-14",
+                    odometer_km=1250,
+                    liters="11.500",
+                    total_price_0="80.50",
+                    price_per_liter_0="7.000",
+                ),
+                "receipt_file": SimpleUploadedFile("recibo-novo.pdf", b"%PDF-1.4\n", content_type="application/pdf"),
+            },
+            HTTP_HOST="localhost",
+        )
+
+        self.assertEqual(response.status_code, 302)
+        record.refresh_from_db()
+        self.assertFalse(record.receipt_file)
 
     def test_record_update_view_denies_other_user_record(self):
         other_motorcycle = Motorcycle.objects.get(owner=self.other_user)

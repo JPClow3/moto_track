@@ -55,7 +55,7 @@
           </div>
 
           <div class="hidden md:flex justify-center">
-            <img src="{% static 'brand/moto-track-icon.png' %}" alt="Ícone do Moto Track" class="h-40 w-auto opacity-80" loading="lazy" width="160" height="160">
+            <img src="{% static 'brand/moto-track-icon.png' %}" alt="Ícone do Moto Track" class="h-44 w-auto drop-shadow-lg" loading="lazy" width="176" height="176">
           </div>
         </div>
       </section>
@@ -68,28 +68,34 @@
               Tudo para sua moto em um painel
             </h2>
           </div>
-          <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <div class="space-y-1.5">
+          <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
+              <i data-lucide="bike" class="h-5 w-5 text-primary" aria-hidden="true"></i>
               <h3 class="text-base font-semibold text-on-surface">Garagem</h3>
               <p class="text-sm text-on-surface-variant">Cadastre motos, odômetro e histórico completo.</p>
             </div>
-            <div class="space-y-1.5">
+            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
+              <i data-lucide="fuel" class="h-5 w-5 text-primary" aria-hidden="true"></i>
               <h3 class="text-base font-semibold text-on-surface">Abastecimento</h3>
               <p class="text-sm text-on-surface-variant">Registre consumo, preço por litro e identifique picos.</p>
             </div>
-            <div class="space-y-1.5">
+            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
+              <i data-lucide="wrench" class="h-5 w-5 text-primary" aria-hidden="true"></i>
               <h3 class="text-base font-semibold text-on-surface">Manutenção</h3>
               <p class="text-sm text-on-surface-variant">Controle revisões, trocas de óleo e custos.</p>
             </div>
-            <div class="space-y-1.5">
+            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
+              <i data-lucide="circle-dot" class="h-5 w-5 text-primary" aria-hidden="true"></i>
               <h3 class="text-base font-semibold text-on-surface">Pneus</h3>
               <p class="text-sm text-on-surface-variant">Monitore desgaste e receba alertas de troca.</p>
             </div>
-            <div class="space-y-1.5">
+            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
+              <i data-lucide="file-text" class="h-5 w-5 text-primary" aria-hidden="true"></i>
               <h3 class="text-base font-semibold text-on-surface">Documentos</h3>
               <p class="text-sm text-on-surface-variant">Anexe CRLV, seguro e notas fiscais organizados.</p>
             </div>
-            <div class="space-y-1.5">
+            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
+              <i data-lucide="chart-column" class="h-5 w-5 text-primary" aria-hidden="true"></i>
               <h3 class="text-base font-semibold text-on-surface">Relatórios</h3>
               <p class="text-sm text-on-surface-variant">Visualize gastos, tendência de consumo e estado geral.</p>
             </div>
@@ -126,8 +132,8 @@
       {% endif %}
 
       <section class="py-14 md:py-18" aria-labelledby="cta-title">
-        <div class="rounded-md bg-primary/10 border border-primary/10 mx-auto w-[min(1280px,94%)] p-6 md:p-10">
-        <div class="mx-auto w-[min(640px,90%)] text-center">
+        <div class="rounded-lg bg-primary/5 border border-primary/15 mx-auto w-[min(1280px,94%)] p-8 md:p-12">
+        <div class="mx-auto max-w-xl text-center">
           <h2 id="cta-title" class="font-headline text-2xl md:text-3xl font-bold tracking-tight text-on-surface">
             Pronto para controlar sua moto?
           </h2>
@@ -149,14 +155,17 @@
     </main>
 
     <footer class="border-t border-outline-variant/40 py-10 bg-surface-low/40">
-      <div class="mx-auto w-[min(1280px,94%)] flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-on-surface-variant">
-        <p>© {% now "Y" %} Moto Track. Todos os direitos reservados.</p>
+      <div class="mx-auto w-[min(1280px,94%)] flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-on-surface-variant">
+        <div class="flex items-center gap-3">
+          <img src="{% static 'brand/favicon-32x32.png' %}" alt="" class="h-5 w-5" width="20" height="20" aria-hidden="true">
+          <p>© {% now "Y" %} Moto Track. Todos os direitos reservados.</p>
+        </div>
         <nav aria-label="Links legais">
           <ul class="flex flex-wrap items-center gap-4">
-            <li><a class="hover:text-on-surface transition" href="{% url 'privacy_policy' %}">Privacidade</a></li>
-            <li><a class="hover:text-on-surface transition" href="{% url 'terms_of_service' %}">Termos</a></li>
-            <li><a class="hover:text-on-surface transition" href="{% url 'lgpd' %}">LGPD</a></li>
-            <li><a class="hover:text-on-surface transition" href="{% url 'cancellation_policy' %}">Cancelamento</a></li>
+            <li><a class="hover:text-on-surface transition-colors" href="{% url 'privacy_policy' %}">Privacidade</a></li>
+            <li><a class="hover:text-on-surface transition-colors" href="{% url 'terms_of_service' %}">Termos</a></li>
+            <li><a class="hover:text-on-surface transition-colors" href="{% url 'lgpd' %}">LGPD</a></li>
+            <li><a class="hover:text-on-surface transition-colors" href="{% url 'cancellation_policy' %}">Cancelamento</a></li>
           </ul>
         </nav>
       </div>

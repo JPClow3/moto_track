@@ -7,13 +7,19 @@
   "theme_color": "#F5F5F4",
   "icons": [
     {
-      "src": "/static/brand/moto-track-icon.png",
+      "src": "/static/brand/web/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/static/brand/favicon-32x32.png",
+      "src": "/static/brand/web/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/brand/web/favicon-32x32.png",
       "sizes": "32x32",
       "type": "image/png",
       "purpose": "any"
