@@ -117,6 +117,6 @@ def stripe_webhook_view(request):
         else:
             event = json.loads(payload.decode("utf-8"))
         process_stripe_event(event)
-    except Exception as exc:  # noqa: BLE001
-        return HttpResponse(str(exc), status=400)
+    except Exception:  # noqa: BLE001
+        return HttpResponse("Invalid webhook payload.", status=400)
     return HttpResponse(status=200)

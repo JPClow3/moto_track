@@ -114,6 +114,31 @@ class BillingFlowTests(TestCase):
         self.assertEqual(created_payload["line_items"][0]["price"], "price_monthly")
         self.assertEqual(created_payload["payment_method_types"], ["pix", "card"])
 
+    @override_settings(STRIPE_WEBHOOK_SECRET="")
+    def test_stripe_webhook_accepts_valid_json_without_secret(self):
+        with patch("apps.billing.views.process_stripe_event") as process_event:
+            response = self.client.post(
+                reverse("billing:stripe_webhook"),
+                data='{"id":"evt_test","type":"invoice.paid","data":{"object":{}}}',
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        process_event.assert_called_once()
+
+    @override_settings(STRIPE_WEBHOOK_SECRET="")
+    def test_stripe_webhook_does_not_expose_exception_details(self):
+        with patch("apps.billing.views.process_stripe_event", side_effect=RuntimeError("database stack detail")):
+            response = self.client.post(
+                reverse("billing:stripe_webhook"),
+                data='{"id":"evt_bad","type":"invoice.paid","data":{"object":{}}}',
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content, b"Invalid webhook payload.")
+        self.assertNotContains(response, "database stack detail", status_code=400)
+
     def test_subscription_webhook_activates_pro_idempotently(self):
         from apps.billing.models import BillingEvent, BillingPlan, SubscriptionProfile
         from apps.billing.webhooks import process_stripe_event
