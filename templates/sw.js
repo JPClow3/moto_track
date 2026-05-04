@@ -278,11 +278,18 @@ async function syncRequests() {
         },
         body: buildFormData(queued, status.csrf_token),
       });
-      if (response.ok && !response.url.includes("/accounts/login")) {
+      const isLoginRedirect = response.url.includes("/accounts/login");
+      const hasHxRedirect = response.headers.get("HX-Redirect");
+      const isSuccess = (response.redirected && !isLoginRedirect) || (response.ok && hasHxRedirect);
+
+      if (isSuccess) {
         await deleteRequest(queued.id);
+      } else if (response.ok && !isLoginRedirect) {
+        // 200 OK without redirect or HX-Redirect — likely form re-render with validation errors
+        await updateRequest({ ...queued, status: "needs_review", retryCount: (queued.retryCount || 0) + 1 });
       } else if ([400, 422].includes(response.status)) {
         await updateRequest({ ...queued, status: "needs_review", retryCount: (queued.retryCount || 0) + 1 });
-      } else if ([401, 403].includes(response.status) || response.url.includes("/accounts/login")) {
+      } else if ([401, 403].includes(response.status) || isLoginRedirect) {
         await updateRequest({ ...queued, status: "login_required", retryCount: (queued.retryCount || 0) + 1 });
       } else {
         await updateRequest({ ...queued, status: "pending", retryCount: (queued.retryCount || 0) + 1 });

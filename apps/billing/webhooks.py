@@ -123,7 +123,7 @@ def _apply_subscription(subscription) -> None:
     profile.billing_interval = billing_interval
     profile.current_period_end = _timestamp(_get(subscription, "current_period_end"))
     profile.cancel_at_period_end = bool(_get(subscription, "cancel_at_period_end", False))
-    if status == "active":
+    if status in {"active", "trialing"}:
         profile.plan = BillingPlan.PRO
         profile.grace_until = None
     elif status in {"canceled", "incomplete_expired"}:

@@ -286,6 +286,34 @@ class BillingFlowTests(TestCase):
         self.assertEqual(profile.stripe_subscription_id, "sub_123")
         self.assertEqual(BillingEvent.objects.filter(stripe_event_id="evt_sub_updated").count(), 1)
 
+    def test_subscription_webhook_grants_pro_during_trial(self):
+        from apps.billing.entitlements import has_pro_access
+        from apps.billing.models import BillingPlan, SubscriptionProfile
+        from apps.billing.webhooks import process_stripe_event
+
+        event = {
+            "id": "evt_sub_trial",
+            "type": "customer.subscription.updated",
+            "data": {
+                "object": {
+                    "id": "sub_trial",
+                    "customer": "cus_123",
+                    "status": "trialing",
+                    "cancel_at_period_end": False,
+                    "current_period_end": int((timezone.now() + timedelta(days=14)).timestamp()),
+                    "metadata": {"user_id": str(self.user.pk)},
+                    "items": {"data": [{"price": {"id": "price_trial", "recurring": {"interval": "month"}}}]},
+                }
+            },
+        }
+
+        process_stripe_event(event)
+
+        profile = SubscriptionProfile.objects.get(user=self.user)
+        self.assertEqual(profile.plan, BillingPlan.PRO)
+        self.assertEqual(profile.stripe_subscription_status, "trialing")
+        self.assertTrue(has_pro_access(self.user))
+
     def test_invoice_payment_failed_keeps_three_day_grace(self):
         from apps.billing.entitlements import has_pro_access
         from apps.billing.models import BillingPlan, SubscriptionProfile

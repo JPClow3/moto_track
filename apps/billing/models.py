@@ -54,7 +54,7 @@ class SubscriptionProfile(TimeStampedModel):
         now = now or timezone.now()
         if self.plan != BillingPlan.PRO:
             return False
-        if self.stripe_subscription_status == "active":
+        if self.stripe_subscription_status in {"active", "trialing"}:
             return True
         if self.grace_until and self.grace_until >= now:
             return True
