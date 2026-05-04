@@ -155,11 +155,18 @@
           },
           body: buildFormData(record, status.csrf_token),
         });
-        if (response.ok && !response.url.includes("/accounts/login")) {
+        const isLoginRedirect = response.url.includes("/accounts/login");
+        const hasHxRedirect = response.headers.get("HX-Redirect");
+        const isSuccess = (response.redirected && !isLoginRedirect) || (response.ok && hasHxRedirect);
+
+        if (isSuccess) {
           await deleteRecord(record.id);
+        } else if (response.ok && !isLoginRedirect) {
+          // 200 OK without redirect or HX-Redirect — likely form re-render with validation errors
+          await updateRecord({ ...record, status: "needs_review", retryCount: (record.retryCount || 0) + 1 });
         } else if ([400, 422].includes(response.status)) {
           await updateRecord({ ...record, status: "needs_review", retryCount: (record.retryCount || 0) + 1 });
-        } else if ([401, 403].includes(response.status) || response.url.includes("/accounts/login")) {
+        } else if ([401, 403].includes(response.status) || isLoginRedirect) {
           await updateRecord({ ...record, status: "login_required", retryCount: (record.retryCount || 0) + 1 });
         } else {
           await updateRecord({ ...record, status: "pending", retryCount: (record.retryCount || 0) + 1 });

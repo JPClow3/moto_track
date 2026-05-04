@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -78,6 +80,18 @@ class WorkSessionForm(forms.ModelForm):
             obj.save()
             self.save_m2m()
         return obj
+
+    def clean_tips(self):
+        value = self.cleaned_data.get("tips")
+        if value is None or value == "":
+            return Decimal("0.00")
+        return value
+
+    def clean_deliveries_count(self):
+        value = self.cleaned_data.get("deliveries_count")
+        if value is None or value == "":
+            return 0
+        return value
 
     def clean_notes(self):
         return sanitize_text(self.cleaned_data.get("notes"))

@@ -712,6 +712,33 @@ class WorkSessionTests(TestCase):
 
         self.assertTrue(form.is_valid(), form.errors)
 
+    def test_work_session_form_normalizes_blank_optional_numeric_fields(self):
+        from apps.work.forms import WorkSessionForm
+        from apps.work.models import WorkSession
+
+        form = WorkSessionForm(
+            data={
+                "motorcycle": self.motorcycle.pk,
+                "work_date": "2026-05-03",
+                "started_at": "",
+                "ended_at": "",
+                "odometer_start_km": "10000",
+                "odometer_end_km": "10100",
+                "gross_income": "200.00",
+                "tips": "",
+                "deliveries_count": "",
+                "platform_source": "ifood",
+                "payment_method": "pix",
+                "notes": "",
+            },
+            user=self.user,
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        session = form.save()
+        self.assertEqual(session.tips, Decimal("0.00"))
+        self.assertEqual(session.deliveries_count, 0)
+
     def test_professional_cost_settings_form_rejects_negative_values(self):
         from apps.work.forms import ProfessionalCostSettingsForm
 
