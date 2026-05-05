@@ -328,6 +328,26 @@ class FuelModelTests(TestCase):
         self.assertContains(response, reverse("fuel:update", args=[visible.pk]))
         self.assertContains(response, reverse("fuel:delete", args=[visible.pk]))
 
+    def test_list_view_prioritizes_summary_before_filters(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("fuel:list"))
+        body = response.content.decode()
+
+        self.assertLess(body.index("Resumo operacional"), body.index("Refinar histórico"))
+        self.assertLess(body.index("Consumo médio"), body.index("Refinar histórico"))
+
+    def test_list_view_delete_action_submits_post_to_delete_endpoint(self):
+        record = self._create_record()
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("fuel:list"))
+
+        self.assertContains(
+            response,
+            f'<form method="post" action="{reverse("fuel:delete", args=[record.pk])}" onsubmit="return confirm(\'Excluir este abastecimento?\')"',
+            html=False,
+        )
+
     def test_list_view_filters_by_period_station_and_fuel_type(self):
         other_station = FuelStation.objects.create(owner=self.user, name="Posto C")  # pylint: disable=no-member
         self._create_record(station_name="Posto visivel", date=date(2026, 4, 10), fuel_type=FuelType.PREMIUM_GASOLINE)

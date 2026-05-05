@@ -2,9 +2,9 @@
   const storageKey = "mototrack-theme";
   const themeOrder = ["system", "dark", "light"];
   const themeMeta = {
-    system: { icon: "monitor", label: "Sistema" },
-    dark: { icon: "moon-star", label: "Noturno" },
-    light: { icon: "sun-medium", label: "Claro" },
+    system: { icon: "monitor", label: "sistema", next: "escuro" },
+    dark: { icon: "moon", label: "escuro", next: "claro" },
+    light: { icon: "sun", label: "claro", next: "sistema" },
   };
 
   function isValidTheme(value) {
@@ -77,22 +77,13 @@
 
   function renderThemeButtons() {
     const currentTheme = document.documentElement.dataset.theme || readStoredTheme();
-    const currentMeta = themeMeta[currentTheme] || themeMeta.system;
+    const resolvedTheme = getResolvedTheme(currentTheme);
+    const currentMeta = themeMeta[resolvedTheme] || themeMeta.light;
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-      const compact = button.classList.contains("ui-icon-btn") || button.hasAttribute("data-theme-toggle-compact");
-      button.setAttribute("aria-label", "Tema atual: " + currentMeta.label + ". Alternar tema.");
-      button.setAttribute("title", "Tema: " + currentMeta.label);
+      button.setAttribute("aria-label", "Tema " + currentMeta.label + ". Alternar para tema " + currentMeta.next + ".");
+      button.setAttribute("title", "Tema " + currentMeta.label);
       button.dataset.themeMode = currentTheme;
-      if (compact) {
-        button.innerHTML = '<i data-lucide="' + currentMeta.icon + '" aria-hidden="true"></i>';
-      } else {
-        button.innerHTML =
-          '<span class="ui-icon-dot" aria-hidden="true"><i data-lucide="' +
-          currentMeta.icon +
-          '"></i></span><span class="hidden sm:inline">Tema</span><span>' +
-          currentMeta.label +
-          "</span>";
-      }
+      button.innerHTML = '<i data-lucide="' + currentMeta.icon + '" aria-hidden="true"></i>';
     });
     if (window.lucide) {
       window.lucide.createIcons();

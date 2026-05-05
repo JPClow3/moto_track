@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 
 {% block title %}Pneus - Moto Track{% endblock %}
 {% block topbar_eyebrow %}Segurança de rodagem{% endblock %}
@@ -9,8 +10,8 @@
   <header class="page-hero">
     <div>
       <span class="page-kicker">Estado instantâneo</span>
-      <h2 id="tires-list-title" class="page-title">Leitura rápida do conjunto dianteiro e traseiro.</h2>
-      <p class="page-copy">Painel de pneus para desgaste, calibragem e janela de troca, com foco em entendimento imediato do estado de cada pneu.</p>
+      <h2 id="tires-list-title" class="page-title">Segurança dos pneus, sem caça ao dado.</h2>
+      <p class="page-copy">Veja primeiro o que exige atenção, depois registre calibragem ou confira o histórico detalhado.</p>
       <div class="mt-5 flex flex-wrap gap-3">
         <span class="severity-badge {% if has_attention %}severity-warning{% else %}severity-success{% endif %}">
           {% if has_attention %}Revisão recomendada{% else %}Check de segurança ok{% endif %}
@@ -18,17 +19,149 @@
       </div>
     </div>
     <div class="page-actions">
-      <a class="ui-btn-secondary" href="{% url 'tires:create' %}">Registrar pneu</a>
-      <a class="ui-btn-primary" href="{% url 'tires:catalogs' %}">Catálogo</a>
+      <a class="ui-btn-primary" href="{% url 'tires:create' %}">
+        <i data-lucide="plus" aria-hidden="true"></i>
+        Registrar pneu
+      </a>
+      <a class="ui-btn-secondary" href="{% url 'tires:catalogs' %}">
+        <i data-lucide="layers" aria-hidden="true"></i>
+        Catálogo
+      </a>
     </div>
   </header>
 
-  <section class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.9fr)]">
-    <div class="space-y-4">
-      <div class="flex items-center justify-between gap-4">
-        <h3 class="font-headline text-2xl font-semibold tracking-tight">Registrar calibragem</h3>
-        <span class="ui-eyebrow">Entrada rápida</span>
+  <section class="workflow-section" aria-labelledby="tires-insights-title">
+    <div class="section-heading">
+      <div>
+        <h3 id="tires-insights-title" class="section-heading-title">Insights de segurança</h3>
+        <p class="section-heading-copy">A página começa pela leitura que decide se a moto está pronta, precisa monitorar ou pede intervenção.</p>
       </div>
+      <span class="ui-eyebrow">Prioridade</span>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(18rem,0.7fr)_minmax(0,1.3fr)]">
+      <aside class="insight-panel insight-panel-primary">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-semibold text-on-surface-variant">Leitura geral</p>
+            <p class="mt-2 text-2xl font-semibold tracking-normal text-on-surface">
+              {% if has_attention %}Priorize revisão visual{% else %}Conjunto sob controle{% endif %}
+            </p>
+          </div>
+          <span class="severity-badge {% if has_attention %}severity-warning{% else %}severity-success{% endif %}">
+            {% if has_attention %}Atenção{% else %}Ok{% endif %}
+          </span>
+        </div>
+        <div class="mt-5 space-y-4">
+          <div>
+            <p class="text-xs font-semibold text-on-surface-variant">Última instalação</p>
+            <p class="mt-1 text-sm leading-6 text-on-surface-variant">
+              {% if rear %}{{ rear.record.installed_at|date:"d/m/Y" }}{% elif front %}{{ front.record.installed_at|date:"d/m/Y" }}{% else %}Sem pneu ativo cadastrado{% endif %}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs font-semibold text-on-surface-variant">Projeção de troca</p>
+            <p class="mt-1 text-sm leading-6 text-on-surface-variant">Use o campo de troca em km para estimar a substituição e acompanhar a evolução do desgaste.</p>
+          </div>
+          <div>
+            <p class="text-xs font-semibold text-on-surface-variant">Rotina recomendada</p>
+            <p class="mt-1 text-sm leading-6 text-on-surface-variant">Atualize desgaste após viagens longas e revise pressão ao menos uma vez por semana.</p>
+          </div>
+        </div>
+        <a class="ui-btn-secondary mt-5 w-full" href="#tires-pressure">Registrar calibragem</a>
+      </aside>
+
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2" aria-label="Telemetria de pneus">
+        <article class="metric-tile">
+          <div class="flex items-center justify-between gap-4">
+            <p class="metric-tile-label">Dianteiro</p>
+            {% if front %}
+              <span class="severity-badge {% if front.status_tone == 'warning' %}severity-warning{% elif front.status_tone == 'neutral' %}severity-info{% else %}severity-success{% endif %}">
+                {{ front.status_label }}
+              </span>
+            {% else %}
+              <span class="severity-badge severity-neutral">Sem pneu ativo</span>
+            {% endif %}
+          </div>
+          {% if front %}
+            <div class="relative mx-auto mt-4 flex h-44 w-44 items-center justify-center">
+              <svg class="h-full w-full -rotate-90" viewBox="0 0 192 192" aria-hidden="true">
+                <circle class="text-surface-high" cx="96" cy="96" fill="transparent" r="{{ front.radius }}" stroke="currentColor" stroke-width="12"></circle>
+                <circle class="{{ front.ring_class }}" cx="96" cy="96" fill="transparent" r="{{ front.radius }}" stroke="currentColor"
+                        stroke-width="12" stroke-linecap="round"
+                        style="stroke-dasharray: {{ front.circumference|default:'0'|unlocalize }}; stroke-dashoffset: {{ front.dash_offset|default:'0'|unlocalize }};"></circle>
+              </svg>
+              <div class="absolute flex flex-col items-center">
+                <span class="text-3xl font-semibold">{{ front.wear_percent }}</span>
+                <span class="text-xs font-medium text-on-surface-variant">Desgaste %</span>
+              </div>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-3">
+              <div class="rounded-md bg-surface-low p-3">
+                <p class="text-xs font-medium text-on-surface-variant">Pressão</p>
+                <p class="mt-1 text-sm font-semibold text-on-surface">{{ front.record.recommended_pressure|default:"--" }}</p>
+              </div>
+              <div class="rounded-md bg-surface-low p-3">
+                <p class="text-xs font-medium text-on-surface-variant">Troca</p>
+                <p class="mt-1 text-sm font-semibold text-on-surface">{% if front.record.estimated_change_km %}{{ front.record.estimated_change_km }} km{% else %}--{% endif %}</p>
+              </div>
+            </div>
+          {% else %}
+            <div class="empty-state mt-4">Cadastre um pneu dianteiro ativo para ver o painel.</div>
+          {% endif %}
+        </article>
+
+        <article class="metric-tile">
+          <div class="flex items-center justify-between gap-4">
+            <p class="metric-tile-label">Traseiro</p>
+            {% if rear %}
+              <span class="severity-badge {% if rear.status_tone == 'warning' %}severity-warning{% elif rear.status_tone == 'neutral' %}severity-info{% else %}severity-success{% endif %}">
+                {{ rear.status_label }}
+              </span>
+            {% else %}
+              <span class="severity-badge severity-neutral">Sem pneu ativo</span>
+            {% endif %}
+          </div>
+          {% if rear %}
+            <div class="relative mx-auto mt-4 flex h-44 w-44 items-center justify-center">
+              <svg class="h-full w-full -rotate-90" viewBox="0 0 192 192" aria-hidden="true">
+                <circle class="text-surface-high" cx="96" cy="96" fill="transparent" r="{{ rear.radius }}" stroke="currentColor" stroke-width="12"></circle>
+                <circle class="{{ rear.ring_class }}" cx="96" cy="96" fill="transparent" r="{{ rear.radius }}" stroke="currentColor"
+                        stroke-width="12" stroke-linecap="round"
+                        style="stroke-dasharray: {{ rear.circumference|default:'0'|unlocalize }}; stroke-dashoffset: {{ rear.dash_offset|default:'0'|unlocalize }};"></circle>
+              </svg>
+              <div class="absolute flex flex-col items-center">
+                <span class="text-3xl font-semibold">{{ rear.wear_percent }}</span>
+                <span class="text-xs font-medium text-on-surface-variant">Desgaste %</span>
+              </div>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-3">
+              <div class="rounded-md bg-surface-low p-3">
+                <p class="text-xs font-medium text-on-surface-variant">Pressão</p>
+                <p class="mt-1 text-sm font-semibold text-on-surface">{{ rear.record.recommended_pressure|default:"--" }}</p>
+              </div>
+              <div class="rounded-md bg-surface-low p-3">
+                <p class="text-xs font-medium text-on-surface-variant">Troca</p>
+                <p class="mt-1 text-sm font-semibold text-on-surface">{% if rear.record.estimated_change_km %}{{ rear.record.estimated_change_km }} km{% else %}--{% endif %}</p>
+              </div>
+            </div>
+          {% else %}
+            <div class="empty-state mt-4">Cadastre um pneu traseiro ativo para ver o painel.</div>
+          {% endif %}
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="tires-pressure" class="workflow-section" aria-labelledby="tires-pressure-title">
+    <div class="section-heading">
+      <div>
+        <h3 id="tires-pressure-title" class="section-heading-title">Registrar calibragem</h3>
+        <p class="section-heading-copy">Entrada rápida para manter a leitura de segurança atualizada.</p>
+      </div>
+      <span class="ui-eyebrow">Rotina</span>
+    </div>
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)]">
       <form method="post" action="{% url 'tires:pressure_create' %}" class="data-form">
         {% csrf_token %}
         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -55,162 +188,60 @@
         </div>
         <button type="submit" class="ui-btn-primary">Salvar calibragem</button>
       </form>
-    </div>
 
-    <div class="space-y-4">
-      <div class="flex items-center justify-between gap-4">
-        <h3 class="font-headline text-2xl font-semibold tracking-tight">Ultimas calibragens</h3>
-        <span class="ui-eyebrow">Histórico curto</span>
-      </div>
-      {% if pressure_recent %}
-        <div class="divide-y divide-outline-variant/40">
-          {% for rec in pressure_recent %}
-            <div class="flex items-start justify-between gap-4 py-4">
-              <div>
-                <p class="text-sm font-semibold text-on-surface">{{ rec.motorcycle.name }}</p>
-                <p class="text-xs text-on-surface-variant">{{ rec.date|date:"d/m/Y" }} - {{ rec.psi_front }} / {{ rec.psi_rear }} psi</p>
-                {% if rec.notes %}
-                  <p class="mt-1 text-xs text-on-surface-variant">{{ rec.notes }}</p>
-                {% endif %}
-              </div>
-            </div>
-          {% endfor %}
+      <aside class="insight-panel">
+        <div class="section-heading">
+          <h3 class="section-heading-title">Últimas calibragens</h3>
+          <span class="ui-eyebrow">Histórico curto</span>
         </div>
-      {% else %}
-        <div class="empty-state">Sem registros de calibragem ainda.</div>
-      {% endif %}
+        {% if pressure_recent %}
+          <div class="mt-2 divide-y divide-outline-variant/40">
+            {% for rec in pressure_recent %}
+              <div class="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                <div>
+                  <p class="text-sm font-semibold text-on-surface">{{ rec.motorcycle.name }}</p>
+                  <p class="text-xs text-on-surface-variant">{{ rec.date|date:"d/m/Y" }} - {{ rec.psi_front }} / {{ rec.psi_rear }} psi</p>
+                  {% if rec.notes %}
+                    <p class="mt-1 text-xs text-on-surface-variant">{{ rec.notes }}</p>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state mt-4">Sem registros de calibragem ainda.</div>
+        {% endif %}
+      </aside>
     </div>
   </section>
 
-  <div class="space-y-4 border-t border-outline-variant/40 pt-5">
-    <form method="get" aria-label="Filtros de pneus">
-      <select class="ui-select" name="motorcycle" aria-label="Filtrar por moto">
-        <option value="">Todas as motos</option>
-        {% for bike in garage_motorcycles %}
-          <option value="{{ bike.id }}" {% if filters.motorcycle and bike.id|stringformat:"s" == filters.motorcycle %}selected{% endif %}>{{ bike.name }}</option>
-        {% endfor %}
-      </select>
-      <div class="mt-4">
-        <button type="submit" class="ui-btn-primary">Aplicar</button>
+  <section class="workflow-section" aria-labelledby="tires-filter-title">
+    <div class="section-heading">
+      <div>
+        <h3 id="tires-filter-title" class="section-heading-title">Refinar histórico</h3>
+        <p class="section-heading-copy">Filtre quando precisar auditar pneus por moto.</p>
+      </div>
+    </div>
+    <form method="get" aria-label="Filtros de pneus" class="filter-strip">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <select class="ui-select" name="motorcycle" aria-label="Filtrar por moto">
+          <option value="">Todas as motos</option>
+          {% for bike in garage_motorcycles %}
+            <option value="{{ bike.id }}" {% if filters.motorcycle and bike.id|stringformat:"s" == filters.motorcycle %}selected{% endif %}>{{ bike.name }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="ui-btn-primary">Aplicar filtros</button>
       </div>
     </form>
-  </div>
-
-  <section class="grid grid-cols-1 gap-6 lg:grid-cols-3" aria-label="Telemetria de pneus">
-    <div class="space-y-4">
-      <div class="flex items-center justify-between gap-4">
-        <p class="text-xs font-medium text-on-surface-variant">Dianteiro</p>
-        {% if front %}
-          <span class="severity-badge {% if front.status_tone == 'warning' %}severity-warning{% elif front.status_tone == 'neutral' %}severity-info{% else %}severity-success{% endif %}">
-            {{ front.status_label }}
-          </span>
-        {% else %}
-          <span class="severity-badge severity-neutral">Sem pneu ativo</span>
-        {% endif %}
-      </div>
-      {% if front %}
-        <div class="relative mx-auto flex h-48 w-48 items-center justify-center">
-          <svg class="h-full w-full -rotate-90" viewBox="0 0 192 192" aria-hidden="true">
-            <circle class="text-surface-high" cx="96" cy="96" fill="transparent" r="{{ front.radius }}" stroke="currentColor" stroke-width="12"></circle>
-            <circle class="{{ front.ring_class }}" cx="96" cy="96" fill="transparent" r="{{ front.radius }}" stroke="currentColor"
-                    stroke-width="12" stroke-linecap="round"
-                    x-data="{ circ: {{ front.circumference|default:'0' }}, off: {{ front.dash_offset|default:'0' }} }" x-bind:style="{ strokeDasharray: circ, strokeDashoffset: off }"></circle>
-          </svg>
-          <div class="absolute flex flex-col items-center">
-            <span class="font-headline text-4xl font-semibold">{{ front.wear_percent }}</span>
-            <span class="relative inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant" x-data="{ t: false }" @mouseenter="t = true" @mouseleave="t = false" @focus="t = true" @blur="t = false">
-              <span>Desgaste %</span>
-              <i data-lucide="info" class="h-3 w-3" aria-hidden="true"></i>
-              <span x-show="t" x-cloak class="absolute bottom-full left-1/2 mb-1 w-48 -translate-x-1/2 rounded bg-inverse-surface px-2 py-1 text-xs text-on-primary shadow-lg" role="tooltip">
-                Percentual estimado de desgaste em relação à vida útil do pneu.
-              </span>
-            </span>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div class="bg-surface-low rounded-md p-4">
-            <p class="text-xs font-medium text-on-surface-variant">Pressão</p>
-            <p class="mt-1 text-sm font-semibold text-on-surface">{{ front.record.recommended_pressure|default:"--" }}</p>
-          </div>
-          <div class="bg-surface-low rounded-md p-4">
-            <p class="text-xs font-medium text-on-surface-variant">Troca</p>
-            <p class="mt-1 text-sm font-semibold text-on-surface">{% if front.record.estimated_change_km %}{{ front.record.estimated_change_km }} km{% else %}--{% endif %}</p>
-          </div>
-        </div>
-      {% else %}
-        <div class="empty-state">Cadastre um pneu dianteiro ativo para ver o painel.</div>
-      {% endif %}
-    </div>
-
-    <div class="space-y-4">
-      <div class="flex items-center justify-between gap-4">
-        <p class="text-xs font-medium text-on-surface-variant">Traseiro</p>
-        {% if rear %}
-          <span class="severity-badge {% if rear.status_tone == 'warning' %}severity-warning{% elif rear.status_tone == 'neutral' %}severity-info{% else %}severity-success{% endif %}">
-            {{ rear.status_label }}
-          </span>
-        {% else %}
-          <span class="severity-badge severity-neutral">Sem pneu ativo</span>
-        {% endif %}
-      </div>
-      {% if rear %}
-        <div class="relative mx-auto flex h-48 w-48 items-center justify-center">
-          <svg class="h-full w-full -rotate-90" viewBox="0 0 192 192" aria-hidden="true">
-            <circle class="text-surface-high" cx="96" cy="96" fill="transparent" r="{{ rear.radius }}" stroke="currentColor" stroke-width="12"></circle>
-            <circle class="{{ rear.ring_class }}" cx="96" cy="96" fill="transparent" r="{{ rear.radius }}" stroke="currentColor"
-                    stroke-width="12" stroke-linecap="round"
-                    x-data="{ circ: {{ rear.circumference|default:'0' }}, off: {{ rear.dash_offset|default:'0' }} }" x-bind:style="{ strokeDasharray: circ, strokeDashoffset: off }"></circle>
-          </svg>
-          <div class="absolute flex flex-col items-center">
-            <span class="font-headline text-4xl font-semibold">{{ rear.wear_percent }}</span>
-            <span class="relative inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant" x-data="{ t: false }" @mouseenter="t = true" @mouseleave="t = false" @focus="t = true" @blur="t = false">
-              <span>Desgaste %</span>
-              <i data-lucide="info" class="h-3 w-3" aria-hidden="true"></i>
-              <span x-show="t" x-cloak class="absolute bottom-full left-1/2 mb-1 w-48 -translate-x-1/2 rounded bg-inverse-surface px-2 py-1 text-xs text-on-primary shadow-lg" role="tooltip">
-                Percentual estimado de desgaste em relação à vida útil do pneu.
-              </span>
-            </span>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div class="bg-surface-low rounded-md p-4">
-            <p class="text-xs font-medium text-on-surface-variant">Pressão</p>
-            <p class="mt-1 text-sm font-semibold text-on-surface">{{ rear.record.recommended_pressure|default:"--" }}</p>
-          </div>
-          <div class="bg-surface-low rounded-md p-4">
-            <p class="text-xs font-medium text-on-surface-variant">Troca</p>
-            <p class="mt-1 text-sm font-semibold text-on-surface">{% if rear.record.estimated_change_km %}{{ rear.record.estimated_change_km }} km{% else %}--{% endif %}</p>
-          </div>
-        </div>
-      {% else %}
-        <div class="empty-state">Cadastre um pneu traseiro ativo para ver o painel.</div>
-      {% endif %}
-    </div>
-
-    <div class="space-y-5">
-      <div class="flex items-center justify-between gap-4">
-        <h3 class="font-headline text-2xl font-semibold tracking-tight">Insights de segurança</h3>
-        <span class="ui-eyebrow">Rápido</span>
-      </div>
-      <div class="space-y-4">
-        <div class="space-y-1">
-          <p class="text-xs font-medium text-on-surface-variant">Ultima instalação</p>
-          <p class="text-sm text-on-surface-variant">{% if rear %}{{ rear.record.installed_at|date:"d/m/Y" }}{% elif front %}{{ front.record.installed_at|date:"d/m/Y" }}{% else %}--{% endif %}</p>
-        </div>
-        <div class="space-y-1">
-          <p class="text-xs font-medium text-on-surface-variant">Projeção</p>
-          <p class="text-sm text-on-surface-variant">Use o campo "Troca (km)" para estimar a janela de substituição e acompanhar a evolução do desgaste.</p>
-        </div>
-        <div class="space-y-1">
-          <p class="text-xs font-medium text-on-surface-variant">Dica</p>
-          <p class="text-sm text-on-surface-variant">Atualize o desgaste após viagens longas e revise a pressão ao menos uma vez por semana.</p>
-        </div>
-      </div>
-      <a class="ui-btn-secondary w-full" href="#tires-history">Ver histórico detalhado</a>
-    </div>
   </section>
 
-  <section id="tires-history" aria-label="Registros de pneus">
+  <section id="tires-history" class="workflow-section" aria-labelledby="tires-history-title">
+    <div class="section-heading">
+      <div>
+        <h3 id="tires-history-title" class="section-heading-title">Histórico de pneus</h3>
+        <p class="section-heading-copy">Registros completos para edição, troca e conferência futura.</p>
+      </div>
+    </div>
     {% if records %}
       <div class="overflow-x-auto">
         <table class="responsive-table min-w-[900px]" aria-label="Registros de pneus">
@@ -218,7 +249,7 @@
             <tr>
               <th class="py-3" scope="col">Foto</th>
               <th class="py-3" scope="col">Moto</th>
-              <th class="py-3" scope="col">Posicao</th>
+              <th class="py-3" scope="col">Posição</th>
               <th class="py-3" scope="col">Modelo</th>
               <th class="py-3" scope="col">Instalação</th>
               <th class="py-3" scope="col">Desgaste</th>
@@ -237,7 +268,7 @@
                   {% endif %}
                 </td>
                 <td data-label="Moto">{{ record.motorcycle.name }}</td>
-                <td data-label="Posicao">{{ record.get_position_display }}</td>
+                <td data-label="Posição">{{ record.get_position_display }}</td>
                 <td data-label="Modelo">
                   <strong class="font-semibold">{{ record.brand_model }}</strong>
                   {% if record.tire_product %}
@@ -274,7 +305,7 @@
           {% if page_obj.has_previous %}
             <a class="ui-btn-secondary" href="{% querystring page=page_obj.previous_page_number %}">Anterior</a>
           {% endif %}
-          <span class="text-xs font-semibold text-on-surface-variant">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+          <span class="text-xs font-semibold text-on-surface-variant">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
           {% if page_obj.has_next %}
             <a class="ui-btn-secondary" href="{% querystring page=page_obj.next_page_number %}">Próxima</a>
           {% endif %}

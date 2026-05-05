@@ -22,7 +22,7 @@
   <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
     <div class="space-y-4" aria-label="Taxas anuais">
       <div class="flex items-center justify-between gap-4">
-        <h3 class="font-headline text-2xl font-semibold tracking-tight">Taxas anuais</h3>
+        <h3 class="section-heading-title">Taxas anuais</h3>
         <a class="text-link text-sm" href="{% url 'expenses:fee_create' %}">Adicionar</a>
       </div>
 
@@ -59,7 +59,7 @@
             {% else %}
               <span aria-hidden="true"></span>
             {% endif %}
-            <span class="text-xs font-semibold text-on-surface-variant">Pagina {{ fees_page_obj.number }} de {{ fees_page_obj.paginator.num_pages }}</span>
+            <span class="text-xs font-semibold text-on-surface-variant">Página {{ fees_page_obj.number }} de {{ fees_page_obj.paginator.num_pages }}</span>
             {% if fees_page_obj.has_next %}
               <a class="ui-btn-secondary" href="{% querystring fees_page=fees_page_obj.next_page_number %}">Próxima</a>
             {% else %}
@@ -72,7 +72,7 @@
 
     <div class="space-y-4" aria-label="Seguros">
       <div class="flex items-center justify-between gap-4">
-        <h3 class="font-headline text-2xl font-semibold tracking-tight">Seguros</h3>
+        <h3 class="section-heading-title">Seguros</h3>
         <a class="text-link text-sm" href="{% url 'expenses:policy_create' %}">Adicionar</a>
       </div>
 
@@ -106,7 +106,7 @@
             {% else %}
               <span aria-hidden="true"></span>
             {% endif %}
-            <span class="text-xs font-semibold text-on-surface-variant">Pagina {{ policies_page_obj.number }} de {{ policies_page_obj.paginator.num_pages }}</span>
+            <span class="text-xs font-semibold text-on-surface-variant">Página {{ policies_page_obj.number }} de {{ policies_page_obj.paginator.num_pages }}</span>
             {% if policies_page_obj.has_next %}
               <a class="ui-btn-secondary" href="{% querystring policies_page=policies_page_obj.next_page_number %}">Próxima</a>
             {% else %}

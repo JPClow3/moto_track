@@ -1,8 +1,30 @@
 {% extends "public/base.html" %}
+{% load static %}
 {% block title %}Moto Track - Controle de manutenção de motocicletas{% endblock %}
 {% block meta_description %}Moto Track organiza garagem, abastecimentos, revisões, pneus, documentos e relatórios em um painel privado e intuitivo para motociclistas.{% endblock %}
 {% block og_title %}Moto Track - Controle de manutenção de motocicletas{% endblock %}
 {% block og_description %}Painel privado para gerenciar garagem, manutenções, consumo, pneus e documentos da sua moto.{% endblock %}
+{% block extra_meta %}
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Moto Track",
+      "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'landing' %}",
+      "inLanguage": "pt-BR",
+      "description": "Moto Track organiza garagem, abastecimentos, revisões, pneus, documentos e relatórios em um painel privado e intuitivo para motociclistas."
+    }
+  </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Moto Track",
+      "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'landing' %}",
+      "logo": "{{ request.scheme }}://{{ request.get_host }}{% static 'brand/web/android-chrome-512x512.png' %}"
+    }
+  </script>
+{% endblock %}
 
 {% block content %}
 <section class="public-hero" aria-labelledby="hero-title">
@@ -33,10 +55,10 @@
       </div>
       <div class="preview-grid">
         <section class="preview-panel">
-          <p class="text-xs font-semibold uppercase tracking-wider text-primary">Moto ativa</p>
+          <p class="text-xs font-semibold uppercase tracking-normal text-primary">Moto ativa</p>
           <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p class="text-2xl font-semibold tracking-tight text-on-surface">CB 500F 2024</p>
+              <p class="text-2xl font-semibold tracking-normal text-on-surface">CB 500F 2024</p>
               <p class="mt-1 text-sm text-on-surface-variant">34.280 km registrados</p>
             </div>
             <span class="severity-badge severity-success">Em dia</span>
@@ -67,7 +89,7 @@
           </div>
         </section>
         <section class="preview-panel">
-          <p class="text-xs font-semibold uppercase tracking-wider text-primary">Próximas ações</p>
+          <p class="text-xs font-semibold uppercase tracking-normal text-primary">Próximas ações</p>
           <ul class="preview-list">
             <li><strong>Troca de óleo</strong><span>650 km</span></li>
             <li><strong>Seguro</strong><span>12 dias</span></li>

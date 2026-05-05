@@ -211,7 +211,7 @@
   }
 
   .public-hero-title {
-    @apply mt-4 text-4xl font-semibold leading-[1.04] tracking-tight text-on-surface sm:text-5xl lg:text-[4.35rem];
+    @apply mt-4 text-4xl font-semibold leading-[1.04] tracking-normal text-on-surface sm:text-5xl lg:text-[4.35rem];
   }
 
   .public-hero-copy-text {
@@ -259,7 +259,7 @@
   }
 
   .preview-metric p:last-child {
-    @apply mt-1 text-xl font-semibold tracking-tight text-on-surface;
+    @apply mt-1 text-xl font-semibold tracking-normal text-on-surface;
   }
 
   .preview-chart {
@@ -295,7 +295,7 @@
   }
 
   .public-section-title {
-    @apply mt-3 text-3xl font-semibold leading-tight tracking-tight text-on-surface sm:text-4xl;
+    @apply mt-3 text-3xl font-semibold leading-tight tracking-normal text-on-surface sm:text-4xl;
   }
 
   .public-section-copy {
@@ -323,7 +323,7 @@
 
   .public-feature h3,
   .public-article-link h3 {
-    @apply text-base font-semibold tracking-tight text-on-surface;
+    @apply text-base font-semibold tracking-normal text-on-surface;
   }
 
   .public-feature p,
@@ -353,7 +353,7 @@
 
   .public-row h3,
   .public-step h3 {
-    @apply text-base font-semibold tracking-tight text-on-surface;
+    @apply text-base font-semibold tracking-normal text-on-surface;
   }
 
   .public-row p,
@@ -366,7 +366,7 @@
   }
 
   .public-step span {
-    @apply text-xs font-semibold uppercase tracking-wider text-primary;
+    @apply text-xs font-semibold uppercase tracking-normal text-primary;
   }
 
   .public-article-row {
@@ -378,7 +378,7 @@
   }
 
   .public-article-row h3 {
-    @apply text-base font-semibold tracking-tight text-on-surface transition-colors;
+    @apply text-base font-semibold tracking-normal text-on-surface transition-colors;
   }
 
   .public-article-row span {
@@ -399,7 +399,7 @@
 
   .public-article-body h2,
   .public-article-body h3 {
-    @apply mt-9 font-semibold leading-tight tracking-tight text-on-surface;
+    @apply mt-9 font-semibold leading-tight tracking-normal text-on-surface;
   }
 
   .public-article-body h2 {
@@ -437,7 +437,7 @@
   }
 
   .public-cta h2 {
-    @apply mt-3 text-3xl font-semibold tracking-tight text-on-surface sm:text-4xl;
+    @apply mt-3 text-3xl font-semibold tracking-normal text-on-surface sm:text-4xl;
   }
 
   .pricing-card {
@@ -478,7 +478,7 @@
   }
 
   .auth-side-title {
-    @apply mt-3 text-4xl font-semibold leading-tight tracking-tight text-on-surface;
+    @apply mt-3 text-4xl font-semibold leading-tight tracking-normal text-on-surface;
   }
 
   .auth-proof-list {
@@ -508,11 +508,11 @@
 
   .legal-document h1,
   .legal-document h2 {
-    @apply text-3xl font-semibold leading-tight tracking-tight text-on-surface sm:text-4xl;
+    @apply text-3xl font-semibold leading-tight tracking-normal text-on-surface sm:text-4xl;
   }
 
   .legal-document h3 {
-    @apply text-xl font-semibold leading-tight tracking-tight text-on-surface sm:text-2xl;
+    @apply text-xl font-semibold leading-tight tracking-normal text-on-surface sm:text-2xl;
   }
 
   .legal-document h4 {
@@ -555,15 +555,40 @@
 
   .list-section { @apply space-y-8 pb-10; }
   .list-header { @apply flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between; }
-  .list-header h2 { @apply text-3xl font-semibold tracking-tight text-on-surface; }
+  .list-header h2 { @apply text-3xl font-semibold tracking-normal text-on-surface; }
   .section-subtitle { @apply mt-2 text-sm leading-6 text-on-surface-variant; }
 
-  .page-shell { @apply space-y-8 pb-10; }
+  .page-shell { @apply space-y-7 pb-10; }
   .page-hero { @apply flex flex-col gap-5 md:flex-row md:items-end md:justify-between; }
-  .page-kicker { @apply text-xs font-semibold uppercase tracking-wider text-primary; }
-  .page-title { @apply mt-1 text-3xl leading-tight font-semibold tracking-tight text-on-surface sm:text-4xl; }
+  .page-kicker { @apply text-xs font-semibold uppercase tracking-normal text-primary; }
+  .page-title { @apply mt-1 text-3xl leading-tight font-semibold tracking-normal text-on-surface sm:text-4xl; }
   .page-copy { @apply mt-2 max-w-2xl text-sm leading-6 text-on-surface-variant sm:text-base; }
   .page-actions { @apply flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center; }
+
+  .workflow-section { @apply space-y-4; }
+  .section-heading { @apply flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between; }
+  .section-heading-title { @apply text-lg font-semibold leading-snug tracking-normal text-on-surface; }
+  .section-heading-copy { @apply max-w-2xl text-sm leading-6 text-on-surface-variant; }
+
+  .metric-grid { @apply grid grid-cols-1 gap-4 md:grid-cols-3; }
+  .metric-tile {
+    @apply rounded-md border border-outline-variant/50 bg-surface-lowest p-5;
+    box-shadow: var(--shadow-soft);
+  }
+  .metric-tile-label { @apply text-xs font-semibold text-on-surface-variant; }
+  .metric-tile-value { @apply mt-2 text-2xl font-semibold leading-tight tracking-normal text-on-surface sm:text-3xl; }
+  .metric-tile-copy { @apply mt-1 text-sm leading-6 text-on-surface-variant; }
+
+  .insight-panel {
+    @apply rounded-md border border-outline-variant/50 bg-surface-lowest p-5;
+    box-shadow: var(--shadow-panel);
+  }
+  .insight-panel-primary { @apply border-primary/25 bg-surface-lowest; }
+
+  .filter-strip {
+    @apply rounded-md border border-outline-variant/50 bg-surface-lowest p-4;
+    box-shadow: var(--shadow-soft);
+  }
 
   .panel,
   .glass-card,
@@ -607,13 +632,13 @@
 
   .metric-card { @apply space-y-4; }
   .metric-card-label { @apply text-xs font-semibold text-on-surface-variant; }
-  .metric-card-value { @apply font-headline text-3xl font-semibold tracking-tight text-on-surface; }
+  .metric-card-value { @apply text-3xl font-semibold tracking-normal text-on-surface; }
   .metric-card-copy { @apply text-sm leading-6 text-on-surface-variant; }
 
   .record-stack { @apply space-y-3; }
   .record-card { @apply flex flex-col gap-4; }
   .record-card-head { @apply flex items-start justify-between gap-4; }
-  .record-card-title { @apply text-base font-semibold tracking-tight text-on-surface; }
+  .record-card-title { @apply text-base font-semibold tracking-normal text-on-surface; }
   .record-card-copy { @apply text-sm leading-6 text-on-surface-variant; }
   .record-card-meta { @apply flex flex-wrap gap-2 text-xs font-medium text-on-surface-variant; }
 
@@ -625,7 +650,7 @@
   .quick-actions-row-split { @apply flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between; }
 
   .ui-eyebrow { @apply text-xs font-medium text-on-surface-variant; }
-  .ui-h1 { @apply font-headline text-2xl font-semibold leading-none tracking-tight text-on-surface sm:text-[2rem]; }
+  .ui-h1 { @apply text-2xl font-semibold leading-none tracking-normal text-on-surface sm:text-[2rem]; }
   .ui-subtitle { @apply text-sm leading-6 text-on-surface-variant; }
 
   .ui-input {
@@ -863,7 +888,7 @@
   }
 
   .auth-local-title {
-    @apply font-headline text-2xl font-semibold tracking-tight text-on-surface;
+    @apply text-2xl font-semibold tracking-normal text-on-surface;
   }
 
   .auth-local-subtitle {
@@ -888,7 +913,7 @@
 
   .responsive-table { @apply w-full text-sm; }
   .responsive-table th {
-    @apply text-left text-xs font-medium uppercase tracking-wider text-on-surface-variant;
+    @apply text-left text-xs font-medium uppercase tracking-normal text-on-surface-variant;
     border-bottom: 1px solid rgb(var(--color-outline-variant) / 0.5);
     padding-bottom: 0.5rem;
   }

@@ -6,13 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Moto Track{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}Moto Track organiza garagem, abastecimentos, manutenções, pneus, documentos e relatórios em um painel privado para motociclistas.{% endblock %}" />
-  <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}" />
+  <link rel="canonical" href="{% block canonical_url %}{{ request.scheme }}://{{ request.get_host }}{{ request.path }}{% endblock %}" />
   <meta name="theme-color" content="#F5F5F7" />
   <meta property="og:site_name" content="Moto Track" />
   <meta property="og:title" content="{% block og_title %}Moto Track{% endblock %}" />
   <meta property="og:description" content="{% block og_description %}Garagem digital privada para motociclistas.{% endblock %}" />
   <meta property="og:type" content="{% block og_type %}website{% endblock %}" />
-  <meta property="og:url" content="{{ request.build_absolute_uri }}" />
+  <meta property="og:url" content="{% block og_url %}{{ request.scheme }}://{{ request.get_host }}{{ request.path }}{% endblock %}" />
   <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}" />
   <meta property="og:image" content="{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}{% endblock %}" />
   <meta name="twitter:image" content="{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}{% endblock %}" />
@@ -77,7 +77,7 @@
           <a class="public-nav-link hidden sm:inline-flex" href="{% url 'pricing' %}">Preços</a>
           <a class="public-nav-link hidden md:inline-flex" href="{% url 'blog:list' %}">Guias</a>
           <button type="button" class="ui-icon-btn !h-10 !w-10" data-theme-toggle aria-label="Alternar tema">
-            <i data-lucide="sun-medium" aria-hidden="true"></i>
+            <i data-lucide="sun" aria-hidden="true"></i>
           </button>
           {% if request.user.is_authenticated %}
             {% if account_email_verified %}

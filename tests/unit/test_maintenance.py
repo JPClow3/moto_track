@@ -166,6 +166,14 @@ class MaintenanceModelTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Plano")
 
+    def test_list_view_places_summary_after_cta_and_before_filters(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("maintenance:list"), HTTP_HOST="localhost")
+        body = response.content.decode()
+
+        self.assertLess(body.index("Agendar ou registrar"), body.index("Resumo de manutenção"))
+        self.assertLess(body.index("Resumo de manutenção"), body.index("Refinar histórico"))
+
     def test_plan_item_requires_interval_km_or_days(self):
         item = MaintenancePlanItem(
             motorcycle=self.motorcycle,

@@ -4,6 +4,14 @@ module.exports = {
     "./apps/**/*.py"
   ],
   theme: {
+    letterSpacing: {
+      tighter: "0",
+      tight: "0",
+      normal: "0",
+      wide: "0",
+      wider: "0",
+      widest: "0",
+    },
     extend: {
       colors: {
         // Semantic palette driven by CSS variables and data-theme.

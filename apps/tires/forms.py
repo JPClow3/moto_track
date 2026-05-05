@@ -40,7 +40,7 @@ class TireRecordForm(forms.ModelForm):
             "is_active": "Pneu ativo",
         }
         widgets = {
-            "installed_at": forms.DateInput(attrs={"type": "date"}),
+            "installed_at": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "installed_odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "wear_percent": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "estimated_change_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
@@ -93,7 +93,7 @@ class TirePressureRecordForm(forms.ModelForm):
             "notes": "Observações",
         }
         widgets = {
-            "date": forms.DateInput(attrs={"type": "date"}),
+            "date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "psi_front": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "psi_rear": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "notes": forms.Textarea(attrs={"rows": 2}),

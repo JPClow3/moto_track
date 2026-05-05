@@ -12,14 +12,16 @@
       <h2 id="documents-title" class="page-title">Documentos organizados para consulta e comprovação.</h2>
       <p class="page-copy">CRLV, manuais, seguros e comprovantes em um arquivo organizado, com prioridade para validade, abertura e histórico.</p>
     </div>
-    <button class="ui-btn-primary" type="button" @click="document.getElementById('documents-upload-form')?.scrollIntoView({behavior:'smooth'})">
-      Enviar novo
-    </button>
+    <div class="page-actions">
+      <button class="ui-btn-primary" type="button" @click="document.getElementById('documents-upload-form')?.scrollIntoView({behavior:'smooth'})">
+        Enviar novo
+      </button>
+    </div>
   </header>
 
   {% if upload_has_errors %}
     <div class="form-errors" role="alert" aria-live="polite">
-      <p class="font-semibold">não foi possível enviar o documento.</p>
+      <p class="font-semibold">Não foi possível enviar o documento.</p>
       <p>Revise os campos do formulário de envio abaixo.</p>
       <a class="text-link" href="#documents-upload-form">Ir para o formulário</a>
     </div>
@@ -45,7 +47,7 @@
           </div>
           <div>
             <p class="text-xs font-medium text-on-surface-variant">Fixado</p>
-            <h3 class="mt-1 font-headline text-2xl font-semibold tracking-tight">{{ pinned_manual.name }}</h3>
+            <h3 class="mt-1 section-heading-title">{{ pinned_manual.name }}</h3>
             <p class="mt-3 text-sm leading-6 text-on-surface-variant">{{ pinned_manual.notes|default:"Acesso rápido ao manual principal da moto." }}</p>
             <div class="mt-4 flex flex-wrap gap-3">
               <a class="ui-btn-primary" href="{{ pinned_manual.file.url }}" target="_blank" rel="noopener noreferrer">Abrir manual</a>
@@ -60,7 +62,7 @@
 
     <div class="space-y-4">
       <div class="flex items-center justify-between gap-4">
-        <h3 class="font-headline text-2xl font-semibold tracking-tight">Categorias</h3>
+        <h3 class="section-heading-title">Categorias</h3>
         <span class="ui-eyebrow">Arquivo</span>
       </div>
       <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="list">
@@ -74,36 +76,13 @@
     </div>
   </section>
 
-  <div id="documents-upload-form" class="space-y-4 border-t border-outline-variant/40 pt-5" aria-label="Envio de documento" {% if upload_has_errors %}data-upload-has-errors="true" tabindex="-1" x-init="$nextTick(() => { $el.scrollIntoView({ behavior: 'smooth', block: 'start' }); $el.focus({ preventScroll: true }); })"{% endif %}>
-    <h3 class="font-headline text-2xl font-semibold tracking-tight">Envio de documento</h3>
-    {% if upload_has_errors %}
-      <div class="form-errors mt-4" role="alert" aria-live="polite">
-        <p>Corrijá os erros destacados para concluir o envio.</p>
+  <section id="documents-table" class="workflow-section" aria-labelledby="documents-table-title">
+    <div class="section-heading">
+      <div>
+        <h3 id="documents-table-title" class="section-heading-title">Arquivo de documentos</h3>
+        <p class="section-heading-copy">Consulte, baixe e crie lembretes antes de entrar no fluxo de envio.</p>
       </div>
-    {% endif %}
-    <form method="post" enctype="multipart/form-data" class="mt-4 data-form" data-offline-queue="documents:list" novalidate>
-      {% csrf_token %}
-      <input type="hidden" name="client_submission_id" value="{{ client_submission_id }}" />
-      {% for field in upload_form.visible_fields %}
-        <div class="form-field">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-            <div class="field-error" aria-live="polite">
-              {% for error in field.errors %}
-                <p>{{ error }}</p>
-              {% endfor %}
-            </div>
-          {% endif %}
-        </div>
-      {% endfor %}
-      <div class="quick-actions-row">
-        <button type="submit" class="primary-btn">Enviar documento</button>
-      </div>
-    </form>
-  </div>
-
-  <section id="documents-table" aria-label="Tabela de documentos">
+    </div>
     {% if documents %}
       <div class="overflow-x-auto">
         <table class="responsive-table min-w-[760px]" aria-label="Documentos cadastrados">
@@ -175,7 +154,7 @@
       {% else %}
         <span aria-hidden="true"></span>
       {% endif %}
-      <span class="text-xs font-semibold text-on-surface-variant">Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+      <span class="text-xs font-semibold text-on-surface-variant">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
       {% if page_obj.has_next %}
         <a class="ui-btn-secondary" href="{% querystring page=page_obj.next_page_number %}">Próxima</a>
       {% else %}
@@ -183,5 +162,39 @@
       {% endif %}
     </nav>
   {% endif %}
+
+  <section id="documents-upload-form" class="workflow-section" aria-labelledby="documents-upload-title" {% if upload_has_errors %}data-upload-has-errors="true" tabindex="-1" x-init="$nextTick(() => { $el.scrollIntoView({ behavior: 'smooth', block: 'start' }); $el.focus({ preventScroll: true }); })"{% endif %}>
+    <div class="section-heading">
+      <div>
+        <h3 id="documents-upload-title" class="section-heading-title">Envio de documento</h3>
+        <p class="section-heading-copy">Adicione um novo arquivo depois de conferir o que já existe na garagem.</p>
+      </div>
+    </div>
+    {% if upload_has_errors %}
+      <div class="form-errors" role="alert" aria-live="polite">
+        <p>Corrija os erros destacados para concluir o envio.</p>
+      </div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" class="data-form" data-offline-queue="documents:list" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="client_submission_id" value="{{ client_submission_id }}" />
+      {% for field in upload_form.visible_fields %}
+        <div class="form-field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <div class="field-error" aria-live="polite">
+              {% for error in field.errors %}
+                <p>{{ error }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <div class="quick-actions-row">
+        <button type="submit" class="ui-btn-primary">Enviar documento</button>
+      </div>
+    </form>
+  </section>
 </section>
 {% endblock %}

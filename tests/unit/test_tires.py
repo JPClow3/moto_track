@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.garage.models import Motorcycle
 from apps.tires.forms import TireProductForm
@@ -154,6 +155,14 @@ class TireViewTests(TestCase):
         self.assertContains(response, "Pirelli Angel GT")
         self.assertNotContains(response, "Outro pneu")
 
+    def test_list_view_prioritizes_insights_before_forms_and_filters(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("tires:list"))
+        body = response.content.decode()
+
+        self.assertLess(body.index("Insights de segurança"), body.index('id="tires-pressure-title"'))
+        self.assertLess(body.index("Insights de segurança"), body.index("Refinar histórico"))
+
     def test_list_view_keeps_pagination_controls_for_multiple_pages(self):
         TireRecord.objects.bulk_create(  # pylint: disable=no-member
             [
@@ -176,7 +185,7 @@ class TireViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["page_obj"].number, 2)
-        self.assertContains(response, "Pagina 2 de 2")
+        self.assertContains(response, "Página 2 de 2")
         self.assertContains(response, "Anterior")
 
     def test_tire_telemetry_radius_and_circumference_stay_synchronized(self):
@@ -187,6 +196,16 @@ class TireViewTests(TestCase):
         self.assertEqual(rear["radius"], 88)
         self.assertEqual(rear["circumference"], round(math.tau * rear["radius"], 2))
         self.assertContains(response, f'r="{rear["radius"]}"')
+        self.assertContains(response, f"stroke-dasharray: {rear['circumference']}")
+        self.assertNotContains(response, f"stroke-dasharray: {str(rear['circumference']).replace('.', ',')}")
+
+    def test_pressure_form_date_uses_browser_native_value_format(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("tires:list"))
+
+        self.assertContains(response, 'type="date"')
+        self.assertContains(response, f'value="{timezone.localdate():%Y-%m-%d}"')
+        self.assertNotContains(response, timezone.localdate().strftime("%d/%m/%Y"))
 
     def test_create_view_creates_tire_record(self):
         self.client.force_login(self.user)

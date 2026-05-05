@@ -24,6 +24,35 @@ class PublicUiShellTests(TestCase):
                 self.assertContains(response, "moto-track-logo-horizontal-light.svg")
                 self.assertContains(response, "moto-track-logo-horizontal-dark.svg")
 
+    def test_public_and_auth_theme_controls_are_icon_only_before_js_runs(self):
+        route_names = [
+            "landing",
+            "pricing",
+            "account_login",
+            "account_signup",
+        ]
+
+        for route_name in route_names:
+            with self.subTest(route=route_name):
+                response = self.client.get(reverse(route_name))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "data-theme-toggle")
+                self.assertContains(response, 'data-lucide="sun"')
+                self.assertContains(response, "ui-icon-btn")
+                self.assertNotContains(response, "<span>Tema</span>")
+                self.assertNotContains(response, 'class="ui-toolbar-btn" data-theme-toggle')
+
+    def test_reviewed_marketing_pages_use_normal_tracking_markup(self):
+        route_names = ["landing", "pricing"]
+
+        for route_name in route_names:
+            with self.subTest(route=route_name):
+                response = self.client.get(reverse(route_name))
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, "tracking-tight")
+                self.assertNotContains(response, "tracking-wider")
+                self.assertNotContains(response, "tracking-widest")
+
     def test_legal_pages_do_not_render_auth_card_or_auth_fields(self):
         User = get_user_model()
         user = User.objects.create_user(username="public-ui-user", email="public@example.com", password="pass12345")
@@ -84,9 +113,30 @@ class PublicUiShellTests(TestCase):
         self.assertContains(login_response, "Bem-vindo de volta")
         self.assertContains(login_response, 'name="login"')
         self.assertContains(login_response, 'type="password"')
+        self.assertContains(login_response, '<meta name="robots" content="noindex, nofollow" />')
+        self.assertContains(login_response, '<link rel="canonical" href="http://testserver/accounts/login/"')
 
         signup_response = self.client.get(reverse("account_signup"))
         self.assertEqual(signup_response.status_code, 200)
         self.assertContains(signup_response, "Crie sua conta Moto Track")
         self.assertContains(signup_response, 'name="email"')
         self.assertContains(signup_response, 'name="password1"')
+        self.assertContains(signup_response, '<meta name="robots" content="noindex, nofollow" />')
+        self.assertContains(signup_response, '<link rel="canonical" href="http://testserver/accounts/signup/"')
+
+    def test_blog_detail_includes_article_structured_data_and_clean_canonical(self):
+        article = ForumArticle.objects.create(
+            title="Checklist de revisão",
+            slug="checklist-revisao",
+            summary="Resumo curto do guia.",
+            body="Conteúdo técnico.",
+            is_published=True,
+        )
+
+        response = self.client.get(f"{reverse('blog:detail', args=[article.slug])}?utm_source=test")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '"@type": "Article"')
+        self.assertContains(response, '<link rel="canonical" href="http://testserver/blog/checklist-revisao/"')
+        self.assertContains(response, '<meta property="og:url" content="http://testserver/blog/checklist-revisao/"')
+        self.assertNotContains(response, "utm_source=test")

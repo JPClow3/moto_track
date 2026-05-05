@@ -16,6 +16,7 @@ DATABASES = {
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 SITE_DOMAIN = ""
+ACCOUNT_EMAIL_VERIFICATION = "none"
 
 CACHES = {
     "default": {

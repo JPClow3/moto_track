@@ -18,6 +18,8 @@ class SitemapTests(TestCase):
         self.assertIn("landing", sitemap.items())
         self.assertIn("privacy_policy", sitemap.items())
         self.assertIn("terms_of_service", sitemap.items())
+        self.assertNotIn("account_login", sitemap.items())
+        self.assertNotIn("account_signup", sitemap.items())
 
     def test_robots_uses_request_host_for_sitemap(self):
         response = self.client.get(reverse("robots_txt"))
@@ -29,7 +31,8 @@ class SitemapTests(TestCase):
         response = self.client.get(reverse("django.contrib.sitemaps.views.sitemap"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "http://testserver/accounts/login/")
+        self.assertContains(response, "http://testserver/")
+        self.assertNotContains(response, "http://testserver/accounts/login/")
         self.assertNotContains(response, "https://example.com/")
 
     @override_settings(SITE_DOMAIN="mototrack.app")
@@ -37,7 +40,8 @@ class SitemapTests(TestCase):
         response = self.client.get(reverse("django.contrib.sitemaps.views.sitemap"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "http://mototrack.app/accounts/login/")
+        self.assertContains(response, "http://mototrack.app/")
+        self.assertNotContains(response, "http://mototrack.app/accounts/login/")
 
     def test_sitemap_includes_roadmap(self):
         response = self.client.get(reverse("django.contrib.sitemaps.views.sitemap"))

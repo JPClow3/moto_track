@@ -43,6 +43,16 @@ class CoreViewsTests(TestCase):
         self.assertContains(response, "Moto Track")
         self.assertContains(response, '<meta name="description"')
         self.assertContains(response, "A garagem digital para cuidar da sua moto com clareza")
+        self.assertContains(response, '<link rel="canonical" href="http://testserver/"')
+        self.assertContains(response, '"@type": "WebSite"')
+        self.assertContains(response, '"@type": "Organization"')
+
+    def test_landing_canonical_ignores_query_string(self):
+        response = self.client.get(f"{reverse('landing')}?utm_source=test&utm_campaign=seo")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<link rel="canonical" href="http://testserver/"')
+        self.assertNotContains(response, "utm_source=test")
 
     def test_landing_does_not_create_site_settings_row(self):
         SiteSettings.objects.all().delete()
