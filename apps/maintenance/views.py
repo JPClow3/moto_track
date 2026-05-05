@@ -31,7 +31,14 @@ from apps.reminders.services import list_due_reminders
 
 from .export import build_export
 from .forms import MaintenancePartForm, MaintenancePlanItemForm, MaintenanceRecordQuickForm
-from .models import MaintenancePart, MaintenancePhoto, MaintenancePlanItem, MaintenanceRecord, MaintenanceRecordPart, MaintenanceType
+from .models import (
+    MaintenancePart,
+    MaintenancePhoto,
+    MaintenancePlanItem,
+    MaintenanceRecord,
+    MaintenanceRecordPart,
+    MaintenanceType,
+)
 
 # pylint: disable=no-member
 

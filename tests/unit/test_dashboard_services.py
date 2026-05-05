@@ -4,7 +4,6 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
-from django.utils import timezone
 from djmoney.money import Money
 
 from apps.core.services.dashboard import get_status_cards, get_tire_cards, get_weekly_sparkline_points

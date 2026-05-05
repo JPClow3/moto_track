@@ -127,7 +127,7 @@ class ApiAuthZTests(TestCase):
 
     def test_wrong_token_hash_returns_401(self):
         from apps.core.models import ApiToken
-        token = ApiToken.objects.create(owner=self.user, name="Wrong", scopes="fuel:read")
+        ApiToken.objects.create(owner=self.user, name="Wrong", scopes="fuel:read")
         response = self.client.get(
             reverse("api_v1:fuel_records"),
             HTTP_AUTHORIZATION="Token totally-wrong-key-here",
@@ -150,7 +150,7 @@ class ApiAuthZTests(TestCase):
 
     def test_tire_records_endpoint_requires_scope(self):
         token = ApiToken.objects.create(owner=self.user, name="Tires", scopes="tires:read")
-        from apps.tires.models import TirePosition, TireRecord, TireProduct
+        from apps.tires.models import TirePosition, TireProduct, TireRecord
         product = TireProduct.objects.create(owner=self.user, manufacturer="Pirelli", model_name="Angel")
         TireRecord.objects.create(
             motorcycle=self.motorcycle,

@@ -5,8 +5,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-from django.middleware.csrf import get_token
 from django.http import HttpResponse, JsonResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -21,6 +21,7 @@ from apps.core.client_submissions import (
 )
 from apps.core.exports import safe_next_url
 from apps.core.forms import OdometerOverrideForm
+from apps.core.models import PushSubscription
 from apps.core.services.dashboard import (
     get_active_reminders,
     get_catalog_links,
@@ -33,9 +34,8 @@ from apps.core.services.dashboard import (
     get_status_cards,
     get_tire_cards,
 )
-from apps.core.models import PushSubscription
-from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY, consume_undo_token
-from apps.garage.models import Motorcycle
+from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY
+from apps.core.undo import consume_undo_token
 from apps.reports.services import health_score, timeline_events
 from apps.work.services import professional_summary
 

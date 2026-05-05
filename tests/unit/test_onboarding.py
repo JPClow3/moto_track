@@ -9,8 +9,6 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.test import TestCase, override_settings
 from django.urls import reverse
-from django.utils import timezone
-from djmoney.money import Money
 
 from apps.documents.models import DocumentType, MotorcycleDocument
 from apps.fuel.models import FuelRecord

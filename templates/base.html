@@ -1,13 +1,13 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="pt-BR" class="h-full" data-theme="system" data-user-theme="{{ user_theme_preference|default:'system' }}">
+<html lang="pt-BR" class="h-full" data-theme="system" data-user-theme="{{ user_theme_preference|default:'' }}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Moto Track{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}Moto Track organiza garagem, abastecimentos, manutenções, pneus, documentos e relatórios em um painel privado para motociclistas.{% endblock %}" />
   <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}" />
-  <meta name="theme-color" content="#F5F5F4" />
+  <meta name="theme-color" content="#F5F5F7" />
   <meta name="csrf-token" content="{{ csrf_token }}" />
   <meta name="service-worker-url" content="{% url 'service_worker' %}" />
   <meta name="push-subscribe-url" content="{% url 'push_subscribe' %}" />
@@ -27,7 +27,7 @@
   <script>
     /* AI-NOTE: justified-exception — Theme initialization must run synchronously before render to prevent FOUC */
     (() => {
-      const palette = { dark: "#09090B", light: "#F5F5F4" };
+      const palette = { dark: "#0B0B0F", light: "#F5F5F7" };
       const validThemes = new Set(["system", "dark", "light"]);
       try {
         const serverTheme = document.documentElement.dataset.userTheme;
@@ -62,9 +62,6 @@
       }
     })();
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
   <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
@@ -125,7 +122,7 @@
     <aside class="hidden border-r border-outline-variant/80 bg-surface-low/85 lg:flex lg:sticky lg:top-0 lg:h-screen lg:flex-col lg:px-4 lg:py-5 print:hidden" aria-label="Navegação principal">
       <div class="px-2 pb-5">
         <a class="inline-flex max-w-full" href="{% url 'dashboard' %}" aria-label="Moto Track">
-          <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-11 w-auto max-w-full" loading="eager" fetchpriority="high" width="220" height="44" />
+          {% include "core/partials/theme_logo.html" with logo_class="h-10 w-auto max-w-full" width="220" height="44" fetchpriority="high" %}
         </a>
         <p class="mt-3 text-xs font-medium text-on-surface-variant">Controle da sua moto</p>
       </div>
@@ -236,9 +233,16 @@
     <div class="min-w-0 pb-24 lg:pb-0">
       <header class="sticky top-0 z-40 border-b border-outline-variant/80 bg-surface/88 backdrop-blur print:hidden">
         <div class="mx-auto flex w-[min(1280px,94%)] items-center justify-between gap-4 py-4">
-          <div class="min-w-0">
-            <p class="ui-eyebrow">{% block topbar_eyebrow %}Moto Track{% endblock %}</p>
-            <h1 class="mt-2 ui-h1 truncate">{% block topbar_title %}Controle da sua moto em um so lugar{% endblock %}</h1>
+          <div class="flex min-w-0 items-center gap-3">
+            {% if request.user.is_authenticated %}
+              <a class="inline-flex shrink-0 lg:hidden" href="{% url 'dashboard' %}" aria-label="Moto Track">
+                {% include "core/partials/theme_logo.html" with logo_class="h-8 w-auto max-w-[8.5rem] sm:max-w-[10rem]" width="180" height="36" fetchpriority="high" %}
+              </a>
+            {% endif %}
+            <div class="min-w-0 {% if request.user.is_authenticated %}hidden md:block{% endif %}">
+              <p class="ui-eyebrow">{% block topbar_eyebrow %}Moto Track{% endblock %}</p>
+              <h1 class="mt-2 ui-h1 truncate">{% block topbar_title %}Controle da sua moto em um só lugar{% endblock %}</h1>
+            </div>
           </div>
           {% if request.user.is_authenticated and garage_motorcycles|length > 1 %}
             <div class="relative hidden md:block" x-data="{ open: false }" @click.outside="open = false">

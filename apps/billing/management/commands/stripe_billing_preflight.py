@@ -1,7 +1,7 @@
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.billing.stripe_client import BillingConfigurationError, get_stripe_client, pro_price_id
-from django.conf import settings
 
 
 class Command(BaseCommand):

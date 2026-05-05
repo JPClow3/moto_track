@@ -8,9 +8,9 @@ from djmoney.money import Money
 from apps.billing.entitlements import can_add_active_motorcycle
 from apps.core.forms import configure_form_accessibility
 from apps.fuel.models import FuelRecord
-from apps.reports.services import health_score
 from apps.reminders.models import Reminder
 from apps.reminders.services import evaluate_reminder
+from apps.reports.services import health_score
 
 from .forms import MotorcycleForm, MotorcycleSpecForm
 from .models import Motorcycle, MotorcycleSpec

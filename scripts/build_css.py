@@ -4,7 +4,6 @@
 import argparse
 import os
 import subprocess
-import sys
 
 # Ensure the binary is present
 import bootstrap_tailwind

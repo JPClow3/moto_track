@@ -382,7 +382,7 @@ class MaintenanceModelTests(TestCase):
 
     def test_model_save_rejects_odometer_regression_from_tires(self):
         """A maintenance record with odometer lower than a prior tire record must fail on save."""
-        from apps.tires.models import TireRecord, TirePosition
+        from apps.tires.models import TirePosition, TireRecord
 
         TireRecord.objects.create(
             motorcycle=self.motorcycle,

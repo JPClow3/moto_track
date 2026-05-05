@@ -339,6 +339,31 @@ class BillingFlowTests(TestCase):
         self.assertTrue(profile.grace_until > timezone.now())
         self.assertTrue(has_pro_access(self.user))
 
+    def test_invoice_payment_failed_does_not_override_canceled_subscription(self):
+        from apps.billing.models import BillingPlan, SubscriptionProfile
+        from apps.billing.webhooks import process_stripe_event
+
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.FREE,
+            stripe_customer_id="cus_123",
+            stripe_subscription_id="sub_123",
+            stripe_subscription_status="canceled",
+        )
+
+        process_stripe_event(
+            {
+                "id": "evt_failed_after_cancel",
+                "type": "invoice.payment_failed",
+                "data": {"object": {"customer": "cus_123", "subscription": "sub_123"}},
+            }
+        )
+
+        profile = SubscriptionProfile.objects.get(user=self.user)
+        self.assertEqual(profile.plan, BillingPlan.FREE)
+        self.assertEqual(profile.stripe_subscription_status, "canceled")
+        self.assertIsNone(profile.grace_until)
+
     def test_late_invoice_paid_does_not_restore_canceled_subscription(self):
         from apps.billing.entitlements import has_pro_access
         from apps.billing.models import BillingPlan, SubscriptionProfile
@@ -445,6 +470,39 @@ class BillingFlowTests(TestCase):
         self.assertEqual(profile.stripe_subscription_status, "active")
         self.assertIsNone(profile.grace_until)
         self.assertEqual(profile.latest_receipt_url, "https://stripe.example/receipt.pdf")
+        self.assertTrue(has_pro_access(self.user))
+
+    def test_invoice_paid_preserves_trialing_access_when_invoice_has_expanded_trialing_subscription(self):
+        from apps.billing.entitlements import has_pro_access
+        from apps.billing.models import BillingPlan, SubscriptionProfile
+        from apps.billing.webhooks import process_stripe_event
+
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.PRO,
+            stripe_customer_id="cus_123",
+            stripe_subscription_id="sub_trial",
+            stripe_subscription_status="trialing",
+            grace_until=timezone.now() + timedelta(days=1),
+        )
+
+        process_stripe_event(
+            {
+                "id": "evt_paid_trialing",
+                "type": "invoice.paid",
+                "data": {
+                    "object": {
+                        "customer": "cus_123",
+                        "subscription": {"id": "sub_trial", "status": "trialing"},
+                    }
+                },
+            }
+        )
+
+        profile = SubscriptionProfile.objects.get(user=self.user)
+        self.assertEqual(profile.plan, BillingPlan.PRO)
+        self.assertEqual(profile.stripe_subscription_status, "trialing")
+        self.assertIsNone(profile.grace_until)
         self.assertTrue(has_pro_access(self.user))
 
     def test_invoice_paid_without_subscription_does_not_grant_pro(self):
@@ -714,7 +772,6 @@ class WorkSessionTests(TestCase):
 
     def test_work_session_form_normalizes_blank_optional_numeric_fields(self):
         from apps.work.forms import WorkSessionForm
-        from apps.work.models import WorkSession
 
         form = WorkSessionForm(
             data={

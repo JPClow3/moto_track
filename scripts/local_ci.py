@@ -6,7 +6,7 @@ import sys
 
 def run(cmd, title):
     print(f"\n{'=' * 60}\n{title}\n{'=' * 60}")
-    result = subprocess.run(cmd, shell=True)
+    result = subprocess.run(cmd)
     if result.returncode != 0:
         print(f"FAILED: {title}")
         sys.exit(result.returncode)
@@ -14,9 +14,24 @@ def run(cmd, title):
 
 
 def main():
-    run("python -m pytest tests/unit tests/integration tests/system tests/regression tests/performance tests/security -q", "Unit + Integration + System + Regression + Performance + Security Tests")
-    run("bandit -r apps -ll", "Bandit Security Scan")
-    run("pip-audit -r requirements/prod.txt", "pip-audit Dependency Scan")
+    python = sys.executable
+    run(
+        [
+            python,
+            "-m",
+            "pytest",
+            "tests/unit",
+            "tests/integration",
+            "tests/system",
+            "tests/regression",
+            "tests/performance",
+            "tests/security",
+            "-q",
+        ],
+        "Unit + Integration + System + Regression + Performance + Security Tests",
+    )
+    run([python, "-m", "bandit", "-r", "apps", "-ll"], "Bandit Security Scan")
+    run([python, "-m", "pip_audit", "-r", "requirements/prod.txt"], "pip-audit Dependency Scan")
     print("\nAll local CI checks passed.")
 
 

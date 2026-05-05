@@ -1,16 +1,16 @@
 import os
 
-from .base import *
+import dj_database_url
+
+from .base import *  # noqa: F403,F401
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "moto_test"),
-        "USER": os.getenv("POSTGRES_USER", "moto"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "moto"),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
-    }
+    "default": dj_database_url.parse(
+        os.getenv("TEST_DATABASE_URL")
+        or (os.getenv("DATABASE_URL") if os.getenv("CI") else "")
+        or f"sqlite:///{BASE_DIR / 'test.sqlite3'}",  # noqa: F405
+        conn_max_age=0,
+    )
 }
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

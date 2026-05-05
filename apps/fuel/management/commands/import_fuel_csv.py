@@ -11,7 +11,6 @@ from apps.core.validation import validate_odometer_sequence
 from apps.fuel.models import FuelRecord, FuelType
 from apps.garage.models import Motorcycle
 
-
 User = get_user_model()
 
 

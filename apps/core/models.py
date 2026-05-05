@@ -78,9 +78,9 @@ class ApiToken(TimeStampedModel):
                     with transaction.atomic():
                         super().save(*args, **kwargs)
                     return
-                except IntegrityError:
+                except IntegrityError as exc:
                     if attempt == 4:
-                        raise RuntimeError("Failed to generate a unique API key after 5 attempts.")
+                        raise RuntimeError("Failed to generate a unique API key after 5 attempts.") from exc
                     self.key_hash = ""
                     self.key_prefix = ""
         else:

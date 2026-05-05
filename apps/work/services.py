@@ -6,8 +6,8 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from apps.fuel.services import build_fuel_period_summary
 from apps.fuel.models import FuelRecord
+from apps.fuel.services import build_fuel_period_summary
 from apps.garage.models import Motorcycle
 
 from .models import ProfessionalCostSettings, WorkSession

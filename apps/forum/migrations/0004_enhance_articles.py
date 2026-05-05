@@ -3,11 +3,6 @@
 from django.db import migrations
 
 
-class Migration(migrations.Migration):
-    dependencies = [
-        ("forum", "0003_seed_blog_articles"),
-    ]
-
 def enhance_articles(apps, schema_editor):
     ForumArticle = apps.get_model("forum", "ForumArticle")
 

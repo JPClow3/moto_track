@@ -52,7 +52,7 @@
     const currentTheme = isValidTheme(theme)
       ? theme
       : document.documentElement.dataset.theme || readStoredTheme();
-    meta.setAttribute("content", getResolvedTheme(currentTheme) === "dark" ? "#09090B" : "#F5F5F4");
+    meta.setAttribute("content", getResolvedTheme(currentTheme) === "dark" ? "#0B0B0F" : "#F5F5F7");
   }
 
   function updateManifestLink(theme) {
@@ -79,15 +79,20 @@
     const currentTheme = document.documentElement.dataset.theme || readStoredTheme();
     const currentMeta = themeMeta[currentTheme] || themeMeta.system;
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+      const compact = button.classList.contains("ui-icon-btn") || button.hasAttribute("data-theme-toggle-compact");
       button.setAttribute("aria-label", "Tema atual: " + currentMeta.label + ". Alternar tema.");
       button.setAttribute("title", "Tema: " + currentMeta.label);
       button.dataset.themeMode = currentTheme;
-      button.innerHTML =
-        '<span class="ui-icon-dot" aria-hidden="true"><i data-lucide="' +
-        currentMeta.icon +
-        '"></i></span><span class="hidden sm:inline">Tema</span><span>' +
-        currentMeta.label +
-        "</span>";
+      if (compact) {
+        button.innerHTML = '<i data-lucide="' + currentMeta.icon + '" aria-hidden="true"></i>';
+      } else {
+        button.innerHTML =
+          '<span class="ui-icon-dot" aria-hidden="true"><i data-lucide="' +
+          currentMeta.icon +
+          '"></i></span><span class="hidden sm:inline">Tema</span><span>' +
+          currentMeta.label +
+          "</span>";
+      }
     });
     if (window.lucide) {
       window.lucide.createIcons();

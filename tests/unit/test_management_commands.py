@@ -2,15 +2,14 @@ import csv
 import io
 import os
 import tempfile
-from decimal import Decimal
 from unittest.mock import patch
 
+from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 
-from allauth.account.models import EmailAddress
 from apps.garage.models import Motorcycle
 
 

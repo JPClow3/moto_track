@@ -1,13 +1,11 @@
-from datetime import date, timedelta, timezone as dt_timezone
+from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
-from django.utils import timezone
 
-from apps.core.models import ApiToken
-from apps.core.undo import create_undo_token, consume_undo_token
+from apps.core.undo import consume_undo_token, create_undo_token
 from apps.forum.models import ForumArticle
 from apps.fuel.models import FuelRecord
 from apps.garage.models import Motorcycle, MotorcycleTemplate
@@ -16,10 +14,10 @@ from apps.tires.models import TireRecord
 
 class UndoTokenZSuffixTests(TestCase):
     def test_undo_token_with_z_suffix_is_valid(self):
-        from django.test import RequestFactory
         from django.contrib.sessions.middleware import SessionMiddleware
+        from django.test import RequestFactory
+
         from apps.garage.models import Motorcycle
-        from apps.fuel.models import FuelRecord
         user = get_user_model().objects.create_user(username="undo", email="undo@example.com")
         motorcycle = Motorcycle.objects.create(owner=user, name="Undo", brand="Honda", model="CB", year=2024)
         record = FuelRecord.objects.create(
@@ -99,10 +97,10 @@ class PopulateTemplatesIdempotencyTests(TestCase):
     @override_settings(DEBUG=True)
     def test_populate_templates_command_is_idempotent(self):
         from io import StringIO
+
         from django.core.management import call_command
         out = StringIO()
         call_command("populate_templates", stdout=out)
-        first = out.getvalue()
         out2 = StringIO()
         call_command("populate_templates", stdout=out2)
         second = out2.getvalue()

@@ -1,6 +1,5 @@
 """Test settings using SQLite for environments without PostgreSQL."""
 
-import os
 
 from .dev import *  # noqa: F403,F401
 

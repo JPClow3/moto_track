@@ -24,11 +24,11 @@ def noop(apps, schema_editor):
 
 def encrypt_existing_push_keys(apps, schema_editor):
     """Encrypt existing plaintext p256dh/auth before column becomes EncryptedCharField."""
+    import base64
+
+    from cryptography.fernet import Fernet
     from django.conf import settings
     from django.utils.encoding import force_bytes, force_str
-
-    import base64
-    from cryptography.fernet import Fernet
 
     PushSubscription = apps.get_model("core", "PushSubscription")
     push_key = getattr(settings, "PUSH_ENCRYPTION_KEY", None)

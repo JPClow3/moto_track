@@ -5,9 +5,9 @@ permissions:
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, codex/production-pwa]
   pull_request:
-    branches: [main, develop]
+    branches: [main, codex/production-pwa]
   schedule:
     - cron: "0 6 * * 1"
 

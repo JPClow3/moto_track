@@ -3,10 +3,10 @@ from __future__ import annotations
 import base64
 import logging
 
+from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 from django.db import models
 from django.utils.encoding import force_bytes, force_str
-from cryptography.fernet import Fernet, InvalidToken
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class EncryptedCharField(models.CharField):
         try:
             return force_str(_get_fernet().decrypt(force_bytes(value)))
         except (InvalidToken, ValueError, TypeError):
-            logger.warning("EncryptedCharField decryption failed for value %r", value, exc_info=True)
+            logger.warning("EncryptedCharField decryption failed; returning None.")
             return None
 
     def to_python(self, value):

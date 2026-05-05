@@ -17,7 +17,13 @@ env = environ.Env(
     DJANGO_DEBUG=(bool, False),
 )
 
-SECRET_KEY = env("DJANGO_SECRET_KEY")
+_settings_module = os.environ.get("DJANGO_SETTINGS_MODULE", "")
+_local_secret_key_default = (
+    "insecure-local-dev-secret-key"
+    if _settings_module in {"config.settings.dev", "config.settings.test"}
+    else environ.Env.NOTSET
+)
+SECRET_KEY = env("DJANGO_SECRET_KEY", default=_local_secret_key_default)
 PUSH_ENCRYPTION_KEY = env("PUSH_ENCRYPTION_KEY", default="")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
@@ -71,7 +77,6 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "djmoney",
-    "django_bleach",
     "django_cotton",
     "apps.core",
     "apps.accounts",
@@ -325,12 +330,6 @@ SOCIALACCOUNT_PROVIDERS = {
         },
     }
 }
-
-BLEACH_ALLOWED_TAGS = []
-BLEACH_ALLOWED_ATTRIBUTES = {}
-BLEACH_ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
-BLEACH_STRIP_TAGS = True
-BLEACH_STRIP_COMMENTS = True
 
 DEFAULT_CURRENCY = "BRL"
 CURRENCIES = ("BRL",)

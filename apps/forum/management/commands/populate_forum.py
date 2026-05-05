@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
+
 from apps.forum.models import ForumArticle
+
 
 class Command(BaseCommand):
     help = "Populates the forum with common motorcycle maintenance articles."

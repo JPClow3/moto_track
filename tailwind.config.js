@@ -31,15 +31,18 @@ module.exports = {
         "brand-active": "#B91C1C",
       },
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "Segoe UI", "Tahoma", "sans-serif"],
-        headline: ["Rajdhani", "Inter", "ui-sans-serif", "system-ui", "Segoe UI", "Tahoma", "sans-serif"],
-        display: ["Rajdhani", "Inter", "ui-sans-serif", "system-ui", "Segoe UI", "Tahoma", "sans-serif"],
+        sans: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Inter", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        headline: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Inter", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        display: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Inter", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+      },
+      spacing: {
+        18: "4.5rem",
       },
       borderRadius: {
-        xl: "0.875rem",
-        "2xl": "1rem",
-        card: "1rem",
-        control: "0.875rem",
+        xl: "0.5rem",
+        "2xl": "0.625rem",
+        card: "0.5rem",
+        control: "0.5rem",
       },
       boxShadow: {
         ambient: "var(--shadow-panel)",

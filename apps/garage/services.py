@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path, PurePosixPath
 import ipaddress
 import socket
+from pathlib import Path, PurePosixPath
 from posixpath import normpath
 from urllib.error import URLError
 from urllib.parse import urlparse

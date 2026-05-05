@@ -47,7 +47,7 @@ def work_session_create_view(request):
             if not can_add_work_session(request.user, work_date=form.cleaned_data.get("work_date")):
                 form.add_error(None, "O Plano Free permite ate 3 turnos por mes. O Plano Pro libera historico ilimitado.")
             else:
-                session = form.save()
+                form.save()
                 messages.success(request, "Turno registrado com sucesso.")
                 return redirect("work:dashboard")
     else:

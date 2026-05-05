@@ -1,202 +1,102 @@
-{% extends "allauth/layouts/base.html" %}
+{% extends "public/base.html" %}
 {% load static %}
 
-{% block head_title %}Moto Track — Controle de Manutenção de Motocicletas{% endblock %}
-
+{% block title %}Moto Track - Controle de Manutenção de Motocicletas{% endblock %}
 {% block meta_description %}Moto Track é o controle de manutenção de motocicletas que organiza garagem, abastecimentos, revisões, pneus, documentos e relatórios em um painel privado e intuitivo para motociclistas.{% endblock %}
-
-{% block og_title %}Moto Track — Controle de Manutenção de Motocicletas{% endblock %}
+{% block og_title %}Moto Track - Controle de Manutenção de Motocicletas{% endblock %}
 {% block og_description %}Painel privado para gerenciar garagem, manutenções, consumo, pneus e documentos da sua moto.{% endblock %}
 
-{% block body %}
-  <a class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-inverse-surface focus:px-4 focus:py-2 focus:text-on-primary" href="#main-content">
-    Pular para o conteúdo principal
-  </a>
-
-  <div class="min-h-screen flex flex-col">
-    <header class="border-b border-outline-variant/80 bg-surface/88 backdrop-blur">
-      <div class="mx-auto flex w-[min(1280px,94%)] items-center justify-between gap-4 py-4">
-        <a class="inline-flex max-w-full" href="{% url 'landing' %}" aria-label="Moto Track — Início">
-          <img src="{% static 'brand/moto-track-full-logo.png' %}" alt="Moto Track" class="h-10 w-auto max-w-[15rem]" loading="eager" fetchpriority="high" width="240" height="40">
+{% block content %}
+<section class="public-hero" aria-labelledby="hero-title">
+  <div class="public-container relative grid min-h-[calc(86svh-4.5rem)] items-center gap-10 py-16 md:grid-cols-[minmax(0,0.95fr)_minmax(18rem,0.65fr)] md:py-20">
+    <div class="relative z-10 max-w-3xl">
+      <p class="page-kicker">Controle da sua moto</p>
+      <h1 id="hero-title" class="mt-4 max-w-4xl text-4xl font-semibold leading-[1.02] tracking-tight text-on-surface sm:text-5xl lg:text-6xl">
+        A garagem da sua moto, organizada para decisões rápidas.
+      </h1>
+      <p class="mt-5 max-w-2xl text-base leading-7 text-on-surface-variant sm:text-lg">
+        Controle sua moto com precisão: abastecimentos, revisões, pneus, documentos e custos em um painel limpo, privado e pronto para o dia a dia.
+      </p>
+      <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+        <a class="ui-btn-primary !min-h-12 !px-6" href="{% url 'account_signup' %}">
+          Criar conta grátis
+          <i data-lucide="arrow-right" aria-hidden="true"></i>
         </a>
-        <nav aria-label="Navegação principal">
-          <ul class="flex items-center gap-4 text-sm font-semibold">
-            <li><a class="text-on-surface-variant hover:text-on-surface transition" href="{% url 'pricing' %}">Precos</a></li>
-            <li><a class="text-on-surface-variant hover:text-on-surface transition" href="{% url 'account_login' %}">Entrar</a></li>
-            <li><a class="ui-btn-primary !min-h-10 !px-5" href="{% url 'account_signup' %}">Criar conta</a></li>
-          </ul>
-        </nav>
+        <a class="ui-btn-secondary !min-h-12 !px-6" href="{% url 'account_login' %}">Entrar</a>
+        <a class="ui-btn-ghost !min-h-12 !px-4" href="{% url 'pricing' %}">Ver preços</a>
       </div>
-    </header>
+    </div>
 
-    <main id="main-content" class="flex-1" tabindex="-1">
-      <section class="py-16 md:py-24" aria-labelledby="hero-title">
-        <div class="mx-auto w-[min(1280px,94%)] grid gap-10 md:grid-cols-[1.2fr_0.8fr] items-center">
-          <div class="space-y-6">
-            <span class="ui-eyebrow">Controle da sua moto</span>
-            <h1 id="hero-title" class="font-headline text-4xl md:text-5xl font-bold tracking-tight text-on-surface">
-              Controle sua moto com precisão
-            </h1>
-            <p class="text-lg leading-relaxed text-on-surface-variant max-w-xl">
-              Garagem, abastecimentos, revisões, pneus e documentos em um painel único.
-            </p>
-            <div class="flex flex-wrap gap-3">
-              <a class="ui-btn-primary !min-h-12 !px-7 text-sm font-semibold" href="{% url 'account_signup' %}">
-                Criar conta grátis
-                <i data-lucide="arrow-right" class="ml-2 inline" aria-hidden="true"></i>
-              </a>
-              <a class="ui-btn-secondary !min-h-12 !px-7 text-sm font-semibold" href="{% url 'account_login' %}">
-                Entrar
-              </a>
-              <a class="ui-btn-secondary !min-h-12 !px-7 text-sm font-semibold" href="{% url 'pricing' %}">
-                Ver precos
-              </a>
-            </div>
-          </div>
-
-          <div class="hidden md:flex justify-center">
-            <img src="{% static 'brand/moto-track-icon.png' %}" alt="Ícone do Moto Track" class="h-44 w-auto drop-shadow-lg" loading="lazy" width="176" height="176">
-          </div>
-        </div>
-      </section>
-
-      <section class="border-t border-outline-variant/40 py-14 md:py-18" aria-labelledby="features-title">
-        <div class="mx-auto w-[min(1280px,94%)]">
-          <div class="mb-10 md:mb-12">
-            <p class="text-sm font-medium text-on-surface-variant">Funcionalidades</p>
-            <h2 id="features-title" class="mt-2 font-headline text-2xl md:text-3xl font-bold tracking-tight text-on-surface">
-              Tudo para sua moto em um painel
-            </h2>
-          </div>
-          <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
-              <i data-lucide="bike" class="h-5 w-5 text-primary" aria-hidden="true"></i>
-              <h3 class="text-base font-semibold text-on-surface">Garagem</h3>
-              <p class="text-sm text-on-surface-variant">Cadastre motos, odômetro e histórico completo.</p>
-            </div>
-            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
-              <i data-lucide="fuel" class="h-5 w-5 text-primary" aria-hidden="true"></i>
-              <h3 class="text-base font-semibold text-on-surface">Abastecimento</h3>
-              <p class="text-sm text-on-surface-variant">Registre consumo, preço por litro e identifique picos.</p>
-            </div>
-            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
-              <i data-lucide="wrench" class="h-5 w-5 text-primary" aria-hidden="true"></i>
-              <h3 class="text-base font-semibold text-on-surface">Manutenção</h3>
-              <p class="text-sm text-on-surface-variant">Controle revisões, trocas de óleo e custos.</p>
-            </div>
-            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
-              <i data-lucide="circle-dot" class="h-5 w-5 text-primary" aria-hidden="true"></i>
-              <h3 class="text-base font-semibold text-on-surface">Pneus</h3>
-              <p class="text-sm text-on-surface-variant">Monitore desgaste e receba alertas de troca.</p>
-            </div>
-            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
-              <i data-lucide="file-text" class="h-5 w-5 text-primary" aria-hidden="true"></i>
-              <h3 class="text-base font-semibold text-on-surface">Documentos</h3>
-              <p class="text-sm text-on-surface-variant">Anexe CRLV, seguro e notas fiscais organizados.</p>
-            </div>
-            <div class="rounded-md border border-outline-variant/40 bg-surface-low/60 p-5 space-y-2">
-              <i data-lucide="chart-column" class="h-5 w-5 text-primary" aria-hidden="true"></i>
-              <h3 class="text-base font-semibold text-on-surface">Relatórios</h3>
-              <p class="text-sm text-on-surface-variant">Visualize gastos, tendência de consumo e estado geral.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {% if latest_blog %}
-      <section class="border-t border-outline-variant/40 py-14 md:py-18" aria-labelledby="blog-title">
-        <div class="mx-auto w-[min(1280px,94%)]">
-          <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p class="text-sm font-medium text-on-surface-variant">Blog</p>
-              <h2 id="blog-title" class="mt-2 font-headline text-2xl md:text-3xl font-bold tracking-tight text-on-surface">
-                Guias práticos para sua moto
-              </h2>
-            </div>
-            <a class="ui-btn-secondary !min-h-10 !px-5 text-sm font-semibold shrink-0" href="{% url 'blog:list' %}">
-              Ver todos os guias
-              <i data-lucide="arrow-right" class="ml-1.5 inline" aria-hidden="true"></i>
-            </a>
-          </div>
-          <div class="grid gap-6 md:grid-cols-3">
-            {% for article in latest_blog %}
-            <a class="group block rounded-md border border-outline-variant/40 bg-surface-low p-5 transition hover:border-primary/30 hover:shadow-sm" href="{% url 'blog:detail' article.slug %}">
-              <p class="text-xs font-medium text-on-surface-variant">{{ article.published_at|date:"d/m/Y" }}</p>
-              <h3 class="mt-2 text-base font-semibold text-on-surface group-hover:text-primary transition">{{ article.title }}</h3>
-              <p class="mt-2 text-sm text-on-surface-variant line-clamp-2">{{ article.summary }}</p>
-            </a>
-            {% endfor %}
-          </div>
-        </div>
-      </section>
-      {% endif %}
-
-      <section class="py-14 md:py-18" aria-labelledby="cta-title">
-        <div class="rounded-lg bg-primary/5 border border-primary/15 mx-auto w-[min(1280px,94%)] p-8 md:p-12">
-        <div class="mx-auto max-w-xl text-center">
-          <h2 id="cta-title" class="font-headline text-2xl md:text-3xl font-bold tracking-tight text-on-surface">
-            Pronto para controlar sua moto?
-          </h2>
-          <p class="mt-3 text-base text-on-surface-variant">
-            Conta gratuita. Sem cartão. Comece em 30 segundos.
-          </p>
-          <div class="mt-6 flex flex-col sm:flex-row justify-center gap-3">
-            <a class="ui-btn-primary !min-h-12 !px-7 text-sm font-semibold" href="{% url 'account_signup' %}">
-              Criar conta grátis
-              <i data-lucide="arrow-right" class="ml-2 inline" aria-hidden="true"></i>
-            </a>
-            <a class="ui-btn-secondary !min-h-12 !px-7 text-sm font-semibold" href="{% url 'account_login' %}">
-              Já tenho conta
-            </a>
-          </div>
-        </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="border-t border-outline-variant/40 py-10 bg-surface-low/40">
-      <div class="mx-auto w-[min(1280px,94%)] flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-on-surface-variant">
-        <div class="flex items-center gap-3">
-          <img src="{% static 'brand/favicon-32x32.png' %}" alt="" class="h-5 w-5" width="20" height="20" aria-hidden="true">
-          <p>© {% now "Y" %} Moto Track. Todos os direitos reservados.</p>
-        </div>
-        <nav aria-label="Links legais">
-          <ul class="flex flex-wrap items-center gap-4">
-            <li><a class="hover:text-on-surface transition-colors" href="{% url 'privacy_policy' %}">Privacidade</a></li>
-            <li><a class="hover:text-on-surface transition-colors" href="{% url 'terms_of_service' %}">Termos</a></li>
-            <li><a class="hover:text-on-surface transition-colors" href="{% url 'lgpd' %}">LGPD</a></li>
-            <li><a class="hover:text-on-surface transition-colors" href="{% url 'cancellation_policy' %}">Cancelamento</a></li>
-          </ul>
-        </nav>
-      </div>
-    </footer>
+    <div class="public-hero-visual" aria-hidden="true">
+      <img src="{% static 'brand/og-card.png' %}" alt="" class="h-auto w-full max-w-[34rem] rounded-md border border-outline-variant/30 shadow-ambient" loading="eager" fetchpriority="high" width="1200" height="630">
+    </div>
   </div>
+</section>
 
-  <div
-    x-data="{ pwaVisible: false, pwaDeferred: null }"
-    x-show="pwaVisible"
-    x-cloak
-    x-transition:enter="transition ease-out duration-200"
-    x-transition:enter-start="translate-y-full opacity-0"
-    x-transition:enter-end="translate-y-0 opacity-100"
-    x-transition:leave="transition ease-in duration-150"
-    x-transition:leave-start="translate-y-0 opacity-100"
-    x-transition:leave-end="translate-y-full opacity-0"
-    @pwa-prompt-available.window="pwaVisible = true; pwaDeferred = $event.detail;"
-    class="fixed bottom-0 left-0 right-0 z-[90] border-t border-outline-variant/40 bg-surface-lowest p-4 shadow-lg md:bottom-6 md:left-auto md:right-6 md:w-80 md:rounded-md md:border"
-  >
-    <div class="flex items-start gap-3">
-      <div class="flex-1">
-        <p class="text-sm font-semibold text-on-surface">Adicionar à tela inicial</p>
-        <p class="mt-1 text-xs text-on-surface-variant">Acesse o Moto Track como um app nativo direto da sua tela inicial.</p>
+<section class="public-section" aria-labelledby="features-title">
+  <div class="public-container">
+    <div class="max-w-2xl">
+      <p class="page-kicker">Leitura operacional</p>
+      <h2 id="features-title" class="mt-3 text-3xl font-semibold tracking-tight text-on-surface sm:text-4xl">
+        Menos telas soltas. Mais contexto útil.
+      </h2>
+    </div>
+    <div class="mt-10 grid gap-4 md:grid-cols-3">
+      <article class="public-feature">
+        <i data-lucide="bike" class="text-primary" aria-hidden="true"></i>
+        <h3>Garagem e histórico</h3>
+        <p>Motos, odômetro, documentos e linha do tempo ficam conectados desde o primeiro registro.</p>
+      </article>
+      <article class="public-feature">
+        <i data-lucide="fuel" class="text-primary" aria-hidden="true"></i>
+        <h3>Consumo e custo real</h3>
+        <p>Abastecimentos viram leitura de consumo, gasto mensal e custo por quilômetro sem planilha paralela.</p>
+      </article>
+      <article class="public-feature">
+        <i data-lucide="bell-ring" class="text-primary" aria-hidden="true"></i>
+        <h3>Próximas ações</h3>
+        <p>Revisões, pneus e documentos aparecem por prioridade, com alertas claros para não deixar passar.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+{% if latest_blog %}
+<section class="public-section border-t border-outline-variant/40" aria-labelledby="blog-title">
+  <div class="public-container">
+    <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="page-kicker">Guias</p>
+        <h2 id="blog-title" class="mt-3 text-3xl font-semibold tracking-tight text-on-surface">Manutenção sem adivinhação.</h2>
       </div>
-      <div class="flex gap-2">
-        <button type="button" class="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-on-primary" @click="if(pwaDeferred){ pwaDeferred.prompt(); pwaDeferred.userChoice.then(() => { pwaVisible = false; pwaDeferred = null; }); }">Instalar</button>
-        <button type="button" class="rounded-md border border-outline-variant/40 px-3 py-1.5 text-xs font-semibold text-on-surface-variant" @click="pwaVisible = false; pwaDeferred = null;">Dispensar</button>
+      <a class="ui-btn-secondary !min-h-10 !px-4" href="{% url 'blog:list' %}">
+        Ver todos
+        <i data-lucide="arrow-right" aria-hidden="true"></i>
+      </a>
+    </div>
+    <div class="grid gap-4 md:grid-cols-3">
+      {% for article in latest_blog %}
+        <a class="public-article-link" href="{% url 'blog:detail' article.slug %}">
+          <p class="text-xs font-medium text-on-surface-variant">{{ article.published_at|date:"d/m/Y" }}</p>
+          <h3>{{ article.title }}</h3>
+          <p>{{ article.summary }}</p>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="public-section" aria-labelledby="cta-title">
+  <div class="public-container">
+    <div class="public-cta">
+      <p class="page-kicker">Comece simples</p>
+      <h2 id="cta-title">Conta gratuita. Sem cartão. Pronta em menos de um minuto.</h2>
+      <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <a class="ui-btn-primary !min-h-12 !px-6" href="{% url 'account_signup' %}">Criar conta grátis</a>
+        <a class="ui-btn-secondary !min-h-12 !px-6" href="{% url 'account_login' %}">Já tenho conta</a>
       </div>
     </div>
   </div>
-
-{% endblock body %}
-
-{% block extra_body %}{% endblock extra_body %}
+</section>
+{% endblock %}

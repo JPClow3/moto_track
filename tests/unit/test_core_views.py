@@ -6,22 +6,14 @@ from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
-from djmoney.money import Money
 
 from apps.core.models import ApiToken, PushSubscription, SiteSettings
-from apps.core.services.dashboard import get_status_cards, get_tire_cards, get_weekly_sparkline_points
 from apps.core.services.notifications import notification_alerts_for_motorcycle
 from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY
 from apps.fuel.models import FuelRecord
-from apps.forum.models import ForumArticle
 from apps.garage.models import (
     Motorcycle,
-    MotorcycleTemplate,
-    MotorcycleTemplateMaintenanceInterval,
-    MotorcycleTemplateRecommendedPart,
-    MotorcycleTemplateSpec,
 )
-from apps.maintenance.models import MaintenancePart, MaintenanceRecord
 from apps.reminders.models import Reminder, TriggerType
 from apps.tires.models import TirePosition, TireRecord
 
@@ -50,7 +42,7 @@ class CoreViewsTests(TestCase):
         self.assertContains(response, "<h1")
         self.assertContains(response, "Moto Track")
         self.assertContains(response, '<meta name="description"')
-        self.assertContains(response, "Controle sua moto com precisão")
+        self.assertContains(response, "A garagem da sua moto, organizada para decisões rápidas")
 
     def test_landing_does_not_create_site_settings_row(self):
         SiteSettings.objects.all().delete()
@@ -376,6 +368,7 @@ class CoreViewsTests(TestCase):
 class EncryptedFieldTests(TestCase):
     def test_fernet_key_uses_push_encryption_key_when_set(self):
         from django.test import override_settings
+
         from apps.core.fields import _get_fernet
         with override_settings(PUSH_ENCRYPTION_KEY="custom-key-for-testing-1234567890"):
             fernet = _get_fernet()
@@ -385,6 +378,7 @@ class EncryptedFieldTests(TestCase):
 
     def test_fernet_key_falls_back_to_secret_key(self):
         from django.test import override_settings
+
         from apps.core.fields import _get_fernet
         with override_settings(SECRET_KEY="fallback-secret-key-1234567890"):
             # Ensure PUSH_ENCRYPTION_KEY is absent from settings
@@ -403,6 +397,7 @@ class EncryptedFieldTests(TestCase):
 
     def test_encrypted_field_roundtrip(self):
         from django.db import connection
+
         from apps.core.fields import EncryptedCharField
         field = EncryptedCharField(max_length=255)
         encrypted = field.get_prep_value("secret text")
@@ -412,6 +407,7 @@ class EncryptedFieldTests(TestCase):
 
     def test_encrypted_field_returns_none_for_none(self):
         from django.db import connection
+
         from apps.core.fields import EncryptedCharField
         field = EncryptedCharField(max_length=255)
         self.assertIsNone(field.from_db_value(None, None, connection))
@@ -419,6 +415,7 @@ class EncryptedFieldTests(TestCase):
 
     def test_encrypted_field_returns_none_for_invalid_token(self):
         from django.db import connection
+
         from apps.core.fields import EncryptedCharField
         field = EncryptedCharField(max_length=255)
         decrypted = field.from_db_value("not-valid-fernet-token==", None, connection)

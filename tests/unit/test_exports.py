@@ -17,7 +17,8 @@ from apps.core.services.demo_bike import create_demo_motorcycle
 from apps.documents.export import build_export as build_documents_export
 from apps.documents.models import DocumentType, MotorcycleDocument
 from apps.garage.models import Motorcycle
-from apps.maintenance.export import _amount, build_export as build_maintenance_export
+from apps.maintenance.export import _amount
+from apps.maintenance.export import build_export as build_maintenance_export
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.reminders.export import build_export as build_reminders_export
 from apps.reminders.models import Reminder, TriggerType

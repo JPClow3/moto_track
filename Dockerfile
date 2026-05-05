@@ -8,7 +8,8 @@ ENV DJANGO_SETTINGS_MODULE=config.settings.prod
 WORKDIR /app
 
 COPY requirements/ /tmp/requirements/
-RUN pip install --no-cache-dir -r /tmp/requirements/prod.txt
+ARG REQUIREMENTS_FILE=prod.txt
+RUN pip install --no-cache-dir -r /tmp/requirements/${REQUIREMENTS_FILE}
 
 COPY . /app
 

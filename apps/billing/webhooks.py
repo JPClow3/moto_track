@@ -10,6 +10,9 @@ from django.utils import timezone
 
 from .models import BillingEvent, BillingInterval, BillingPlan, SubscriptionProfile
 
+ACCESS_GRANTING_STATUSES = {"active", "trialing"}
+TERMINAL_STATUSES = {"canceled", "incomplete_expired"}
+
 
 class WebhookProcessingError(ValueError):
     pass
@@ -53,11 +56,25 @@ def _subscription_status_from_invoice(invoice) -> str:
     return str(getattr(subscription, "status", "") or "")
 
 
-def _paid_invoice_confirms_access(invoice, profile: SubscriptionProfile) -> bool:
+def _subscription_transition_status(status: str, profile: SubscriptionProfile) -> str:
+    if status in ACCESS_GRANTING_STATUSES:
+        return status
+    if status in {"past_due"}:
+        return "past_due"
+    if status in TERMINAL_STATUSES:
+        return status
+    return profile.stripe_subscription_status
+
+
+def _paid_invoice_status(invoice, profile: SubscriptionProfile) -> str:
     subscription_status = _subscription_status_from_invoice(invoice)
     if subscription_status:
-        return subscription_status == "active"
-    return profile.stripe_subscription_status not in {"canceled", "incomplete_expired"}
+        return subscription_status
+    if profile.stripe_subscription_status == "trialing":
+        return "trialing"
+    if profile.stripe_subscription_status in ACCESS_GRANTING_STATUSES | {"past_due"}:
+        return "active"
+    return profile.stripe_subscription_status
 
 
 def _timestamp(value):
@@ -118,15 +135,15 @@ def _apply_subscription(subscription) -> None:
     status = _get(subscription, "status", "") or ""
     profile.stripe_customer_id = _get(subscription, "customer", "") or profile.stripe_customer_id
     profile.stripe_subscription_id = _get(subscription, "id", "") or profile.stripe_subscription_id
-    profile.stripe_subscription_status = status
+    profile.stripe_subscription_status = _subscription_transition_status(status, profile)
     profile.stripe_price_id = price_id
     profile.billing_interval = billing_interval
     profile.current_period_end = _timestamp(_get(subscription, "current_period_end"))
     profile.cancel_at_period_end = bool(_get(subscription, "cancel_at_period_end", False))
-    if status in {"active", "trialing"}:
+    if status in ACCESS_GRANTING_STATUSES:
         profile.plan = BillingPlan.PRO
         profile.grace_until = None
-    elif status in {"canceled", "incomplete_expired"}:
+    elif status in TERMINAL_STATUSES:
         profile.plan = BillingPlan.FREE
         profile.grace_until = None
     profile.save()
@@ -158,12 +175,17 @@ def _apply_invoice(invoice, *, paid: bool) -> None:
     if _get(invoice, "invoice_pdf"):
         profile.latest_receipt_url = _get(invoice, "invoice_pdf")
     if paid:
-        if _paid_invoice_confirms_access(invoice, profile):
+        invoice_status = _paid_invoice_status(invoice, profile)
+        if invoice_status in ACCESS_GRANTING_STATUSES:
             profile.plan = BillingPlan.PRO
-            profile.stripe_subscription_status = "active"
+            profile.stripe_subscription_status = invoice_status
             profile.grace_until = None
         profile.save()
     else:
+        if profile.stripe_subscription_status in TERMINAL_STATUSES:
+            # Already terminal - just save the invoice URLs captured above
+            profile.save()
+            return
         profile.stripe_subscription_status = "past_due"
         profile.grace_until = timezone.now() + timedelta(days=3)
         profile.save()

@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -8,7 +10,7 @@ BASE_URL = "http://localhost:8000"
 
 def test_landing_page_loads(page: Page):
     page.goto(f"{BASE_URL}/")
-    expect(page).to_have_title("Moto Track")
+    expect(page).to_have_title(re.compile(r"^Moto Track"))
 
 
 def test_login_page_has_form(page: Page):

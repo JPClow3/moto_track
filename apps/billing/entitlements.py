@@ -11,7 +11,7 @@ from apps.garage.models import Motorcycle
 from apps.maintenance.models import MaintenancePhoto
 from apps.reminders.models import Reminder
 
-from .models import BillingPlan, SubscriptionProfile
+from .models import SubscriptionProfile
 
 FREE_ACTIVE_MOTORCYCLE_LIMIT = 1
 FREE_UPLOAD_LIMIT = 3

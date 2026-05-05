@@ -1,5 +1,3 @@
-from datetime import date
-from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
