@@ -183,7 +183,7 @@
   }
 
   .public-container {
-    @apply mx-auto w-[min(1180px,92vw)];
+    @apply mx-auto w-[min(1120px,92vw)];
   }
 
   .public-header {
@@ -202,12 +202,112 @@
     @apply overflow-hidden border-b border-outline-variant/40 bg-surface;
   }
 
+  .public-hero-layout {
+    @apply grid min-h-[calc(100svh-4.5rem)] content-center gap-10 py-12 sm:py-16;
+  }
+
+  .public-hero-copy {
+    @apply max-w-4xl;
+  }
+
+  .public-hero-title {
+    @apply mt-4 text-4xl font-semibold leading-[1.04] tracking-tight text-on-surface sm:text-5xl lg:text-[4.35rem];
+  }
+
+  .public-hero-copy-text {
+    @apply mt-5 max-w-2xl text-base leading-7 text-on-surface-variant sm:text-lg;
+  }
+
   .public-hero-visual {
     @apply relative z-0 hidden justify-end md:flex;
   }
 
+  .public-product-preview {
+    @apply mt-10 overflow-hidden border-y border-outline-variant/50 bg-surface-low px-4 py-4 sm:px-5 sm:py-5;
+  }
+
+  .preview-topbar {
+    @apply flex items-center justify-between gap-4 border-b border-outline-variant/50 pb-4 text-xs font-semibold text-on-surface-variant;
+  }
+
+  .preview-dot-row {
+    @apply flex items-center gap-1.5;
+  }
+
+  .preview-dot-row span {
+    @apply h-2.5 w-2.5 rounded-full bg-outline-variant;
+  }
+
+  .preview-grid {
+    @apply grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_18rem];
+  }
+
+  .preview-panel {
+    @apply rounded-md border border-outline-variant/50 bg-surface-lowest p-4;
+  }
+
+  .preview-metric-grid {
+    @apply mt-4 grid gap-3 sm:grid-cols-3;
+  }
+
+  .preview-metric {
+    @apply border-t border-outline-variant/50 pt-3;
+  }
+
+  .preview-metric p:first-child {
+    @apply text-xs font-semibold text-on-surface-variant;
+  }
+
+  .preview-metric p:last-child {
+    @apply mt-1 text-xl font-semibold tracking-tight text-on-surface;
+  }
+
+  .preview-chart {
+    @apply mt-5 flex h-28 items-end gap-2 border-t border-outline-variant/50 pt-5;
+  }
+
+  .preview-chart span {
+    @apply min-w-0 flex-1 rounded-t bg-primary/80;
+  }
+
+  .preview-list {
+    @apply mt-4 divide-y divide-outline-variant/50 border-y border-outline-variant/50;
+  }
+
+  .preview-list li {
+    @apply flex items-start justify-between gap-4 py-3 text-sm;
+  }
+
+  .preview-list strong {
+    @apply font-semibold text-on-surface;
+  }
+
+  .preview-list span {
+    @apply shrink-0 text-xs font-semibold text-primary;
+  }
+
   .public-section {
-    @apply py-14 sm:py-18;
+    @apply py-12 sm:py-16;
+  }
+
+  .public-section-heading {
+    @apply max-w-2xl;
+  }
+
+  .public-section-title {
+    @apply mt-3 text-3xl font-semibold leading-tight tracking-tight text-on-surface sm:text-4xl;
+  }
+
+  .public-section-copy {
+    @apply mt-4 max-w-2xl text-sm leading-6 text-on-surface-variant sm:text-base;
+  }
+
+  .public-split {
+    @apply grid gap-10 md:grid-cols-[minmax(0,0.78fr)_minmax(0,1fr)] md:items-start md:gap-12;
+  }
+
+  .public-row-list {
+    @apply divide-y divide-outline-variant/50 border-y border-outline-variant/50;
   }
 
   .public-feature,
@@ -243,6 +343,95 @@
     @apply text-primary;
   }
 
+  .public-row {
+    @apply grid gap-4 py-7 sm:grid-cols-[2rem_minmax(0,1fr)] sm:gap-5;
+  }
+
+  .public-row .lucide {
+    @apply mt-1 h-5 w-5;
+  }
+
+  .public-row h3,
+  .public-step h3 {
+    @apply text-base font-semibold tracking-tight text-on-surface;
+  }
+
+  .public-row p,
+  .public-step p {
+    @apply mt-2 text-sm leading-6 text-on-surface-variant;
+  }
+
+  .public-step {
+    @apply border-t border-outline-variant/50 pt-5;
+  }
+
+  .public-step span {
+    @apply text-xs font-semibold uppercase tracking-wider text-primary;
+  }
+
+  .public-article-row {
+    @apply grid gap-3 py-5 text-sm transition-colors hover:text-primary sm:grid-cols-[8rem_minmax(0,1fr)_auto] sm:items-center sm:gap-6;
+  }
+
+  .public-article-row p {
+    @apply font-medium text-on-surface-variant;
+  }
+
+  .public-article-row h3 {
+    @apply text-base font-semibold tracking-tight text-on-surface transition-colors;
+  }
+
+  .public-article-row span {
+    @apply font-semibold text-primary;
+  }
+
+  .public-article-row:hover h3 {
+    @apply text-primary;
+  }
+
+  .public-article-body {
+    @apply max-w-3xl text-base leading-7 text-on-surface;
+  }
+
+  .public-article-body > * + * {
+    margin-top: 1rem;
+  }
+
+  .public-article-body h2,
+  .public-article-body h3 {
+    @apply mt-9 font-semibold leading-tight tracking-tight text-on-surface;
+  }
+
+  .public-article-body h2 {
+    @apply text-2xl;
+  }
+
+  .public-article-body h3 {
+    @apply text-xl;
+  }
+
+  .public-article-body p,
+  .public-article-body li {
+    @apply text-on-surface;
+  }
+
+  .public-article-body ul,
+  .public-article-body ol {
+    @apply space-y-2 pl-6;
+  }
+
+  .public-article-body ul {
+    @apply list-disc;
+  }
+
+  .public-article-body ol {
+    @apply list-decimal;
+  }
+
+  .public-article-body a {
+    @apply font-semibold text-primary underline-offset-4 hover:underline;
+  }
+
   .public-cta {
     @apply mx-auto max-w-3xl rounded-md border border-primary/15 bg-primary/5 px-6 py-10 text-center sm:px-10;
   }
@@ -252,7 +441,7 @@
   }
 
   .pricing-card {
-    @apply p-6;
+    @apply p-6 lg:p-7;
   }
 
   .pricing-card-featured {
@@ -276,15 +465,48 @@
     box-shadow: var(--shadow-panel);
   }
 
+  .auth-shell {
+    @apply relative min-h-screen lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(26rem,0.78fr)] lg:items-center;
+  }
+
+  .auth-side {
+    @apply hidden h-full border-r border-outline-variant/60 bg-surface-low/70 px-10 py-10 lg:flex lg:flex-col lg:justify-between xl:px-14;
+  }
+
+  .auth-side-copy {
+    @apply max-w-xl;
+  }
+
+  .auth-side-title {
+    @apply mt-3 text-4xl font-semibold leading-tight tracking-tight text-on-surface;
+  }
+
+  .auth-proof-list {
+    @apply mt-8 divide-y divide-outline-variant/50 border-y border-outline-variant/50;
+  }
+
+  .auth-proof-row {
+    @apply py-4;
+  }
+
+  .auth-proof-row h3 {
+    @apply text-sm font-semibold text-on-surface;
+  }
+
+  .auth-proof-row p {
+    @apply mt-1 text-sm leading-6 text-on-surface-variant;
+  }
+
   .legal-document {
-    @apply mx-auto max-w-3xl space-y-0 pb-16 pt-10;
-    width: min(48rem, 92vw);
+    @apply mx-auto space-y-0 pb-16 pt-10 sm:pt-12;
+    width: min(54rem, 92vw);
   }
 
   .legal-document > header {
-    @apply pb-8;
+    @apply max-w-3xl pb-8;
   }
 
+  .legal-document h1,
   .legal-document h2 {
     @apply text-3xl font-semibold leading-tight tracking-tight text-on-surface sm:text-4xl;
   }
@@ -307,9 +529,12 @@
     border: 0;
     border-top: 1px solid rgb(var(--color-outline-variant) / 0.55);
     border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    padding-top: 2rem;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding-top: 1.75rem;
+    padding-bottom: 1.75rem;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .legal-document footer {
@@ -317,11 +542,11 @@
   }
 
   .legal-nav {
-    @apply -mx-1 flex flex-wrap gap-2 rounded-md border border-outline-variant/50 bg-surface-low/80 p-1 text-sm font-semibold backdrop-blur;
+    @apply sticky top-[4.5rem] z-20 mt-6 flex flex-wrap gap-2 border-y border-outline-variant/50 bg-surface/95 py-2 text-sm font-semibold backdrop-blur;
   }
 
   .legal-nav a {
-    @apply rounded px-3 py-2 text-on-surface-variant transition-colors hover:bg-surface-lowest hover:text-on-surface;
+    @apply rounded px-3 py-2 text-on-surface-variant transition-colors hover:bg-surface-low hover:text-on-surface;
   }
 
   .legal-nav a.is-active {

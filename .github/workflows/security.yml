@@ -1,8 +1,5 @@
 name: Security
 
-permissions:
-  contents: read
-
 on:
   push:
     branches: [main, codex/production-pwa]

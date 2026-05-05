@@ -11,6 +11,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from apps.accounts.verification import user_needs_email_verification
 from apps.billing.entitlements import has_pro_access
 from apps.core.active_motorcycle import get_active_motorcycle, set_active_motorcycle
 from apps.core.client_submissions import (
@@ -49,9 +50,10 @@ def _redirect_or_hx(request, next_url: str):
 
 
 def landing_view(request):
-    if request.user.is_authenticated:
+    if request.user.is_authenticated and not user_needs_email_verification(request.user):
         return redirect("dashboard")
     from apps.forum.models import ForumArticle
+
     latest_blog = ForumArticle.objects.filter(is_published=True).only(
         "title", "slug", "summary", "published_at"
     ).order_by("-published_at")[:3]

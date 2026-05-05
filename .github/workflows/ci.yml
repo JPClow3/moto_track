@@ -10,6 +10,20 @@ on:
     branches: [main, develop]
 
 jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build production Docker image
+        run: |
+          docker build \
+            --pull \
+            --no-cache \
+            --build-arg REQUIREMENTS_FILE=prod.txt \
+            --tag moto-track-ci:${{ github.sha }} \
+            .
+
   test:
     runs-on: ubuntu-latest
     services:
@@ -51,6 +65,7 @@ jobs:
       - name: Run migrations
         env:
           DATABASE_URL: postgres://moto:moto@localhost:5432/moto_test
+          DJANGO_SETTINGS_MODULE: config.settings.test
           DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
         run: python manage.py migrate --noinput
 

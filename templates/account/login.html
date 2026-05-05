@@ -20,7 +20,7 @@
     </div>
   {% endif %}
 
-  <form method="post" action="{% url 'account_login' %}" class="space-y-6" novalidate>
+  <form method="post" action="{% url 'account_login' %}" class="space-y-5" novalidate>
     {% csrf_token %}
 
     <div class="group">
@@ -84,7 +84,7 @@
         <div class="w-full border-t border-outline-variant/40"></div>
       </div>
       <div class="relative flex justify-center text-sm">
-        <span class="bg-surface-low px-2 text-on-surface-variant">{% trans "Ou continue com" %}</span>
+        <span class="bg-surface-lowest px-2 text-on-surface-variant">{% trans "Ou continue com" %}</span>
       </div>
     </div>
 

@@ -15,7 +15,7 @@ COPY . /app
 
 # Build Tailwind CSS using the standalone binary (no Node.js required).
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
-  && curl -L -o /tmp/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.19/tailwindcss-linux-x64 \
+  && curl -fsSL -o /tmp/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.19/tailwindcss-linux-x64 \
   && chmod +x /tmp/tailwindcss \
   && /tmp/tailwindcss -i /app/static/css/input.css -o /app/static/css/tailwind.generated.css --config /app/tailwind.config.js --minify \
   && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*

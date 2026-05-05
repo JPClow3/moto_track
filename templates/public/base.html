@@ -80,7 +80,11 @@
             <i data-lucide="sun-medium" aria-hidden="true"></i>
           </button>
           {% if request.user.is_authenticated %}
-            <a class="ui-btn-primary !min-h-10 !px-3 sm:!px-4" href="{% url 'dashboard' %}">Painel</a>
+            {% if account_email_verified %}
+              <a class="ui-btn-primary !min-h-10 !px-3 sm:!px-4" href="{% url 'dashboard' %}">Painel</a>
+            {% else %}
+              <a class="ui-btn-primary !min-h-10 !px-3 sm:!px-4" href="{% url 'account_email_verification_sent' %}">Verificar e-mail</a>
+            {% endif %}
           {% else %}
             <a class="public-nav-link !px-2 sm:!px-3" href="{% url 'account_login' %}" aria-label="Entrar">
               <i data-lucide="log-in" class="h-4 w-4 sm:hidden" aria-hidden="true"></i>

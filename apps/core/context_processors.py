@@ -6,6 +6,7 @@ from django.conf import settings
 from django.db import OperationalError, ProgrammingError
 
 from apps.accounts.models import UserPreference
+from apps.accounts.verification import user_needs_email_verification
 from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.models import SiteSettings
 from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY
@@ -41,6 +42,7 @@ def garage_context(request):
             "current_density": request.session.get("density", "comfortable"),
             "web_push_public_key": getattr(settings, "WEB_PUSH_PUBLIC_KEY", ""),
             "user_theme_preference": user_theme_preference,
+            "account_email_verified": not user_needs_email_verification(request.user),
         }
 
     motorcycles = list(
@@ -62,4 +64,5 @@ def garage_context(request):
         "current_density": request.session.get("density", "comfortable"),
         "web_push_public_key": getattr(settings, "WEB_PUSH_PUBLIC_KEY", ""),
         "user_theme_preference": user_theme_preference,
+        "account_email_verified": not user_needs_email_verification(request.user),
     }

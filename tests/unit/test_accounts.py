@@ -1,3 +1,4 @@
+from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
 from django.contrib import admin
 from django.contrib.auth import get_user_model
@@ -77,6 +78,34 @@ class AccountsSmokeTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("verified-flow@example.com", mail.outbox[0].to)
+
+    @override_settings(ACCOUNT_EMAIL_VERIFICATION="mandatory")
+    def test_unverified_user_cannot_enter_private_app_routes(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="needs-verification",
+            email="needs-verification@example.com",
+            password="pass12345",
+        )
+        EmailAddress.objects.create(
+            user=user,
+            email="needs-verification@example.com",
+            primary=True,
+            verified=False,
+        )
+        self.client.force_login(user)
+
+        landing_response = self.client.get(reverse("landing"))
+        private_response = self.client.get(reverse("dashboard"))
+        public_response = self.client.get(reverse("blog:list"))
+
+        self.assertEqual(landing_response.status_code, 200)
+        self.assertContains(landing_response, "Verificar e-mail")
+        self.assertEqual(private_response.status_code, 302)
+        self.assertEqual(private_response["Location"], reverse("account_email_verification_sent"))
+        self.assertEqual(public_response.status_code, 200)
+        self.assertContains(public_response, "Guias Moto Track")
+        self.assertNotContains(public_response, 'id="quick-add-trigger"')
 
     def test_google_login_entrypoint_does_not_500(self):
         client = Client(raise_request_exception=False)

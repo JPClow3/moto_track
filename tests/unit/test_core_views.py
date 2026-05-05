@@ -42,7 +42,7 @@ class CoreViewsTests(TestCase):
         self.assertContains(response, "<h1")
         self.assertContains(response, "Moto Track")
         self.assertContains(response, '<meta name="description"')
-        self.assertContains(response, "A garagem da sua moto, organizada para decisões rápidas")
+        self.assertContains(response, "A garagem digital para cuidar da sua moto com clareza")
 
     def test_landing_does_not_create_site_settings_row(self):
         SiteSettings.objects.all().delete()
