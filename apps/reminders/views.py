@@ -88,10 +88,12 @@ def reminder_create_view(request):
         form = ReminderForm(user=request.user)
     configure_form_accessibility(form)
 
+    total_reminders = Reminder.objects.filter(motorcycle__owner=request.user).count()
     context = {
         "form": form,
         "title": "Novo lembrete",
         "submit_label": "Salvar lembrete",
+        "total_reminders": total_reminders,
     }
     return render(request, "reminders/form.html", context)
 
@@ -117,11 +119,13 @@ def reminder_update_view(request, pk):
         form = ReminderForm(instance=reminder, user=request.user)
     configure_form_accessibility(form)
 
+    total_reminders = Reminder.objects.filter(motorcycle__owner=request.user).count()
     context = {
         "form": form,
         "title": f"Editar {reminder.title}",
         "submit_label": "Salvar alterações",
         "reminder": reminder,
+        "total_reminders": total_reminders,
     }
     return render(request, "reminders/form.html", context)
 

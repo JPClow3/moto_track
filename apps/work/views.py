@@ -58,7 +58,8 @@ def work_session_create_view(request):
             initial["odometer_start_km"] = motorcycle.current_odometer_km
         form = WorkSessionForm(user=request.user, initial=initial)
     configure_form_accessibility(form)
-    return render(request, "work/session_form.html", {"form": form, "title": "Novo turno", "submit_label": "Salvar turno"})
+    total_sessions = WorkSession.objects.filter(owner=request.user).count()
+    return render(request, "work/session_form.html", {"form": form, "title": "Novo turno", "submit_label": "Salvar turno", "total_sessions": total_sessions})
 
 
 @login_required
@@ -76,7 +77,8 @@ def work_session_update_view(request, pk: int):
     else:
         form = WorkSessionForm(user=request.user, instance=session)
     configure_form_accessibility(form)
-    return render(request, "work/session_form.html", {"form": form, "title": "Editar turno", "submit_label": "Salvar alteracoes"})
+    total_sessions = WorkSession.objects.filter(owner=request.user).count()
+    return render(request, "work/session_form.html", {"form": form, "title": "Editar turno", "submit_label": "Salvar alteracoes", "total_sessions": total_sessions})
 
 
 @login_required

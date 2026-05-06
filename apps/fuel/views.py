@@ -338,8 +338,10 @@ def fuel_station_create_view(request):
         form = FuelStationForm()
     configure_form_accessibility(form)
 
+    total_stations = FuelStation.objects.filter(owner=request.user).count()
+
     return render(
-        request, "fuel/station_form.html", {"form": form, "title": "Novo posto", "submit_label": "Salvar posto"}
+        request, "fuel/station_form.html", {"form": form, "title": "Novo posto", "submit_label": "Salvar posto", "total_stations": total_stations}
     )
 
 
@@ -356,10 +358,12 @@ def fuel_station_update_view(request, pk: int):
         form = FuelStationForm(instance=station)
     configure_form_accessibility(form)
 
+    total_stations = FuelStation.objects.filter(owner=request.user).count()
+
     return render(
         request,
         "fuel/station_form.html",
-        {"form": form, "title": f"Editar {station.name}", "submit_label": "Salvar alterações", "station": station},
+        {"form": form, "title": f"Editar {station.name}", "submit_label": "Salvar alterações", "station": station, "total_stations": total_stations},
     )
 
 
@@ -387,8 +391,11 @@ def fuel_grade_create_view(request):
     else:
         form = FuelGradeForm()
     configure_form_accessibility(form)
+
+    total_grades = FuelGrade.objects.filter(owner=request.user).count()
+
     return render(
-        request, "fuel/grade_form.html", {"form": form, "title": "Novo combustível", "submit_label": "Salvar combustível"}
+        request, "fuel/grade_form.html", {"form": form, "title": "Novo combustível", "submit_label": "Salvar combustível", "total_grades": total_grades}
     )
 
 
@@ -404,10 +411,13 @@ def fuel_grade_update_view(request, pk: int):
     else:
         form = FuelGradeForm(instance=grade)
     configure_form_accessibility(form)
+
+    total_grades = FuelGrade.objects.filter(owner=request.user).count()
+
     return render(
         request,
         "fuel/grade_form.html",
-        {"form": form, "title": f"Editar {grade.name}", "submit_label": "Salvar alterações", "grade": grade},
+        {"form": form, "title": f"Editar {grade.name}", "submit_label": "Salvar alterações", "grade": grade, "total_grades": total_grades},
     )
 
 
@@ -505,6 +515,12 @@ def fuel_record_update_view(request, pk: int):
         form = FuelRecordQuickForm(user=request.user, instance=record)
 
     configure_form_accessibility(form)
+
+    streak_count = FuelRecord.objects.filter(
+        motorcycle__owner=request.user
+    ).values('motorcycle').distinct().count()
+    total_records = FuelRecord.objects.filter(motorcycle__owner=request.user).count()
+
     return render(
         request,
         "fuel/record_form.html",
@@ -513,6 +529,8 @@ def fuel_record_update_view(request, pk: int):
             "record": record,
             "title": "Editar abastecimento",
             "submit_label": "Salvar alterações",
+            "streak_count": streak_count,
+            "total_records": total_records,
         },
     )
 

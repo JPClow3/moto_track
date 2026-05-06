@@ -46,10 +46,12 @@ def garage_create_view(request):
         form = MotorcycleForm()
     configure_form_accessibility(form)
 
+    total_motorcycles = Motorcycle.objects.filter(owner=request.user, is_active=True).count()
     context = {
         "form": form,
         "title": "Adicionar moto",
         "submit_label": "Salvar moto",
+        "total_motorcycles": total_motorcycles,
     }
     return render(request, "garage/form.html", context)
 
@@ -68,11 +70,13 @@ def garage_update_view(request, pk):
         form = MotorcycleForm(instance=motorcycle)
     configure_form_accessibility(form)
 
+    total_motorcycles = Motorcycle.objects.filter(owner=request.user, is_active=True).count()
     context = {
         "form": form,
         "title": f"Editar {motorcycle.name}",
         "submit_label": "Salvar alterações",
         "motorcycle": motorcycle,
+        "total_motorcycles": total_motorcycles,
     }
     return render(request, "garage/form.html", context)
 
@@ -92,6 +96,7 @@ def garage_spec_update_view(request, pk):
         form = MotorcycleSpecForm(instance=spec)
     configure_form_accessibility(form)
 
+    total_motorcycles = Motorcycle.objects.filter(owner=request.user, is_active=True).count()
     return render(
         request,
         "garage/spec_form.html",
@@ -100,6 +105,7 @@ def garage_spec_update_view(request, pk):
             "motorcycle": motorcycle,
             "title": f"Especificações de {motorcycle.name}",
             "submit_label": "Salvar especificações",
+            "total_motorcycles": total_motorcycles,
         },
     )
 

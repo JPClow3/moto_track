@@ -82,10 +82,11 @@ def annual_fee_create_view(request):
         form = AnnualFeeForm(user=request.user)
     configure_form_accessibility(form)
 
+    total_fees = AnnualFee.objects.filter(motorcycle__owner=request.user).count()
     return render(
         request,
         "expenses/fee_form.html",
-        {"form": form, "title": "Nova taxa anual", "submit_label": "Salvar taxa"},
+        {"form": form, "title": "Nova taxa anual", "submit_label": "Salvar taxa", "total_fees": total_fees},
     )
 
 
@@ -103,6 +104,7 @@ def annual_fee_update_view(request, pk: int):
         form = AnnualFeeForm(instance=fee, user=request.user)
     configure_form_accessibility(form)
 
+    total_fees = AnnualFee.objects.filter(motorcycle__owner=request.user).count()
     return render(
         request,
         "expenses/fee_form.html",
@@ -111,6 +113,7 @@ def annual_fee_update_view(request, pk: int):
             "title": f"Editar {fee.get_fee_type_display()} {fee.year}",
             "submit_label": "Salvar alterações",
             "fee": fee,
+            "total_fees": total_fees,
         },
     )
 
@@ -140,10 +143,11 @@ def policy_create_view(request):
         form = InsurancePolicyForm(user=request.user)
     configure_form_accessibility(form)
 
+    total_policies = InsurancePolicy.objects.filter(motorcycle__owner=request.user).count()
     return render(
         request,
         "expenses/policy_form.html",
-        {"form": form, "title": "Novo seguro", "submit_label": "Salvar seguro"},
+        {"form": form, "title": "Novo seguro", "submit_label": "Salvar seguro", "total_policies": total_policies},
     )
 
 
@@ -162,6 +166,7 @@ def policy_update_view(request, pk: int):
         form = InsurancePolicyForm(instance=policy, user=request.user)
     configure_form_accessibility(form)
 
+    total_policies = InsurancePolicy.objects.filter(motorcycle__owner=request.user).count()
     return render(
         request,
         "expenses/policy_form.html",
@@ -171,6 +176,7 @@ def policy_update_view(request, pk: int):
             "submit_label": "Salvar alterações",
             "policy": policy,
             "claims": claims,
+            "total_policies": total_policies,
         },
     )
 
@@ -202,6 +208,7 @@ def claim_create_view(request, policy_pk: int):
         form = InsuranceClaimForm()
     configure_form_accessibility(form)
 
+    total_claims = InsuranceClaim.objects.filter(policy__motorcycle__owner=request.user).count()
     return render(
         request,
         "expenses/claim_form.html",
@@ -210,6 +217,7 @@ def claim_create_view(request, policy_pk: int):
             "title": f"Novo sinistro — {policy.provider}",
             "submit_label": "Salvar sinistro",
             "policy": policy,
+            "total_claims": total_claims,
         },
     )
 
@@ -229,6 +237,7 @@ def claim_update_view(request, pk: int):
         form = InsuranceClaimForm(instance=claim)
     configure_form_accessibility(form)
 
+    total_claims = InsuranceClaim.objects.filter(policy__motorcycle__owner=request.user).count()
     return render(
         request,
         "expenses/claim_form.html",
@@ -237,6 +246,7 @@ def claim_update_view(request, pk: int):
             "title": f"Editar sinistro — {claim.policy.provider}",
             "submit_label": "Salvar alterações",
             "claim": claim,
+            "total_claims": total_claims,
         },
     )
 

@@ -292,8 +292,12 @@ def maintenance_part_create_view(request):
     else:
         form = MaintenancePartForm()
     configure_form_accessibility(form)
+
+    from .models import MaintenancePart
+    total_parts = MaintenancePart.objects.filter(owner=request.user).count()
+
     return render(
-        request, "maintenance/part_form.html", {"form": form, "title": "Nova peça", "submit_label": "Salvar peça"}
+        request, "maintenance/part_form.html", {"form": form, "title": "Nova peça", "submit_label": "Salvar peça", "total_parts": total_parts}
     )
 
 
@@ -309,10 +313,14 @@ def maintenance_part_update_view(request, pk: int):
     else:
         form = MaintenancePartForm(instance=part)
     configure_form_accessibility(form)
+
+    from .models import MaintenancePart
+    total_parts = MaintenancePart.objects.filter(owner=request.user).count()
+
     return render(
         request,
         "maintenance/part_form.html",
-        {"form": form, "title": f"Editar {part.name}", "submit_label": "Salvar alterações", "part": part},
+        {"form": form, "title": f"Editar {part.name}", "submit_label": "Salvar alterações", "part": part, "total_parts": total_parts},
     )
 
 
@@ -338,10 +346,11 @@ def maintenance_plan_create_view(request):
     else:
         form = MaintenancePlanItemForm(user=request.user)
     configure_form_accessibility(form)
+    total_plans = MaintenancePlanItem.objects.filter(motorcycle__owner=request.user).count()
     return render(
         request,
         "maintenance/plan_form.html",
-        {"form": form, "title": "Novo plano de manutenção", "submit_label": "Salvar plano"},
+        {"form": form, "title": "Novo plano de manutenção", "submit_label": "Salvar plano", "total_plans": total_plans},
     )
 
 
@@ -357,10 +366,11 @@ def maintenance_plan_update_view(request, pk: int):
     else:
         form = MaintenancePlanItemForm(instance=item, user=request.user)
     configure_form_accessibility(form)
+    total_plans = MaintenancePlanItem.objects.filter(motorcycle__owner=request.user).count()
     return render(
         request,
         "maintenance/plan_form.html",
-        {"form": form, "title": f"Editar plano {item.get_maintenance_type_display()}", "submit_label": "Salvar alterações", "item": item},
+        {"form": form, "title": f"Editar plano {item.get_maintenance_type_display()}", "submit_label": "Salvar alterações", "item": item, "total_plans": total_plans},
     )
 
 

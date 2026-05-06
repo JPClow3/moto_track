@@ -165,10 +165,12 @@ def tire_create_view(request):
         form = TireRecordForm(user=request.user)
     configure_form_accessibility(form)
 
+    total_tires = TireRecord.objects.filter(motorcycle__owner=request.user).count()
     context = {
         "form": form,
         "title": "Adicionar pneu",
         "submit_label": "Salvar pneu",
+        "total_tires": total_tires,
     }
     return render(request, "tires/form.html", context)
 
@@ -189,11 +191,13 @@ def tire_update_view(request, pk):
         form = TireRecordForm(instance=record, user=request.user)
     configure_form_accessibility(form)
 
+    total_tires = TireRecord.objects.filter(motorcycle__owner=request.user).count()
     context = {
         "form": form,
         "title": f"Editar {record.brand_model}",
         "submit_label": "Salvar alterações",
         "record": record,
+        "total_tires": total_tires,
     }
     return render(request, "tires/form.html", context)
 
@@ -226,10 +230,11 @@ def tire_product_create_view(request):
     else:
         form = TireProductForm()
     configure_form_accessibility(form)
+    total_products = TireProduct.objects.filter(owner=request.user).count()
     return render(
         request,
         "tires/product_form.html",
-        {"form": form, "title": "Novo produto de pneu", "submit_label": "Salvar produto"},
+        {"form": form, "title": "Novo produto de pneu", "submit_label": "Salvar produto", "total_products": total_products},
     )
 
 
@@ -245,10 +250,11 @@ def tire_product_update_view(request, pk: int):
     else:
         form = TireProductForm(instance=product)
     configure_form_accessibility(form)
+    total_products = TireProduct.objects.filter(owner=request.user).count()
     return render(
         request,
         "tires/product_form.html",
-        {"form": form, "title": f"Editar {product}", "submit_label": "Salvar alterações", "product": product},
+        {"form": form, "title": f"Editar {product}", "submit_label": "Salvar alterações", "product": product, "total_products": total_products},
     )
 
 
