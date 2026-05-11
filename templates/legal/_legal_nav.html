@@ -1,7 +1,13 @@
-{# Shared legal page cross-navigation. Include after the header <p> intro on every legal page. #}
+{# Shared legal page cross-navigation. Include after the hero copy on every legal page. #}
 <nav aria-label="Documentos legais" class="legal-nav">
-  <a class="{% if active == 'terms' %}is-active{% endif %}" href="{% url 'terms_of_service' %}">Termos de Uso</a>
-  <a class="{% if active == 'privacy' %}is-active{% endif %}" href="{% url 'privacy_policy' %}">Privacidade</a>
-  <a class="{% if active == 'lgpd' %}is-active{% endif %}" href="{% url 'lgpd' %}">LGPD</a>
-  <a class="{% if active == 'cancellation' %}is-active{% endif %}" href="{% url 'cancellation_policy' %}">Cancelamento</a>
+  <div class="legal-nav-label">
+    <span>Central legal</span>
+    <p>Termos, privacidade, LGPD e faturamento no mesmo lugar.</p>
+  </div>
+  <div class="legal-nav-links">
+    <a class="{% if active == 'terms' %}is-active{% endif %}" href="{% url 'terms_of_service' %}">Termos de Uso</a>
+    <a class="{% if active == 'privacy' %}is-active{% endif %}" href="{% url 'privacy_policy' %}">Privacidade</a>
+    <a class="{% if active == 'lgpd' %}is-active{% endif %}" href="{% url 'lgpd' %}">LGPD</a>
+    <a class="{% if active == 'cancellation' %}is-active{% endif %}" href="{% url 'cancellation_policy' %}">Cancelamento</a>
+  </div>
 </nav>

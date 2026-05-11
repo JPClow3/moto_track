@@ -8,9 +8,9 @@
 <section class="page-shell" aria-labelledby="fuel-list-title">
   <header class="page-hero">
     <div>
-      <span class="page-kicker">Registro rápido</span>
-      <h2 id="fuel-list-title" class="page-title">Consumo e custo por tanque.</h2>
-      <p class="page-copy">Registre abastecimentos com o mínimo de atrito e mantenha leitura clara de consumo, gasto mensal e custo por km.</p>
+      <span class="page-kicker">Combustível</span>
+      <h2 id="fuel-list-title" class="page-title">Consumo claro. Registro rápido.</h2>
+      <p class="page-copy">Tudo o que importa para rodar e comparar custos.</p>
     </div>
     <div class="page-actions">
       <a
@@ -40,7 +40,7 @@
     <div class="section-heading">
       <div>
         <h3 id="fuel-summary-title" class="section-heading-title">Resumo operacional</h3>
-        <p class="section-heading-copy">Os números que orientam a próxima decisão aparecem antes dos filtros e do histórico.</p>
+        <p class="section-heading-copy">Leitura do período atual.</p>
       </div>
     </div>
     <div class="metric-grid" aria-label="Resumo de consumo">
@@ -49,15 +49,15 @@
         <p class="metric-tile-value">
           {% if avg_liters_per_100km is not None %}{{ avg_liters_per_100km }}{% else %}--{% endif %}
         </p>
-        <p class="metric-tile-copy">L/100 km com tanque cheio.</p>
-        <p class="mt-2 text-xs text-on-surface-variant">{% if total_liters %}{{ total_liters }} L registrados no período filtrado.{% else %}Registre abastecimentos para iniciar a leitura.{% endif %}</p>
+        <p class="metric-tile-copy">L/100 km</p>
+        <p class="mt-2 text-xs text-on-surface-variant">{% if total_liters %}{{ total_liters }} L no período.{% else %}Sem base ainda.{% endif %}</p>
       </div>
 
       <div class="metric-tile">
         <p class="metric-tile-label">Gasto no mês</p>
         <p class="metric-tile-value">{{ month_total }}</p>
-        <p class="metric-tile-copy">Total acumulado no mês atual.</p>
-        <p class="mt-2 text-xs text-on-surface-variant">Acumulado geral: {{ total_spend }}.</p>
+        <p class="metric-tile-copy">Mês atual</p>
+        <p class="mt-2 text-xs text-on-surface-variant">Geral: {{ total_spend }}.</p>
       </div>
 
       <div class="metric-tile">
@@ -65,8 +65,8 @@
         <p class="metric-tile-value">
           {% if cost_ma_last is not None %}{{ cost_ma_last }}{% else %}--{% endif %}
         </p>
-        <p class="metric-tile-copy">R$/km em janela de 3 meses.</p>
-        <p class="mt-2 text-xs text-on-surface-variant">Leitura operacional para custo real de rodagem.</p>
+        <p class="metric-tile-copy">R$/km em 3 meses</p>
+        <p class="mt-2 text-xs text-on-surface-variant">Custo médio de rodagem.</p>
       </div>
     </div>
   </section>
@@ -75,7 +75,7 @@
     <div class="section-heading">
       <div>
         <h3 id="fuel-filter-title" class="section-heading-title">Refinar histórico</h3>
-        <p class="section-heading-copy">Use filtros quando quiser auditar registros específicos; a leitura geral fica preservada acima.</p>
+        <p class="section-heading-copy">Busque só quando precisar aprofundar.</p>
       </div>
     </div>
     <form method="get" aria-label="Filtros de abastecimento" class="filter-strip">
@@ -122,7 +122,7 @@
     <article class="space-y-4">
       <div class="section-heading">
         <h3 class="section-heading-title">Últimos abastecimentos</h3>
-        <span class="ui-eyebrow">Leitura rápida</span>
+        <span class="ui-eyebrow">Agora</span>
       </div>
 
       {% if recent_fillups %}
@@ -158,11 +158,11 @@
         </div>
         <p class="text-sm text-on-surface-variant">
           {% if next_fill_up %}
-            Faltam {{ next_fill_up.remaining_km }} km com base na média recente de tanques cheios.
+            Faltam {{ next_fill_up.remaining_km }} km.
           {% elif avg_cost_per_km is not None %}
             Custo médio atual: {{ avg_cost_per_km }} / km.
           {% else %}
-            Adicione ao menos dois registros para habilitar estimativas.
+            Adicione dois registros para estimar.
           {% endif %}
         </p>
         <a class="ui-btn-secondary w-full" href="{% url 'fuel:catalogs' %}">Abrir catálogos</a>
@@ -247,8 +247,8 @@
   <section class="workflow-section" aria-labelledby="fuel-history-title">
     <div class="section-heading">
       <div>
-        <h3 id="fuel-history-title" class="section-heading-title">Histórico filtrado</h3>
-        <p class="section-heading-copy">Lista completa para conferência, edição e exportação.</p>
+        <h3 id="fuel-history-title" class="section-heading-title">Histórico</h3>
+        <p class="section-heading-copy">Lista completa para editar ou exportar.</p>
       </div>
     </div>
     {% if records %}

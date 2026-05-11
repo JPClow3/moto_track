@@ -457,36 +457,115 @@
   }
 
   .auth-ambient {
-    @apply absolute inset-x-0 top-0 h-72;
-    background: linear-gradient(180deg, rgb(var(--color-primary) / 0.08), transparent);
+    @apply absolute rounded-full;
+    filter: blur(72px);
   }
 
-  .auth-card {
-    box-shadow: var(--shadow-panel);
+  .auth-ambient-primary {
+    top: -8rem;
+    left: -7rem;
+    height: 24rem;
+    width: 24rem;
+    background: rgb(var(--color-primary) / 0.16);
+  }
+
+  .auth-ambient-secondary {
+    right: -8rem;
+    bottom: -9rem;
+    height: 26rem;
+    width: 26rem;
+    background: rgb(var(--color-primary) / 0.11);
+  }
+
+  .auth-ambient-grid {
+    inset: auto 0 0 0;
+    height: 56vh;
+    width: 100%;
+    border-radius: 0;
+    filter: none;
+    background-image:
+      linear-gradient(rgb(var(--color-outline-variant) / 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--color-outline-variant) / 0.12) 1px, transparent 1px);
+    background-position: center;
+    background-size: 56px 56px;
+    mask-image: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.75));
+    opacity: 0.34;
   }
 
   .auth-shell {
-    @apply relative min-h-screen lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(26rem,0.78fr)] lg:items-center;
+    @apply relative flex min-h-screen items-center justify-center px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8;
+  }
+
+  .auth-shell-frame {
+    @apply relative grid w-full max-w-[1180px] overflow-hidden rounded-xl border border-outline-variant/60 bg-surface/[0.84] backdrop-blur-2xl;
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.52);
+  }
+
+  html[data-resolved-theme="dark"] .auth-shell-frame {
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  @media (min-width: 1024px) {
+    .auth-shell-frame {
+      grid-template-columns: minmax(0, 1.04fr) minmax(28rem, 0.9fr);
+    }
   }
 
   .auth-side {
-    @apply hidden h-full border-r border-outline-variant/60 bg-surface-low/70 px-10 py-10 lg:flex lg:flex-col lg:justify-between xl:px-14;
+    @apply hidden min-h-[720px] flex-col justify-between border-r border-outline-variant/50 px-8 py-8 lg:flex xl:px-10;
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface-low) / 0.84), rgb(var(--color-surface) / 0.62)),
+      linear-gradient(140deg, rgb(var(--color-primary) / 0.08), transparent 58%);
+  }
+
+  .auth-side-top {
+    @apply flex flex-col gap-10;
+  }
+
+  .auth-brand-bar {
+    @apply flex items-center justify-between gap-4 rounded-md border border-outline-variant/50 bg-surface-lowest/75 px-4 py-3 backdrop-blur;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35);
+  }
+
+  html[data-resolved-theme="dark"] .auth-brand-bar {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  }
+
+  .auth-brand-logo {
+    @apply min-w-0;
+  }
+
+  .auth-theme-toggle {
+    @apply !h-10 !w-10 shrink-0;
   }
 
   .auth-side-copy {
-    @apply max-w-xl;
+    @apply max-w-[34rem];
   }
 
   .auth-side-title {
-    @apply mt-3 text-4xl font-semibold leading-tight tracking-normal text-on-surface;
+    @apply mt-4 text-[2.6rem] font-semibold leading-[1.02] tracking-normal text-on-surface xl:text-[3rem];
+  }
+
+  .auth-side-body {
+    @apply mt-4 max-w-xl text-base leading-7 text-on-surface-variant;
   }
 
   .auth-proof-list {
-    @apply mt-8 divide-y divide-outline-variant/50 border-y border-outline-variant/50;
+    @apply mt-10 grid gap-4;
   }
 
   .auth-proof-row {
-    @apply py-4;
+    @apply grid grid-cols-[auto_1fr] gap-4 rounded-md border border-outline-variant/45 bg-surface-lowest/60 p-4;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28);
+  }
+
+  html[data-resolved-theme="dark"] .auth-proof-row {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  .auth-proof-icon {
+    @apply inline-grid h-9 w-9 place-items-center rounded-md border border-outline-variant/50 bg-surface-low text-primary;
   }
 
   .auth-proof-row h3 {
@@ -497,18 +576,175 @@
     @apply mt-1 text-sm leading-6 text-on-surface-variant;
   }
 
+  .auth-side-footer {
+    @apply flex flex-col gap-4 border-t border-outline-variant/50 pt-5;
+  }
+
+  .auth-mini-grid {
+    @apply grid grid-cols-2 gap-3;
+  }
+
+  .auth-mini-tile {
+    @apply rounded-md border border-outline-variant/45 bg-surface-lowest/60 px-4 py-3;
+  }
+
+  .auth-mini-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-on-surface-variant;
+  }
+
+  .auth-mini-value {
+    @apply mt-1 text-sm font-semibold text-on-surface;
+  }
+
+  .auth-side-note {
+    @apply max-w-xl text-sm leading-6 text-on-surface-variant;
+  }
+
+  .auth-main {
+    @apply flex min-h-[100svh] items-center justify-center px-4 py-5 sm:px-6 sm:py-8 lg:min-h-[720px] lg:px-8;
+  }
+
+  .auth-mobile-bar {
+    @apply mb-4 flex items-center justify-between gap-3 lg:hidden;
+  }
+
+  .auth-card {
+    @apply relative overflow-hidden rounded-xl border border-outline-variant/45 bg-surface-lowest/90 p-6 backdrop-blur-xl sm:p-8;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.54);
+  }
+
+  .auth-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(var(--color-primary) / 0.25), transparent);
+  }
+
+  html[data-resolved-theme="dark"] .auth-card {
+    box-shadow: 0 22px 50px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .auth-alert {
+    @apply rounded-md border border-error/20 bg-error/10 px-4 py-3 text-sm font-semibold text-error;
+  }
+
+  .auth-form-stack {
+    @apply space-y-5;
+  }
+
+  .auth-field {
+    @apply space-y-2;
+  }
+
+  .auth-label-row {
+    @apply flex items-center justify-between gap-3;
+  }
+
+  .auth-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-on-surface-variant;
+  }
+
+  .auth-inline-link {
+    @apply text-[11px] font-semibold text-primary transition-opacity hover:opacity-80;
+  }
+
+  .auth-checkbox-row {
+    @apply inline-flex items-center gap-2 text-sm font-semibold text-on-surface-variant;
+  }
+
+  .auth-divider {
+    @apply relative;
+  }
+
+  .auth-divider-line {
+    @apply absolute inset-0 flex items-center;
+  }
+
+  .auth-divider-line::before {
+    content: "";
+    @apply block w-full border-t border-outline-variant/40;
+  }
+
+  .auth-divider-text {
+    @apply bg-surface-lowest px-3 text-xs font-medium text-on-surface-variant;
+  }
+
+  .auth-social-btn {
+    @apply ui-btn-secondary w-full !min-h-[52px] !justify-center !gap-3 !border-outline-variant/50;
+  }
+
+  .auth-consent-panel {
+    @apply rounded-md border border-outline-variant/45 bg-surface-low px-4 py-3;
+  }
+
+  .auth-inline-note {
+    @apply text-sm text-on-surface-variant;
+  }
+
+  .auth-utility-nav {
+    @apply mt-8 flex flex-wrap gap-x-4 gap-y-3 border-t border-outline-variant/40 pt-5 text-sm font-semibold text-on-surface-variant;
+  }
+
+  .auth-utility-nav a {
+    @apply transition-colors hover:text-on-surface;
+  }
+
+  .legal-shell {
+    @apply relative overflow-hidden py-8 sm:py-10;
+  }
+
+  .legal-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at top left, rgb(var(--color-primary) / 0.08), transparent 38%),
+      linear-gradient(180deg, rgb(var(--color-surface-low) / 0.28), transparent 44%);
+    pointer-events: none;
+  }
+
   .legal-document {
-    @apply mx-auto space-y-0 pb-16 pt-10 sm:pt-12;
-    width: min(54rem, 92vw);
+    @apply relative mx-auto overflow-hidden rounded-xl border border-outline-variant/50 bg-surface/[0.92] pb-10 pt-0 backdrop-blur-xl;
+    width: min(74rem, 92vw);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  html[data-resolved-theme="dark"] .legal-document {
+    box-shadow: 0 24px 76px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .legal-document > header {
-    @apply max-w-3xl pb-8;
+    @apply max-w-none border-b border-outline-variant/45 px-5 py-6 sm:px-8 sm:py-8 lg:px-10;
+  }
+
+  .legal-hero-top {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .legal-brand-link {
+    @apply inline-flex max-w-full items-center;
+  }
+
+  .legal-brand-logo {
+    @apply min-w-0;
+  }
+
+  .legal-status {
+    @apply inline-flex min-h-9 items-center rounded-full border border-outline-variant/50 bg-surface-lowest/80 px-4 text-xs font-semibold text-on-surface-variant;
+  }
+
+  .legal-hero-copy {
+    @apply mt-6 max-w-3xl space-y-4;
+  }
+
+  .legal-meta {
+    @apply inline-flex items-center rounded-full border border-outline-variant/45 bg-surface-lowest/70 px-4 py-2 text-xs font-semibold text-on-surface-variant;
   }
 
   .legal-document h1,
   .legal-document h2 {
-    @apply text-3xl font-semibold leading-tight tracking-normal text-on-surface sm:text-4xl;
+    @apply text-3xl font-semibold leading-[1.06] tracking-normal text-on-surface sm:text-4xl;
   }
 
   .legal-document h3 {
@@ -522,35 +758,67 @@
   .legal-document p,
   .legal-document li,
   .legal-document td {
-    @apply text-[0.95rem] leading-7;
+    @apply text-[0.97rem] leading-7 text-on-surface-variant;
   }
 
   .legal-document .panel {
     border: 0;
-    border-top: 1px solid rgb(var(--color-outline-variant) / 0.55);
+    border-top: 1px solid rgb(var(--color-outline-variant) / 0.52);
     border-radius: 0;
     background: transparent !important;
     box-shadow: none !important;
-    padding-top: 1.75rem;
-    padding-bottom: 1.75rem;
-    padding-left: 0;
-    padding-right: 0;
+    padding-top: 1.9rem;
+    padding-bottom: 1.9rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
 
+  @media (min-width: 640px) {
+    .legal-document .panel {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .legal-document .panel {
+      padding-left: 2.5rem;
+      padding-right: 2.5rem;
+    }
+  }
+
+  .legal-document .panel:first-of-type {
+    border-top: 0;
+  }
+
+  .legal-actions,
   .legal-document footer {
-    @apply border-t border-outline-variant/50 pt-8;
+    @apply flex flex-wrap gap-3 border-t border-outline-variant/50 px-5 pt-6 sm:px-8 lg:px-10;
   }
 
   .legal-nav {
-    @apply sticky top-[4.5rem] z-20 mt-6 flex flex-wrap gap-2 border-y border-outline-variant/50 bg-surface/95 py-2 text-sm font-semibold backdrop-blur;
+    @apply mt-8 flex flex-col gap-4 border-t border-outline-variant/45 pt-5 lg:flex-row lg:items-center lg:justify-between;
+  }
+
+  .legal-nav-label span {
+    @apply block text-[11px] font-semibold uppercase tracking-[0.08em] text-on-surface-variant;
+  }
+
+  .legal-nav-label p {
+    @apply mt-1 text-sm leading-6 text-on-surface;
+  }
+
+  .legal-nav-links {
+    @apply flex flex-wrap gap-2;
   }
 
   .legal-nav a {
-    @apply rounded px-3 py-2 text-on-surface-variant transition-colors hover:bg-surface-low hover:text-on-surface;
+    @apply inline-flex min-h-10 items-center rounded-full border border-outline-variant/50 bg-surface-lowest/70 px-4 text-sm font-semibold text-on-surface-variant transition-all hover:border-primary/20 hover:text-on-surface;
   }
 
   .legal-nav a.is-active {
-    @apply bg-primary text-on-primary;
+    @apply border-primary/20 bg-primary text-on-primary;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
   }
 
   .list-section { @apply space-y-8 pb-10; }

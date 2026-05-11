@@ -1,10 +1,15 @@
 # Deploy
 
-Este guia cobre os dois caminhos de deploy suportados: **Lightsail VM** (Nginx + Gunicorn + S3) e **Coolify** (Docker Compose).
+Este guia cobre os caminhos de deploy suportados: **Lightsail** (manual com Nginx + Gunicorn + S3 ou automatizado com Docker Compose + Caddy), **Coolify** (Docker Compose) e **VPS self-hosted** com Docker Compose.
 
 ---
 
 ## Lightsail VM + Nginx + Gunicorn + S3
+
+> Fluxo atual de automação: o workflow **Deploy to Lightsail** em `.github/workflows/deploy.yml`
+> usa o caminho Docker Compose com os profiles `prod` + `edge` no host remoto.
+> O passo a passo abaixo continua válido para quem quiser operar a instância manualmente
+> com `systemd` + Nginx.
 
 ### Pré-requisitos
 
