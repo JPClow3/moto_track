@@ -1,5 +1,6 @@
 from allauth.account.models import EmailAddress
-from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
+from allauth.socialaccount.adapter import get_adapter as get_socialaccount_adapter
+from allauth.socialaccount.models import SocialAccount, SocialApp, SocialLogin, SocialToken
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -121,6 +122,33 @@ class AccountsSmokeTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], reverse("account_login"))
+
+    def test_google_login_can_match_existing_verified_email(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="existing-google-user",
+            email="existing-google@example.com",
+            password="pass12345",
+        )
+        EmailAddress.objects.create(
+            user=user,
+            email="existing-google@example.com",
+            primary=True,
+            verified=True,
+        )
+        social_user = User(username="existing-google", email="existing-google@example.com")
+        social_login = SocialLogin(
+            user=social_user,
+            account=SocialAccount(provider="google", uid="google-uid-123", user=social_user),
+            provider=get_socialaccount_adapter().get_provider(None, provider="google"),
+        )
+        social_login.email_addresses = [
+            EmailAddress(email="existing-google@example.com", primary=True, verified=True),
+        ]
+
+        social_login.lookup()
+
+        self.assertEqual(social_login.user, user)
 
     def test_login_page_copy_mentions_single_step_google_login(self):
         response = self.client.get(reverse("account_login"))

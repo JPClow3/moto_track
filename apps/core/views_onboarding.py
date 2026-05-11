@@ -15,6 +15,7 @@ from apps.core.active_motorcycle import get_active_motorcycle, set_active_motorc
 from apps.core.forms import MinimalOnboardingForm, configure_form_accessibility
 from apps.core.services.demo_bike import create_demo_motorcycle
 from apps.core.services.onboarding import create_motorcycle_from_minimal_onboarding
+from apps.garage.services import ensure_motorcycle_template_catalog
 from apps.garage.models import Motorcycle, MotorcycleTemplate
 
 
@@ -23,6 +24,7 @@ class OnboardingTemplateAutocomplete(LoginRequiredMixin, autocomplete.Select2Que
         if not self.request.user.is_authenticated:
             return MotorcycleTemplate.objects.none()
 
+        ensure_motorcycle_template_catalog()
         queryset = MotorcycleTemplate.objects.order_by("brand", "model", "year_from")
         query = (self.q or "").strip()
         if not query:
@@ -105,6 +107,7 @@ def onboarding_view(request):
         messages.info(request, "Você já tem uma moto arquivada. Reative uma moto existente ou crie uma nova pela garagem.")
         return redirect("garage:list")
 
+    ensure_motorcycle_template_catalog()
     if request.method == "POST":
         form = MinimalOnboardingForm(request.POST)
         if form.is_valid():

@@ -324,6 +324,7 @@ SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
         "AUTH_PARAMS": {"access_type": "online"},
+        "EMAIL_AUTHENTICATION": True,
         "APP": {
             "client_id": env("GOOGLE_CLIENT_ID", default=""),
             "secret": env("GOOGLE_CLIENT_SECRET", default=""),

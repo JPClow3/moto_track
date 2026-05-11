@@ -86,17 +86,17 @@
               </div>
             </div>
 
-            <div class="form-field" @focusin="showTip('data')" @focusout="hideTip('data')">
+            <div class="form-field" @focusin="showTip('referenciaKm')" @focusout="hideTip('referenciaKm')">
               {{ form.reference_km|as_crispy_field }}
-              <div x-show="tips.data" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
+              <div x-show="tips.referenciaKm" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
                 <i data-lucide="map-pinned" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
                 <span>Km base usado para calcular o próximo aviso</span>
               </div>
             </div>
 
-            <div class="form-field" @focusin="showTip('data')" @focusout="hideTip('data')">
+            <div class="form-field" @focusin="showTip('dias')" @focusout="hideTip('dias')">
               {{ form.trigger_value_days|as_crispy_field }}
-              <div x-show="tips.data" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
+              <div x-show="tips.dias" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
                 <i data-lucide="calendar-range" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
                 <span>Quantidade de dias para alertas por data ou intervalo</span>
               </div>
@@ -219,7 +219,8 @@ function reminderForm(initialTotal) {
       titulo: false,
       tipo: false,
       km: false,
-      data: false,
+      referenciaKm: false,
+      dias: false,
       intervalo: false
     },
 
@@ -241,19 +242,29 @@ function reminderForm(initialTotal) {
       const form = this.$refs.reminderForm;
       if (!form) return;
 
-      const fields = form.querySelectorAll('input:not([type=hidden]), select:not([type=hidden])');
-      const requiredFields = form.querySelectorAll('input[required], select[required]');
+      const fields = form.querySelectorAll('input:not([type=hidden]), select, textarea');
+      const requiredFields = form.querySelectorAll('input[required], select[required], textarea[required]');
       let filled = 0;
       let requiredFilled = 0;
 
       fields.forEach(field => {
-        if (field.value && field.value.trim() !== '') {
+        const isCheckedField = field.type === 'checkbox' || field.type === 'radio';
+        const hasValue = isCheckedField
+          ? field.checked
+          : field.value && field.value.trim() !== '';
+
+        if (hasValue) {
           filled++;
         }
       });
 
       requiredFields.forEach(field => {
-        if (field.value && field.value.trim() !== '') {
+        const isCheckedField = field.type === 'checkbox' || field.type === 'radio';
+        const hasValue = isCheckedField
+          ? field.checked
+          : field.value && field.value.trim() !== '';
+
+        if (hasValue) {
           requiredFilled++;
         }
       });
