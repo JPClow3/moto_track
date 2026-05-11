@@ -8,9 +8,9 @@
 <section class="page-shell" aria-labelledby="work-title">
   <header class="page-hero">
     <div>
-      <span class="page-kicker">Motoboy e mototaxi</span>
-      <h2 id="work-title" class="page-title">Fechamento rapido do dia.</h2>
-      <p class="page-copy">Registre ganhos, km e tempo trabalhado para enxergar lucro, R$/km e reserva de manutencao.</p>
+      <span class="page-kicker">Trabalho</span>
+      <h2 id="work-title" class="page-title">Fechamento rápido, sem excesso.</h2>
+      <p class="page-copy">Ganhos, km e lucro em uma leitura curta.</p>
     </div>
     <div class="page-actions">
       {% if motorcycle and has_pro %}<a class="ui-btn-secondary" href="{% url 'work:cost_settings' motorcycle.pk %}">Custos</a>{% endif %}
@@ -42,7 +42,7 @@
   {% if not has_pro %}
     <section class="rounded-md border border-primary/20 bg-primary/10 p-5">
       <h3 class="font-headline text-2xl font-semibold tracking-tight">O Free registra ate 3 turnos por mes.</h3>
-      <p class="mt-2 text-sm text-on-surface-variant">O Pro libera historico ilimitado, lucro mensal, custo por km e reserva de manutencao.</p>
+      <p class="mt-2 text-sm text-on-surface-variant">O Pro libera historico ilimitado, lucro mensal e custo por km.</p>
       <a class="ui-btn-primary mt-4" href="{% url 'pricing' %}">Ver Plano Pro</a>
     </section>
   {% endif %}

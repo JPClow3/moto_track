@@ -96,6 +96,7 @@ def dashboard_view(request):
         "catalog_links": get_catalog_links(),
         "active_reminders": active_reminders,
         "month_total": monthly["month_total"],
+        "weekly_sparkline_points": monthly["weekly_sparkline_points"],
         "pending_alerts": pending_alerts,
         "cards": get_dashboard_cards(motorcycle, current_odometer_km, monthly["month_total"], pending_alerts),
         "chart_spending_distribution": get_chart_spending_distribution(motorcycle),

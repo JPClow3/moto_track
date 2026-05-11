@@ -9,82 +9,163 @@
 {% block content %}
 {% if motorcycle %}
 <section class="page-shell" aria-labelledby="dashboard-title">
-  <header class="page-hero">
-    <div class="space-y-4">
-      <span class="page-kicker">Veículo ativo</span>
-      <div>
-        <h2 id="dashboard-title" class="page-title">{{ motorcycle.name }}</h2>
-        <p class="metric-card-value mt-2">{{ motorcycle.current_odometer_km }} km</p>
-      </div>
-      {% if health %}
-        <div class="mt-2 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold
-          {% if health.total >= 80 %}border-success/30 bg-success/10 text-success{% elif health.total >= 50 %}border-warning/30 bg-warning/10 text-warning{% else %}border-error/30 bg-error/10 text-error{% endif %}">
-          <i data-lucide="{% if health.total >= 80 %}check-circle{% elif health.total >= 50 %}alert-circle{% else %}alert-triangle{% endif %}" class="h-4 w-4" aria-hidden="true"></i>
-          {{ health.readable_status }}
+  <header class="dashboard-hero">
+    <div class="dashboard-hero-grid">
+      <div class="space-y-5">
+        <div class="space-y-3">
+          <span class="page-kicker">Painel central</span>
+          <div>
+            <h2 id="dashboard-title" class="page-title">{{ motorcycle.name }}</h2>
+            <p class="page-copy">Custos, alertas e próximos registros em uma leitura só.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="dashboard-chip">
+              <i data-lucide="gauge" class="h-4 w-4" aria-hidden="true"></i>
+              {{ motorcycle.current_odometer_km }} km
+            </span>
+            <span class="dashboard-chip">
+              <i data-lucide="wallet" class="h-4 w-4" aria-hidden="true"></i>
+              {{ month_total }} no mês
+            </span>
+            <span class="dashboard-chip">
+              <i data-lucide="bell-ring" class="h-4 w-4" aria-hidden="true"></i>
+              {{ pending_alerts }} alerta(s)
+            </span>
+            {% if health %}
+              <span class="dashboard-chip {% if health.total >= 80 %}border-success/30 bg-success/10 text-success{% elif health.total >= 50 %}border-warning/30 bg-warning/10 text-warning{% else %}border-error/30 bg-error/10 text-error{% endif %}">
+                <i data-lucide="{% if health.total >= 80 %}check-circle{% elif health.total >= 50 %}alert-circle{% else %}alert-triangle{% endif %}" class="h-4 w-4" aria-hidden="true"></i>
+                {{ health.readable_status }}
+              </span>
+            {% endif %}
+          </div>
         </div>
-      {% endif %}
+
+        <section aria-label="Ações rápidas" class="dashboard-action-grid">
+          {% for action in quick_actions %}
+            {% if action.htmx_url %}
+              <a
+                class="dashboard-action-card {% if action.tone == 'primary' %}border-primary/20 bg-primary/5{% endif %}"
+                href="{{ action.url }}"
+                hx-get="{{ action.htmx_url }}?next={% url 'dashboard' %}"
+                hx-target="#quick-form-root"
+                hx-swap="innerHTML"
+                hx-indicator="#quick-form-skeleton"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <span class="text-xs font-semibold uppercase tracking-normal text-on-surface-variant">{{ action.hint }}</span>
+                    <p class="mt-2 text-base font-semibold text-on-surface">{{ action.label }}</p>
+                  </div>
+                  <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-low text-on-surface">
+                    <i data-lucide="{{ action.icon }}" aria-hidden="true"></i>
+                  </span>
+                </div>
+              </a>
+            {% else %}
+              <a class="dashboard-action-card" href="{{ action.url }}">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <span class="text-xs font-semibold uppercase tracking-normal text-on-surface-variant">{{ action.hint }}</span>
+                    <p class="mt-2 text-base font-semibold text-on-surface">{{ action.label }}</p>
+                  </div>
+                  <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-low text-on-surface">
+                    <i data-lucide="{{ action.icon }}" aria-hidden="true"></i>
+                  </span>
+                </div>
+              </a>
+            {% endif %}
+          {% endfor %}
+        </section>
+      </div>
+
+      <aside class="space-y-4">
+        <div class="dashboard-hero-panel space-y-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-normal text-on-surface-variant">Agora</p>
+              <p class="mt-1 text-3xl font-semibold tracking-normal text-on-surface">{{ month_total }}</p>
+            </div>
+            <span class="severity-badge severity-neutral">Combustível</span>
+          </div>
+          {% if weekly_sparkline_points %}
+            <svg viewBox="0 0 100 24" class="h-12 w-full" role="img" aria-label="Tendência semanal de gasto com combustível">
+              <path d="M0 23.5H100" fill="none" stroke="rgb(var(--color-outline-variant) / 0.35)" stroke-width="1"></path>
+              <polyline
+                fill="none"
+                stroke="rgb(var(--color-primary))"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                points="{{ weekly_sparkline_points }}"
+              ></polyline>
+            </svg>
+          {% endif %}
+          <div class="dashboard-status-list">
+            {% for card in cards|slice:"1:4" %}
+              <div class="dashboard-status-row">
+                <div class="min-w-0">
+                  <p class="text-xs font-semibold uppercase tracking-normal text-on-surface-variant">{{ card.title }}</p>
+                  <p class="mt-1 text-sm font-semibold text-on-surface">{{ card.value }}</p>
+                </div>
+                <span class="text-right text-xs text-on-surface-variant">{{ card.subtitle }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </aside>
     </div>
   </header>
 
-  <section aria-label="Ações rápidas">
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <a
-        class="ui-btn-primary min-h-[3.5rem] justify-center text-base"
-        hx-get="{% url 'fuel:quick_create' %}?next={% url 'dashboard' %}"
-        hx-target="#quick-form-root"
-        hx-swap="innerHTML"
-        hx-indicator="#quick-form-skeleton"
-      >
-        <i data-lucide="fuel" aria-hidden="true"></i>Abastecimento
-      </a>
-      <a
-        class="ui-btn-primary min-h-[3.5rem] justify-center text-base"
-        hx-get="{% url 'maintenance:quick_create' %}?next={% url 'dashboard' %}"
-        hx-target="#quick-form-root"
-        hx-swap="innerHTML"
-        hx-indicator="#quick-form-skeleton"
-      >
-        <i data-lucide="wrench" aria-hidden="true"></i>Manutenção
-      </a>
-      <a
-        class="ui-btn-primary min-h-[3.5rem] justify-center text-base"
-        hx-get="{% url 'quick_odometer_update' %}?next={% url 'dashboard' %}"
-        hx-target="#quick-form-root"
-        hx-swap="innerHTML"
-        hx-indicator="#quick-form-skeleton"
-      >
-        <i data-lucide="gauge" aria-hidden="true"></i>Odômetro
-      </a>
+  <section class="workflow-section" aria-labelledby="radar-title">
+    <div class="section-heading">
+      <div>
+        <h3 id="radar-title" class="section-heading-title">Radar rápido</h3>
+        <p class="section-heading-copy">O que muda sua próxima decisão.</p>
+      </div>
+    </div>
+    <div class="dashboard-glance-grid">
+      {% for card in status_cards %}
+        <article class="metric-tile">
+          <div class="flex items-center justify-between gap-3">
+            <p class="metric-tile-label">{{ card.title }}</p>
+            <span class="severity-badge {% if card.tone == 'danger' %}severity-critical{% elif card.tone == 'warning' %}severity-warning{% else %}severity-info{% endif %}">
+              {{ card.badge }}
+            </span>
+          </div>
+          <p class="metric-tile-value">{{ card.value }}</p>
+          <p class="metric-tile-copy">{{ card.meta }}</p>
+        </article>
+      {% endfor %}
     </div>
   </section>
 
   <section class="space-y-4" aria-labelledby="professional-title">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p class="text-xs font-medium text-on-surface-variant">Trabalho e lucro</p>
-        <h3 id="professional-title" class="section-heading-title">A moto está pagando a conta?</h3>
+        <p class="text-xs font-medium text-on-surface-variant">Trabalho</p>
+        <h3 id="professional-title" class="section-heading-title">Receita, lucro e ritmo do mês.</h3>
       </div>
       {% if has_pro %}
         <a class="ui-btn-secondary !min-h-10 !px-4 text-sm" href="{% url 'work:dashboard' %}">Abrir trabalho</a>
       {% else %}
-        <a class="ui-btn-primary !min-h-10 !px-4 text-sm" href="{% url 'pricing' %}">Ver Plano Pro</a>
+        <a class="ui-btn-primary !min-h-10 !px-4 text-sm" href="{% url 'pricing' %}">Ativar Pro</a>
       {% endif %}
     </div>
 
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <article class="metric-tile">
-        <p class="metric-tile-label">Receita do mês</p>
+        <p class="metric-tile-label">Receita</p>
         <p class="metric-tile-value">R$ {{ professional_summary.revenue|floatformat:2 }}</p>
-        <p class="metric-tile-copy">{{ professional_summary.sessions_count }} turno(s) registrado(s)</p>
+        <p class="metric-tile-copy">{{ professional_summary.sessions_count }} turno(s)</p>
       </article>
       <article class="metric-tile">
-        <p class="metric-tile-label">Lucro estimado</p>
+        <p class="metric-tile-label">Lucro</p>
         {% if has_pro %}
           <p class="metric-tile-value">R$ {{ professional_summary.estimated_profit|floatformat:2 }}</p>
-          <p class="metric-tile-copy">Receita menos combustível, reserva e custos fixos.</p>
+          <p class="metric-tile-copy">Já descontando custos.</p>
         {% else %}
           <p class="metric-tile-value">Pro</p>
-          <p class="metric-tile-copy">Use seus registros reais para ver se a moto dá lucro.</p>
+          <p class="metric-tile-copy">Desbloqueie a leitura real.</p>
         {% endif %}
       </article>
       <article class="metric-tile">
@@ -92,98 +173,101 @@
         {% if has_pro and professional_summary.profit_per_km %}
           <p class="metric-tile-value">R$ {{ professional_summary.profit_per_km|floatformat:2 }}</p>
         {% else %}
-          <p class="metric-tile-value">Bloqueado</p>
+          <p class="metric-tile-value">--</p>
         {% endif %}
-        <p class="metric-tile-copy">{{ professional_summary.distance_km }} km em turnos no mês.</p>
+        <p class="metric-tile-copy">{{ professional_summary.distance_km }} km</p>
       </article>
       <article class="metric-tile">
         <p class="metric-tile-label">R$/hora</p>
         {% if has_pro and professional_summary.profit_per_hour %}
           <p class="metric-tile-value">R$ {{ professional_summary.profit_per_hour|floatformat:2 }}</p>
         {% else %}
-          <p class="metric-tile-value">Bloqueado</p>
+          <p class="metric-tile-value">--</p>
         {% endif %}
-        <p class="metric-tile-copy">{{ professional_summary.hours|floatformat:1 }} h registradas.</p>
+        <p class="metric-tile-copy">{{ professional_summary.hours|floatformat:1 }} h</p>
       </article>
     </div>
   </section>
 
   {% if setup_incomplete %}
   <section class="space-y-4" aria-label="Complete sua moto" x-data="{ dismissed: {} }">
-    <div class="flex items-center justify-between gap-4">
-      <h3 class="section-heading-title">Complete sua moto</h3>
+    <div class="section-heading">
+      <div>
+        <h3 class="section-heading-title">Complete a base</h3>
+        <p class="section-heading-copy">Cadastros que deixam o painel mais inteligente.</p>
+      </div>
     </div>
-    <div class="grid grid-cols-1 gap-3">
+    <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
       {% if not setup_progress.has_maintenance_plan %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.maintenance" x-cloak>
-        <div>
-          <p class="text-sm font-semibold text-on-surface">Quer configurar óleo e revisão?</p>
-          <p class="text-xs text-on-surface-variant mt-1">Ajuda o app a prever quando sua próxima manutenção vence.</p>
+      <div class="insight-panel" x-show="!dismissed.maintenance" x-cloak>
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold text-on-surface">Plano de manutenção</p>
+            <p class="mt-1 text-sm text-on-surface-variant">Óleo, revisão e próximos vencimentos.</p>
+          </div>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.maintenance = true">Ocultar</button>
         </div>
-        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'maintenance:list' %}">Configurar agora</a>
-          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.maintenance = true">Depois</button>
-        </div>
+        <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'maintenance:list' %}">Configurar</a>
       </div>
       {% endif %}
       {% if not setup_progress.has_tires %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.tires" x-cloak>
-        <div>
-          <p class="text-sm font-semibold text-on-surface">Quer adicionar pneus?</p>
-          <p class="text-xs text-on-surface-variant mt-1">Monitore desgaste e saiba quando trocar.</p>
+      <div class="insight-panel" x-show="!dismissed.tires" x-cloak>
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold text-on-surface">Pneus</p>
+            <p class="mt-1 text-sm text-on-surface-variant">Desgaste e previsão de troca.</p>
+          </div>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.tires = true">Ocultar</button>
         </div>
-        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'tires:list' %}">Adicionar</a>
-          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.tires = true">Depois</button>
-        </div>
+        <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'tires:list' %}">Adicionar</a>
       </div>
       {% endif %}
       {% if not setup_progress.has_documents %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.documents" x-cloak>
-        <div>
-          <p class="text-sm font-semibold text-on-surface">Quer adicionar um documento?</p>
-          <p class="text-xs text-on-surface-variant mt-1">Guarde CRLV, seguro e notas fiscais com data de validade.</p>
+      <div class="insight-panel" x-show="!dismissed.documents" x-cloak>
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold text-on-surface">Documentos</p>
+            <p class="mt-1 text-sm text-on-surface-variant">CRLV, seguro e vencimentos.</p>
+          </div>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.documents = true">Ocultar</button>
         </div>
-        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'documents:list' %}">Adicionar</a>
-          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.documents = true">Depois</button>
-        </div>
+        <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'documents:list' %}">Adicionar</a>
       </div>
       {% endif %}
       {% if not setup_progress.has_expenses %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.expenses" x-cloak>
-        <div>
-          <p class="text-sm font-semibold text-on-surface">Quer adicionar uma despesa?</p>
-          <p class="text-xs text-on-surface-variant mt-1">Documente taxas, seguros e reserva financeira.</p>
+      <div class="insight-panel" x-show="!dismissed.expenses" x-cloak>
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold text-on-surface">Taxas e seguros</p>
+            <p class="mt-1 text-sm text-on-surface-variant">Custos fixos fora do tanque.</p>
+          </div>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.expenses = true">Ocultar</button>
         </div>
-        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'expenses:list' %}">Adicionar</a>
-          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.expenses = true">Depois</button>
-        </div>
+        <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'expenses:list' %}">Adicionar</a>
       </div>
       {% endif %}
       {% if not setup_progress.has_reminders %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.reminders" x-cloak>
-        <div>
-          <p class="text-sm font-semibold text-on-surface">Quer criar um lembrete?</p>
-          <p class="text-xs text-on-surface-variant mt-1">Receba alertas de troca de óleo, revisão e documentos.</p>
+      <div class="insight-panel" x-show="!dismissed.reminders" x-cloak>
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold text-on-surface">Lembretes</p>
+            <p class="mt-1 text-sm text-on-surface-variant">Alertas por data, km ou intervalo.</p>
+          </div>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.reminders = true">Ocultar</button>
         </div>
-        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'reminders:list' %}">Criar</a>
-          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.reminders = true">Depois</button>
-        </div>
+        <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'reminders:list' %}">Criar</a>
       </div>
       {% endif %}
       {% if not setup_progress.has_fuel %}
-      <div class="rounded-md border border-outline-variant/20 bg-surface-low p-4 flex flex-col sm:flex-row items-start justify-between gap-4" x-show="!dismissed.fuel" x-cloak>
-        <div>
-          <p class="text-sm font-semibold text-on-surface">Quer importar ou registrar abastecimentos?</p>
-          <p class="text-xs text-on-surface-variant mt-1">Acompanhe consumo e gasto por km rodado.</p>
+      <div class="insight-panel" x-show="!dismissed.fuel" x-cloak>
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold text-on-surface">Abastecimentos</p>
+            <p class="mt-1 text-sm text-on-surface-variant">Consumo, gasto por km e histórico.</p>
+          </div>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.fuel = true">Ocultar</button>
         </div>
-        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-          <a class="ui-btn-secondary text-xs min-h-9 px-3 py-2 flex-1 sm:flex-initial justify-center" href="{% url 'fuel:list' %}">Registrar</a>
-          <button type="button" class="ui-btn-ghost text-xs min-h-9 px-3 py-2" @click="dismissed.fuel = true">Depois</button>
-        </div>
+        <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'fuel:list' %}">Registrar</a>
       </div>
       {% endif %}
     </div>
@@ -192,42 +276,26 @@
 
   <section class="space-y-4" aria-label="Lembretes e alertas">
     <div class="flex items-center justify-between gap-4">
-      <h3 class="section-heading-title">O que precisa atenção</h3>
-      <a class="text-link text-sm" href="{% url 'reminders:list' %}">Abrir lembretes</a>
+      <h3 class="section-heading-title">Atenção</h3>
+      <a class="text-link text-sm" href="{% url 'reminders:list' %}">Ver lembretes</a>
     </div>
-      {% if active_reminders %}
-        <div class="divide-y divide-outline-variant/40">
-          {% for entry in active_reminders %}
-            {% with reminder=entry.reminder evaluation=entry.evaluation %}
-              <div id="reminder-row-{{ reminder.pk }}" class="flex items-start justify-between gap-4 rounded-md border-l-4 px-3 py-3 {% if evaluation.status == 'overdue' %}bg-red-500/10 border-red-500{% elif evaluation.status == 'due_soon' %}bg-amber-500/10 border-amber-500{% else %}border-transparent{% endif %}">
-                <div>
+    {% if active_reminders %}
+      <div class="space-y-3">
+        {% for entry in active_reminders %}
+          {% with reminder=entry.reminder evaluation=entry.evaluation %}
+            <div id="reminder-row-{{ reminder.pk }}" class="insight-panel {% if evaluation.status == 'overdue' %}border-red-500/35{% elif evaluation.status == 'due_soon' %}border-amber-500/35{% endif %}">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
                   <p class="text-sm font-semibold text-on-surface">{{ reminder.title }}</p>
-                  <p class="text-xs text-on-surface-variant">
+                  <p class="mt-1 text-xs text-on-surface-variant">
                     {% if evaluation.due_date %}
                       Até {{ evaluation.due_date }}
                     {% elif evaluation.due_km %}
                       Até {{ evaluation.due_km }} km
                     {% else %}
-                      Sem data definida
+                      Sem prazo definido
                     {% endif %}
                   </p>
-                  <div class="mt-2 flex items-center gap-2">
-                    <button
-                      class="ui-btn-ghost min-h-[2.5rem] px-3 py-2 text-xs"
-                      hx-post="{% url 'reminders:concluir' reminder.pk %}"
-                      hx-target="#reminder-row-{{ reminder.pk }}"
-                      hx-swap="outerHTML"
-                      hx-confirm="Concluir este lembrete e registrar na manutenção?"
-                    >Concluir</button>
-                    {% if reminder.trigger_type == 'by_km' or reminder.trigger_type == 'by_interval' %}
-                      <button
-                        class="ui-btn-ghost min-h-[2.5rem] px-3 py-2 text-xs"
-                        hx-post="{% url 'reminders:snooze_km' reminder.pk 500 %}"
-                        hx-target="#reminder-row-{{ reminder.pk }}"
-                        hx-swap="outerHTML"
-                      >Adiar 500 km</button>
-                    {% endif %}
-                  </div>
                 </div>
                 {% if evaluation.status == "overdue" %}
                   <span class="severity-badge severity-critical">Vencido</span>
@@ -239,51 +307,69 @@
                   <span class="severity-badge severity-neutral">Indefinido</span>
                 {% endif %}
               </div>
-            {% endwith %}
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="empty-state">Nenhum lembrete ativo no momento.</div>
-      {% endif %}
+              <div class="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  class="ui-btn-ghost min-h-[2.5rem] px-3 py-2 text-xs"
+                  hx-post="{% url 'reminders:concluir' reminder.pk %}"
+                  hx-target="#reminder-row-{{ reminder.pk }}"
+                  hx-swap="outerHTML"
+                  hx-confirm="Concluir este lembrete e registrar na manutenção?"
+                >Concluir</button>
+                {% if reminder.trigger_type == 'by_km' or reminder.trigger_type == 'by_interval' %}
+                  <button
+                    class="ui-btn-ghost min-h-[2.5rem] px-3 py-2 text-xs"
+                    hx-post="{% url 'reminders:snooze_km' reminder.pk 500 %}"
+                    hx-target="#reminder-row-{{ reminder.pk }}"
+                    hx-swap="outerHTML"
+                  >Adiar 500 km</button>
+                {% endif %}
+              </div>
+            </div>
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">Sem alertas ativos.</div>
+    {% endif %}
   </section>
 
   <section aria-label="Saúde dos pneus" class="space-y-4">
     <div class="flex items-center justify-between gap-4">
-      <h3 class="section-heading-title">Saúde dos pneus</h3>
+      <h3 class="section-heading-title">Pneus</h3>
       <a class="text-link text-sm" href="{% url 'tires:list' %}">Abrir pneus</a>
     </div>
     {% if tire_cards %}
-      <div class="grid grid-cols-1 gap-6 md:grid-cols-2" role="list">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2" role="list">
         {% for tire in tire_cards %}
-          <div class="space-y-3" role="listitem">
+          <div class="metric-tile" role="listitem">
             <div class="flex items-start justify-between gap-4">
-              <div>
-                <p class="text-xs font-medium text-on-surface-variant">{{ tire.title }}</p>
+              <div class="min-w-0">
+                <p class="metric-tile-label">{{ tire.title }}</p>
                 <p class="mt-1 text-base font-semibold text-on-surface">{{ tire.model }}</p>
               </div>
-              <span class="severity-badge {% if tire.status_tone == 'warning' %}severity-warning{% else %}severity-success{% endif %}">{{ tire.status_label }}</span>
+              <span class="severity-badge {% if tire.status_tone == 'warning' %}severity-warning{% elif tire.status_tone == 'neutral' %}severity-info{% else %}severity-success{% endif %}">{{ tire.status_label }}</span>
             </div>
-            <div class="flex items-end justify-between gap-4">
+            <div class="mt-5 flex items-end justify-between gap-4">
               <div>
-                <p class="text-2xl font-semibold tracking-normal text-on-surface">{{ tire.wear_percent }}%</p>
-                <p class="text-sm text-on-surface-variant">Desgaste atual</p>
+                <p class="text-3xl font-semibold tracking-normal text-on-surface">{{ tire.wear_percent }}%</p>
+                <p class="text-sm text-on-surface-variant">Desgaste</p>
               </div>
               <div class="text-right text-sm text-on-surface-variant">
                 {% if tire.estimated_change_km %}
-                  <p>Troca aproximada em {{ tire.estimated_change_km }} km</p>
+                  <p>Troca em {{ tire.estimated_change_km }} km</p>
                 {% else %}
-                  <p>Troca ainda não definida</p>
+                  <p>Sem previsão</p>
                 {% endif %}
               </div>
             </div>
-            <div class="h-1.5 overflow-hidden rounded-full bg-surface-high">
+            <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-surface-high">
               <span class="block h-full rounded-full animate-bar {% if tire.status_tone == 'warning' %}bg-warning{% elif tire.status_tone == 'neutral' %}bg-info{% else %}bg-success{% endif %}" x-data="{ w: {{ tire.wear_percent|default:0 }} }" x-bind:style="{ width: w + '%' }"></span>
             </div>
           </div>
         {% endfor %}
       </div>
     {% else %}
-      <div class="empty-state">Sem pneus ativos cadastrados para monitoramento.</div>
+      <div class="empty-state">Sem pneus ativos.</div>
     {% endif %}
   </section>
 
@@ -291,23 +377,25 @@
     <article class="space-y-4">
       <div class="flex items-center justify-between gap-4">
         <h3 class="section-heading-title">Histórico recente</h3>
-        <a class="text-link text-sm" href="{% url 'reports:timeline' %}">Linha do tempo completa</a>
+        <a class="text-link text-sm" href="{% url 'reports:timeline' %}">Linha do tempo</a>
       </div>
 
       {% if recent_events %}
-        <div class="divide-y divide-outline-variant/40">
+        <div class="space-y-3">
           {% for event in recent_events %}
-            <div class="flex items-start justify-between gap-4 py-4">
-              <div class="min-w-0">
-                <p class="text-sm font-semibold text-on-surface">{{ event.label }} - {{ event.title }}</p>
-                <p class="text-xs text-on-surface-variant">{{ event.description }}</p>
-              </div>
-              <div class="text-right shrink-0">
-                <p class="text-sm font-semibold text-on-surface">{{ event.date }}</p>
-                <p class="text-xs text-on-surface-variant">
-                  {% if event.odometer_km %}{{ event.odometer_km }} km{% endif %}
-                  {% if event.amount %} {% if event.odometer_km %}- {% endif %}R$ {{ event.amount }}{% endif %}
-                </p>
+            <div class="insight-panel">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-on-surface">{{ event.label }} · {{ event.title }}</p>
+                  <p class="mt-1 text-xs text-on-surface-variant">{{ event.description }}</p>
+                </div>
+                <div class="shrink-0 text-right">
+                  <p class="text-sm font-semibold text-on-surface">{{ event.date }}</p>
+                  <p class="text-xs text-on-surface-variant">
+                    {% if event.odometer_km %}{{ event.odometer_km }} km{% endif %}
+                    {% if event.amount %} {% if event.odometer_km %}· {% endif %}R$ {{ event.amount }}{% endif %}
+                  </p>
+                </div>
               </div>
             </div>
           {% endfor %}
@@ -317,14 +405,14 @@
       {% endif %}
     </article>
 
-    <aside class="space-y-8">
-      <div class="space-y-3">
+    <aside class="space-y-4">
+      <div class="insight-panel space-y-3">
         <div class="flex items-center justify-between gap-4">
           <div>
             <p class="text-xs font-medium text-on-surface-variant">Distribuição de gastos</p>
-            <p class="text-sm text-on-surface-variant mt-1">Combustível, manutenção e taxas no período atual.</p>
+            <p class="mt-1 text-sm text-on-surface-variant">Combustível, manutenção e taxas.</p>
           </div>
-          <span class="severity-badge severity-neutral">Custo da sua moto</span>
+          <span class="severity-badge severity-neutral">Período atual</span>
         </div>
         <div class="h-48">
           <canvas id="spendingChart" role="img" aria-label="Distribuição de gastos por combustível, manutenção e taxas" aria-describedby="spendingChartSummary"></canvas>
@@ -332,11 +420,11 @@
         </div>
       </div>
 
-      <div class="space-y-3">
+      <div class="insight-panel space-y-3">
         <div class="flex items-center justify-between gap-4">
           <div>
-            <p class="text-xs font-medium text-on-surface-variant">Tendência de consumo</p>
-            <p class="text-sm text-on-surface-variant mt-1">Leitura neutra para acompanhar variação entre registros cheios.</p>
+            <p class="text-xs font-medium text-on-surface-variant">Consumo</p>
+            <p class="mt-1 text-sm text-on-surface-variant">Variação entre tanques cheios.</p>
           </div>
           <span class="severity-badge severity-info">L/100 km</span>
         </div>
@@ -346,16 +434,22 @@
         </div>
       </div>
 
-      <div class="space-y-3">
+      <div class="insight-panel space-y-3">
         <div class="flex items-center justify-between gap-4">
-          <h4 class="section-heading-title">Meus postos, peças e combustíveis</h4>
-          <span class="text-xs font-medium text-on-surface-variant">Preferências</span>
+          <h4 class="section-heading-title">Catálogos</h4>
+          <span class="text-xs font-medium text-on-surface-variant">Base salva</span>
         </div>
-        <ul class="space-y-2">
+        <div class="grid gap-2">
           {% for link in catalog_links %}
-            <li><a class="text-link text-sm" href="{{ link.url }}">{{ link.label }}</a></li>
+            <a class="dashboard-status-row" href="{{ link.url }}">
+              <div>
+                <p class="text-sm font-semibold text-on-surface">{{ link.label }}</p>
+                <p class="text-xs text-on-surface-variant">{{ link.hint }}</p>
+              </div>
+              <i data-lucide="arrow-up-right" class="h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden="true"></i>
+            </a>
           {% endfor %}
-        </ul>
+        </div>
       </div>
     </aside>
   </section>
@@ -368,15 +462,13 @@
   </div>
   <div class="max-w-xs space-y-2">
     <h2 id="empty-state-title" class="text-2xl font-semibold tracking-normal text-on-surface">Comece adicionando sua moto</h2>
-    <p class="text-sm text-on-surface-variant">Cadastre sua primeira motocicleta para liberar o painel de controle.</p>
+    <p class="text-sm text-on-surface-variant">Cadastre a primeira para liberar o painel.</p>
   </div>
   <a href="{% url 'garage:create' %}" class="ui-btn-primary min-h-[3.5rem] px-6 py-5 text-lg font-semibold shadow-lg">
     Adicionar primeira moto
   </a>
 </section>
 {% endif %}
-
-
 
 {{ chart_spending_distribution|json_script:"spendingData" }}
 {{ chart_consumption_trend|json_script:"consumptionData" }}

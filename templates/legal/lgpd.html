@@ -6,18 +6,27 @@
 {% block topbar_title %}LGPD{% endblock %}
 
 {% block content %}
-<article class="legal-document">
-  <header class="space-y-4">
-    <span class="page-kicker">{{ site_settings.company_name|default:"Moto Track" }}</span>
-    <h1 class="text-4xl font-semibold tracking-normal">LGPD — Transparência no Tratamento de Dados</h1>
-    <p class="text-sm leading-6 text-on-surface-variant">
-      Última atualização: {% if site_settings.lgpd_last_updated %}{{ site_settings.lgpd_last_updated|date:"d/m/Y" }}{% else %}consulte o administrador{% endif %}
-    </p>
-    <p class="text-sm leading-6 text-on-surface-variant">
-      Esta página foi criada para garantir transparência sobre como o Moto Track trata dados pessoais, em cumprimento à <strong>Lei Geral de Proteção de Dados Pessoais — LGPD (Lei nº 13.709/2018)</strong>. Aqui você encontra informações detalhadas sobre seus direitos como titular de dados, os canais para exercê-los e os prazos de atendimento.
-    </p>
-    {% include "legal/_legal_nav.html" with active="lgpd" %}
-  </header>
+<section class="legal-shell">
+  <article class="legal-document">
+    <header class="legal-hero">
+      <div class="legal-hero-top">
+        <a class="legal-brand-link" href="{% url 'landing' %}" aria-label="Moto Track">
+          {% include "core/partials/theme_logo.html" with logo_class="h-9 w-auto max-w-[14rem]" wrapper_class="legal-brand-logo" width="220" height="40" fetchpriority="high" %}
+        </a>
+        <span class="legal-status">Transparência regulatória e direitos do titular</span>
+      </div>
+      <div class="legal-hero-copy">
+        <span class="page-kicker">{{ site_settings.company_name|default:"Moto Track" }}</span>
+        <h1>LGPD — Transparência no Tratamento de Dados</h1>
+        <p class="legal-meta">
+          Última atualização: {% if site_settings.lgpd_last_updated %}{{ site_settings.lgpd_last_updated|date:"d/m/Y" }}{% else %}consulte o administrador{% endif %}
+        </p>
+        <p>
+          Esta página foi criada para garantir transparência sobre como o Moto Track trata dados pessoais, em cumprimento à <strong>Lei Geral de Proteção de Dados Pessoais — LGPD (Lei nº 13.709/2018)</strong>. Aqui você encontra informações detalhadas sobre seus direitos como titular de dados, os canais para exercê-los e os prazos de atendimento.
+        </p>
+      </div>
+      {% include "legal/_legal_nav.html" with active="lgpd" %}
+    </header>
 
   <section class="panel space-y-4">
     <h3 class="text-2xl font-semibold tracking-normal">1. Quem Somos (Controlador)</h3>
@@ -250,10 +259,11 @@
     </ul>
   </section>
 
-  <footer class="flex flex-wrap gap-3">
-    <a class="ui-btn-primary" href="{% url 'privacy_policy' %}">Política de Privacidade</a>
-    <a class="ui-btn-secondary" href="{% url 'terms_of_service' %}">Termos de Uso</a>
-    <a class="ui-btn-secondary" href="{% url 'cancellation_policy' %}">Cancelamento</a>
-  </footer>
-</article>
+    <footer class="legal-actions">
+      <a class="ui-btn-primary" href="{% url 'privacy_policy' %}">Política de Privacidade</a>
+      <a class="ui-btn-secondary" href="{% url 'terms_of_service' %}">Termos de Uso</a>
+      <a class="ui-btn-secondary" href="{% url 'cancellation_policy' %}">Cancelamento</a>
+    </footer>
+  </article>
+</section>
 {% endblock %}

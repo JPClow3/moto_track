@@ -13,6 +13,7 @@ from apps.garage.models import (
     MotorcycleSpec,
     MotorcycleTemplate,
     MotorcycleTemplateMaintenanceInterval,
+    MotorcycleTemplateRecommendedPart,
     MotorcycleTemplateSpec,
 )
 from apps.maintenance.models import MaintenanceRecord
@@ -258,6 +259,26 @@ class MotorcycleTemplateModelTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "CG 160")
+
+    def test_template_autocomplete_repopulates_empty_catalog(self):
+        MotorcycleTemplateRecommendedPart.objects.all().delete()
+        MotorcycleTemplateMaintenanceInterval.objects.all().delete()
+        MotorcycleTemplateSpec.objects.all().delete()
+        MotorcycleTemplate.objects.all().delete()
+        user = get_user_model().objects.create_user(
+            username="empty-catalog-user",
+            email="empty-catalog-user@example.com",
+            password="pass12345",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("onboarding_template_autocomplete"), {"q": "CG 160"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "CG 160")
+        self.assertTrue(
+            MotorcycleTemplate.objects.filter(brand="Honda", model="CG 160 Titan / Fan / Start").exists()
+        )
 
     def test_template_rejects_invalid_year_range(self):
         template = MotorcycleTemplate(

@@ -15,7 +15,14 @@ from django.db.models import Max
 from django.utils import timezone
 
 from apps.documents.models import DocumentType, MotorcycleDocument
-from apps.garage.models import Motorcycle, MotorcycleSpec, MotorcycleTemplate
+from apps.garage.catalog_seed import seed_motorcycle_templates
+from apps.garage.models import (
+    Motorcycle,
+    MotorcycleSpec,
+    MotorcycleTemplate,
+    MotorcycleTemplateMaintenanceInterval,
+    MotorcycleTemplateSpec,
+)
 from apps.maintenance.models import MaintenancePart, MaintenancePlanItem
 
 SPEC_CHAR_FIELDS = {
@@ -54,6 +61,17 @@ def resolve_template_year(template: MotorcycleTemplate) -> int:
     if template.year_to is None:
         return max(template.year_from, current_year)
     return max(template.year_from, min(current_year, template.year_to))
+
+
+@transaction.atomic
+def ensure_motorcycle_template_catalog() -> int:
+    if MotorcycleTemplate.objects.exists():
+        return 0
+    return seed_motorcycle_templates(
+        MotorcycleTemplate,
+        MotorcycleTemplateSpec,
+        MotorcycleTemplateMaintenanceInterval,
+    )
 
 
 @transaction.atomic

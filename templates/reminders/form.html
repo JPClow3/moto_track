@@ -51,6 +51,12 @@
         <form method="post" class="data-form space-y-5" novalidate x-ref="reminderForm" @input="updateCompletion()">
           {% csrf_token %}
 
+          {% if form.non_field_errors %}
+            <div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
+
           <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div class="form-field md:col-span-2" @focusin="showTip('titulo')" @focusout="hideTip('titulo')">
               {{ form.title|as_crispy_field }}
@@ -73,26 +79,34 @@
             </div>
 
             <div class="form-field" @focusin="showTip('km')" @focusout="hideTip('km')">
-              {{ form.trigger_km|as_crispy_field }}
+              {{ form.trigger_value_km|as_crispy_field }}
               <div x-show="tips.km" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
                 <i data-lucide="gauge" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
-                <span>Odômetro alvo para disparar o alerta</span>
+                <span>Intervalo em km para disparar ou repetir o alerta</span>
               </div>
             </div>
 
-            <div class="form-field" @focusin="showTip('data')" @focusout="hideTip('data')">
-              {{ form.trigger_date|as_crispy_field }}
-              <div x-show="tips.data" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
-                <i data-lucide="calendar" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
-                <span>Data alvo para disparar o alerta</span>
+            <div class="form-field" @focusin="showTip('referenciaKm')" @focusout="hideTip('referenciaKm')">
+              {{ form.reference_km|as_crispy_field }}
+              <div x-show="tips.referenciaKm" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
+                <i data-lucide="map-pinned" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
+                <span>Km base usado para calcular o próximo aviso</span>
               </div>
             </div>
 
-            <div class="form-field md:col-span-2" @focusin="showTip('intervalo')" @focusout="hideTip('intervalo')">
-              {{ form.interval_days|as_crispy_field }}
+            <div class="form-field" @focusin="showTip('dias')" @focusout="hideTip('dias')">
+              {{ form.trigger_value_days|as_crispy_field }}
+              <div x-show="tips.dias" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
+                <i data-lucide="calendar-range" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
+                <span>Quantidade de dias para alertas por data ou intervalo</span>
+              </div>
+            </div>
+
+            <div class="form-field" @focusin="showTip('intervalo')" @focusout="hideTip('intervalo')">
+              {{ form.reference_date|as_crispy_field }}
               <div x-show="tips.intervalo" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
                 <i data-lucide="repeat" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
-                <span>Repetir automaticamente a cada X dias após concluir</span>
+                <span>Data base usada para calcular o próximo aviso</span>
               </div>
             </div>
 
@@ -101,12 +115,26 @@
             </div>
 
             <div class="form-field md:col-span-2">
-              <div class="flex items-center gap-3 rounded-md border border-outline-variant/40 bg-surface-low p-3">
+              {{ form.notes|as_crispy_field }}
+            </div>
+
+            <div class="form-field md:col-span-2">
+              <div class="flex flex-wrap items-center gap-3 rounded-md border border-outline-variant/40 bg-surface-low p-3">
                 {{ form.is_active }}
                 <label for="{{ form.is_active.id_for_label }}" class="mb-0 text-sm font-medium">
                   Lembrete ativo
                 </label>
                 <span class="text-xs text-on-surface-variant">- Desmarque para pausar alertas</span>
+              </div>
+            </div>
+
+            <div class="form-field md:col-span-2">
+              <div class="flex flex-wrap items-center gap-3 rounded-md border border-outline-variant/40 bg-surface-low p-3">
+                {{ form.send_email }}
+                <label for="{{ form.send_email.id_for_label }}" class="mb-0 text-sm font-medium">
+                  Enviar e-mail
+                </label>
+                <span class="text-xs text-on-surface-variant">- Receba um aviso adicional por e-mail quando disponível</span>
               </div>
             </div>
           </div>
@@ -191,7 +219,8 @@ function reminderForm(initialTotal) {
       titulo: false,
       tipo: false,
       km: false,
-      data: false,
+      referenciaKm: false,
+      dias: false,
       intervalo: false
     },
 
@@ -213,19 +242,29 @@ function reminderForm(initialTotal) {
       const form = this.$refs.reminderForm;
       if (!form) return;
 
-      const fields = form.querySelectorAll('input:not([type=hidden]), select:not([type=hidden])');
-      const requiredFields = form.querySelectorAll('input[required], select[required]');
+      const fields = form.querySelectorAll('input:not([type=hidden]), select, textarea');
+      const requiredFields = form.querySelectorAll('input[required], select[required], textarea[required]');
       let filled = 0;
       let requiredFilled = 0;
 
       fields.forEach(field => {
-        if (field.value && field.value.trim() !== '') {
+        const isCheckedField = field.type === 'checkbox' || field.type === 'radio';
+        const hasValue = isCheckedField
+          ? field.checked
+          : field.value && field.value.trim() !== '';
+
+        if (hasValue) {
           filled++;
         }
       });
 
       requiredFields.forEach(field => {
-        if (field.value && field.value.trim() !== '') {
+        const isCheckedField = field.type === 'checkbox' || field.type === 'radio';
+        const hasValue = isCheckedField
+          ? field.checked
+          : field.value && field.value.trim() !== '';
+
+        if (hasValue) {
           requiredFilled++;
         }
       });

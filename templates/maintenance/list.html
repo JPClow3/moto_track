@@ -8,11 +8,9 @@
 <section class="page-shell" aria-labelledby="maintenance-list-title">
   <header class="page-hero">
     <div>
-      <span class="page-kicker">Confiança mecânica</span>
-      <h2 id="maintenance-list-title" class="page-title">Histórico sério. Próximos passos claros.</h2>
-      <p class="page-copy">
-        Acompanhe o que foi feito, o que vence por km ou data e quanto custa manter a moto pronta para rodar.
-      </p>
+      <span class="page-kicker">Manutenção</span>
+      <h2 id="maintenance-list-title" class="page-title">Histórico limpo. Próxima ação visível.</h2>
+      <p class="page-copy">Serviços, vencimentos e custo em uma leitura direta.</p>
     </div>
     <div class="page-actions">
       <a class="ui-btn-secondary" href="{% url 'maintenance:plan_create' %}">
@@ -36,7 +34,7 @@
     <div class="section-heading">
       <div>
         <h3 id="maintenance-summary-title" class="section-heading-title">Resumo de manutenção</h3>
-        <p class="section-heading-copy">Óleo, corrente e freios aparecem logo abaixo da ação de registrar para orientar a próxima decisão antes do histórico.</p>
+        <p class="section-heading-copy">Os pontos que mais pedem atenção.</p>
       </div>
     </div>
     <div class="metric-grid" aria-label="Painel de manutenção">
@@ -65,7 +63,7 @@
     <div class="section-heading">
       <div>
         <h3 id="maintenance-next-title" class="section-heading-title">Próximas tarefas</h3>
-        <p class="section-heading-copy">O que vence por km ou data vem antes do histórico para apoiar a próxima ação.</p>
+        <p class="section-heading-copy">Urgência antes do histórico.</p>
       </div>
       <span class="ui-eyebrow">Urgência primeiro</span>
     </div>
@@ -98,7 +96,7 @@
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty-state">Nenhuma tarefa com intervalo definido. Crie um plano preventivo ou use intervalo km/dias ao registrar um serviço.</div>
+        <div class="empty-state">Nenhuma tarefa com intervalo definido.</div>
       {% endif %}
     </div>
   </section>
@@ -107,7 +105,7 @@
     <div class="section-heading">
       <div>
         <h3 id="maintenance-filter-title" class="section-heading-title">Refinar histórico</h3>
-        <p class="section-heading-copy">Filtre por moto quando quiser conferir registros específicos.</p>
+        <p class="section-heading-copy">Use quando quiser auditar uma moto específica.</p>
       </div>
     </div>
     <form method="get" aria-label="Filtros de manutenção" class="filter-strip">
@@ -135,7 +133,7 @@
       <div class="section-heading">
         <div>
           <h3 id="maintenance-history-title" class="section-heading-title">Histórico de serviço</h3>
-          <p class="section-heading-copy">Registro completo para auditoria, venda da moto e recorrência de serviços.</p>
+          <p class="section-heading-copy">Lista completa para revisão e venda da moto.</p>
         </div>
         <a class="text-link text-sm" href="{% url 'maintenance:catalogs' %}">Catálogo</a>
       </div>

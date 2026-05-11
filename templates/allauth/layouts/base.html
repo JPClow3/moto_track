@@ -72,126 +72,155 @@
   <a class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-inverse-surface focus:px-4 focus:py-2 focus:text-on-primary" href="#main-content">Pular para o conteúdo principal</a>
 
   <div class="fixed inset-0 -z-10 overflow-hidden bg-surface">
-    <div class="auth-ambient" aria-hidden="true"></div>
+    <div class="auth-ambient auth-ambient-primary" aria-hidden="true"></div>
+    <div class="auth-ambient auth-ambient-secondary" aria-hidden="true"></div>
+    <div class="auth-ambient auth-ambient-grid" aria-hidden="true"></div>
   </div>
 
   {% block body %}
     <main id="main-content" class="auth-shell" tabindex="-1">
-      <section class="auth-side">
-        <div class="flex items-start justify-between gap-4">
-          <a class="inline-flex max-w-full" href="{% url 'landing' %}" aria-label="Moto Track">
-            {% include "core/partials/theme_logo.html" with logo_class="h-10 w-auto max-w-[16rem]" width="240" height="48" fetchpriority="high" %}
-          </a>
-          <button type="button" class="ui-icon-btn" data-theme-toggle aria-label="Alternar tema" title="Alternar tema">
-            <i data-lucide="sun" aria-hidden="true"></i>
-          </button>
-        </div>
-
-        <div class="auth-side-copy">
-          <span class="page-kicker">Utilidade premium para o piloto</span>
-          <h1 class="auth-side-title">Controle rápido, leitura clara, operação confiável.</h1>
-          <p class="mt-4 max-w-lg text-base leading-7 text-on-surface-variant">
-            Moto Track organiza manutenção, consumo, documentos e histórico da moto em uma interface pensada para consulta rápida na rua e leitura longa no escritório.
-          </p>
-
-          <div class="auth-proof-list">
-            <div class="auth-proof-row">
-              <h3>Estado atual primeiro</h3>
-              <p>O que venceu, o que aproxima e o que precisa ser registrado agora.</p>
+      <div class="auth-shell-frame">
+        <section class="auth-side">
+          <div class="auth-side-top">
+            <div class="auth-brand-bar">
+              <a class="inline-flex max-w-full" href="{% url 'landing' %}" aria-label="Moto Track">
+                {% include "core/partials/theme_logo.html" with logo_class="h-10 w-auto max-w-[16rem]" wrapper_class="auth-brand-logo" width="240" height="48" fetchpriority="high" %}
+              </a>
+              <button type="button" class="ui-icon-btn auth-theme-toggle" data-theme-toggle aria-label="Alternar tema" title="Alternar tema">
+                <i data-lucide="sun" aria-hidden="true"></i>
+              </button>
             </div>
-            <div class="auth-proof-row">
-              <h3>Clareza operacional</h3>
-              <p>Custos, históricos e dossiê com leitura limpa em claro e escuro.</p>
-            </div>
-          </div>
-        </div>
 
-        <div class="border-t border-outline-variant/50 pt-5">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <p class="text-xs font-semibold text-on-surface-variant">Modo padrão</p>
-              <p class="mt-1 text-base font-semibold text-on-surface">Sistema com override manual</p>
-            </div>
-            <span class="severity-badge severity-neutral">Moto Track</span>
-          </div>
-        </div>
-      </section>
-
-      {% if messages %}
-        <section class="absolute top-6 left-1/2 z-20 w-[min(720px,92%)] -translate-x-1/2 space-y-2" aria-label="Mensagens do sistema">
-          {% for message in messages %}
-            <div role="alert" class="rounded-md border border-outline-variant/20 bg-surface-low px-4 py-3 text-sm font-semibold">
-              <strong>{{ message }}</strong>
-            </div>
-          {% endfor %}
-        </section>
-      {% endif %}
-
-      <section class="flex min-h-screen items-center justify-center px-5 py-8 sm:px-6 md:px-10">
-        <div class="w-full max-w-[29rem]">
-          <div class="mb-5 flex items-center justify-between gap-3 lg:hidden">
-            <a class="inline-flex max-w-full" href="{% url 'landing' %}" aria-label="Moto Track">
-              {% include "core/partials/theme_logo.html" with logo_class="h-9 w-auto max-w-[13rem]" width="200" height="40" fetchpriority="high" %}
-            </a>
-            <button type="button" class="ui-icon-btn" data-theme-toggle aria-label="Alternar tema" title="Alternar tema">
-              <i data-lucide="sun" aria-hidden="true"></i>
-            </button>
-          </div>
-
-          <div class="auth-card rounded-md border border-outline-variant/30 bg-surface-lowest/90 p-6 sm:p-8">
-            <header class="mb-8 text-left">
-              <p class="ui-eyebrow">Acesso seguro</p>
-              <h2 class="mt-2 text-3xl font-semibold tracking-normal text-on-surface">
-                {% block auth_title %}Acesse sua garagem com rapidez{% endblock %}
-              </h2>
-              <p class="mt-2 text-sm leading-6 text-on-surface-variant">
-                {% block auth_subtitle %}Use e-mail/senha ou continue com Google em uma única etapa.{% endblock %}
+            <div class="auth-side-copy">
+              <span class="page-kicker">Garagem privada com leitura premium</span>
+              <h1 class="auth-side-title">Tudo da moto em um espaço claro, rápido e confiável.</h1>
+              <p class="auth-side-body">
+                Moto Track organiza manutenção, consumo, documentos e histórico em uma interface discreta, precisa e confortável tanto na rua quanto na mesa.
               </p>
-            </header>
 
-            <section aria-label="Formulário de autenticação">
-              {% block content %}
-              {% endblock content %}
-            </section>
-
-            <nav class="mt-8 flex flex-wrap gap-4 text-sm font-semibold text-primary" aria-label="Links de conta">
-              {% if user.is_authenticated %}
-                {% url 'account_email' as email_url %}
-                {% if email_url %}
-                  <a class="hover:underline" href="{{ email_url }}">{% trans "Alterar e-mail" %}</a>
-                {% endif %}
-                {% url 'account_change_password' as change_password_url %}
-                {% if change_password_url %}
-                  <a class="hover:underline" href="{{ change_password_url }}">{% trans "Alterar senha" %}</a>
-                {% endif %}
-                {% url 'mfa_index' as mfa_url %}
-                {% if mfa_url %}
-                  <a class="hover:underline" href="{{ mfa_url }}">{% trans "Autenticação em dois fatores" %}</a>
-                {% endif %}
-                {% url 'usersessions_list' as usersessions_list_url %}
-                {% if usersessions_list_url %}
-                  <a class="hover:underline" href="{{ usersessions_list_url }}">{% trans "Sessões" %}</a>
-                {% endif %}
-                {% url 'account_logout' as logout_url %}
-                {% if logout_url %}
-                  <a class="hover:underline" href="{{ logout_url }}">{% trans "Sair" %}</a>
-                {% endif %}
-              {% else %}
-                {% url 'account_login' as login_url %}
-                {% if login_url %}
-                  <a class="hover:underline" href="{{ login_url }}">{% trans "Entrar" %}</a>
-                {% endif %}
-                {% url 'account_signup' as signup_url %}
-                {% if signup_url %}
-                  <a class="hover:underline" href="{{ signup_url }}">{% trans "Criar conta" %}</a>
-                {% endif %}
-                <a class="hover:underline" href="{% url 'privacy_policy' %}">Privacidade</a>
-                <a class="hover:underline" href="{% url 'terms_of_service' %}">Termos</a>
-              {% endif %}
-            </nav>
+              <div class="auth-proof-list">
+                <div class="auth-proof-row">
+                  <span class="auth-proof-icon" aria-hidden="true">
+                    <i data-lucide="gauge" class="h-4 w-4"></i>
+                  </span>
+                  <div>
+                    <h3>Prioridades primeiro</h3>
+                    <p>Vencimentos, pendências e o próximo registro aparecem com hierarquia limpa.</p>
+                  </div>
+                </div>
+                <div class="auth-proof-row">
+                  <span class="auth-proof-icon" aria-hidden="true">
+                    <i data-lucide="file-text" class="h-4 w-4"></i>
+                  </span>
+                  <div>
+                    <h3>Histórico legível</h3>
+                    <p>Custos, peças, revisões e documentos reunidos em uma única linha de contexto.</p>
+                  </div>
+                </div>
+                <div class="auth-proof-row">
+                  <span class="auth-proof-icon" aria-hidden="true">
+                    <i data-lucide="moon-star" class="h-4 w-4"></i>
+                  </span>
+                  <div>
+                    <h3>Claro e escuro de verdade</h3>
+                    <p>O mesmo cuidado de contraste, volume e foco nos dois modos de uso.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+
+          <div class="auth-side-footer">
+            <div class="auth-mini-grid">
+              <div class="auth-mini-tile">
+                <p class="auth-mini-label">Leitura</p>
+                <p class="auth-mini-value">Densa sem ruído</p>
+              </div>
+              <div class="auth-mini-tile">
+                <p class="auth-mini-label">Tema</p>
+                <p class="auth-mini-value">Sistema com override</p>
+              </div>
+            </div>
+            <p class="auth-side-note">Acesso seguro para dados pessoais, históricos técnicos e rotina financeira da motocicleta.</p>
+          </div>
+        </section>
+
+        {% if messages %}
+          <section class="absolute top-5 left-1/2 z-20 w-[min(720px,92%)] -translate-x-1/2 space-y-2" aria-label="Mensagens do sistema">
+            {% for message in messages %}
+              <div role="alert" class="auth-alert border-outline-variant/30 bg-surface-low text-on-surface">
+                <strong>{{ message }}</strong>
+              </div>
+            {% endfor %}
+          </section>
+        {% endif %}
+
+        <section class="auth-main">
+          <div class="w-full max-w-[31rem]">
+            <div class="auth-mobile-bar">
+              <a class="inline-flex max-w-full" href="{% url 'landing' %}" aria-label="Moto Track">
+                {% include "core/partials/theme_logo.html" with logo_class="h-9 w-auto max-w-[13rem]" wrapper_class="auth-brand-logo" width="200" height="40" fetchpriority="high" %}
+              </a>
+              <button type="button" class="ui-icon-btn auth-theme-toggle" data-theme-toggle aria-label="Alternar tema" title="Alternar tema">
+                <i data-lucide="sun" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <div class="auth-card">
+              <header class="mb-8 text-left">
+                <p class="ui-eyebrow">Acesso seguro</p>
+                <h2 class="mt-2 text-3xl font-semibold tracking-normal text-on-surface sm:text-[2rem]">
+                  {% block auth_title %}Acesse sua garagem com rapidez{% endblock %}
+                </h2>
+                <p class="mt-3 text-sm leading-6 text-on-surface-variant">
+                  {% block auth_subtitle %}Use e-mail/senha ou continue com Google em uma única etapa.{% endblock %}
+                </p>
+              </header>
+
+              <section aria-label="Formulário de autenticação">
+                {% block content %}
+                {% endblock content %}
+              </section>
+
+              <nav class="auth-utility-nav" aria-label="Links de conta">
+                {% if user.is_authenticated %}
+                  {% url 'account_email' as email_url %}
+                  {% if email_url %}
+                    <a href="{{ email_url }}">{% trans "Alterar e-mail" %}</a>
+                  {% endif %}
+                  {% url 'account_change_password' as change_password_url %}
+                  {% if change_password_url %}
+                    <a href="{{ change_password_url }}">{% trans "Alterar senha" %}</a>
+                  {% endif %}
+                  {% url 'mfa_index' as mfa_url %}
+                  {% if mfa_url %}
+                    <a href="{{ mfa_url }}">{% trans "Autenticação em dois fatores" %}</a>
+                  {% endif %}
+                  {% url 'usersessions_list' as usersessions_list_url %}
+                  {% if usersessions_list_url %}
+                    <a href="{{ usersessions_list_url }}">{% trans "Sessões" %}</a>
+                  {% endif %}
+                  {% url 'account_logout' as logout_url %}
+                  {% if logout_url %}
+                    <a href="{{ logout_url }}">{% trans "Sair" %}</a>
+                  {% endif %}
+                {% else %}
+                  {% url 'account_login' as login_url %}
+                  {% if login_url %}
+                    <a href="{{ login_url }}">{% trans "Entrar" %}</a>
+                  {% endif %}
+                  {% url 'account_signup' as signup_url %}
+                  {% if signup_url %}
+                    <a href="{{ signup_url }}">{% trans "Criar conta" %}</a>
+                  {% endif %}
+                  <a href="{% url 'privacy_policy' %}">Privacidade</a>
+                  <a href="{% url 'terms_of_service' %}">Termos</a>
+                {% endif %}
+              </nav>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
   {% endblock body %}
 
