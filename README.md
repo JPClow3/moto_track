@@ -61,12 +61,12 @@ Moto Track is a personal motorcycle management platform built for riders who wan
 
 | Layer | Technologies |
 | :--- | :--- |
-| **Backend** | Django 5 · django-environ · django-money · django-bleach · django-autocomplete-light |
+| **Backend** | Django 5 · Django REST Framework · Celery · django-environ · django-money · django-autocomplete-light |
 | **Auth** | django-allauth + allauth-ui · Google OAuth |
 | **Frontend** | Tailwind CSS · HTMX · Alpine.js · Chart.js · Lucide Icons |
 | **Forms** | django-crispy-forms + crispy-tailwind · django-cotton |
-| **Database** | SQLite (dev) · PostgreSQL (prod) |
-| **Infra** | Docker · Gunicorn · Caddy/Nginx · S3 (media) · WhiteNoise (static) |
+| **Database** | SQLite (local dev) · PostgreSQL (tests/prod) |
+| **Infra** | Docker · Redis · Gunicorn · Caddy/Nginx · S3 (media) · WhiteNoise (static/root assets) |
 | **Monitoring** | Sentry (errors + tracing + profiling) |
 | **CI/CD** | GitHub Actions · pytest · Bandit · pip-audit |
 
@@ -169,8 +169,12 @@ apps/
 npm run build:css
 python manage.py check
 python manage.py makemigrations --check --dry-run
-python manage.py test
+docker compose --profile test up --build --abort-on-container-exit --exit-code-from test
 ```
+
+Automated tests intentionally use PostgreSQL. For local pytest outside Docker, set
+`DJANGO_SETTINGS_MODULE=config.settings.test` and `TEST_DATABASE_URL` or `DATABASE_URL`
+to a PostgreSQL database.
 
 ---
 

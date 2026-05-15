@@ -107,8 +107,11 @@ static/
     input.css            # Tailwind entry point
     app.css              # Minimal HTMX/loading states only
     tailwind.generated.css # Build output (do not edit)
+  vendor/                # Generated from npm packages and committed for Compose dev
   js/
     theme.js             # Theme toggle (cross-cutting, localStorage)
+public/
+  sw.js                  # Root-served service worker
 ```
 
 ## Exception Process

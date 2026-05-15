@@ -1,3 +1,10 @@
+FROM node:22-slim AS frontend-vendor
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY scripts/copy_vendor_assets.mjs scripts/
+RUN npm ci
+
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -12,6 +19,7 @@ ARG REQUIREMENTS_FILE=prod.txt
 RUN pip install --no-cache-dir -r /tmp/requirements/${REQUIREMENTS_FILE}
 
 COPY . /app
+COPY --from=frontend-vendor /app/static/vendor /app/static/vendor
 
 # Build Tailwind CSS using the standalone binary (no Node.js required).
 RUN apt-get update && apt-get install -y --no-install-recommends curl \

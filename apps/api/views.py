@@ -1,10 +1,19 @@
 from __future__ import annotations
 
-from django.contrib.auth.hashers import check_password
-from django.http import JsonResponse
-from django.utils import timezone
+from rest_framework.negotiation import BaseContentNegotiation
+from rest_framework.renderers import JSONRenderer
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from apps.core.models import ApiToken
+from apps.api.authentication import ApiTokenAuthentication, HasApiScope
+from apps.api.serializers import (
+    ExpenseSerializer,
+    FuelRecordSerializer,
+    MaintenanceRecordSerializer,
+    MotorcycleDocumentSerializer,
+    ReminderSerializer,
+    TireRecordSerializer,
+)
 from apps.documents.models import MotorcycleDocument
 from apps.expenses.models import AnnualFee, InsurancePolicy
 from apps.fuel.models import FuelRecord
@@ -13,190 +22,138 @@ from apps.reminders.models import Reminder
 from apps.tires.models import TireRecord
 
 
-def _token_from_request(request):
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Token "):
-        return None
-    raw_key = auth.removeprefix("Token ").strip()
-    prefix = raw_key[:12] if len(raw_key) >= 12 else raw_key
-    for token in ApiToken.objects.filter(is_active=True, key_prefix=prefix).select_related("owner"):
-        if check_password(raw_key, token.key_hash):
-            ApiToken.objects.filter(pk=token.pk).update(last_used_at=timezone.now())
-            return token
-    return None
+class JsonOnlyContentNegotiation(BaseContentNegotiation):
+    def select_parser(self, request, parsers):  # noqa: ARG002
+        return parsers[0] if parsers else None
+
+    def select_renderer(self, request, renderers, format_suffix=None):  # noqa: ARG002
+        renderer = renderers[0]
+        return renderer, renderer.media_type
 
 
-def _require_token(request, scope: str):
-    token = _token_from_request(request)
-    if not token:
-        return None, JsonResponse({"detail": "Token ausente ou inválido."}, status=401)
-    if not token.has_scope(scope):
-        return None, JsonResponse({"detail": "Token sem permissão para este recurso."}, status=403)
-    return token, None
+class ScopedApiView(APIView):
+    authentication_classes = [ApiTokenAuthentication]
+    permission_classes = [HasApiScope]
+    renderer_classes = [JSONRenderer]
+    content_negotiation_class = JsonOnlyContentNegotiation
+    required_scope = ""
 
 
 def _pagination_params(request):
     try:
-        limit = int(request.GET.get("limit", 50) or 50)
-        offset = int(request.GET.get("offset", 0) or 0)
+        limit = int(request.query_params.get("limit", 50) or 50)
+        offset = int(request.query_params.get("offset", 0) or 0)
     except (TypeError, ValueError):
-        return None, JsonResponse({"detail": "Parametros de paginacao invalidos."}, status=400)
+        return None, Response({"detail": "Parametros de paginacao invalidos."}, status=400)
     return (min(max(limit, 1), 100), max(offset, 0)), None
 
 
-def _page(request, qs, serializer):
+def _page(request, qs, serializer_class):
     params, error = _pagination_params(request)
     if error:
         return error
     limit, offset = params
     total = qs.count()
-    return JsonResponse(
-        {
-            "count": total,
-            "limit": limit,
-            "offset": offset,
-            "results": [serializer(obj) for obj in qs[offset : offset + limit]],
+    serializer = serializer_class(qs[offset : offset + limit], many=True)
+    return Response({"count": total, "limit": limit, "offset": offset, "results": serializer.data})
+
+
+class FuelRecordsView(ScopedApiView):
+    required_scope = "fuel:read"
+
+    def get(self, request):
+        qs = FuelRecord.objects.filter(
+            motorcycle__owner=request.user,
+            motorcycle__is_active=True,
+        ).select_related("motorcycle", "station")
+        return _page(request, qs, FuelRecordSerializer)
+
+
+class MaintenanceRecordsView(ScopedApiView):
+    required_scope = "maintenance:read"
+
+    def get(self, request):
+        qs = MaintenanceRecord.objects.filter(
+            motorcycle__owner=request.user,
+            motorcycle__is_active=True,
+        ).select_related("motorcycle")
+        return _page(request, qs, MaintenanceRecordSerializer)
+
+
+class TireRecordsView(ScopedApiView):
+    required_scope = "tires:read"
+
+    def get(self, request):
+        qs = TireRecord.objects.filter(
+            motorcycle__owner=request.user,
+            motorcycle__is_active=True,
+        ).select_related("motorcycle")
+        return _page(request, qs, TireRecordSerializer)
+
+
+class RemindersView(ScopedApiView):
+    required_scope = "reminders:read"
+
+    def get(self, request):
+        qs = Reminder.objects.filter(
+            motorcycle__owner=request.user,
+            motorcycle__is_active=True,
+        ).select_related("motorcycle")
+        return _page(request, qs, ReminderSerializer)
+
+
+class DocumentsView(ScopedApiView):
+    required_scope = "documents:read"
+
+    def get(self, request):
+        qs = MotorcycleDocument.objects.filter(
+            motorcycle__owner=request.user,
+            motorcycle__is_active=True,
+        ).select_related("motorcycle")
+        return _page(request, qs, MotorcycleDocumentSerializer)
+
+
+class ExpensesView(ScopedApiView):
+    required_scope = "expenses:read"
+
+    def get(self, request):
+        params, pagination_error = _pagination_params(request)
+        if pagination_error:
+            return pagination_error
+        limit, offset = params
+
+        fees_qs = AnnualFee.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
+        policies_qs = InsurancePolicy.objects.filter(motorcycle__owner=request.user, motorcycle__is_active=True)
+
+        fee_meta = list(fees_qs.order_by("-due_date", "pk").values("pk", "due_date"))
+        policy_meta = list(policies_qs.order_by("-coverage_end", "pk").values("pk", "coverage_end"))
+
+        merged = [{"kind": "fee", "pk": fee["pk"], "date": fee["due_date"]} for fee in fee_meta]
+        merged.extend(
+            {"kind": "policy", "pk": policy["pk"], "date": policy["coverage_end"]}
+            for policy in policy_meta
+        )
+        merged.sort(key=lambda row: (row["date"], row["pk"]), reverse=True)
+
+        total = len(merged)
+        page = merged[offset : offset + limit]
+        fee_pks = [item["pk"] for item in page if item["kind"] == "fee"]
+        policy_pks = [item["pk"] for item in page if item["kind"] == "policy"]
+
+        fees_map = {
+            fee.pk: fee
+            for fee in fees_qs.filter(pk__in=fee_pks).select_related("motorcycle")
         }
-    )
+        policies_map = {
+            policy.pk: policy
+            for policy in policies_qs.filter(pk__in=policy_pks).select_related("motorcycle")
+        }
 
+        rows = []
+        for item in page:
+            obj = fees_map.get(item["pk"]) if item["kind"] == "fee" else policies_map.get(item["pk"])
+            if obj:
+                rows.append({"kind": item["kind"], "object": obj})
 
-def _fuel(record: FuelRecord) -> dict:
-    return {
-        "id": record.pk,
-        "motorcycle": record.motorcycle.name,
-        "date": record.date.isoformat(),
-        "odometer_km": record.odometer_km,
-        "liters": str(record.liters),
-        "total_price": str(record.total_price),
-        "fuel_type": record.fuel_type,
-        "station_name": record.station_name or (record.station.name if record.station else ""),
-    }
-
-
-def fuel_records(request):
-    token, error = _require_token(request, "fuel:read")
-    if error:
-        return error
-    qs = FuelRecord.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related(
-        "motorcycle", "station"
-    )
-    return _page(request, qs, _fuel)
-
-
-def maintenance_records(request):
-    token, error = _require_token(request, "maintenance:read")
-    if error:
-        return error
-    qs = MaintenanceRecord.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related("motorcycle")
-    return _page(
-        request,
-        qs,
-        lambda r: {
-            "id": r.pk,
-            "motorcycle": r.motorcycle.name,
-            "date": r.date.isoformat(),
-            "odometer_km": r.odometer_km,
-            "maintenance_type": r.maintenance_type,
-            "cost": str(r.cost),
-        },
-    )
-
-
-def tire_records(request):
-    token, error = _require_token(request, "tires:read")
-    if error:
-        return error
-    qs = TireRecord.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related("motorcycle")
-    return _page(
-        request,
-        qs,
-        lambda r: {
-            "id": r.pk,
-            "motorcycle": r.motorcycle.name,
-            "installed_at": r.installed_at.isoformat(),
-            "position": r.position,
-            "brand_model": r.brand_model,
-            "cost": str(r.cost),
-        },
-    )
-
-
-def reminders(request):
-    token, error = _require_token(request, "reminders:read")
-    if error:
-        return error
-    qs = Reminder.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related("motorcycle")
-    return _page(request, qs, lambda r: {"id": r.pk, "motorcycle": r.motorcycle.name, "title": r.title, "is_active": r.is_active})
-
-
-def documents(request):
-    token, error = _require_token(request, "documents:read")
-    if error:
-        return error
-    qs = MotorcycleDocument.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True).select_related("motorcycle")
-    return _page(request, qs, lambda d: {"id": d.pk, "motorcycle": d.motorcycle.name, "name": d.name, "document_type": d.document_type})
-
-
-def expenses(request):
-    token, error = _require_token(request, "expenses:read")
-    if error:
-        return error
-    params, pagination_error = _pagination_params(request)
-    if pagination_error:
-        return pagination_error
-    limit, offset = params
-
-    fees_qs = AnnualFee.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True)
-    policies_qs = InsurancePolicy.objects.filter(motorcycle__owner=token.owner, motorcycle__is_active=True)
-
-    # Build ordered meta-lists so we can merge by date safely even if rows are deleted between pages.
-    fee_meta = list(fees_qs.order_by("-due_date", "pk").values("pk", "due_date"))
-    policy_meta = list(policies_qs.order_by("-coverage_end", "pk").values("pk", "coverage_end"))
-
-    merged = []
-    for f in fee_meta:
-        merged.append({"kind": "fee", "pk": f["pk"], "date": f["due_date"]})
-    for p in policy_meta:
-        merged.append({"kind": "policy", "pk": p["pk"], "date": p["coverage_end"]})
-    merged.sort(key=lambda r: (r["date"], r["pk"]), reverse=True)
-
-    total = len(merged)
-    page = merged[offset : offset + limit]
-    fee_pks = [m["pk"] for m in page if m["kind"] == "fee"]
-    policy_pks = [m["pk"] for m in page if m["kind"] == "policy"]
-
-    fees_map = {
-        f.pk: f
-        for f in fees_qs.filter(pk__in=fee_pks).select_related("motorcycle")
-    }
-    policies_map = {
-        p.pk: p
-        for p in policies_qs.filter(pk__in=policy_pks).select_related("motorcycle")
-    }
-
-    rows = []
-    for m in page:
-        if m["kind"] == "fee":
-            fee = fees_map[m["pk"]]
-            rows.append(
-                {
-                    "id": f"fee-{fee.pk}",
-                    "motorcycle": fee.motorcycle.name,
-                    "kind": "annual_fee",
-                    "title": fee.get_fee_type_display(),
-                    "amount": str(fee.amount),
-                }
-            )
-        else:
-            policy = policies_map[m["pk"]]
-            rows.append(
-                {
-                    "id": f"policy-{policy.pk}",
-                    "motorcycle": policy.motorcycle.name,
-                    "kind": "insurance",
-                    "title": policy.provider,
-                    "amount": str(policy.premium),
-                }
-            )
-
-    return JsonResponse({"count": total, "limit": limit, "offset": offset, "results": rows})
+        serializer = ExpenseSerializer(rows, many=True)
+        return Response({"count": total, "limit": limit, "offset": offset, "results": serializer.data})

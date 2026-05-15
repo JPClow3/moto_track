@@ -13,6 +13,10 @@ staticfiles/
 node_modules/
 .tools/
 static/css/tailwind.generated.css
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
 # Test and CI output files
 *_output.txt
@@ -35,6 +39,7 @@ git_diff_*.txt
 
 # Temporary scripts and logs
 tmp_*.py
+*.log
 tailwind-error.txt
 tailwind_err.txt
 screenshot.png

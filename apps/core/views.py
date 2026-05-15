@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -13,13 +13,6 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.verification import user_needs_email_verification
 from apps.billing.entitlements import has_pro_access
-from apps.core.active_motorcycle import get_active_motorcycle, set_active_motorcycle
-from apps.core.client_submissions import (
-    claim_client_submission,
-    client_submission_token_for_form,
-    completed_client_submission,
-    record_client_submission,
-)
 from apps.core.exports import safe_next_url
 from apps.core.forms import OdometerOverrideForm
 from apps.core.models import PushSubscription
@@ -35,8 +28,15 @@ from apps.core.services.dashboard import (
     get_status_cards,
     get_tire_cards,
 )
+from apps.core.services.idempotency import (
+    claim_client_submission,
+    client_submission_token_for_form,
+    completed_client_submission,
+    record_client_submission,
+)
 from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY
 from apps.core.undo import consume_undo_token
+from apps.garage.active_motorcycle import get_active_motorcycle, set_active_motorcycle
 from apps.reports.services import health_score, timeline_events
 from apps.work.services import professional_summary
 
@@ -247,8 +247,15 @@ def pwa_status_view(request):
 
 
 def service_worker_view(request):
-    build_id = getattr(settings, "APP_BUILD_ID", "dev")
-    response = render(request, "sw.js", {"build_id": build_id}, content_type="application/javascript")
+    sw_path = settings.PUBLIC_ROOT / "sw.js"
+    if not sw_path.exists():
+        return HttpResponse(status=404)
+
+    response = FileResponse(
+        sw_path.open("rb"),
+        content_type="application/javascript",
+    )
+    response["Content-Type"] = "application/javascript"
     response["Service-Worker-Allowed"] = "/"
     response["Cache-Control"] = "no-cache"
     return response

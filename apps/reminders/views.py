@@ -173,7 +173,8 @@ def reminder_snooze_days_view(request, pk: int, days: int):
     if reminder.trigger_type in {TriggerType.BY_DATE, TriggerType.BY_INTERVAL}:
         base = reminder.reference_date or today
         reminder.reference_date = base + timedelta(days=days)
-        reminder.save(update_fields=["reference_date", "updated_at"])
+        reminder.last_notified_at = None
+        reminder.save(update_fields=["reference_date", "last_notified_at", "updated_at"])
         messages.success(request, f"Lembrete adiado em {days} dias.")
     else:
         messages.info(request, "Este lembrete não é por data.")
@@ -193,7 +194,8 @@ def reminder_snooze_km_view(request, pk: int, km: int):
     if reminder.trigger_type in {TriggerType.BY_KM, TriggerType.BY_INTERVAL}:
         base = reminder.reference_km if reminder.reference_km is not None else current_odo
         reminder.reference_km = int(base) + km
-        reminder.save(update_fields=["reference_km", "updated_at"])
+        reminder.last_notified_at = None
+        reminder.save(update_fields=["reference_km", "last_notified_at", "updated_at"])
         messages.success(request, f"Lembrete adiado em +{km} km.")
     else:
         messages.info(request, "Este lembrete não é por km.")

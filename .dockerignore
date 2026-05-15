@@ -33,7 +33,8 @@ test_subset.txt
 
 tests/
 tests-e2e/
-scripts/
+scripts/*
+!scripts/copy_vendor_assets.mjs
 docs/
 
 .vscode/

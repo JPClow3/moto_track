@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import logging
+from smtplib import SMTPException
+
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse
+
+logger = logging.getLogger(__name__)
 
 
 class MotoAccountAdapter(DefaultAccountAdapter):
@@ -20,6 +25,17 @@ class MotoAccountAdapter(DefaultAccountAdapter):
                 defaults={"primary": True, "verified": True},
             )
         return user
+
+    def send_confirmation_mail(self, request, emailconfirmation, signup):
+        try:
+            return super().send_confirmation_mail(request, emailconfirmation, signup)
+        except SMTPException:
+            logger.warning(
+                "Email verification delivery failed; continuing auth flow. email=%s signup=%s",
+                emailconfirmation.email_address.email,
+                signup,
+                exc_info=True,
+            )
 
 
 class MotoSocialAccountAdapter(DefaultSocialAccountAdapter):
