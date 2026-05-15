@@ -13,7 +13,6 @@ staticfiles/
 node_modules/
 .tools/
 static/css/tailwind.generated.css
-static/vendor/
 .coverage
 .coverage.*
 coverage.xml

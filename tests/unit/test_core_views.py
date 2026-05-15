@@ -521,7 +521,7 @@ class CoreMiscViewTests(TestCase):
         self.assertIn("cache.match(OFFLINE_URL)", body)
 
     def test_service_worker_returns_404_when_asset_is_missing(self):
-        with TemporaryDirectory() as tmpdir, override_settings(WHITENOISE_ROOT=Path(tmpdir)):
+        with TemporaryDirectory() as tmpdir, override_settings(PUBLIC_ROOT=Path(tmpdir)):
             response = self.client.get(reverse("service_worker"))
 
         self.assertEqual(response.status_code, 404)

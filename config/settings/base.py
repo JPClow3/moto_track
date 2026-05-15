@@ -155,16 +155,7 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-WHITENOISE_ROOT = BASE_DIR / "public"
-
-
-def _root_asset_headers(headers, path, url):  # noqa: ARG001
-    if url == "/sw.js":
-        headers["Cache-Control"] = "no-cache"
-        headers["Service-Worker-Allowed"] = "/"
-
-
-WHITENOISE_ADD_HEADERS_FUNCTION = _root_asset_headers
+PUBLIC_ROOT = BASE_DIR / "public"
 
 STORAGES = {
     "default": {

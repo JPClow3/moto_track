@@ -172,17 +172,22 @@ class ReminderViewTests(TestCase):
         self.assertFalse(Reminder.objects.filter(pk=self.reminder.pk).exists())
 
     def test_snooze_km_increments_reference_km(self):
+        self.reminder.last_notified_at = timezone.now()
+        self.reminder.save(update_fields=["last_notified_at"])
+
         self.client.force_login(self.user)
         response = self.client.post(reverse("reminders:snooze_km", args=[self.reminder.pk, 500]))
         self.assertEqual(response.status_code, 302)
         self.reminder.refresh_from_db()
         self.assertEqual(self.reminder.reference_km, 10500)
+        self.assertIsNone(self.reminder.last_notified_at)
 
     def test_snooze_days_sets_reference_date(self):
         self.reminder.trigger_type = TriggerType.BY_DATE
         self.reminder.trigger_value_days = 30
         self.reminder.reference_date = date(2026, 4, 1)
         self.reminder.reference_km = None
+        self.reminder.last_notified_at = timezone.now()
         self.reminder.save()
 
         self.client.force_login(self.user)
@@ -190,6 +195,7 @@ class ReminderViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.reminder.refresh_from_db()
         self.assertEqual(self.reminder.reference_date, date(2026, 4, 16))
+        self.assertIsNone(self.reminder.last_notified_at)
 
     def test_list_evaluates_reminders_with_each_motorcycle_odometer(self):
         second_motorcycle = Motorcycle.objects.create(

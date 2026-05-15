@@ -247,7 +247,7 @@ def pwa_status_view(request):
 
 
 def service_worker_view(request):
-    sw_path = settings.WHITENOISE_ROOT / "sw.js"
+    sw_path = settings.PUBLIC_ROOT / "sw.js"
     if not sw_path.exists():
         return HttpResponse(status=404)
 
