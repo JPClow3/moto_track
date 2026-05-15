@@ -251,6 +251,7 @@ def service_worker_view(request):
         open(settings.WHITENOISE_ROOT / "sw.js", "rb"),
         content_type="application/javascript",
     )
+    response["Content-Type"] = "application/javascript"
     response["Service-Worker-Allowed"] = "/"
     response["Cache-Control"] = "no-cache"
     return response

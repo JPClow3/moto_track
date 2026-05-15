@@ -19,7 +19,7 @@ def site_settings_context(request):
     try:
         settings_obj = SiteSettings.get_cached()
         if settings_obj is None:
-            settings_obj = SiteSettings.load()
+            settings_obj = SiteSettings(pk=1)
         return {"site_settings": settings_obj, "app_build_id": getattr(settings, "APP_BUILD_ID", "dev")}
     except (OperationalError, ProgrammingError):
         logger.warning("SiteSettings table not available (migrations pending).")
