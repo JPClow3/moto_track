@@ -5,10 +5,10 @@ from django.utils import timezone
 
 from apps.billing.decorators import pro_required
 from apps.billing.entitlements import can_add_work_session, has_pro_access
-from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
+from apps.garage.active_motorcycle import get_active_motorcycle
 from apps.garage.models import Motorcycle
 
 from .forms import ProfessionalCostSettingsForm, WorkSessionForm

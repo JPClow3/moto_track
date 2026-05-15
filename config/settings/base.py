@@ -76,8 +76,10 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
+    "rest_framework",
     "djmoney",
     "django_cotton",
+    "apps.api",
     "apps.core",
     "apps.accounts",
     "apps.garage",
@@ -153,6 +155,16 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+WHITENOISE_ROOT = BASE_DIR / "public"
+
+
+def _root_asset_headers(headers, path, url):  # noqa: ARG001
+    if url == "/sw.js":
+        headers["Cache-Control"] = "no-cache"
+        headers["Service-Worker-Allowed"] = "/"
+
+
+WHITENOISE_ADD_HEADERS_FUNCTION = _root_asset_headers
 
 STORAGES = {
     "default": {
@@ -204,6 +216,16 @@ if ACCOUNT_EMAIL_VERIFICATION not in {"mandatory", "optional", "none"}:
 
 APP_BUILD_ID = env("APP_BUILD_ID", default="dev")
 WEB_PUSH_PUBLIC_KEY = env("WEB_PUSH_PUBLIC_KEY", default=env("PUSH_PUBLIC_KEY", default=""))
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/0")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="")
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = env.int("CELERY_TASK_TIME_LIMIT", default=300)
+CELERY_BEAT_SCHEDULE = {
+    "process-reminders": {
+        "task": "apps.reminders.tasks.process_reminders_task",
+        "schedule": env.int("REMINDER_PROCESS_INTERVAL_SECONDS", default=3600),
+    }
+}
 ACCOUNT_CONFIRM_EMAIL_ON_GET = env.bool("ACCOUNT_CONFIRM_EMAIL_ON_GET", default=True)
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = env(
     "ACCOUNT_DEFAULT_HTTP_PROTOCOL",

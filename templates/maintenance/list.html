@@ -6,7 +6,7 @@
 
 {% block content %}
 <section class="page-shell" aria-labelledby="maintenance-list-title">
-  <header class="page-hero">
+  <header class="page-hero" data-animate-once>
     <div>
       <span class="page-kicker">Manutenção</span>
       <h2 id="maintenance-list-title" class="page-title">Histórico limpo. Próxima ação visível.</h2>
@@ -23,6 +23,7 @@
         hx-get="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}"
         hx-target="#quick-form-root"
         hx-swap="innerHTML"
+        data-skeleton-kind="maintenance"
       >
         <i data-lucide="calendar-clock" aria-hidden="true"></i>
         Agendar ou registrar
@@ -30,7 +31,7 @@
     </div>
   </header>
 
-  <section class="workflow-section" aria-labelledby="maintenance-summary-title">
+  <section class="workflow-section" aria-labelledby="maintenance-summary-title" data-animate-once>
     <div class="section-heading">
       <div>
         <h3 id="maintenance-summary-title" class="section-heading-title">Resumo de manutenção</h3>
@@ -52,14 +53,14 @@
             <span class="font-semibold text-on-surface">{{ card.percent }}%</span>
           </div>
           <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-high">
-            <div class="h-full {% if card.tone == 'danger' %}bg-error{% elif card.tone == 'warning' %}bg-warning{% elif card.tone == 'good' %}bg-success{% else %}bg-info{% endif %}" x-data="{ pct: {{ card.percent|default:0 }} }" x-bind:style="{ width: pct + '%' }"></div>
+            <div class="h-full {% if card.tone == 'danger' %}bg-error{% elif card.tone == 'warning' %}bg-warning{% elif card.tone == 'good' %}bg-success{% else %}bg-info{% endif %}" x-data="{ pct: {{ card.percent|default:0 }} }" x-bind:style="{ width: pct + '%' }" data-chart-reveal></div>
           </div>
         </div>
       {% endfor %}
     </div>
   </section>
 
-  <section class="workflow-section" aria-labelledby="maintenance-next-title">
+  <section class="workflow-section" aria-labelledby="maintenance-next-title" data-animate-once>
     <div class="section-heading">
       <div>
         <h3 id="maintenance-next-title" class="section-heading-title">Próximas tarefas</h3>
@@ -96,7 +97,14 @@
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty-state">Nenhuma tarefa com intervalo definido.</div>
+        <div class="empty-state-rich">
+          <span class="empty-state-icon"><i data-lucide="list-checks" aria-hidden="true"></i></span>
+          <div>
+            <p class="font-semibold text-on-surface">Sem tarefas preventivas</p>
+            <p>Crie um plano para transformar óleo, revisão e peças em próximos passos visíveis.</p>
+          </div>
+          <a class="ui-btn-secondary" href="{% url 'maintenance:plan_create' %}">Criar plano</a>
+        </div>
       {% endif %}
     </div>
   </section>
@@ -108,7 +116,7 @@
         <p class="section-heading-copy">Use quando quiser auditar uma moto específica.</p>
       </div>
     </div>
-    <form method="get" aria-label="Filtros de manutenção" class="filter-strip">
+    <form method="get" aria-label="Filtros de manutenção" class="filter-strip" data-filter-form data-skeleton-target="#maintenance-history-region">
       <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
         <select class="ui-select" name="motorcycle" aria-label="Filtrar por moto">
           <option value="">Todas as motos</option>
@@ -128,7 +136,7 @@
     </form>
   </section>
 
-  <section class="workflow-section" aria-labelledby="maintenance-history-title">
+  <section id="maintenance-history-region" class="workflow-section" aria-labelledby="maintenance-history-title" data-animate-once>
     <div class="space-y-4">
       <div class="section-heading">
         <div>
@@ -178,7 +186,14 @@
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty-state">Nenhuma manutenção registrada ainda.</div>
+        <div class="empty-state-rich">
+          <span class="empty-state-icon"><i data-lucide="wrench" aria-hidden="true"></i></span>
+          <div>
+            <p class="font-semibold text-on-surface">Nenhuma manutenção registrada</p>
+            <p>O primeiro registro já cria histórico para venda, custos e alertas.</p>
+          </div>
+          <a class="ui-btn-primary" href="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}" hx-get="{% url 'maintenance:quick_create' %}?next={% url 'maintenance:list' %}" hx-target="#quick-form-root" data-skeleton-kind="maintenance">Registrar</a>
+        </div>
       {% endif %}
     </div>
   </section>

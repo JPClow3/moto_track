@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load core_format %}
 
 {% block title %}Painel - Moto Track{% endblock %}
 
@@ -9,7 +10,7 @@
 {% block content %}
 {% if motorcycle %}
 <section class="page-shell" aria-labelledby="dashboard-title">
-  <header class="dashboard-hero">
+  <header class="dashboard-hero" data-animate-once>
     <div class="dashboard-hero-grid">
       <div class="space-y-5">
         <div class="space-y-3">
@@ -25,7 +26,7 @@
             </span>
             <span class="dashboard-chip">
               <i data-lucide="wallet" class="h-4 w-4" aria-hidden="true"></i>
-              {{ month_total }} no mês
+              {{ month_total|brl }} no mês
             </span>
             <span class="dashboard-chip">
               <i data-lucide="bell-ring" class="h-4 w-4" aria-hidden="true"></i>
@@ -50,6 +51,7 @@
                 hx-target="#quick-form-root"
                 hx-swap="innerHTML"
                 hx-indicator="#quick-form-skeleton"
+                data-skeleton-kind="{% if action.icon == 'fuel' %}fuel{% elif action.icon == 'wrench' %}maintenance{% else %}odometer{% endif %}"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
@@ -83,7 +85,7 @@
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="text-xs font-semibold uppercase tracking-normal text-on-surface-variant">Agora</p>
-              <p class="mt-1 text-3xl font-semibold tracking-normal text-on-surface">{{ month_total }}</p>
+              <p class="mt-1 text-3xl font-semibold tracking-normal text-on-surface">{{ month_total|brl }}</p>
             </div>
             <span class="severity-badge severity-neutral">Combustível</span>
           </div>
@@ -91,6 +93,7 @@
             <svg viewBox="0 0 100 24" class="h-12 w-full" role="img" aria-label="Tendência semanal de gasto com combustível">
               <path d="M0 23.5H100" fill="none" stroke="rgb(var(--color-outline-variant) / 0.35)" stroke-width="1"></path>
               <polyline
+                data-chart-reveal
                 fill="none"
                 stroke="rgb(var(--color-primary))"
                 stroke-width="2.5"
@@ -116,7 +119,7 @@
     </div>
   </header>
 
-  <section class="workflow-section" aria-labelledby="radar-title">
+  <section class="workflow-section" aria-labelledby="radar-title" data-animate-once>
     <div class="section-heading">
       <div>
         <h3 id="radar-title" class="section-heading-title">Radar rápido</h3>
@@ -139,7 +142,7 @@
     </div>
   </section>
 
-  <section class="space-y-4" aria-labelledby="professional-title">
+  <section class="space-y-4" aria-labelledby="professional-title" data-animate-once>
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="text-xs font-medium text-on-surface-variant">Trabalho</p>
@@ -199,61 +202,61 @@
     </div>
     <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
       {% if not setup_progress.has_maintenance_plan %}
-      <div class="insight-panel" x-show="!dismissed.maintenance" x-cloak>
+      <div class="insight-panel" x-show="!dismissed.maintenance" x-cloak data-dismissible-card>
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-sm font-semibold text-on-surface">Plano de manutenção</p>
             <p class="mt-1 text-sm text-on-surface-variant">Óleo, revisão e próximos vencimentos.</p>
           </div>
-          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.maintenance = true">Ocultar</button>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" data-dismiss-card @click="dismissed.maintenance = true">Ocultar</button>
         </div>
         <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'maintenance:list' %}">Configurar</a>
       </div>
       {% endif %}
       {% if not setup_progress.has_tires %}
-      <div class="insight-panel" x-show="!dismissed.tires" x-cloak>
+      <div class="insight-panel" x-show="!dismissed.tires" x-cloak data-dismissible-card>
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-sm font-semibold text-on-surface">Pneus</p>
             <p class="mt-1 text-sm text-on-surface-variant">Desgaste e previsão de troca.</p>
           </div>
-          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.tires = true">Ocultar</button>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" data-dismiss-card @click="dismissed.tires = true">Ocultar</button>
         </div>
         <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'tires:list' %}">Adicionar</a>
       </div>
       {% endif %}
       {% if not setup_progress.has_documents %}
-      <div class="insight-panel" x-show="!dismissed.documents" x-cloak>
+      <div class="insight-panel" x-show="!dismissed.documents" x-cloak data-dismissible-card>
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-sm font-semibold text-on-surface">Documentos</p>
             <p class="mt-1 text-sm text-on-surface-variant">CRLV, seguro e vencimentos.</p>
           </div>
-          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.documents = true">Ocultar</button>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" data-dismiss-card @click="dismissed.documents = true">Ocultar</button>
         </div>
         <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'documents:list' %}">Adicionar</a>
       </div>
       {% endif %}
       {% if not setup_progress.has_expenses %}
-      <div class="insight-panel" x-show="!dismissed.expenses" x-cloak>
+      <div class="insight-panel" x-show="!dismissed.expenses" x-cloak data-dismissible-card>
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-sm font-semibold text-on-surface">Taxas e seguros</p>
             <p class="mt-1 text-sm text-on-surface-variant">Custos fixos fora do tanque.</p>
           </div>
-          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.expenses = true">Ocultar</button>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" data-dismiss-card @click="dismissed.expenses = true">Ocultar</button>
         </div>
         <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'expenses:list' %}">Adicionar</a>
       </div>
       {% endif %}
       {% if not setup_progress.has_reminders %}
-      <div class="insight-panel" x-show="!dismissed.reminders" x-cloak>
+      <div class="insight-panel" x-show="!dismissed.reminders" x-cloak data-dismissible-card>
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-sm font-semibold text-on-surface">Lembretes</p>
             <p class="mt-1 text-sm text-on-surface-variant">Alertas por data, km ou intervalo.</p>
           </div>
-          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" @click="dismissed.reminders = true">Ocultar</button>
+          <button type="button" class="ui-btn-ghost !min-h-9 !px-3 text-xs" data-dismiss-card @click="dismissed.reminders = true">Ocultar</button>
         </div>
         <a class="ui-btn-secondary mt-4 !min-h-10 !px-4 text-sm" href="{% url 'reminders:list' %}">Criar</a>
       </div>

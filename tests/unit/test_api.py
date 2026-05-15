@@ -215,3 +215,15 @@ class ApiAuthZTests(TestCase):
         payload = response.json()
         self.assertEqual(payload["limit"], 100)
         self.assertEqual(payload["offset"], 0)
+
+    def test_api_returns_json_even_when_html_is_accepted(self):
+        token = ApiToken.objects.create(owner=self.user, name="Html", scopes="fuel:read")
+        response = self.client.get(
+            reverse("api_v1:fuel_records"),
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+            HTTP_ACCEPT="text/html",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("application/json", response["Content-Type"])
+        self.assertIn("results", response.json())

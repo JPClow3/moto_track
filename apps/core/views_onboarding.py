@@ -11,12 +11,12 @@ from django.template.loader import render_to_string
 from django.utils.html import escape
 from django.views.decorators.http import require_POST
 
-from apps.core.active_motorcycle import get_active_motorcycle, set_active_motorcycle
 from apps.core.forms import MinimalOnboardingForm, configure_form_accessibility
 from apps.core.services.demo_bike import create_demo_motorcycle
 from apps.core.services.onboarding import create_motorcycle_from_minimal_onboarding
-from apps.garage.services import ensure_motorcycle_template_catalog
+from apps.garage.active_motorcycle import get_active_motorcycle, set_active_motorcycle
 from apps.garage.models import Motorcycle, MotorcycleTemplate
+from apps.garage.services import ensure_motorcycle_template_catalog
 
 
 class OnboardingTemplateAutocomplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):

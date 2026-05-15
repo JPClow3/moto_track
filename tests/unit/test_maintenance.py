@@ -89,6 +89,13 @@ class MaintenanceModelTests(TestCase):
         self.assertContains(response, "Filtro de oleo")
         self.assertNotContains(response, "Pastilha")
 
+    def test_part_update_view_renders_existing_part(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("maintenance:part_update", args=[self.part.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Editar Filtro de oleo")
+
     def test_quick_create_invalid_htmx_returns_form_error_response(self):
         self.client.force_login(self.user)
         response = self.client.post(reverse("maintenance:quick_create"), {}, HTTP_HX_REQUEST="true", HTTP_HOST="localhost")

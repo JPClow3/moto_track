@@ -352,3 +352,23 @@ class ReminderCommandTests(TestCase):
         reminder.refresh_from_db()
         self.assertEqual(len(mail.outbox), 0)
         self.assertIsNotNone(reminder.last_notified_at)
+
+    def test_process_reminders_celery_task_runs_same_processing(self):
+        reminder = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Task email",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=True,
+        )
+
+        from apps.reminders.tasks import process_reminders_task
+
+        result = process_reminders_task.apply(kwargs={"mark_notified": False})
+
+        self.assertTrue(result.successful())
+        reminder.refresh_from_db()
+        self.assertEqual(result.result["due"], 1)
+        self.assertEqual(result.result["emailed"], 1)
+        self.assertIsNotNone(reminder.last_notified_at)

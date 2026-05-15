@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 from djmoney.money import Money
 
+from apps.core.formatting import format_brl
 from apps.documents.models import MotorcycleDocument
 from apps.expenses.models import AnnualFee, InsurancePolicy
 from apps.fuel.models import FuelRecord
@@ -209,7 +210,7 @@ def get_dashboard_cards(motorcycle: Motorcycle, current_odometer: int, month_tot
         },
         {
             "title": "Último abastecimento",
-            "value": f"R$ {latest_fuel.total_price}" if latest_fuel else "Sem registro",
+            "value": format_brl(latest_fuel.total_price) if latest_fuel else "Sem registro",
             "subtitle": f"{latest_fuel.liters} L em {latest_fuel.date}" if latest_fuel else "Adicione um abastecimento",
         },
         {
@@ -217,7 +218,7 @@ def get_dashboard_cards(motorcycle: Motorcycle, current_odometer: int, month_tot
             "value": f"Desgaste: {rear_tire.wear_percent}%" if rear_tire else "Sem registro",
             "subtitle": f"{rear_tire.brand_model}" if rear_tire else "Cadastre o pneu traseiro",
         },
-        {"title": "Gasto do mês (combustível)", "value": f"R$ {month_total or 0}", "subtitle": "Acumulado do mês"},
+        {"title": "Gasto do mês (combustível)", "value": format_brl(month_total), "subtitle": "Acumulado do mês"},
         {"title": "Alertas pendentes", "value": str(pending_alerts), "subtitle": "Lembretes ativos"},
     ]
 

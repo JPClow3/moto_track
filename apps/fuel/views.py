@@ -14,18 +14,18 @@ from djmoney.money import Money
 
 from apps.billing.decorators import pro_required
 from apps.billing.entitlements import can_add_uploads
-from apps.core.active_motorcycle import get_active_motorcycle
-from apps.core.client_submissions import (
+from apps.core.exports import parse_date_param, safe_next_url
+from apps.core.forms import configure_form_accessibility
+from apps.core.pagination import paginate
+from apps.core.services.idempotency import (
     claim_client_submission,
     client_submission_token_for_form,
     completed_client_submission,
     record_client_submission,
 )
-from apps.core.exports import parse_date_param, safe_next_url
-from apps.core.forms import configure_form_accessibility
-from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
 from apps.core.undo import create_undo_token
+from apps.garage.active_motorcycle import get_active_motorcycle
 from apps.reminders.models import Reminder
 from apps.reminders.services import list_due_reminders
 
