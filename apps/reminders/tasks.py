@@ -36,7 +36,7 @@ def process_due_reminders(*, mark_notified: bool = False, writer=None) -> dict[s
 
         notified = False
         owner = reminder.motorcycle.owner
-        if reminder.send_email and owner.email:
+        if reminder.send_email and owner.email and reminder.last_notified_at is None:
             subject = f"Moto Track: {reminder.title}"
             message = (
                 f"{reminder.motorcycle.name}: {reminder.title}\n"

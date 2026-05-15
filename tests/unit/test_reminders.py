@@ -386,6 +386,27 @@ class ReminderCommandTests(TestCase):
         self.assertIsNone(failed.last_notified_at)
         self.assertIsNotNone(sent.last_notified_at)
 
+    def test_process_reminders_does_not_resend_already_notified_email(self):
+        reminder = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Ja avisado",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=True,
+            last_notified_at=timezone.now(),
+        )
+
+        from apps.reminders.tasks import process_due_reminders
+
+        with patch("apps.reminders.tasks.send_mail") as send_mail:
+            summary = process_due_reminders()
+
+        reminder.refresh_from_db()
+        send_mail.assert_not_called()
+        self.assertEqual(summary, {"due": 1, "emailed": 0, "marked": 0})
+        self.assertIsNotNone(reminder.last_notified_at)
+
     def test_process_reminders_celery_task_runs_same_processing(self):
         reminder = Reminder.objects.create(
             motorcycle=self.motorcycle,
