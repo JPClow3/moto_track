@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -352,6 +353,38 @@ class ReminderCommandTests(TestCase):
         reminder.refresh_from_db()
         self.assertEqual(len(mail.outbox), 0)
         self.assertIsNotNone(reminder.last_notified_at)
+
+    def test_process_reminders_continues_after_email_failure(self):
+        failed = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="A email falha",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=True,
+        )
+        sent = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="B email envia",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=True,
+        )
+
+        from apps.reminders.tasks import process_due_reminders
+
+        with (
+            patch("apps.reminders.tasks.send_mail", side_effect=[RuntimeError("smtp down"), 1]),
+            self.assertLogs("apps.reminders.tasks", level="ERROR"),
+        ):
+            summary = process_due_reminders()
+
+        failed.refresh_from_db()
+        sent.refresh_from_db()
+        self.assertEqual(summary, {"due": 2, "emailed": 1, "marked": 1})
+        self.assertIsNone(failed.last_notified_at)
+        self.assertIsNotNone(sent.last_notified_at)
 
     def test_process_reminders_celery_task_runs_same_processing(self):
         reminder = Reminder.objects.create(

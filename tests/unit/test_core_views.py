@@ -1,6 +1,8 @@
 from datetime import date, timedelta
 from datetime import timezone as dt_timezone
 from decimal import Decimal
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase, override_settings
@@ -517,6 +519,12 @@ class CoreMiscViewTests(TestCase):
         self.assertIn("offlineQueuedFragmentResponse", body)
         self.assertIn('if (req.mode === "navigate")', body)
         self.assertIn("cache.match(OFFLINE_URL)", body)
+
+    def test_service_worker_returns_404_when_asset_is_missing(self):
+        with TemporaryDirectory() as tmpdir, override_settings(WHITENOISE_ROOT=Path(tmpdir)):
+            response = self.client.get(reverse("service_worker"))
+
+        self.assertEqual(response.status_code, 404)
 
     def test_pwa_status_requires_login(self):
         response = self.client.get(reverse("pwa_status"))

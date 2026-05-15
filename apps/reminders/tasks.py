@@ -43,16 +43,19 @@ def process_due_reminders(*, mark_notified: bool = False, writer=None) -> dict[s
                 f"Status: {evaluation.status}\n\n"
                 f"{reminder.description or reminder.notes or 'Revise este lembrete no Moto Track.'}"
             )
-            sent = send_mail(
-                subject,
-                message,
-                getattr(settings, "DEFAULT_FROM_EMAIL", None),
-                [owner.email],
-                fail_silently=False,
-            )
-            notified = sent > 0
-            if notified:
-                emailed += 1
+            try:
+                sent = send_mail(
+                    subject,
+                    message,
+                    getattr(settings, "DEFAULT_FROM_EMAIL", None),
+                    [owner.email],
+                    fail_silently=False,
+                )
+                notified = sent > 0
+                if notified:
+                    emailed += 1
+            except Exception:
+                logger.exception("Failed to send reminder email to %s", owner.email)
 
         if mark_notified or notified:
             reminder.last_notified_at = timezone.now()

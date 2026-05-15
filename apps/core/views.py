@@ -247,8 +247,12 @@ def pwa_status_view(request):
 
 
 def service_worker_view(request):
+    sw_path = settings.WHITENOISE_ROOT / "sw.js"
+    if not sw_path.exists():
+        return HttpResponse(status=404)
+
     response = FileResponse(
-        open(settings.WHITENOISE_ROOT / "sw.js", "rb"),
+        sw_path.open("rb"),
         content_type="application/javascript",
     )
     response["Content-Type"] = "application/javascript"

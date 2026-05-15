@@ -151,10 +151,9 @@ class ExpensesView(ScopedApiView):
 
         rows = []
         for item in page:
-            if item["kind"] == "fee":
-                rows.append({"kind": "fee", "object": fees_map[item["pk"]]})
-            else:
-                rows.append({"kind": "policy", "object": policies_map[item["pk"]]})
+            obj = fees_map.get(item["pk"]) if item["kind"] == "fee" else policies_map.get(item["pk"])
+            if obj:
+                rows.append({"kind": item["kind"], "object": obj})
 
         serializer = ExpenseSerializer(rows, many=True)
         return Response({"count": total, "limit": limit, "offset": offset, "results": serializer.data})
