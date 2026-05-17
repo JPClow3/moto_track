@@ -212,9 +212,11 @@ LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "account_login"
 # B-M1: 30-day sessions are too long-lived for an app that handles billing data.
-# Reduced to 7 days; override via env if needed.
+# Reduced to 7 days; override via env if needed. We deliberately do NOT enable
+# SESSION_SAVE_EVERY_REQUEST: it forces a DB write on every request to slide
+# the expiry, which becomes a hot row under load. Standard "save on modify"
+# behaviour is sufficient — sessions naturally renew when the user interacts.
 SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=60 * 60 * 24 * 7)
-SESSION_SAVE_EVERY_REQUEST = True  # slide the expiry on each request
 
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@motoapp.local")

@@ -173,8 +173,14 @@ class PushSubscription(TimeStampedModel):
     # B-M10: endpoint URL identifies a user's push channel and must not leak in
     # plaintext. We encrypt the URL itself and keep a SHA-256 hash for lookups
     # and the (owner, endpoint) uniqueness contract.
+    #
+    # Sizing note: Fernet ciphertext is base64url(IV + padded_plaintext + HMAC)
+    # which works out to ~1.33 * len(plaintext) + 80 bytes. For the previous
+    # 500-char limit the worst-case ciphertext is ~760 chars; 1000 gives
+    # headroom for browser push endpoints that approach the limit without
+    # risking column-overflow on insert.
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="push_subscriptions")
-    endpoint = EncryptedCharField(max_length=600)
+    endpoint = EncryptedCharField(max_length=1000)
     endpoint_hash = models.CharField(max_length=64, db_index=True, default="")
     p256dh = EncryptedCharField(max_length=500)
     auth = EncryptedCharField(max_length=500)

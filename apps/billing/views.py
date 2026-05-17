@@ -7,7 +7,13 @@ from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .entitlements import get_subscription_profile, has_pro_access, plan_label, remaining_upload_slots
+from .entitlements import (
+    get_subscription_profile,
+    has_pro_access,
+    invalidate_pro_access_cache,
+    plan_label,
+    remaining_upload_slots,
+)
 from .models import AccountDataRequest
 from .stripe_client import (
     BillingConfigurationError,
@@ -57,6 +63,7 @@ def checkout_view(request):
     except BillingConfigurationError as exc:
         messages.error(request, str(exc))
         return redirect("pricing")
+    invalidate_pro_access_cache(request.user)
     return redirect(session.url)
 
 
@@ -68,6 +75,7 @@ def portal_view(request):
     except BillingConfigurationError as exc:
         messages.error(request, str(exc))
         return redirect("billing:account")
+    invalidate_pro_access_cache(request.user)
     return redirect(session.url)
 
 

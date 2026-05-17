@@ -42,26 +42,31 @@ def ensure_subscription_profile(user) -> SubscriptionProfile:
 
 
 def has_pro_access(user) -> bool:
+    """Return whether `user` currently has Pro entitlement.
+
+    Cached for the lifetime of the request on the user instance (B-H9). Both
+    True and False are cached so Free-tier users don't pay 3-5 DB lookups per
+    dashboard render either. Any code that mutates the user's subscription
+    state within the same request must call `invalidate_pro_access_cache(user)`
+    afterwards (`apps.billing.views.checkout_view` and the Stripe webhook
+    pipeline do).
+    """
     cached = getattr(user, _PRO_ACCESS_ATTR, None)
-    if cached is True:
-        return True
+    if cached is not None:
+        return cached
     profile = get_subscription_profile(user)
     value = bool(profile and profile.has_pro_access())
-    # Only cache positive results to avoid sticking a freshly-upgraded user on
-    # the "no profile" path within the same request (e.g. checkout success
-    # immediately renders the dashboard). False is cheap to re-derive.
-    if value:
-        try:
-            setattr(user, _PRO_ACCESS_ATTR, True)
-        except (AttributeError, TypeError):
-            pass
+    try:
+        setattr(user, _PRO_ACCESS_ATTR, value)
+    except (AttributeError, TypeError):
+        pass  # AnonymousUser, frozen dataclass, etc.
     return value
 
 
 def invalidate_pro_access_cache(user) -> None:
     """Drop the request-scoped Pro-access cache (call after billing mutations)."""
     try:
-        if hasattr(user, _PRO_ACCESS_ATTR):
+        if user is not None and hasattr(user, _PRO_ACCESS_ATTR):
             delattr(user, _PRO_ACCESS_ATTR)
     except (AttributeError, TypeError):
         pass

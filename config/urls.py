@@ -1,3 +1,5 @@
+import logging
+
 from allauth.account import views as allauth_views
 from django.conf import settings
 from django.conf.urls.static import static
@@ -12,19 +14,24 @@ from apps.billing.views import pricing_view
 from .error_views import status_preview_view
 from .sitemaps import ForumArticleSitemap, StaticViewSitemap, sitemap_view
 
+logger = logging.getLogger(__name__)
+
 
 def healthz(_request):
     """Liveness + readiness probe (I-L10).
 
     Returns 200 if the DB is reachable. Container HEALTHCHECK and load balancers
-    can poll this without authentication.
+    can poll this without authentication. The exception detail is logged
+    server-side but never returned in the response body (CodeQL: Information
+    exposure through an exception).
     """
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
-    except Exception as exc:  # noqa: BLE001 - we want to convert anything to 503
-        return JsonResponse({"status": "error", "detail": str(exc)[:200]}, status=503)
+    except Exception:  # noqa: BLE001 - we want to convert anything to 503
+        logger.exception("healthz DB probe failed")
+        return JsonResponse({"status": "error"}, status=503)
     return JsonResponse({"status": "ok"})
 
 sitemaps = {

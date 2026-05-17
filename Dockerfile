@@ -87,4 +87,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 # `web-migrate` profile, k8s init container, or a CI deploy step). The default
 # CMD only boots gunicorn so the container becomes Ready predictably.
 # I-H2: GUNICORN_WORKERS / GUNICORN_THREADS are env-driven for capacity tuning.
-CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-3} --threads ${GUNICORN_THREADS:-2} --access-logfile - --error-logfile -"]
+# `exec` ensures gunicorn becomes PID 1 so SIGTERM is delivered for graceful
+# shutdown instead of being swallowed by the shell. Default threads matches
+# docker-compose.yml (4) so the two surfaces don't diverge.
+CMD ["sh", "-c", "exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-3} --threads ${GUNICORN_THREADS:-4} --access-logfile - --error-logfile -"]
