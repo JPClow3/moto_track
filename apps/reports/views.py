@@ -7,10 +7,10 @@ from django.template.loader import render_to_string
 
 from apps.billing.decorators import pro_required
 from apps.billing.entitlements import has_pro_access
-from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.exports import parse_date_param
 from apps.core.severity import SEVERITY_LABELS
 from apps.core.ui import get_density, per_page_for_density
+from apps.garage.active_motorcycle import get_active_motorcycle
 from apps.garage.models import Motorcycle
 from apps.reports.export import detailed_csv_response, sale_pdf_response
 from apps.reports.services import (

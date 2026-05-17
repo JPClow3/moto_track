@@ -35,8 +35,18 @@ function registerAppShell() {
     },
 
     closeQuickFormModal() {
+      if (typeof window.closeQuickFormModal === "function") {
+        window.closeQuickFormModal();
+        this.quickFormOpen = false;
+        return;
+      }
       const quickFormRoot = document.getElementById("quick-form-root");
       if (quickFormRoot) quickFormRoot.innerHTML = "";
+      const appShell = document.getElementById("app-shell-main");
+      if (appShell) {
+        appShell.removeAttribute("inert");
+        appShell.removeAttribute("aria-hidden");
+      }
       this.quickFormOpen = false;
     },
 
@@ -92,6 +102,8 @@ if (typeof Alpine !== "undefined") {
     const quickFormRoot = document.getElementById("quick-form-root");
     if (!quickFormRoot) return;
     quickFormRoot.innerHTML = "";
+    setAppInert(false);
+    document.body.dispatchEvent(new CustomEvent("quick-form-closed"));
     if (previousFocusedElement && typeof previousFocusedElement.focus === "function") {
       previousFocusedElement.focus();
     }
@@ -124,6 +136,7 @@ if (typeof Alpine !== "undefined") {
   function renderLucideIcons() {
     if (window.lucide) {
       window.lucide.createIcons();
+      document.documentElement.classList.add("lucide-icons-ready");
     }
   }
 
@@ -133,11 +146,114 @@ if (typeof Alpine !== "undefined") {
     const quickFormRoot = document.getElementById("quick-form-root");
     if (!quickFormRoot) return;
     const dialog = quickFormRoot.querySelector('[role="dialog"]');
+    setAppInert(Boolean(dialog));
     if (!dialog) return;
+    dialog.setAttribute("data-modal-root", "");
     const focusableElements = getFocusableElements(dialog);
     if (focusableElements.length > 0) {
       focusableElements[0].focus();
     }
+  }
+
+  function setAppInert(isInert) {
+    const appShell = document.getElementById("app-shell-main");
+    if (!appShell) return;
+    if (isInert) {
+      appShell.setAttribute("inert", "");
+      appShell.setAttribute("aria-hidden", "true");
+    } else {
+      appShell.removeAttribute("inert");
+      appShell.removeAttribute("aria-hidden");
+    }
+  }
+
+  function initPolish(container) {
+    const scope = container || document;
+    const targets = scope.querySelectorAll("[data-animate-once], [data-chart-reveal]");
+    if (!targets.length) return;
+    if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      targets.forEach((el) => el.classList.add("is-visible"));
+      return;
+    }
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-visible");
+        obs.unobserve(entry.target);
+      });
+    }, { threshold: 0.12 });
+    targets.forEach((el) => observer.observe(el));
+  }
+
+  function setQuickSkeleton(kind) {
+    const skeleton = document.getElementById("quick-form-skeleton");
+    if (!skeleton) return;
+    const labels = {
+      chooser: ["Abrindo atalhos", "Escolha o registro em instantes."],
+      fuel: ["Preparando abastecimento", "Campos principais primeiro, detalhes depois."],
+      maintenance: ["Preparando manutenção", "Serviço, custo e vencimentos ficam prontos para preencher."],
+      odometer: ["Preparando odômetro", "Atualize a quilometragem com segurança."],
+      form: ["Carregando formulário", "Só um instante."]
+    };
+    const label = labels[kind] || labels.form;
+    skeleton.dataset.skeletonKind = kind || "form";
+    skeleton.querySelectorAll("[data-skeleton-title]").forEach((el) => { el.textContent = label[0]; });
+    skeleton.querySelectorAll("[data-skeleton-copy]").forEach((el) => { el.textContent = label[1]; });
+  }
+
+  function initFilterForms(container) {
+    const scope = container || document;
+    scope.querySelectorAll("[data-filter-form]").forEach((form) => {
+      if (form.dataset.polishBound === "true") return;
+      form.dataset.polishBound = "true";
+      form.addEventListener("submit", () => {
+        form.classList.add("is-loading");
+        const target = form.dataset.skeletonTarget ? document.querySelector(form.dataset.skeletonTarget) : null;
+        if (target) {
+          target.classList.add("list-loading");
+          target.setAttribute("aria-busy", "true");
+        }
+      });
+    });
+  }
+
+  function initExportLinks(container) {
+    const scope = container || document;
+    scope.querySelectorAll("[data-export-link]").forEach((link) => {
+      if (link.dataset.polishBound === "true") return;
+      link.dataset.polishBound = "true";
+      link.addEventListener("click", () => {
+        const original = link.dataset.originalLabel || link.textContent.trim();
+        link.dataset.originalLabel = original;
+        link.classList.add("is-loading");
+        link.setAttribute("aria-busy", "true");
+        link.textContent = link.dataset.loadingLabel || "Gerando...";
+        window.setTimeout(() => {
+          link.classList.remove("is-loading");
+          link.removeAttribute("aria-busy");
+          link.textContent = original;
+        }, 3500);
+      });
+    });
+  }
+
+  function initDismissibleCards(container) {
+    const scope = container || document;
+    scope.querySelectorAll("[data-dismissible-card]").forEach((card) => {
+      if (card.dataset.polishBound === "true") return;
+      card.dataset.polishBound = "true";
+      card.querySelectorAll("[data-dismiss-card]").forEach((button) => {
+        button.addEventListener("click", () => {
+          card.style.transition = "opacity 160ms ease-out, transform 160ms ease-out, max-height 180ms ease-out";
+          card.style.maxHeight = card.scrollHeight + "px";
+          requestAnimationFrame(() => {
+            card.style.opacity = "0";
+            card.style.transform = "translateY(-0.25rem)";
+            card.style.maxHeight = "0";
+          });
+        });
+      });
+    });
   }
 
   function initLazyImageShimmer() {
@@ -200,6 +316,10 @@ if (typeof Alpine !== "undefined") {
     initLazyImageShimmer();
     initAutocomplete(document.body);
     initFuelDefaults(document.body);
+    initPolish(document.body);
+    initFilterForms(document.body);
+    initExportLinks(document.body);
+    initDismissibleCards(document.body);
   });
 
   document.body.addEventListener("htmx:afterSwap", (event) => {
@@ -210,6 +330,10 @@ if (typeof Alpine !== "undefined") {
     initAutocomplete(event.detail?.target || document.body);
     if (event.detail?.target) {
       initFuelDefaults(event.detail.target);
+      initPolish(event.detail.target);
+      initFilterForms(event.detail.target);
+      initExportLinks(event.detail.target);
+      initDismissibleCards(event.detail.target);
     }
   });
 
@@ -222,6 +346,8 @@ if (typeof Alpine !== "undefined") {
     const trigger = event.detail.elt;
     if (trigger) {
       trigger.setAttribute("aria-busy", "true");
+      trigger.classList.add("is-loading");
+      setQuickSkeleton(trigger.dataset.skeletonKind || trigger.closest("[data-skeleton-kind]")?.dataset.skeletonKind);
     }
   });
 
@@ -229,6 +355,7 @@ if (typeof Alpine !== "undefined") {
     const trigger = event.detail.elt;
     if (trigger) {
       trigger.removeAttribute("aria-busy");
+      trigger.classList.remove("is-loading");
     }
   });
 

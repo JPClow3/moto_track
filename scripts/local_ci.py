@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run the same checks executed in CI, locally."""
+import os
 import subprocess
 import sys
 
@@ -14,6 +15,14 @@ def run(cmd, title):
 
 
 def main():
+    if not (os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL")):
+        print(
+            "Set TEST_DATABASE_URL or DATABASE_URL to a PostgreSQL database before running local CI.\n"
+            "Alternatively use: docker compose --profile test up --build "
+            "--abort-on-container-exit --exit-code-from test"
+        )
+        sys.exit(2)
+
     python = sys.executable
     run(
         [

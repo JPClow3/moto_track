@@ -1,12 +1,25 @@
 # syntax=docker/dockerfile:1.7
 
-# I-L3: multi-stage build keeps the runtime image lean. Build stage carries
-# pip wheels / build deps / Tailwind binary; runtime stage only ships the
+# I-L3: multi-stage build keeps the runtime image lean. Build stages carry
+# Node + pip wheels + Tailwind binary; the runtime stage only ships the
 # installed site-packages, the app code, and the generated static files.
 # I-H1: Tailwind binary version is bumped via build-arg so caching keys are stable.
 
 ARG PYTHON_VERSION=3.12-slim
 ARG TAILWIND_VERSION=3.4.19
+
+
+########################
+# 0. Frontend vendor assets (from main)
+########################
+# Pulls vendored JS/CSS into /app/static/vendor without installing Node in the
+# final image. Copied into the builder stage below.
+FROM node:22-slim AS frontend-vendor
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY scripts/copy_vendor_assets.mjs scripts/
+RUN npm ci
 
 
 ########################
@@ -31,6 +44,7 @@ RUN pip install --prefix=/install --no-cache-dir -r /tmp/requirements/${REQUIREM
 
 # Copy app source and build Tailwind + collect static files.
 COPY . /app
+COPY --from=frontend-vendor /app/static/vendor /app/static/vendor
 
 ARG TAILWIND_VERSION
 RUN curl -fsSL -o /tmp/tailwindcss \

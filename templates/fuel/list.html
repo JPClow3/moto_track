@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load core_format %}
 
 {% block title %}Abastecimentos - Moto Track{% endblock %}
 {% block topbar_eyebrow %}Operação diária{% endblock %}
@@ -6,7 +7,7 @@
 
 {% block content %}
 <section class="page-shell" aria-labelledby="fuel-list-title">
-  <header class="page-hero">
+  <header class="page-hero" data-animate-once>
     <div>
       <span class="page-kicker">Combustível</span>
       <h2 id="fuel-list-title" class="page-title">Consumo claro. Registro rápido.</h2>
@@ -19,6 +20,7 @@
         hx-get="{% url 'fuel:repeat_last' %}?next={% url 'fuel:list' %}"
         hx-target="#quick-form-root"
         hx-swap="innerHTML"
+        data-skeleton-kind="fuel"
       >
         <i data-lucide="copy" aria-hidden="true"></i>
         Repetir último
@@ -29,6 +31,7 @@
         hx-get="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}"
         hx-target="#quick-form-root"
         hx-swap="innerHTML"
+        data-skeleton-kind="fuel"
       >
         <i data-lucide="plus" aria-hidden="true"></i>
         Registrar abastecimento
@@ -36,7 +39,7 @@
     </div>
   </header>
 
-  <section class="workflow-section" aria-labelledby="fuel-summary-title">
+  <section class="workflow-section" aria-labelledby="fuel-summary-title" data-animate-once>
     <div class="section-heading">
       <div>
         <h3 id="fuel-summary-title" class="section-heading-title">Resumo operacional</h3>
@@ -47,23 +50,23 @@
       <div class="metric-tile">
         <p class="metric-tile-label">Consumo médio</p>
         <p class="metric-tile-value">
-          {% if avg_liters_per_100km is not None %}{{ avg_liters_per_100km }}{% else %}--{% endif %}
+          {% if avg_liters_per_100km is not None %}{{ avg_liters_per_100km|decimal_trim:2 }}{% else %}--{% endif %}
         </p>
         <p class="metric-tile-copy">L/100 km</p>
-        <p class="mt-2 text-xs text-on-surface-variant">{% if total_liters %}{{ total_liters }} L no período.{% else %}Sem base ainda.{% endif %}</p>
+        <p class="mt-2 text-xs text-on-surface-variant">{% if total_liters %}{{ total_liters|decimal_trim:2 }} L no período.{% else %}Sem base ainda.{% endif %}</p>
       </div>
 
       <div class="metric-tile">
         <p class="metric-tile-label">Gasto no mês</p>
-        <p class="metric-tile-value">{{ month_total }}</p>
+        <p class="metric-tile-value">{{ month_total|brl }}</p>
         <p class="metric-tile-copy">Mês atual</p>
-        <p class="mt-2 text-xs text-on-surface-variant">Geral: {{ total_spend }}.</p>
+        <p class="mt-2 text-xs text-on-surface-variant">Geral: {{ total_spend|brl }}.</p>
       </div>
 
       <div class="metric-tile">
         <p class="metric-tile-label">Média móvel</p>
         <p class="metric-tile-value">
-          {% if cost_ma_last is not None %}{{ cost_ma_last }}{% else %}--{% endif %}
+          {% if cost_ma_last is not None %}{{ cost_ma_last|decimal_comma:3 }}{% else %}--{% endif %}
         </p>
         <p class="metric-tile-copy">R$/km em 3 meses</p>
         <p class="mt-2 text-xs text-on-surface-variant">Custo médio de rodagem.</p>
@@ -71,50 +74,53 @@
     </div>
   </section>
 
-  <section class="workflow-section" aria-labelledby="fuel-filter-title">
+  <section class="workflow-section" aria-labelledby="fuel-filter-title" data-animate-once>
     <div class="section-heading">
       <div>
         <h3 id="fuel-filter-title" class="section-heading-title">Refinar histórico</h3>
         <p class="section-heading-copy">Busque só quando precisar aprofundar.</p>
       </div>
     </div>
-    <form method="get" aria-label="Filtros de abastecimento" class="filter-strip">
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+    <form method="get" aria-label="Filtros de abastecimento" class="filter-strip" data-filter-form data-skeleton-target="#fuel-history-region">
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
         <input class="ui-input" type="text" name="q" value="{{ filters.q }}" placeholder="Buscar por posto ou notas" aria-label="Buscar por posto ou notas" />
-        <input class="ui-input" type="date" name="start" value="{{ filters.start }}" aria-label="Data inicial" />
-        <input class="ui-input" type="date" name="end" value="{{ filters.end }}" aria-label="Data final" />
-        <select class="ui-select" name="motorcycle" aria-label="Filtrar por moto">
-          <option value="">Todas as motos</option>
-          {% for bike in garage_motorcycles %}
-            <option value="{{ bike.id }}" {% if filters.motorcycle and bike.id|stringformat:"s" == filters.motorcycle %}selected{% endif %}>
-              {{ bike.name }}
-            </option>
-          {% endfor %}
-        </select>
-        <select class="ui-select" name="station" aria-label="Filtrar por posto">
-          <option value="">Todos os postos</option>
-          {% for station in fuel_stations %}
-            <option value="{{ station.id }}" {% if filters.station and station.id|stringformat:"s" == filters.station %}selected{% endif %}>{{ station.name }}</option>
-          {% endfor %}
-        </select>
-        <select class="ui-select" name="fuel_type" aria-label="Filtrar por combustível">
-          <option value="">Todos os combustíveis</option>
-          {% for value,label in fuel_types %}
-            <option value="{{ value }}" {% if filters.fuel_type == value %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="mt-4 flex flex-wrap gap-2">
         <button type="submit" class="ui-btn-primary">Aplicar filtros</button>
-        {% if density == 'compact' %}
-          <a class="ui-btn-secondary" href="{% querystring density='comfortable' page=None %}">Modo conforto</a>
-        {% else %}
-          <a class="ui-btn-secondary" href="{% querystring density='compact' page=None %}">Modo compacto</a>
-        {% endif %}
-        <a class="ui-btn-secondary" data-export-link data-loading-label="Gerando CSV..." href="{% url 'fuel:export' %}?format=csv&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">CSV</a>
-        <a class="ui-btn-secondary" data-export-link data-loading-label="Gerando PDF..." href="{% url 'fuel:export' %}?format=pdf&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">PDF</a>
-        <a class="ui-btn-secondary" href="{% url 'fuel:import_preview' %}">Importar CSV</a>
       </div>
+      <details class="mt-3 rounded-md border border-outline-variant/40 bg-surface-low p-3">
+        <summary class="cursor-pointer text-sm font-semibold text-on-surface">Mais filtros e exportação</summary>
+        <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <input class="ui-input" type="date" name="start" value="{{ filters.start }}" aria-label="Data inicial" />
+          <input class="ui-input" type="date" name="end" value="{{ filters.end }}" aria-label="Data final" />
+          <select class="ui-select" name="motorcycle" aria-label="Filtrar por moto">
+            <option value="">Todas as motos</option>
+            {% for bike in garage_motorcycles %}
+              <option value="{{ bike.id }}" {% if filters.motorcycle and bike.id|stringformat:"s" == filters.motorcycle %}selected{% endif %}>{{ bike.name }}</option>
+            {% endfor %}
+          </select>
+          <select class="ui-select" name="station" aria-label="Filtrar por posto">
+            <option value="">Todos os postos</option>
+            {% for station in fuel_stations %}
+              <option value="{{ station.id }}" {% if filters.station and station.id|stringformat:"s" == filters.station %}selected{% endif %}>{{ station.name }}</option>
+            {% endfor %}
+          </select>
+          <select class="ui-select" name="fuel_type" aria-label="Filtrar por combustível">
+            <option value="">Todos os combustíveis</option>
+            {% for value,label in fuel_types %}
+              <option value="{{ value }}" {% if filters.fuel_type == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="flex flex-wrap gap-2">
+            {% if density == 'compact' %}
+              <a class="ui-btn-secondary" href="{% querystring density='comfortable' page=None %}">Modo conforto</a>
+            {% else %}
+              <a class="ui-btn-secondary" href="{% querystring density='compact' page=None %}">Modo compacto</a>
+            {% endif %}
+            <a class="ui-btn-secondary" data-export-link data-loading-label="Gerando CSV..." href="{% url 'fuel:export' %}?format=csv&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">CSV</a>
+            <a class="ui-btn-secondary" data-export-link data-loading-label="Gerando PDF..." href="{% url 'fuel:export' %}?format=pdf&motorcycle={{ filters.motorcycle }}&station={{ filters.station }}&fuel_type={{ filters.fuel_type }}&start={{ filters.start }}&end={{ filters.end }}">PDF</a>
+            <a class="ui-btn-secondary" href="{% url 'fuel:import_preview' %}">Importar</a>
+          </div>
+        </div>
+      </details>
     </form>
   </section>
 
@@ -134,14 +140,21 @@
                 <p class="text-xs text-on-surface-variant">{{ record.motorcycle.name }} - {{ record.date|date:"d/m/Y" }} - {{ record.odometer_km }} km</p>
               </div>
               <div class="text-right shrink-0">
-                <p class="text-sm font-semibold text-on-surface">{{ record.total_price }}</p>
-                <p class="text-xs text-on-surface-variant">{{ record.liters }} L</p>
+                <p class="text-sm font-semibold text-on-surface">{{ record.total_price|brl }}</p>
+                <p class="text-xs text-on-surface-variant">{{ record.liters|decimal_trim:2 }} L</p>
               </div>
             </div>
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty-state">Nenhum abastecimento registrado ainda.</div>
+        <div class="empty-state-rich">
+          <span class="empty-state-icon"><i data-lucide="fuel" aria-hidden="true"></i></span>
+          <div class="min-w-0">
+            <p class="font-semibold text-on-surface">Nenhum abastecimento ainda</p>
+            <p>O segundo tanque cheio libera consumo médio e previsões melhores.</p>
+          </div>
+          <a class="ui-btn-primary" href="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}" hx-get="{% url 'fuel:quick_create' %}?next={% url 'fuel:list' %}" hx-target="#quick-form-root" data-skeleton-kind="fuel">Registrar</a>
+        </div>
       {% endif %}
     </article>
 
@@ -160,7 +173,7 @@
           {% if next_fill_up %}
             Faltam {{ next_fill_up.remaining_km }} km.
           {% elif avg_cost_per_km is not None %}
-            Custo médio atual: {{ avg_cost_per_km }} / km.
+            Custo médio atual: R$ {{ avg_cost_per_km|decimal_comma:3 }} / km.
           {% else %}
             Adicione dois registros para estimar.
           {% endif %}
@@ -181,7 +194,7 @@
                 <div class="flex flex-col items-center gap-2">
                   <div class="h-20 w-full overflow-hidden rounded-md bg-surface-high flex items-end">
                     {% if p.has_value %}
-                      <div class="w-full {% if forloop.last %}bg-info{% else %}bg-info/30{% endif %}" x-data="{ h: {{ p.bar_percent|default:0 }} }" x-bind:style="{ height: h + '%' }"></div>
+                      <div class="w-full {% if forloop.last %}bg-info{% else %}bg-info/30{% endif %}" x-data="{ h: {{ p.bar_percent|default:0 }} }" x-bind:style="{ height: h + '%' }" data-chart-reveal></div>
                     {% else %}
                       <div class="w-full bg-surface-highest h-0"></div>
                     {% endif %}
@@ -199,7 +212,7 @@
                 <div class="flex flex-col items-center gap-2">
                   <div class="h-20 w-full overflow-hidden rounded-md bg-surface-high flex items-end">
                     {% if p.has_value %}
-                      <div class="w-full {% if forloop.last %}bg-warning{% else %}bg-warning/35{% endif %}" x-data="{ h: {{ p.bar_percent|default:0 }} }" x-bind:style="{ height: h + '%' }"></div>
+                      <div class="w-full {% if forloop.last %}bg-warning{% else %}bg-warning/35{% endif %}" x-data="{ h: {{ p.bar_percent|default:0 }} }" x-bind:style="{ height: h + '%' }" data-chart-reveal></div>
                     {% else %}
                       <div class="w-full bg-surface-highest h-0"></div>
                     {% endif %}
@@ -244,7 +257,7 @@
     </section>
   {% endif %}
 
-  <section class="workflow-section" aria-labelledby="fuel-history-title">
+  <section id="fuel-history-region" class="workflow-section" aria-labelledby="fuel-history-title" data-animate-once>
     <div class="section-heading">
       <div>
         <h3 id="fuel-history-title" class="section-heading-title">Histórico</h3>
@@ -259,13 +272,13 @@
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <p class="text-sm font-semibold text-on-surface">{{ record.station_name|default:"Abastecimento" }}</p>
-                <p class="text-xs text-on-surface-variant">{{ record.date|date:"d/m/Y" }} · {{ record.odometer_km }} km · {{ record.liters }} L · {{ record.fuel_type|default:"Gasolina" }}</p>
+                <p class="text-xs text-on-surface-variant">{{ record.date|date:"d/m/Y" }} · {{ record.odometer_km }} km · {{ record.liters|decimal_trim:2 }} L · {{ record.fuel_type|default:"Gasolina" }}</p>
               </div>
-              <span class="text-sm font-semibold text-on-surface">{{ record.total_price }}</span>
+              <span class="text-sm font-semibold text-on-surface">{{ record.total_price|brl }}</span>
             </div>
             <div class="mt-3 flex items-center justify-between gap-3">
               {% if record.consumption_km_per_liter %}
-                <p class="text-xs text-on-surface-variant">Consumo: {{ record.consumption_km_per_liter|floatformat:1 }} km/L</p>
+                <p class="text-xs text-on-surface-variant">Consumo: {{ record.consumption_km_per_liter|decimal_comma:1 }} km/L</p>
               {% else %}
                 <span></span>
               {% endif %}
@@ -312,9 +325,9 @@
                 <td class="{% if density == 'compact' %}py-2{% else %}py-3{% endif %}"><strong class="font-semibold">{{ record.date|date:"d/m/Y" }}</strong></td>
                 <td>{{ record.motorcycle.name }}</td>
                 <td>{{ record.odometer_km }} km</td>
-                <td>{{ record.liters }} L</td>
-                <td>{{ record.price_per_liter }}</td>
-                <td>{{ record.total_price }}</td>
+                <td>{{ record.liters|decimal_trim:2 }} L</td>
+                <td>{{ record.price_per_liter|brl }}</td>
+                <td>{{ record.total_price|brl }}</td>
                 <td>
                   {{ record.station_name|default:"--" }}
                   {% if record.anomaly_warnings %}
@@ -350,7 +363,14 @@
         </table>
       </div>
     {% else %}
-      <div class="empty-state">Nenhum abastecimento encontrado para os filtros atuais.</div>
+      <div class="empty-state-rich">
+        <span class="empty-state-icon"><i data-lucide="search-x" aria-hidden="true"></i></span>
+        <div>
+          <p class="font-semibold text-on-surface">Nenhum resultado para os filtros</p>
+          <p>Limpe datas, posto ou tipo de combustível para ampliar o histórico.</p>
+        </div>
+        <a class="ui-btn-secondary" href="{% url 'fuel:list' %}">Limpar filtros</a>
+      </div>
     {% endif %}
   </section>
 

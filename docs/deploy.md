@@ -114,6 +114,7 @@ DJANGO_SECRET_KEY=<gere-um-valor-longo-aleatorio>
 DJANGO_ALLOWED_HOSTS=54.86.112.205
 APP_BUILD_ID=<git-sha-ou-release>
 SESSION_COOKIE_AGE=2592000
+CELERY_BROKER_URL=redis://redis:6379/0
 
 DATABASE_URL=postgres://...
 
@@ -268,6 +269,7 @@ your-domain.com,www.your-domain.com,54.86.112.205
 
 - Static files são built na imagem (`collectstatic` roda durante o Docker build usando `config.settings.build`).
 - Uploads de **media** são armazenados em **S3** quando usando `config.settings.prod`. O volume `media_data` é um caminho local opcional para `MEDIA_ROOT`; ele não substitui o S3 para `FileField` storage a menos que você altere `STORAGES`.
+- O profile `prod` sobe Redis, worker Celery e beat Celery junto com o app. O beat agenda `apps.reminders.tasks.process_reminders_task`; ajuste `REMINDER_PROCESS_INTERVAL_SECONDS` se precisar mudar a frequência.
 
 ---
 

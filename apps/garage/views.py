@@ -116,7 +116,7 @@ def garage_delete_view(request, pk):
 
     if request.method == "POST":
         name = motorcycle.name
-        from apps.core.active_motorcycle import SESSION_KEY as ACTIVE_MC_KEY
+        from apps.garage.active_motorcycle import SESSION_KEY as ACTIVE_MC_KEY
         if request.session.get(ACTIVE_MC_KEY) == motorcycle.id:
             request.session.pop(ACTIVE_MC_KEY, None)
             request.session.modified = True

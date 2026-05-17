@@ -8,15 +8,15 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.billing.decorators import pro_required
 from apps.billing.entitlements import can_add_active_reminder, can_add_uploads
-from apps.core.client_submissions import (
+from apps.core.exports import parse_date_param
+from apps.core.forms import configure_form_accessibility
+from apps.core.pagination import paginate
+from apps.core.services.idempotency import (
     claim_client_submission,
     client_submission_token_for_form,
     completed_client_submission,
     record_client_submission,
 )
-from apps.core.exports import parse_date_param
-from apps.core.forms import configure_form_accessibility
-from apps.core.pagination import paginate
 from apps.core.ui import get_density, per_page_for_density
 from apps.reminders.models import Reminder
 from apps.reminders.services import save_date_reminder

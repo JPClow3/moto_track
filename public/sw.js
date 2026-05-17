@@ -1,6 +1,7 @@
 /* Moto Track production PWA service worker. */
 
-const CACHE_NAME = "moto-track-shell-{{ build_id|escapejs }}";
+const BUILD_ID = new URL(self.location.href).searchParams.get("v") || "dev";
+const CACHE_NAME = `moto-track-shell-${BUILD_ID}`;
 const OFFLINE_URL = "/offline/";
 const DB_NAME = "moto-track-offline-db";
 const STORE_NAME = "offline-requests";

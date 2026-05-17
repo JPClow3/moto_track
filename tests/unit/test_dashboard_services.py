@@ -109,16 +109,18 @@ class DashboardServiceTests(TestCase):
     @override_settings(APP_BUILD_ID="test-build-123")
     def test_service_worker_uses_configured_build_id(self):
         response = self.client.get(reverse("service_worker"))
+        body = b"".join(response.streaming_content).decode()
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("application/javascript", response["Content-Type"])
         self.assertEqual(response["Service-Worker-Allowed"], "/")
         self.assertEqual(response["Cache-Control"], "no-cache")
-        self.assertContains(response, "moto-track-shell-test\\u002Dbuild\\u002D123")
-        self.assertContains(response, "indexedDB")
-        self.assertContains(response, "moto-track-offline-queue")
-        self.assertContains(response, "showNotification")
-        self.assertContains(response, "notificationclick")
+        self.assertIn('searchParams.get("v") || "dev"', body)
+        self.assertIn("moto-track-shell-${BUILD_ID}", body)
+        self.assertIn("indexedDB", body)
+        self.assertIn("moto-track-offline-queue", body)
+        self.assertIn("showNotification", body)
+        self.assertIn("notificationclick", body)
 
     def test_manifest_uses_resolved_theme_palette(self):
         response = self.client.get(reverse("manifest"), {"mode": "system", "resolved": "dark"})

@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -171,17 +172,22 @@ class ReminderViewTests(TestCase):
         self.assertFalse(Reminder.objects.filter(pk=self.reminder.pk).exists())
 
     def test_snooze_km_increments_reference_km(self):
+        self.reminder.last_notified_at = timezone.now()
+        self.reminder.save(update_fields=["last_notified_at"])
+
         self.client.force_login(self.user)
         response = self.client.post(reverse("reminders:snooze_km", args=[self.reminder.pk, 500]))
         self.assertEqual(response.status_code, 302)
         self.reminder.refresh_from_db()
         self.assertEqual(self.reminder.reference_km, 10500)
+        self.assertIsNone(self.reminder.last_notified_at)
 
     def test_snooze_days_sets_reference_date(self):
         self.reminder.trigger_type = TriggerType.BY_DATE
         self.reminder.trigger_value_days = 30
         self.reminder.reference_date = date(2026, 4, 1)
         self.reminder.reference_km = None
+        self.reminder.last_notified_at = timezone.now()
         self.reminder.save()
 
         self.client.force_login(self.user)
@@ -189,6 +195,7 @@ class ReminderViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.reminder.refresh_from_db()
         self.assertEqual(self.reminder.reference_date, date(2026, 4, 16))
+        self.assertIsNone(self.reminder.last_notified_at)
 
     def test_list_evaluates_reminders_with_each_motorcycle_odometer(self):
         second_motorcycle = Motorcycle.objects.create(
@@ -351,4 +358,77 @@ class ReminderCommandTests(TestCase):
 
         reminder.refresh_from_db()
         self.assertEqual(len(mail.outbox), 0)
+        self.assertIsNotNone(reminder.last_notified_at)
+
+    def test_process_reminders_continues_after_email_failure(self):
+        failed = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="A email falha",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=True,
+        )
+        sent = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="B email envia",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=True,
+        )
+
+        from apps.reminders.tasks import process_due_reminders
+
+        with (
+            patch("apps.reminders.tasks.send_mail", side_effect=[RuntimeError("smtp down"), 1]),
+            self.assertLogs("apps.reminders.tasks", level="ERROR"),
+        ):
+            summary = process_due_reminders()
+
+        failed.refresh_from_db()
+        sent.refresh_from_db()
+        self.assertEqual(summary, {"due": 2, "emailed": 1, "marked": 1})
+        self.assertIsNone(failed.last_notified_at)
+        self.assertIsNotNone(sent.last_notified_at)
+
+    def test_process_reminders_does_not_resend_already_notified_email(self):
+        reminder = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Ja avisado",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=True,
+            last_notified_at=timezone.now(),
+        )
+
+        from apps.reminders.tasks import process_due_reminders
+
+        with patch("apps.reminders.tasks.send_mail") as send_mail:
+            summary = process_due_reminders()
+
+        reminder.refresh_from_db()
+        send_mail.assert_not_called()
+        self.assertEqual(summary, {"due": 1, "emailed": 0, "marked": 0})
+        self.assertIsNotNone(reminder.last_notified_at)
+
+    def test_process_reminders_celery_task_runs_same_processing(self):
+        reminder = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Task email",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=True,
+        )
+
+        from apps.reminders.tasks import process_reminders_task
+
+        result = process_reminders_task.apply(kwargs={"mark_notified": False})
+
+        self.assertTrue(result.successful())
+        reminder.refresh_from_db()
+        self.assertEqual(result.result["due"], 1)
+        self.assertEqual(result.result["emailed"], 1)
         self.assertIsNotNone(reminder.last_notified_at)

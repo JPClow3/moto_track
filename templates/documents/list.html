@@ -6,7 +6,7 @@
 
 {% block content %}
 <section class="page-shell" aria-labelledby="documents-title">
-  <header class="page-hero">
+  <header class="page-hero" data-animate-once>
     <div>
       <span class="page-kicker">Arquivo e validade</span>
       <h2 id="documents-title" class="page-title">Documentos organizados para consulta e comprovação.</h2>
@@ -56,7 +56,10 @@
           </div>
         </div>
       {% else %}
-        <div class="empty-state">Nenhum manual cadastrado.</div>
+        <div class="empty-state-rich">
+          <span class="empty-state-icon"><i data-lucide="book-open" aria-hidden="true"></i></span>
+          <div><p class="font-semibold text-on-surface">Nenhum manual fixado</p><p>Envie o manual para deixar consulta rápida disponível na garagem.</p></div>
+        </div>
       {% endif %}
     </div>
 
@@ -76,7 +79,7 @@
     </div>
   </section>
 
-  <section id="documents-table" class="workflow-section" aria-labelledby="documents-table-title">
+  <section id="documents-table" class="workflow-section" aria-labelledby="documents-table-title" data-animate-once>
     <div class="section-heading">
       <div>
         <h3 id="documents-table-title" class="section-heading-title">Arquivo de documentos</h3>
@@ -143,7 +146,14 @@
         </table>
       </div>
     {% else %}
-      <div class="empty-state">Nenhum documento cadastrado ainda.</div>
+      <div class="empty-state-rich">
+        <span class="empty-state-icon"><i data-lucide="file-up" aria-hidden="true"></i></span>
+        <div>
+          <p class="font-semibold text-on-surface">Nenhum documento cadastrado</p>
+          <p>CRLV, seguro e manual ganham validade, lembrete e acesso rápido.</p>
+        </div>
+        <a class="ui-btn-primary" href="#documents-upload-form">Enviar documento</a>
+      </div>
     {% endif %}
   </section>
 

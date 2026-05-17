@@ -7,7 +7,7 @@
 
 {% block content %}
 <section class="page-shell" aria-labelledby="tires-list-title">
-  <header class="page-hero">
+  <header class="page-hero" data-animate-once>
     <div>
       <span class="page-kicker">Estado instantâneo</span>
       <h2 id="tires-list-title" class="page-title">Segurança dos pneus, sem caça ao dado.</h2>
@@ -30,7 +30,7 @@
     </div>
   </header>
 
-  <section class="workflow-section" aria-labelledby="tires-insights-title">
+  <section class="workflow-section" aria-labelledby="tires-insights-title" data-animate-once>
     <div class="section-heading">
       <div>
         <h3 id="tires-insights-title" class="section-heading-title">Insights de segurança</h3>
@@ -89,7 +89,7 @@
                 <circle class="text-surface-high" cx="96" cy="96" fill="transparent" r="{{ front.radius }}" stroke="currentColor" stroke-width="12"></circle>
                 <circle class="{{ front.ring_class }}" cx="96" cy="96" fill="transparent" r="{{ front.radius }}" stroke="currentColor"
                         stroke-width="12" stroke-linecap="round"
-                        style="stroke-dasharray: {{ front.circumference|default:'0'|unlocalize }}; stroke-dashoffset: {{ front.dash_offset|default:'0'|unlocalize }};"></circle>
+                        style="stroke-dasharray: {{ front.circumference|default:'0'|unlocalize }}; stroke-dashoffset: {{ front.dash_offset|default:'0'|unlocalize }};" data-chart-reveal></circle>
               </svg>
               <div class="absolute flex flex-col items-center">
                 <span class="text-3xl font-semibold">{{ front.wear_percent }}</span>
@@ -107,7 +107,10 @@
               </div>
             </div>
           {% else %}
-            <div class="empty-state mt-4">Cadastre um pneu dianteiro ativo para ver o painel.</div>
+            <div class="empty-state-rich mt-4">
+              <span class="empty-state-icon"><i data-lucide="circle-dot" aria-hidden="true"></i></span>
+              <div><p class="font-semibold text-on-surface">Sem pneu dianteiro ativo</p><p>Cadastre o pneu para acompanhar desgaste e pressão.</p></div>
+            </div>
           {% endif %}
         </article>
 
@@ -128,7 +131,7 @@
                 <circle class="text-surface-high" cx="96" cy="96" fill="transparent" r="{{ rear.radius }}" stroke="currentColor" stroke-width="12"></circle>
                 <circle class="{{ rear.ring_class }}" cx="96" cy="96" fill="transparent" r="{{ rear.radius }}" stroke="currentColor"
                         stroke-width="12" stroke-linecap="round"
-                        style="stroke-dasharray: {{ rear.circumference|default:'0'|unlocalize }}; stroke-dashoffset: {{ rear.dash_offset|default:'0'|unlocalize }};"></circle>
+                        style="stroke-dasharray: {{ rear.circumference|default:'0'|unlocalize }}; stroke-dashoffset: {{ rear.dash_offset|default:'0'|unlocalize }};" data-chart-reveal></circle>
               </svg>
               <div class="absolute flex flex-col items-center">
                 <span class="text-3xl font-semibold">{{ rear.wear_percent }}</span>
@@ -146,7 +149,10 @@
               </div>
             </div>
           {% else %}
-            <div class="empty-state mt-4">Cadastre um pneu traseiro ativo para ver o painel.</div>
+            <div class="empty-state-rich mt-4">
+              <span class="empty-state-icon"><i data-lucide="circle-dot" aria-hidden="true"></i></span>
+              <div><p class="font-semibold text-on-surface">Sem pneu traseiro ativo</p><p>Cadastre o pneu para estimar troca e evitar surpresa na rodagem.</p></div>
+            </div>
           {% endif %}
         </article>
       </div>
@@ -209,7 +215,10 @@
             {% endfor %}
           </div>
         {% else %}
-          <div class="empty-state mt-4">Sem registros de calibragem ainda.</div>
+          <div class="empty-state-rich mt-4">
+            <span class="empty-state-icon"><i data-lucide="gauge" aria-hidden="true"></i></span>
+            <div><p class="font-semibold text-on-surface">Sem calibragem registrada</p><p>Registre a pressão para comparar rotina e recomendação.</p></div>
+          </div>
         {% endif %}
       </aside>
     </div>
@@ -222,7 +231,7 @@
         <p class="section-heading-copy">Filtre quando precisar auditar pneus por moto.</p>
       </div>
     </div>
-    <form method="get" aria-label="Filtros de pneus" class="filter-strip">
+    <form method="get" aria-label="Filtros de pneus" class="filter-strip" data-filter-form data-skeleton-target="#tires-history">
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         <select class="ui-select" name="motorcycle" aria-label="Filtrar por moto">
           <option value="">Todas as motos</option>
@@ -235,7 +244,7 @@
     </form>
   </section>
 
-  <section id="tires-history" class="workflow-section" aria-labelledby="tires-history-title">
+  <section id="tires-history" class="workflow-section" aria-labelledby="tires-history-title" data-animate-once>
     <div class="section-heading">
       <div>
         <h3 id="tires-history-title" class="section-heading-title">Histórico de pneus</h3>
@@ -296,7 +305,14 @@
         </table>
       </div>
     {% else %}
-      <div class="empty-state">Nenhum pneu registrado ainda.</div>
+      <div class="empty-state-rich">
+        <span class="empty-state-icon"><i data-lucide="circle-dot" aria-hidden="true"></i></span>
+        <div>
+          <p class="font-semibold text-on-surface">Nenhum pneu registrado</p>
+          <p>Comece pelo pneu ativo para desbloquear desgaste, previsão e histórico.</p>
+        </div>
+        <a class="ui-btn-primary" href="{% url 'tires:create' %}">Registrar pneu</a>
+      </div>
     {% endif %}
 
     {% if page_obj and page_obj.paginator.num_pages > 1 %}

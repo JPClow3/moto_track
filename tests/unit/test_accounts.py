@@ -1,12 +1,22 @@
-from allauth.account.models import EmailAddress
+from smtplib import SMTPDataError
+from unittest.mock import patch
+
+from allauth.account.adapter import DefaultAccountAdapter
+from allauth.account.internal.flows.login import perform_login
+from allauth.account.models import EmailAddress, Login
+from allauth.core import context
 from allauth.socialaccount.adapter import get_adapter as get_socialaccount_adapter
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialLogin, SocialToken
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.messages.middleware import MessageMiddleware
+from django.contrib.sessions.middleware import SessionMiddleware
 from django.core import mail
-from django.test import Client, TestCase, override_settings
+from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
+from apps.accounts.adapters import MotoAccountAdapter
 from apps.core.models import PushSubscription
 
 
@@ -17,6 +27,13 @@ class AccountsSmokeTests(TestCase):
         self.user = User.objects.create_user(
             username="accounts-user", email="accounts@example.com", password=self.password
         )
+
+    def _request_with_session_and_messages(self, path="/accounts/google/login/callback/"):
+        request = RequestFactory().get(path)
+        request.user = AnonymousUser()
+        SessionMiddleware(lambda req: None).process_request(request)
+        MessageMiddleware(lambda req: None).process_request(request)
+        return request
 
     def test_login_page_loads(self):
         response = self.client.get(reverse("login"))
@@ -80,6 +97,21 @@ class AccountsSmokeTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("verified-flow@example.com", mail.outbox[0].to)
 
+    def test_confirmation_email_delivery_error_does_not_abort_flow(self):
+        class EmailConfirmation:
+            email_address = type("EmailAddressStub", (), {"email": "smtp-failure@example.com"})()
+
+        adapter = MotoAccountAdapter()
+        with patch.object(
+            DefaultAccountAdapter,
+            "send_confirmation_mail",
+            side_effect=SMTPDataError(554, b"delivery failed"),
+        ) as send_confirmation_mail:
+            result = adapter.send_confirmation_mail(None, EmailConfirmation(), signup=True)
+
+        self.assertIsNone(result)
+        send_confirmation_mail.assert_called_once()
+
     @override_settings(ACCOUNT_EMAIL_VERIFICATION="mandatory")
     def test_unverified_user_cannot_enter_private_app_routes(self):
         User = get_user_model()
@@ -122,6 +154,38 @@ class AccountsSmokeTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], reverse("account_login"))
+
+    @override_settings(ACCOUNT_EMAIL_VERIFICATION="mandatory")
+    def test_google_signup_email_delivery_failure_does_not_abort_login_flow(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="smtp-google-user",
+            email="smtp-google@example.com",
+            password="pass12345",
+        )
+        EmailAddress.objects.create(
+            user=user,
+            email="smtp-google@example.com",
+            primary=True,
+            verified=False,
+        )
+        request = self._request_with_session_and_messages()
+        login = Login(user=user, signup=True)
+        ses_rejection = SMTPDataError(
+            554,
+            b"Email address is not verified. The following identities failed the check: no-reply@motoapp.local",
+        )
+
+        with (
+            patch("apps.accounts.adapters.MotoAccountAdapter.send_mail", side_effect=ses_rejection),
+            self.assertLogs("apps.accounts.adapters", level="WARNING") as logs,
+        ):
+            with context.request_context(request):
+                response = perform_login(request, login)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("account_email_verification_sent"))
+        self.assertIn("Email verification delivery failed", logs.output[0])
 
     def test_google_login_can_match_existing_verified_email(self):
         User = get_user_model()

@@ -7,7 +7,7 @@ Use this file for agent-specific repo workflows. Keep broader product and fronte
 - Windows Django checks:
   - `./.venv/Scripts/python.exe manage.py check`
   - `./.venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
-  - `./.venv/Scripts/python.exe manage.py test`
+  - `pytest tests/unit tests/integration tests/system tests/regression tests/performance tests/security -q` with `DJANGO_SETTINGS_MODULE=config.settings.test` and `TEST_DATABASE_URL` pointing at PostgreSQL
 - Frontend build:
   - `npm run build:css`
 
@@ -19,6 +19,7 @@ Use this file for agent-specific repo workflows. Keep broader product and fronte
 - CI-equivalent test scope:
   - `pytest tests/unit tests/integration tests/system tests/regression tests/performance tests/security --cov=apps --cov-report=xml --cov-report=term -q`
   - In CI this runs after `python manage.py migrate --noinput` with `DJANGO_SETTINGS_MODULE=config.settings.test`.
+  - Test settings intentionally require PostgreSQL via `TEST_DATABASE_URL` or `DATABASE_URL`; SQLite is not supported for automated tests.
 - Docker test profile:
   - `docker compose --profile test up --build --abort-on-container-exit --exit-code-from test`
 - Docker HTTPS edge profile:

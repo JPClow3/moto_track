@@ -41,13 +41,14 @@
         <a class="ui-btn-secondary mt-6 w-full justify-center" href="{% url 'account_signup' %}">Começar grátis</a>
       </article>
 
-      <article class="pricing-card pricing-card-featured" x-data="{ interval: 'monthly' }">
+      <article class="pricing-card pricing-card-featured" x-data="{ interval: 'monthly' }" data-animate-once>
         <div class="min-h-32">
           <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <p class="text-sm font-semibold text-primary">Pro</p>
-            <div class="grid w-full grid-cols-2 rounded-md border border-outline-variant/40 bg-surface-lowest p-1 text-sm font-semibold sm:w-56" role="tablist" aria-label="Periodicidade">
-              <button type="button" class="rounded px-3 py-2 transition" :class="interval === 'monthly' ? 'bg-primary text-on-primary' : 'text-on-surface-variant'" @click="interval = 'monthly'">Mensal</button>
-              <button type="button" class="rounded px-3 py-2 transition" :class="interval === 'yearly' ? 'bg-primary text-on-primary' : 'text-on-surface-variant'" @click="interval = 'yearly'">Anual</button>
+            <div class="segmented-control w-full grid-cols-2 sm:w-56" role="tablist" aria-label="Periodicidade">
+              <span class="segmented-thumb" aria-hidden="true" data-position="start" :data-position="interval === 'yearly' ? 'end' : 'start'"></span>
+              <button type="button" role="tab" class="relative z-10 rounded px-3 py-2 transition" aria-selected="true" :aria-selected="interval === 'monthly'" tabindex="0" :tabindex="interval === 'monthly' ? 0 : -1" @click="interval = 'monthly'">Mensal</button>
+              <button type="button" role="tab" class="relative z-10 rounded px-3 py-2 transition" aria-selected="false" :aria-selected="interval === 'yearly'" tabindex="-1" :tabindex="interval === 'yearly' ? 0 : -1" @click="interval = 'yearly'">Anual</button>
             </div>
           </div>
           <p class="mt-4 text-4xl font-semibold tracking-normal text-on-surface" x-show="interval === 'monthly'">R$ {{ monthly_price }}<span class="text-base font-medium text-on-surface-variant">/mês</span></p>

@@ -1,5 +1,7 @@
 from datetime import UTC, date, timedelta
 from decimal import Decimal
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase, override_settings
@@ -69,12 +71,14 @@ class CoreViewsTests(TestCase):
 
     def test_dashboard_renders_for_authenticated_user(self):
         self.client.force_login(self.user)
-        response = self.client.get(reverse("dashboard"))
+        with override_settings(APP_BUILD_ID="dashboard-build"):
+            response = self.client.get(reverse("dashboard"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.motorcycle.name)
         self.assertContains(response, "consumo")
         self.assertContains(response, 'role="img"')
+        self.assertContains(response, f'{reverse("service_worker")}?v=dashboard-build')
         self.assertContains(response, 'id="spendingChartSummary"')
         self.assertContains(response, 'data-theme="system"')
         self.assertContains(response, "data-theme-toggle")
@@ -124,8 +128,8 @@ class CoreViewsTests(TestCase):
         self.assertEqual(submission.result_pk, self.motorcycle.pk)
 
     def test_record_client_submission_updates_existing_token_idempotently(self):
-        from apps.core.client_submissions import record_client_submission
         from apps.core.models import ClientSubmission
+        from apps.core.services.idempotency import record_client_submission
 
         request = RequestFactory().post("/", {"client_submission_id": "repeat-token"})
         request.user = self.user
@@ -505,17 +509,25 @@ class CoreMiscViewTests(TestCase):
 
     def test_service_worker(self):
         response = self.client.get(reverse("service_worker"))
+        body = b"".join(response.streaming_content).decode()
+
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/javascript")
-        self.assertContains(response, "OFFLINE_QUEUE_SYNC")
-        self.assertContains(response, "/static/js/offline-queue.js")
-        self.assertContains(response, "/manifest.webmanifest")
-        self.assertContains(response, "android-chrome-192x192.png")
-        self.assertContains(response, "QUEUEABLE_PATHS.includes")
-        self.assertContains(response, "fuel:quick_create")
-        self.assertContains(response, "offlineQueuedFragmentResponse")
-        self.assertContains(response, 'if (req.mode === "navigate")')
-        self.assertContains(response, "cache.match(OFFLINE_URL)")
+        self.assertIn("OFFLINE_QUEUE_SYNC", body)
+        self.assertIn("/static/js/offline-queue.js", body)
+        self.assertIn("/manifest.webmanifest", body)
+        self.assertIn("android-chrome-192x192.png", body)
+        self.assertIn("QUEUEABLE_PATHS.includes", body)
+        self.assertIn("fuel:quick_create", body)
+        self.assertIn("offlineQueuedFragmentResponse", body)
+        self.assertIn('if (req.mode === "navigate")', body)
+        self.assertIn("cache.match(OFFLINE_URL)", body)
+
+    def test_service_worker_returns_404_when_asset_is_missing(self):
+        with TemporaryDirectory() as tmpdir, override_settings(PUBLIC_ROOT=Path(tmpdir)):
+            response = self.client.get(reverse("service_worker"))
+
+        self.assertEqual(response.status_code, 404)
 
     def test_pwa_status_requires_login(self):
         response = self.client.get(reverse("pwa_status"))

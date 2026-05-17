@@ -7,9 +7,9 @@ from django.db import OperationalError, ProgrammingError
 
 from apps.accounts.models import UserPreference
 from apps.accounts.verification import user_needs_email_verification
-from apps.core.active_motorcycle import get_active_motorcycle
 from apps.core.models import SiteSettings
 from apps.core.undo import SESSION_KEY as UNDO_SESSION_KEY
+from apps.garage.active_motorcycle import get_active_motorcycle
 from apps.garage.models import Motorcycle
 
 logger = logging.getLogger(__name__)
@@ -18,15 +18,14 @@ logger = logging.getLogger(__name__)
 def site_settings_context(request):
     try:
         # get_cached() already caches the "no row yet" outcome, so calling
-        # load() afterwards would issue a second pointless DB query (it has
-        # the same .filter(pk=1).first() inside). When there is no row,
-        # return an unsaved default so templates keep their `|default` filters
-        # but we don't pay a query per request.
+        # load() afterwards would issue a second pointless DB query. When
+        # there is no row, fall back to an unsaved default so templates keep
+        # their `|default` filters working without paying a query per request.
         settings_obj = SiteSettings.get_cached() or SiteSettings(pk=1)
-        return {"site_settings": settings_obj}
+        return {"site_settings": settings_obj, "app_build_id": getattr(settings, "APP_BUILD_ID", "dev")}
     except (OperationalError, ProgrammingError):
         logger.warning("SiteSettings table not available (migrations pending).")
-        return {"site_settings": None}
+        return {"site_settings": None, "app_build_id": getattr(settings, "APP_BUILD_ID", "dev")}
 
 
 def garage_context(request):
