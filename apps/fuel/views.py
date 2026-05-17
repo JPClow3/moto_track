@@ -194,7 +194,7 @@ def fuel_import_preview_view(request):
 
     motorcycles = Motorcycle.objects.filter(owner=request.user, is_active=True).order_by("name")
     preview_rows = []
-    import_token = ""
+    import_token = ""  # nosec B105 - CSV idempotency token (random string set below), not a password
     selected_motorcycle = None
     if request.method == "POST":
         try:

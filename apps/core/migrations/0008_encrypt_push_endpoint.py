@@ -26,8 +26,9 @@ _BATCH_SIZE = 1000
 
 def populate_endpoint_hash_and_encrypt(apps, schema_editor):
     import base64
+    import binascii
 
-    from cryptography.fernet import Fernet
+    from cryptography.fernet import Fernet, InvalidToken
     from django.conf import settings
     from django.utils.encoding import force_bytes, force_str
 
@@ -48,11 +49,13 @@ def populate_endpoint_hash_and_encrypt(apps, schema_editor):
             continue
         # If we're being re-run on already-encrypted data (Fernet tokens start
         # with the magic "gAAAA"), skip the encryption step but still ensure
-        # the hash column is populated.
+        # the hash column is populated. Narrow the except to the known Fernet
+        # failure modes — anything else should still propagate so the
+        # migration aborts loudly rather than silently swallowing real bugs.
         if plaintext.startswith("gAAAA"):
             try:
                 plaintext = force_str(fernet.decrypt(force_bytes(plaintext)))
-            except Exception:
+            except (InvalidToken, binascii.Error, ValueError):
                 continue
         else:
             sub.endpoint = force_str(fernet.encrypt(force_bytes(plaintext)))
