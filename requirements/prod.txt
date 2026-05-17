@@ -1,1 +1,5 @@
 -r base.txt
+
+# I-L9: prod-only packages live here. Currently we don't need extra packages
+# beyond base, but the file is kept so prod-only deps (e.g. gunicorn-gevent
+# workers, datadog tracer, sentry extras) have a single, obvious home.

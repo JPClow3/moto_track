@@ -51,13 +51,34 @@ services:
 
   web-prod:
     <<: *web_common
+    # I-C1: migrate via a one-shot side-car (see `migrate` service) so a slow
+    # migration doesn't block the boot of every replica. The CMD here only
+    # ensures admin + boots gunicorn.
+    # I-H2: workers/threads come from env so capacity tuning doesn't require a
+    # compose rebuild.
     command: >
       sh -c "
-        python manage.py migrate --noinput &&
         python manage.py ensure_admin &&
-        gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 4 --timeout 60 --forwarded-allow-ips='*'
+        gunicorn config.wsgi:application
+          --bind 0.0.0.0:8000
+          --workers ${GUNICORN_WORKERS:-3}
+          --threads ${GUNICORN_THREADS:-4}
+          --timeout ${GUNICORN_TIMEOUT:-60}
+          --forwarded-allow-ips='*'
+          --access-logfile -
+          --error-logfile -
       "
     profiles: ["prod"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: ${WEB_MEMORY_LIMIT:-1g}
     volumes:
       # MEDIA: with `STORAGES["default"]` = S3 in prod, uploads go to S3; this mount is optional
       # (e.g. local exports or if you override storage). Safe to remove on Lightsail when using S3 only.
@@ -69,6 +90,18 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
+
+  # I-C1: dedicated migration step. Run with: `docker compose --profile prod run --rm migrate`
+  migrate:
+    <<: *web_common
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    profiles: ["prod", "migrate"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+    restart: "no"
 
   test:
     <<: *web_common
@@ -97,8 +130,16 @@ services:
     profiles: ["edge"]
     depends_on:
       web-prod:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
+    # I-M1: Caddy can be UP while still reloading its config; healthcheck so
+    # orchestrators don't route traffic prematurely.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     ports:
       - "80:80"
       - "443:443"

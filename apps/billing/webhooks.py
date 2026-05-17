@@ -96,10 +96,15 @@ def _user_from_payload(obj) -> Any | None:
 
 
 def _profile_for(obj) -> SubscriptionProfile | None:
+    # B-M2: take a row-level lock on the SubscriptionProfile so that two
+    # webhook events arriving for the same subscription cannot race each
+    # other into inconsistent state (e.g. one writes `grace_until`, the other
+    # writes `canceled`, last writer wins). All callers run inside the outer
+    # `@transaction.atomic` wrapping `process_stripe_event`.
     raw_sub_id = _get(obj, "id") if str(_get(obj, "object", "")).lower() == "subscription" else _get(obj, "subscription")
     sub_id = _stripe_id(raw_sub_id)
     customer_id = _stripe_id(_get(obj, "customer"))
-    query = SubscriptionProfile.objects.all()
+    query = SubscriptionProfile.objects.select_for_update()
     if sub_id:
         profile = query.filter(stripe_subscription_id=sub_id).first()
         if profile:
@@ -110,7 +115,7 @@ def _profile_for(obj) -> SubscriptionProfile | None:
             return profile
     user = _user_from_payload(obj)
     if user:
-        profile, _ = SubscriptionProfile.objects.get_or_create(user=user)
+        profile, _ = SubscriptionProfile.objects.select_for_update().get_or_create(user=user)
         return profile
     return None
 

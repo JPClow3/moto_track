@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import time
+
 from django.contrib.auth.hashers import check_password
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
 
@@ -11,6 +14,24 @@ from apps.fuel.models import FuelRecord
 from apps.maintenance.models import MaintenanceRecord
 from apps.reminders.models import Reminder
 from apps.tires.models import TireRecord
+
+# B-M12: token-bucket-ish rate limiting per API token. 60 requests / minute is
+# generous enough for normal integrations but cheap enough that a runaway
+# script cannot hammer the DB. Implemented in cache so we don't pay a DB write
+# per request; tolerates the cache resetting (worst case: a window of bursts).
+_RATE_LIMIT_PER_MINUTE = 60
+_RATE_WINDOW_SECONDS = 60
+
+
+def _rate_limited(token: ApiToken) -> bool:
+    window = int(time.time() // _RATE_WINDOW_SECONDS)
+    key = f"api:rate:{token.pk}:{window}"
+    try:
+        count = cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, _RATE_WINDOW_SECONDS)
+        count = 1
+    return count > _RATE_LIMIT_PER_MINUTE
 
 
 def _token_from_request(request):
@@ -32,6 +53,13 @@ def _require_token(request, scope: str):
         return None, JsonResponse({"detail": "Token ausente ou inválido."}, status=401)
     if not token.has_scope(scope):
         return None, JsonResponse({"detail": "Token sem permissão para este recurso."}, status=403)
+    if _rate_limited(token):
+        response = JsonResponse(
+            {"detail": f"Limite de {_RATE_LIMIT_PER_MINUTE} requisições por minuto excedido."},
+            status=429,
+        )
+        response["Retry-After"] = str(_RATE_WINDOW_SECONDS)
+        return None, response
     return token, None
 
 

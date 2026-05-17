@@ -1,14 +1,20 @@
 [tool.ruff]
+# I-M4: Dockerfile runs python:3.12 in prod; keep lint targets in sync so we
+# don't accept syntax/typing features that won't run.
 line-length = 120
-target-version = "py310"
+target-version = "py312"
 
 [tool.ruff.lint]
+# I-M7: black + ruff are aligned on line-length=120, but we still ignore E501
+# because the codebase has long template-context dicts and the autoformatter
+# wraps them in ways that hurt readability. Revisit once an autoformatter
+# sweep happens.
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["E501"]
 
 [tool.black]
 line-length = 120
-target-version = ["py310"]
+target-version = ["py312"]
 
 [tool.djlint]
 profile = "django"

@@ -39,6 +39,47 @@ if SENTRY_DSN:
         val = env(var, default=default).strip()
         return float(val) if val else float(default)
 
+    # B-C2: Scrub PII before sending to Sentry. We disable send_default_pii so the
+    # SDK does not automatically attach emails/IPs, then strip a handful of known
+    # PII keys from request bodies in case they slip in via custom payloads.
+    _PII_KEYS = {
+        "email",
+        "password",
+        "password1",
+        "password2",
+        "token",
+        "api_key",
+        "secret",
+        "phone",
+        "cpf",
+        "cnpj",
+        "stripe_signature",
+        "authorization",
+        "cookie",
+        "session",
+    }
+
+    def _scrub(value):  # pragma: no cover - small recursive helper
+        if isinstance(value, dict):
+            return {k: ("[Filtered]" if k.lower() in _PII_KEYS else _scrub(v)) for k, v in value.items()}
+        if isinstance(value, list):
+            return [_scrub(v) for v in value]
+        return value
+
+    def _before_send(event, _hint):  # pragma: no cover - exercised in prod
+        request = event.get("request") or {}
+        for key in ("data", "query_string", "cookies", "headers", "env"):
+            if key in request:
+                request[key] = _scrub(request[key])
+        if request:
+            event["request"] = request
+        user = event.get("user") or {}
+        for key in ("email", "ip_address", "username"):
+            user.pop(key, None)
+        if user:
+            event["user"] = user
+        return event
+
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[
@@ -47,7 +88,8 @@ if SENTRY_DSN:
         ],
         release=env("APP_BUILD_ID", default="dev"),
         environment=env("SENTRY_ENVIRONMENT", default="production" if not DEBUG else "development"),
-        send_default_pii=True,
+        send_default_pii=False,
+        before_send=_before_send,
         enable_logs=True,
         traces_sample_rate=_safe_float("SENTRY_TRACES_SAMPLE_RATE", "0.1"),
         profile_session_sample_rate=_safe_float("SENTRY_PROFILES_SAMPLE_RATE", "0.05"),
@@ -169,7 +211,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "account_login"
-SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=60 * 60 * 24 * 30)
+# B-M1: 30-day sessions are too long-lived for an app that handles billing data.
+# Reduced to 7 days; override via env if needed.
+SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=60 * 60 * 24 * 7)
+SESSION_SAVE_EVERY_REQUEST = True  # slide the expiry on each request
 
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@motoapp.local")
@@ -210,12 +255,25 @@ ACCOUNT_DEFAULT_HTTP_PROTOCOL = env(
     default="http" if DEBUG else "https",
 )
 ACCOUNT_LOGOUT_ON_GET = False
+# B-H5 / B-M9: rate-limit every abusable auth surface, not just login.
 ACCOUNT_RATE_LIMITS = {
     "login_failed": "5/m",
+    "signup": "3/h/ip",
+    "confirm_email": "10/h/key",
+    "reset_password": "5/h/ip",
+    "reset_password_email": "3/h/email",
+    "reset_password_from_key": "5/h/ip",
+    "change_password": "5/m/user",
+    "manage_email": "10/h/user",
 }
 ACCOUNT_ADAPTER = "apps.accounts.adapters.MotoAccountAdapter"
 SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.MotoSocialAccountAdapter"
 SOCIALACCOUNT_LOGIN_ON_GET = True
+# B-M16: require verified email even for OAuth sign-ups. Allauth otherwise
+# trusts the provider's "email_verified" claim unconditionally.
+SOCIALACCOUNT_EMAIL_VERIFICATION = ACCOUNT_EMAIL_VERIFICATION
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_AUTO_SIGNUP = True
 ALLAUTH_UI_THEME = "light"
 
 
@@ -345,6 +403,40 @@ STRIPE_PRO_YEARLY_PRICE_ID = env("STRIPE_PRO_YEARLY_PRICE_ID", default="")
 STRIPE_PAYMENT_METHOD_TYPES = env.list("STRIPE_PAYMENT_METHOD_TYPES", default=["pix", "card"])
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# I-H3: structured logging. Every record gets the active request_id (or "-"
+# when outside a request) so we can correlate logs to the X-Request-ID header
+# returned in the response.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "request_id": {"()": "config.middleware.RequestIDFilter"},
+    },
+    "formatters": {
+        "structured": {
+            "format": "%(asctime)s %(levelname)s [%(request_id)s] %(name)s - %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["request_id"],
+            "formatter": "structured",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": env("DJANGO_LOG_LEVEL", default="INFO"),
+    },
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        "apps": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        # B-L7: nplusone middleware uses this logger when N+1s fire in dev.
+        "nplusone": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+    },
+}
 
 # Production security headers (HTTPS, HSTS, secure cookies) live in `config.settings.prod`.
 # Do not gate them on `DEBUG` here: the test runner forces `DEBUG=False`, which would

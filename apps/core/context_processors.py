@@ -17,9 +17,12 @@ logger = logging.getLogger(__name__)
 
 def site_settings_context(request):
     try:
-        settings_obj = SiteSettings.get_cached()
-        if settings_obj is None:
-            settings_obj = SiteSettings.load()
+        # get_cached() already caches the "no row yet" outcome, so calling
+        # load() afterwards would issue a second pointless DB query (it has
+        # the same .filter(pk=1).first() inside). When there is no row,
+        # return an unsaved default so templates keep their `|default` filters
+        # but we don't pay a query per request.
+        settings_obj = SiteSettings.get_cached() or SiteSettings(pk=1)
         return {"site_settings": settings_obj}
     except (OperationalError, ProgrammingError):
         logger.warning("SiteSettings table not available (migrations pending).")

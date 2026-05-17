@@ -293,7 +293,6 @@ def maintenance_part_create_view(request):
         form = MaintenancePartForm()
     configure_form_accessibility(form)
 
-    from .models import MaintenancePart
     total_parts = MaintenancePart.objects.filter(owner=request.user).count()
 
     return render(
@@ -314,7 +313,6 @@ def maintenance_part_update_view(request, pk: int):
         form = MaintenancePartForm(instance=part)
     configure_form_accessibility(form)
 
-    from .models import MaintenancePart
     total_parts = MaintenancePart.objects.filter(owner=request.user).count()
 
     return render(

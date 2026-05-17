@@ -1,0 +1,31 @@
+{# U-H12: reusable empty-state primitive. Usage:
+
+  <c-empty-state
+    icon="bell-off"
+    title="Sem lembretes ainda"
+    description="Quando você criar lembretes, eles aparecem aqui."
+    cta_url="{% url 'reminders:create' %}"
+    cta_label="Criar lembrete"
+  />
+
+  Or pass arbitrary action markup via slot:
+
+  <c-empty-state icon="inbox" title="Caixa vazia" description="Nada por aqui.">
+    <a class="ui-btn-primary" href="/something">Ação custom</a>
+  </c-empty-state>
+#}
+<div class="empty-state flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-outline-variant/60 bg-surface-low/60 px-6 py-10 text-center"
+     role="status"
+     aria-live="polite">
+  {% if icon %}
+    <span class="inline-grid h-12 w-12 place-items-center rounded-full bg-surface-high/60 text-on-surface-variant" aria-hidden="true">
+      <i data-lucide="{{ icon }}" class="h-6 w-6"></i>
+    </span>
+  {% endif %}
+  {% if title %}<h3 class="text-base font-semibold text-on-surface">{{ title }}</h3>{% endif %}
+  {% if description %}<p class="max-w-md text-sm text-on-surface-variant">{{ description }}</p>{% endif %}
+  {% if cta_url and cta_label %}
+    <a class="ui-btn-primary mt-1" href="{{ cta_url }}">{{ cta_label }}</a>
+  {% endif %}
+  {{ slot }}
+</div>

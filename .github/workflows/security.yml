@@ -19,10 +19,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # I-H4: scan all severity levels, not just HIGH; upload artifact for review.
       - run: |
           pip install bandit
           bandit -r apps -f json -o bandit-report.json || true
-          bandit -r apps -ll
+          bandit -r apps
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
 
   pip-audit:
     runs-on: ubuntu-latest

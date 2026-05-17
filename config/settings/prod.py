@@ -27,7 +27,10 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 
 CSRF_COOKIE_SECURE = USE_HTTPS
-CSRF_COOKIE_HTTPONLY = False
+# I-H6: CSRF cookie does not need to be readable from JS — Django reads the
+# token from the form/meta tag (or the X-CSRFToken header sent by HTMX, which
+# we wire up in base.html), so HttpOnly is safe and prevents XSS exfiltration.
+CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -91,10 +94,16 @@ _fallback_hosts = ["127.0.0.1", "localhost"]
 ALLOWED_HOSTS = list(dict.fromkeys(_env_hosts + _railway_hosts + _fallback_hosts))
 
 # Align CSRF trusted origins with allowed hosts to avoid production POST failures.
-CSRF_TRUSTED_ORIGINS = list(
-    dict.fromkeys(
-        [f"https://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
-        + [f"http://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
-        + ["http://127.0.0.1", "http://localhost"]
+# B-L1: when DJANGO_CSRF_TRUSTED_ORIGINS is set we use it verbatim so prod
+# operators can override the derived list. Localhost fallbacks are only added
+# when no explicit override is provided.
+_explicit_csrf = _parse_hosts(os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", ""))
+if _explicit_csrf:
+    CSRF_TRUSTED_ORIGINS = _explicit_csrf
+else:
+    CSRF_TRUSTED_ORIGINS = list(
+        dict.fromkeys(
+            [f"https://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
+            + [f"http://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
+        )
     )
-)

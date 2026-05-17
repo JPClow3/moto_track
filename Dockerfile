@@ -1,36 +1,90 @@
-FROM python:3.12-slim
+# syntax=docker/dockerfile:1.7
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-# Runtime default; override at deploy time if needed.
-ENV DJANGO_SETTINGS_MODULE=config.settings.prod
+# I-L3: multi-stage build keeps the runtime image lean. Build stage carries
+# pip wheels / build deps / Tailwind binary; runtime stage only ships the
+# installed site-packages, the app code, and the generated static files.
+# I-H1: Tailwind binary version is bumped via build-arg so caching keys are stable.
+
+ARG PYTHON_VERSION=3.12-slim
+ARG TAILWIND_VERSION=3.4.19
+
+
+########################
+# 1. Builder
+########################
+FROM python:${PYTHON_VERSION} AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps into an isolated prefix we can copy into the runtime image.
 COPY requirements/ /tmp/requirements/
 ARG REQUIREMENTS_FILE=prod.txt
-RUN pip install --no-cache-dir -r /tmp/requirements/${REQUIREMENTS_FILE}
+RUN pip install --prefix=/install --no-cache-dir -r /tmp/requirements/${REQUIREMENTS_FILE}
 
+# Copy app source and build Tailwind + collect static files.
 COPY . /app
 
-# Build Tailwind CSS using the standalone binary (no Node.js required).
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-  && curl -fsSL -o /tmp/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.19/tailwindcss-linux-x64 \
+ARG TAILWIND_VERSION
+RUN curl -fsSL -o /tmp/tailwindcss \
+      https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64 \
   && chmod +x /tmp/tailwindcss \
-  && /tmp/tailwindcss -i /app/static/css/input.css -o /app/static/css/tailwind.generated.css --config /app/tailwind.config.js --minify \
-  && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+  && /tmp/tailwindcss \
+       -i /app/static/css/input.css \
+       -o /app/static/css/tailwind.generated.css \
+       --config /app/tailwind.config.js \
+       --minify
 
-# collectstatic uses `config.settings.build` (placeholder secrets + S3 bucket name only for import).
+# Use the installed deps for collectstatic so we don't need pip in the next stage.
+ENV PATH=/install/bin:$PATH PYTHONPATH=/install/lib/python3.12/site-packages
 RUN DJANGO_SETTINGS_MODULE=config.settings.build python manage.py collectstatic --noinput
+
+
+########################
+# 2. Runtime
+########################
+FROM python:${PYTHON_VERSION} AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=config.settings.prod \
+    PATH=/install/bin:$PATH \
+    PYTHONPATH=/install/lib/python3.12/site-packages
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl libpq5 \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy installed Python deps and the built application.
+COPY --from=builder /install /install
+COPY --from=builder /app /app
+
+# I-C1 / I-H7: run as a dedicated non-root user. UID overridable via build arg.
+ARG APP_UID=1000
+RUN addgroup --gid ${APP_UID} app \
+  && adduser --disabled-password --gecos "" --uid ${APP_UID} --gid ${APP_UID} app \
+  && chown -R ${APP_UID}:${APP_UID} /app
+USER ${APP_UID}:${APP_UID}
 
 EXPOSE 8000
 
-RUN addgroup --gid 1000 app \
-  && adduser --disabled-password --gecos "" --uid 1000 --gid 1000 app \
-  && chown -R 1000:1000 /app
+# I-L10: container healthcheck so orchestrators (compose, k8s, ECS) can route
+# traffic only to ready instances. /healthz is exposed by the Django app.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:${PORT:-8000}/healthz/ || exit 1
 
-USER 1000:1000
-
-# At runtime, `config.settings.prod` requires DJANGO_SECRET_KEY, DATABASE_URL, AWS_STORAGE_BUCKET_NAME,
-# and typically DJANGO_ALLOWED_HOSTS (see `.env.example` and `docs/deploy/lightsail-s3.md`).
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
+# I-C1: migrations are now a release-phase concern, not part of the steady
+# CMD. Operators run `python manage.py migrate` from a one-shot job (compose
+# `web-migrate` profile, k8s init container, or a CI deploy step). The default
+# CMD only boots gunicorn so the container becomes Ready predictably.
+# I-H2: GUNICORN_WORKERS / GUNICORN_THREADS are env-driven for capacity tuning.
+CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-3} --threads ${GUNICORN_THREADS:-2} --access-logfile - --error-logfile -"]

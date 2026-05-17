@@ -64,17 +64,46 @@
   display: flex !important;
 }
 
-/* Button dimming during HTMX request */
+/* U-H3: bump opacity above the WCAG threshold; underlying button colours stay
+   high-contrast against the surface even when busy. */
 .htmx-request.ui-btn-primary,
 .htmx-request.ui-btn-secondary,
 .htmx-request.ui-icon-btn,
 .htmx-request.ui-toolbar-btn,
 .htmx-request .ui-btn-primary,
 .htmx-request .ui-btn-secondary {
-  opacity: 0.55;
+  opacity: 0.72;
   pointer-events: none;
   cursor: wait;
   transition: opacity 0.15s ease;
+}
+
+/* U-M10: make disabled controls feel disabled (no hover/active, clear cursor). */
+button:disabled,
+.ui-btn-primary:disabled,
+.ui-btn-secondary:disabled,
+.ui-icon-btn:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* U-H11: hint that wide tables scroll horizontally — soft inset shadow on
+   small viewports. Apply to any wrapper with .table-scroll. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 768px) {
+  .table-scroll {
+    box-shadow: inset -24px 0 12px -12px rgba(0, 0, 0, 0.15);
+  }
+  [data-theme="dark"] .table-scroll {
+    box-shadow: inset -24px 0 12px -12px rgba(0, 0, 0, 0.45);
+  }
 }
 
 [x-cloak] {

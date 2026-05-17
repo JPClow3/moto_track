@@ -13,6 +13,12 @@ from apps.reminders.models import Reminder
 
 from .models import SubscriptionProfile
 
+# B-H9: request-scoped cache for has_pro_access. Dashboard / templates can call
+# this 3-5 times per render; without caching that's a query per call. The cache
+# is keyed by user pk and lives on the user instance, so it never crosses
+# request boundaries.
+_PRO_ACCESS_ATTR = "_motoapp_pro_access_cache"
+
 FREE_ACTIVE_MOTORCYCLE_LIMIT = 1
 FREE_UPLOAD_LIMIT = 3
 FREE_REMINDER_LIMIT = 3
@@ -36,8 +42,29 @@ def ensure_subscription_profile(user) -> SubscriptionProfile:
 
 
 def has_pro_access(user) -> bool:
+    cached = getattr(user, _PRO_ACCESS_ATTR, None)
+    if cached is True:
+        return True
     profile = get_subscription_profile(user)
-    return bool(profile and profile.has_pro_access())
+    value = bool(profile and profile.has_pro_access())
+    # Only cache positive results to avoid sticking a freshly-upgraded user on
+    # the "no profile" path within the same request (e.g. checkout success
+    # immediately renders the dashboard). False is cheap to re-derive.
+    if value:
+        try:
+            setattr(user, _PRO_ACCESS_ATTR, True)
+        except (AttributeError, TypeError):
+            pass
+    return value
+
+
+def invalidate_pro_access_cache(user) -> None:
+    """Drop the request-scoped Pro-access cache (call after billing mutations)."""
+    try:
+        if hasattr(user, _PRO_ACCESS_ATTR):
+            delattr(user, _PRO_ACCESS_ATTR)
+    except (AttributeError, TypeError):
+        pass
 
 
 def plan_label(user) -> str:
