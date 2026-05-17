@@ -17,6 +17,14 @@ USE_HTTPS = os.getenv("DJANGO_USE_HTTPS", "true").strip().lower() in {
 }
 
 SECURE_SSL_REDIRECT = USE_HTTPS
+# Exempt /healthz/ from the HTTPS redirect (Codex P2). Container HEALTHCHECK
+# and intra-VPC LB probes hit the app over plain HTTP — if we redirect them,
+# `curl --fail` happily treats the 301 as success and never reaches the actual
+# DB probe in `healthz()`, so the container can be marked healthy with a dead
+# database. The path is a no-secret read-only liveness endpoint, safe to serve
+# over HTTP for probes; real user traffic still arrives via Caddy/the edge
+# which terminates TLS upstream.
+SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
 
 SECURE_HSTS_SECONDS = 31536000 if USE_HTTPS else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = USE_HTTPS

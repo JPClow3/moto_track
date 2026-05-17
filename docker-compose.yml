@@ -153,14 +153,20 @@ services:
       DJANGO_DEBUG: "0"
 
   # I-C1: dedicated migration step. Run with: `docker compose --profile prod run --rm migrate`
+  # DATABASE_URL mirrors the web-prod fallback expression: when the deployment
+  # supplies an external DATABASE_URL (managed Postgres, Railway, RDS, etc.)
+  # the migrate sidecar must target that same database, not the bundled `db`
+  # service. Otherwise we'd migrate the wrong schema and the app would boot
+  # against an unmigrated database. (Codex P1.)
   migrate:
     <<: *web_common
     command: ["python", "manage.py", "migrate", "--noinput"]
     profiles: ["prod", "migrate"]
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}}
       DJANGO_SETTINGS_MODULE: config.settings.prod
     restart: "no"
 

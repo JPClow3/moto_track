@@ -92,7 +92,10 @@ USER ${APP_UID}:${APP_UID}
 EXPOSE 8000
 
 # I-L10: container healthcheck so orchestrators (compose, k8s, ECS) can route
-# traffic only to ready instances. /healthz is exposed by the Django app.
+# traffic only to ready instances. /healthz/ is exposed by the Django app and
+# is listed in SECURE_REDIRECT_EXEMPT so this plain-HTTP probe reaches the
+# view instead of being short-circuited by SECURE_SSL_REDIRECT's 301 (which
+# `curl --fail` would otherwise treat as success — Codex P2).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD curl -fsS http://127.0.0.1:${PORT:-8000}/healthz/ || exit 1
 
