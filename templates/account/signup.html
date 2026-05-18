@@ -65,9 +65,35 @@
 
     <div class="auth-consent-panel">
       <label class="auth-checkbox-row items-start gap-3 leading-relaxed" for="{{ form.accept_terms.id_for_label }}">
-        {{ form.accept_terms|add_class:"mt-1 rounded border-outline-variant/40 text-primary focus:ring-primary/20" }}
-        <span>{{ form.accept_terms.label|safe }}</span>
+        {{ form.accept_terms|add_class:"mt-1 h-5 w-5 rounded border-outline-variant/40 text-primary focus:ring-primary/20" }}
+        <span class="text-sm text-on-surface">{{ form.accept_terms.label }}</span>
       </label>
+      <ul class="mt-3 grid gap-2 sm:grid-cols-3" role="list" aria-label="{% trans 'Políticas e termos' %}">
+        <li>
+          <a class="flex min-h-11 items-center gap-2 rounded-md border border-outline-variant/40 bg-surface px-3 py-2 text-sm font-semibold text-on-surface hover:border-primary/40 hover:text-primary"
+             href="/politica/" target="_blank" rel="noopener">
+            <i data-lucide="shield-check" class="h-4 w-4 text-on-surface-variant" aria-hidden="true"></i>
+            <span>Privacidade</span>
+            <i data-lucide="external-link" class="ml-auto h-3.5 w-3.5 text-on-surface-variant" aria-hidden="true"></i>
+          </a>
+        </li>
+        <li>
+          <a class="flex min-h-11 items-center gap-2 rounded-md border border-outline-variant/40 bg-surface px-3 py-2 text-sm font-semibold text-on-surface hover:border-primary/40 hover:text-primary"
+             href="/termos/" target="_blank" rel="noopener">
+            <i data-lucide="file-text" class="h-4 w-4 text-on-surface-variant" aria-hidden="true"></i>
+            <span>Termos</span>
+            <i data-lucide="external-link" class="ml-auto h-3.5 w-3.5 text-on-surface-variant" aria-hidden="true"></i>
+          </a>
+        </li>
+        <li>
+          <a class="flex min-h-11 items-center gap-2 rounded-md border border-outline-variant/40 bg-surface px-3 py-2 text-sm font-semibold text-on-surface hover:border-primary/40 hover:text-primary"
+             href="/cancelamento/" target="_blank" rel="noopener">
+            <i data-lucide="circle-x" class="h-4 w-4 text-on-surface-variant" aria-hidden="true"></i>
+            <span>Cancelamento</span>
+            <i data-lucide="external-link" class="ml-auto h-3.5 w-3.5 text-on-surface-variant" aria-hidden="true"></i>
+          </a>
+        </li>
+      </ul>
       {% if form.accept_terms.errors %}
         <div class="auth-alert mt-3" role="alert">
           {% for error in form.accept_terms.errors %}<p>{{ error }}</p>{% endfor %}
@@ -79,7 +105,7 @@
       <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
     {% endif %}
 
-    <button type="submit" class="ui-btn-primary w-full !min-h-[52px] !text-sm !font-semibold">
+    <button type="submit" class="ui-btn-primary ui-btn-md w-full">
       <span class="inline-flex items-center justify-center gap-2">
         <span>{% trans "Criar conta" %}</span>
         <i data-lucide="arrow-right" aria-hidden="true"></i>

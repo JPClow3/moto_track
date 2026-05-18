@@ -79,7 +79,19 @@ def dashboard_view(request):
 
     motorcycle = get_active_motorcycle(request)
     if not motorcycle:
-        return redirect("onboarding")
+        # First-run state: instead of silently redirecting we render a
+        # dedicated empty dashboard with a single primary CTA pointing at
+        # onboarding (or the garage if the user only has archived bikes).
+        # The previous `redirect("onboarding")` made bookmarked /dashboard/
+        # URLs feel broken because the navigation happened with no message.
+        from apps.garage.models import Motorcycle
+
+        has_archived = Motorcycle.objects.filter(owner=request.user, is_active=False).exists()
+        return render(
+            request,
+            "core/dashboard_empty.html",
+            {"has_archived": has_archived},
+        )
 
     current_odometer_km = motorcycle.current_odometer_km
     monthly = get_monthly_sparkline(motorcycle)

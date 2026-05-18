@@ -252,7 +252,7 @@
       </div>
     </div>
     {% if records %}
-      <div class="overflow-x-auto">
+      <div class="table-scroll">
         <table class="responsive-table min-w-[900px]" aria-label="Registros de pneus">
           <thead>
             <tr>
@@ -295,8 +295,8 @@
                 </td>
                 <td data-label="Ações">
                   <div class="flex items-center justify-end gap-2">
-                    <a class="ui-icon-btn !h-9 !w-9" href="{% url 'tires:update' record.pk %}" aria-label="Editar pneu {{ record.brand_model }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                    <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'tires:delete' record.pk %}" aria-label="Excluir pneu {{ record.brand_model }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'tires:update' record.pk %}" aria-label="Editar pneu {{ record.brand_model }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn ui-icon-btn-sm !text-error" href="{% url 'tires:delete' record.pk %}" aria-label="Excluir pneu {{ record.brand_model }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
                   </div>
                 </td>
               </tr>

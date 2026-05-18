@@ -17,7 +17,7 @@
 
   <section aria-label="Motos cadastradas">
     {% if motorcycles %}
-      <div class="overflow-x-auto">
+      <div class="table-scroll">
         <table class="responsive-table min-w-[900px]" aria-label="Motos cadastradas">
           <thead>
             <tr>
@@ -47,10 +47,10 @@
                 <td data-label="Odômetro">{{ motorcycle.current_odometer_km }} km</td>
                 <td data-label="Ações">
                   <div class="flex items-center justify-end gap-2" role="group" aria-label="Ações da moto {{ motorcycle.name }}">
-                    <a class="ui-icon-btn !h-9 !w-9" href="{% url 'reports:sale_report_html' motorcycle.pk %}" aria-label="Relatório de venda {{ motorcycle.name }}" title="Gerar relatório de venda"><i data-lucide="file-text" aria-hidden="true"></i></a>
-                    <a class="ui-icon-btn !h-9 !w-9" href="{% url 'garage:update' motorcycle.pk %}" aria-label="Editar moto {{ motorcycle.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                    <a class="ui-icon-btn !h-9 !w-9" href="{% url 'garage:spec_update' motorcycle.pk %}" aria-label="Editar especificações {{ motorcycle.name }}"><i data-lucide="settings" aria-hidden="true"></i></a>
-                    <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'garage:delete' motorcycle.pk %}" aria-label="Excluir moto {{ motorcycle.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'reports:sale_report_html' motorcycle.pk %}" aria-label="Relatório de venda {{ motorcycle.name }}" title="Gerar relatório de venda"><i data-lucide="file-text" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'garage:update' motorcycle.pk %}" aria-label="Editar moto {{ motorcycle.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'garage:spec_update' motorcycle.pk %}" aria-label="Editar especificações {{ motorcycle.name }}"><i data-lucide="settings" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn ui-icon-btn-sm !text-error" href="{% url 'garage:delete' motorcycle.pk %}" aria-label="Excluir moto {{ motorcycle.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
                   </div>
                 </td>
               </tr>
@@ -59,7 +59,12 @@
         </table>
       </div>
     {% else %}
-      <div class="empty-state">Você ainda não cadastrou nenhuma moto.</div>
+      <c-empty-state
+        icon="bike"
+        title="Nenhuma moto cadastrada"
+        description="Adicione sua primeira moto para ver consumo, manutenções e alertas no painel."
+        cta_url="{% url 'onboarding' %}"
+        cta_label="Cadastrar minha moto" />
     {% endif %}
   </section>
 

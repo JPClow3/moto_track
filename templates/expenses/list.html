@@ -39,8 +39,8 @@
                 {% if fee.paid_date %}
                   <span class="severity-badge severity-success">Pago</span>
                 {% endif %}
-                <a class="ui-icon-btn !h-9 !w-9" href="{% url 'expenses:fee_update' fee.pk %}" aria-label="Editar taxa"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'expenses:fee_delete' fee.pk %}" aria-label="Excluir taxa"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'expenses:fee_update' fee.pk %}" aria-label="Editar taxa"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn ui-icon-btn-sm !text-error" href="{% url 'expenses:fee_delete' fee.pk %}" aria-label="Excluir taxa"><i data-lucide="trash-2" aria-hidden="true"></i></a>
               </div>
             </div>
           {% endfor %}
@@ -90,8 +90,8 @@
                 <p class="text-xs text-on-surface-variant">{{ policy.coverage_start }} até {{ policy.coverage_end }} - {{ policy.premium|brl }} - {{ policy.motorcycle.name }}</p>
               </div>
               <div class="flex items-center gap-2 shrink-0" role="group" aria-label="Ações do seguro {{ policy.provider }}">
-                <a class="ui-icon-btn !h-9 !w-9" href="{% url 'expenses:policy_update' policy.pk %}" aria-label="Editar seguro"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'expenses:policy_delete' policy.pk %}" aria-label="Excluir seguro"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'expenses:policy_update' policy.pk %}" aria-label="Editar seguro"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn ui-icon-btn-sm !text-error" href="{% url 'expenses:policy_delete' policy.pk %}" aria-label="Excluir seguro"><i data-lucide="trash-2" aria-hidden="true"></i></a>
               </div>
             </div>
           {% endfor %}

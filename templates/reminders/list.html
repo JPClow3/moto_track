@@ -141,15 +141,20 @@
                 </div>
 
                 <div class="flex items-center gap-2" role="group" aria-label="Ações do lembrete {{ reminder.title }}">
-                  <a class="ui-icon-btn !h-9 !w-9" href="{% url 'reminders:update' reminder.pk %}" aria-label="Editar lembrete {{ reminder.title }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                  <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'reminders:delete' reminder.pk %}" aria-label="Excluir lembrete {{ reminder.title }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+                  <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'reminders:update' reminder.pk %}" aria-label="Editar lembrete {{ reminder.title }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                  <a class="ui-icon-btn ui-icon-btn-sm !text-error" href="{% url 'reminders:delete' reminder.pk %}" aria-label="Excluir lembrete {{ reminder.title }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
                 </div>
               </div>
             {% endwith %}
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty-state">Nenhum lembrete ativo.</div>
+        <c-empty-state
+          icon="bell-ring"
+          title="Nenhum lembrete ativo"
+          description="Crie um lembrete por km, data ou intervalo para receber alertas antes do vencimento."
+          cta_url="{% url 'reminders:create' %}"
+          cta_label="Criar lembrete" />
       {% endif %}
     </div>
 
@@ -167,8 +172,8 @@
                 <p class="text-xs text-on-surface-variant">{{ reminder.get_trigger_type_display }}</p>
               </div>
               <div class="flex items-center gap-2 shrink-0" role="group" aria-label="Ações do lembrete {{ reminder.title }}">
-                <a class="ui-icon-btn !h-9 !w-9" href="{% url 'reminders:update' reminder.pk %}" aria-label="Editar lembrete {{ reminder.title }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'reminders:delete' reminder.pk %}" aria-label="Excluir lembrete {{ reminder.title }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'reminders:update' reminder.pk %}" aria-label="Editar lembrete {{ reminder.title }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn ui-icon-btn-sm !text-error" href="{% url 'reminders:delete' reminder.pk %}" aria-label="Excluir lembrete {{ reminder.title }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
               </div>
             </div>
           {% endfor %}

@@ -25,8 +25,8 @@
               <p class="text-xs text-on-surface-variant">{% if part.manufacturer %}{{ part.manufacturer }} • {% endif %}{{ part.get_part_type_display }}{% if part.sku %} • {{ part.sku }}{% endif %}</p>
             </div>
             <div class="flex items-center gap-2" role="group" aria-label="Ações da peça {{ part.name }}">
-              <a class="ui-icon-btn !h-9 !w-9" href="{% url 'maintenance:part_update' part.pk %}" aria-label="Editar peça {{ part.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
-              <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'maintenance:part_delete' part.pk %}" aria-label="Excluir peça {{ part.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+              <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'maintenance:part_update' part.pk %}" aria-label="Editar peça {{ part.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+              <a class="ui-icon-btn ui-icon-btn-sm !text-error" href="{% url 'maintenance:part_delete' part.pk %}" aria-label="Excluir peça {{ part.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
             </div>
           </li>
         {% endfor %}

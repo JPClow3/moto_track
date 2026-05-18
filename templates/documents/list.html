@@ -87,7 +87,7 @@
       </div>
     </div>
     {% if documents %}
-      <div class="overflow-x-auto">
+      <div class="table-scroll">
         <table class="responsive-table min-w-[760px]" aria-label="Documentos cadastrados">
           <thead>
             <tr>
@@ -129,14 +129,14 @@
                     {% if item.valid_until %}
                       <form method="post" action="{% url 'documents:create_reminder' item.pk %}">
                         {% csrf_token %}
-                        <button type="submit" class="ui-icon-btn !h-9 !w-9" aria-label="Criar lembrete de validade para {{ item.name }}"><i data-lucide="bell-plus" aria-hidden="true"></i></button>
+                        <button type="submit" class="ui-icon-btn ui-icon-btn-sm" aria-label="Criar lembrete de validade para {{ item.name }}"><i data-lucide="bell-plus" aria-hidden="true"></i></button>
                       </form>
                     {% endif %}
-                    <a class="ui-icon-btn !h-9 !w-9" href="{{ item.file.url }}" target="_blank" rel="noopener noreferrer" aria-label="Visualizar {{ item.name }}"><i data-lucide="eye" aria-hidden="true"></i></a>
-                    <a class="ui-icon-btn !h-9 !w-9" href="{{ item.file.url }}" target="_blank" rel="noopener noreferrer" download aria-label="Baixar {{ item.name }}"><i data-lucide="download" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn ui-icon-btn-sm" href="{{ item.file.url }}" target="_blank" rel="noopener noreferrer" aria-label="Visualizar {{ item.name }}"><i data-lucide="eye" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn ui-icon-btn-sm" href="{{ item.file.url }}" target="_blank" rel="noopener noreferrer" download aria-label="Baixar {{ item.name }}"><i data-lucide="download" aria-hidden="true"></i></a>
                     <form method="post" action="{% url 'documents:delete' item.pk %}">
                       {% csrf_token %}
-                      <button type="submit" class="ui-icon-btn !h-9 !w-9 !text-error" aria-label="Excluir {{ item.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                      <button type="submit" class="ui-icon-btn ui-icon-btn-sm !text-error" aria-label="Excluir {{ item.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                     </form>
                   </div>
                 </td>

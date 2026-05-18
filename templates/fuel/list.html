@@ -305,7 +305,7 @@
       </div>
 
       {# Desktop table #}
-      <div class="hidden md:block overflow-x-auto">
+      <div class="hidden md:block table-scroll">
         <table class="responsive-table min-w-[760px]" aria-label="Tabela de abastecimentos">
           <thead>
             <tr>
@@ -336,10 +336,10 @@
                 </td>
                 <td class="text-right">
                   <div class="flex items-center justify-end gap-2" x-data="{ open: false }">
-                    <a class="ui-icon-btn !h-9 !w-9" href="{% url 'fuel:update' record.pk %}" aria-label="Editar abastecimento">
+                    <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'fuel:update' record.pk %}" aria-label="Editar abastecimento">
                       <i data-lucide="pencil" aria-hidden="true"></i>
                     </a>
-                    <button type="button" class="ui-icon-btn !h-9 !w-9" @click="open = !open" :aria-expanded="open" aria-label="Mais ações">
+                    <button type="button" class="ui-icon-btn ui-icon-btn-sm" @click="open = !open" :aria-expanded="open" aria-label="Mais ações">
                       <i data-lucide="more-horizontal" aria-hidden="true"></i>
                     </button>
                     <div x-show="open" x-cloak @click.outside="open = false" class="absolute right-0 mt-1 w-48 rounded-md border border-outline-variant/40 bg-surface-lowest shadow-lg z-10 p-1 space-y-1">

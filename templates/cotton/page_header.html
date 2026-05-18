@@ -1,0 +1,26 @@
+{# Unified page header (#9). Replaces ad-hoc `page-hero` / `dashboard-hero`
+   / `public-section-heading` divergence. Usage:
+
+   <c-page-header
+     kicker="Combustível"
+     title="Abastecimentos"
+     subtitle="Histórico, consumo e custos por moto.">
+     <a class="ui-btn-primary" href="...">Novo abastecimento</a>
+   </c-page-header>
+
+   - `kicker` (optional): small uppercase eyebrow above the title.
+   - `title` (required): the H1.
+   - `subtitle` (optional): one-line description.
+   - Body slot: primary/secondary action buttons rendered in `page-actions`
+     to the right on desktop, stacked below on mobile.
+#}
+<header class="page-hero">
+  <div class="min-w-0">
+    {% if kicker %}<p class="page-kicker">{{ kicker }}</p>{% endif %}
+    <h1 class="page-title">{{ title }}</h1>
+    {% if subtitle %}<p class="page-copy">{{ subtitle }}</p>{% endif %}
+  </div>
+  {% if slot %}
+    <div class="page-actions">{{ slot }}</div>
+  {% endif %}
+</header>
