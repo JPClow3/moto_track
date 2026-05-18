@@ -115,3 +115,40 @@ else:
             + [f"http://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
         )
     )
+
+# --------------------------------------------------------------------------- #
+# Caching + sessions: Redis is already running for Celery; wire it up as the
+# Django cache and session store so we stop hitting Postgres for every session
+# read/write and so any `cache.get/set` in app code has a real backend.
+# REDIS_URL defaults match the docker-compose `redis` service. In managed-host
+# deployments (Upstash, ElastiCache, etc.) point REDIS_URL at the provider.
+# --------------------------------------------------------------------------- #
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+        "TIMEOUT": int(os.getenv("DJANGO_CACHE_TIMEOUT", "300")),
+        "KEY_PREFIX": "mototrack",
+    }
+}
+# Cached-DB sessions: writes go to Postgres (durability), reads served from
+# Redis (speed). Hot path: every request reads the session.
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+SESSION_CACHE_ALIAS = "default"
+
+# --------------------------------------------------------------------------- #
+# Outbound email. The shared base.py defaults to the console backend (good for
+# dev). In prod the operator MUST supply SMTP credentials — otherwise password
+# resets, email verification, and admin alerts would silently disappear into
+# stdout. We refuse to boot in that state.
+# --------------------------------------------------------------------------- #
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+if (
+    EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
+    and not os.getenv("EMAIL_HOST")
+):
+    raise ImproperlyConfigured(
+        "EMAIL_HOST must be configured in production (or set EMAIL_BACKEND to a "
+        "non-SMTP backend explicitly — e.g. anymail provider, console for staging)."
+    )
