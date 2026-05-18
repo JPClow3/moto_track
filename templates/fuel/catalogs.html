@@ -61,7 +61,7 @@
         </div>
         <span class="text-xs font-semibold text-on-surface-variant">3+ amostras</span>
       </div>
-      <div class="overflow-x-auto">
+      <div class="table-scroll">
         <table class="responsive-table min-w-[560px]" aria-label="Tabela de ranking por posto">
           <thead>
             <tr>
@@ -96,14 +96,19 @@
                 <p class="text-xs text-on-surface-variant">{% if station.brand %}{{ station.brand }}{% endif %}{% if station.city %}{% if station.brand %} • {% endif %}{{ station.city }}{% endif %}{% if station.state %} / {{ station.state }}{% endif %}</p>
               </div>
               <div class="flex items-center gap-2 shrink-0" role="group" aria-label="Ações do posto {{ station.name }}">
-                <a class="ui-icon-btn !h-9 !w-9" href="{% url 'fuel:station_update' station.pk %}" aria-label="Editar posto {{ station.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'fuel:station_delete' station.pk %}" aria-label="Excluir posto {{ station.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'fuel:station_update' station.pk %}" aria-label="Editar posto {{ station.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn ui-icon-btn-sm !text-error" href="{% url 'fuel:station_delete' station.pk %}" aria-label="Excluir posto {{ station.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
               </div>
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <div class="empty-state">Nenhum posto cadastrado.</div>
+        <c-empty-state
+          icon="fuel"
+          title="Nenhum posto cadastrado"
+          description="Cadastre seus postos favoritos para selecionar com um clique no formulário de abastecimento."
+          cta_url="{% url 'fuel:station_create' %}"
+          cta_label="Novo posto" />
       {% endif %}
     </div>
 
@@ -118,14 +123,19 @@
                 <p class="text-xs text-on-surface-variant">{{ grade.get_fuel_type_display }}{% if grade.octane_rating %} • {{ grade.octane_rating }} octanas{% endif %}</p>
               </div>
               <div class="flex items-center gap-2 shrink-0" role="group" aria-label="Ações do combustível {{ grade.name }}">
-                <a class="ui-icon-btn !h-9 !w-9" href="{% url 'fuel:grade_update' grade.pk %}" aria-label="Editar combustível {{ grade.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'fuel:grade_delete' grade.pk %}" aria-label="Excluir combustível {{ grade.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'fuel:grade_update' grade.pk %}" aria-label="Editar combustível {{ grade.name }}"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                <a class="ui-icon-btn ui-icon-btn-sm !text-error" href="{% url 'fuel:grade_delete' grade.pk %}" aria-label="Excluir combustível {{ grade.name }}"><i data-lucide="trash-2" aria-hidden="true"></i></a>
               </div>
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <div class="empty-state">Nenhum combustível cadastrado.</div>
+        <c-empty-state
+          icon="flame"
+          title="Nenhum combustível cadastrado"
+          description="Crie os tipos de combustível que você usa (gasolina comum, aditivada, etanol) para classificar abastecimentos."
+          cta_url="{% url 'fuel:grade_create' %}"
+          cta_label="Novo combustível" />
       {% endif %}
     </div>
   </section>

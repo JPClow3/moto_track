@@ -17,6 +17,11 @@ os.environ.setdefault("DJANGO_SECRET_KEY", "build-only-not-a-secret-" + ("x" * 6
 # Collectstatic does not need a real bucket; runtime containers must set the real bucket name.
 os.environ.setdefault("AWS_STORAGE_BUCKET_NAME", "build-placeholder-bucket")
 
+# `config.settings.prod` refuses to boot without SMTP credentials. During
+# collectstatic / `manage.py check --deploy` we have no outbound mail to send,
+# so neuter the validation by pointing at the no-op console backend.
+os.environ.setdefault("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+
 from .prod import *  # noqa: F403,F401 pylint: disable=wildcard-import,unused-wildcard-import
 
 # Keep SECRET_KEY explicit for clarity (and to ensure it is non-insecure and long enough).

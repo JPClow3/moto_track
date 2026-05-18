@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from django.http import HttpResponse
 from django.template import loader
 from django.views.decorators.csrf import requires_csrf_token
+
+# B-L6: log request context for every 4xx/5xx so support can correlate user
+# reports to server-side records.
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -38,6 +43,20 @@ def _status_family_message(status_code: int) -> ErrorMeta:
 
 def _render_error(request, status_code: int) -> HttpResponse:
     meta = _status_family_message(status_code)
+    user_id = getattr(getattr(request, "user", None), "id", None)
+    log = logger.error if status_code >= 500 else logger.warning
+    log(
+        "HTTP %s on %s",
+        status_code,
+        request.path,
+        extra={
+            "status_code": status_code,
+            "path": request.path,
+            "method": request.method,
+            "user_id": user_id,
+            "request_id": getattr(request, "request_id", ""),
+        },
+    )
     template = loader.get_template("errors/site_error.html")
     html = template.render(
         {

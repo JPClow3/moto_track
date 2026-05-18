@@ -31,6 +31,12 @@ class Reminder(TimeStampedModel):
         indexes = [
             models.Index(fields=["is_active"], name="reminder_active_idx"),
             models.Index(fields=["motorcycle", "is_active"], name="reminder_moto_active_idx"),
+            # B-H3: dashboard reminder lookups filter by motorcycle + is_active
+            # and order/filter by reference_date. Composite covers the hot path.
+            models.Index(
+                fields=["motorcycle", "is_active", "reference_date"],
+                name="reminder_moto_active_date_idx",
+            ),
         ]
 
     def __str__(self):

@@ -3,7 +3,9 @@ from __future__ import annotations
 import io
 from datetime import date
 from pathlib import Path
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import (
+    escape,  # nosec B406 - escape() is a pure string-escaper (HTML entities), not an XML parser; no untrusted XML is parsed in this module.
+)
 
 from django.http import HttpResponse
 from reportlab.lib import colors

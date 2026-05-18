@@ -1,5 +1,4 @@
-from datetime import date, timedelta
-from datetime import timezone as dt_timezone
+from datetime import UTC, date, timedelta
 from decimal import Decimal
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -261,8 +260,12 @@ class CoreViewsTests(TestCase):
         self.assertTrue(any(alert.source == "tires" for alert in alerts))
 
     def test_push_subscription_same_endpoint_stays_owner_scoped(self):
+        # B-M10: endpoint is encrypted at rest, look up by endpoint_hash instead.
+        from apps.core.models import _hash_endpoint
+
         other = get_user_model().objects.create_user(username="push-other", email="push-other@example.com")
         endpoint = "https://push.example/subscription/1"
+        endpoint_hash = _hash_endpoint(endpoint)
         PushSubscription.objects.create(owner=other, endpoint=endpoint, p256dh="old-key", auth="old-auth")
 
         self.client.force_login(self.user)
@@ -273,10 +276,10 @@ class CoreViewsTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(PushSubscription.objects.filter(endpoint=endpoint).count(), 2)
-        old_sub = PushSubscription.objects.get(owner=other, endpoint=endpoint)
+        self.assertEqual(PushSubscription.objects.filter(endpoint_hash=endpoint_hash).count(), 2)
+        old_sub = PushSubscription.objects.get(owner=other, endpoint_hash=endpoint_hash)
         self.assertEqual(old_sub.p256dh, "old-key")
-        new_sub = PushSubscription.objects.get(owner=self.user, endpoint=endpoint)
+        new_sub = PushSubscription.objects.get(owner=self.user, endpoint_hash=endpoint_hash)
         self.assertEqual(new_sub.p256dh, "new-key")
 
     def test_undo_token_consumption_purges_expired_session_entries(self):
@@ -311,7 +314,7 @@ class CoreViewsTests(TestCase):
         self.client.force_login(self.user)
         record = FuelRecord.objects.filter(motorcycle=self.motorcycle).first()
         self.assertIsNotNone(record)
-        expires_at = (timezone.now().astimezone(dt_timezone.utc) + timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
+        expires_at = (timezone.now().astimezone(UTC) + timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
         session = self.client.session
         session[UNDO_SESSION_KEY] = {
             "z-token": {

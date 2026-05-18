@@ -87,11 +87,16 @@ class OnboardingTests(TestCase):
             "current_odometer_km": "1000",
         }
 
-    def test_dashboard_redirects_to_onboarding_without_motorcycle(self):
+    def test_dashboard_renders_empty_state_without_motorcycle(self):
+        # Previously this was a silent 302 to onboarding; now we render a
+        # dedicated empty-state page (with a "Cadastrar minha moto" CTA
+        # pointing at onboarding) so bookmarked /dashboard/ URLs don't feel
+        # broken for first-run users.
         self.client.force_login(self.user)
         response = self.client.get(reverse("dashboard"))
-        self.assertEqual(response.status_code, 302)
-        self.assertIn(reverse("onboarding"), response["Location"])
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "core/dashboard_empty.html")
+        self.assertContains(response, reverse("onboarding"))
 
     def test_onboarding_redirects_to_garage_when_user_has_archived_motorcycle(self):
         Motorcycle.objects.create(

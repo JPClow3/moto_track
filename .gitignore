@@ -48,3 +48,12 @@ check_updates.py
 *_report.txt
 latest_versions.txt
 pip_outdated.txt
+
+# Dev-server output and coverage artifacts (I-C2)
+*.log
+runserver-*.out.log
+runserver-*.err.log
+coverage.xml
+.coverage
+.coverage.*
+htmlcov/

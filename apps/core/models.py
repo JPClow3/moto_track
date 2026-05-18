@@ -1,3 +1,5 @@
+import hashlib
+
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
@@ -5,6 +7,16 @@ from django.db import IntegrityError, models, transaction
 from django.utils.crypto import get_random_string
 
 from apps.core.fields import EncryptedCharField
+
+
+def _is_unique_violation(exc: IntegrityError) -> bool:
+    """Best-effort check that an IntegrityError is from a UNIQUE constraint.
+
+    Django doesn't expose a structured exception type for this; we check the
+    message across the SQLite/Postgres dialects we run on.
+    """
+    msg = str(exc).lower()
+    return "unique" in msg or "duplicate" in msg
 
 
 class TimeStampedModel(models.Model):
@@ -55,6 +67,15 @@ class ApiToken(TimeStampedModel):
     def __str__(self) -> str:
         return self.name
 
+    # B-C3: prevent _plaintext_key from leaking via debugger / Sentry / pickle.
+    def __repr__(self) -> str:  # pragma: no cover - debug aid
+        return f"<ApiToken pk={self.pk} name={self.name!r} prefix={self.key_prefix!r}>"
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop("_plaintext_key", None)
+        return state
+
     def has_scope(self, scope: str) -> bool:
         configured = {part.strip() for part in self.scopes.split() if part.strip()}
         return "*" in configured or scope in configured
@@ -79,6 +100,11 @@ class ApiToken(TimeStampedModel):
                         super().save(*args, **kwargs)
                     return
                 except IntegrityError as exc:
+                    # B-M5: only swallow IntegrityError when it actually looks
+                    # like the unique-constraint we are retrying for. Anything
+                    # else (FK violation, NOT NULL, etc.) is re-raised.
+                    if not _is_unique_violation(exc):
+                        raise
                     if attempt == 4:
                         raise RuntimeError("Failed to generate a unique API key after 5 attempts.") from exc
                     self.key_hash = ""
@@ -139,20 +165,39 @@ class SiteSettings(models.Model):
         return obj
 
 
+def _hash_endpoint(endpoint: str) -> str:
+    return hashlib.sha256(endpoint.encode("utf-8")).hexdigest() if endpoint else ""
+
+
 class PushSubscription(TimeStampedModel):
+    # B-M10: endpoint URL identifies a user's push channel and must not leak in
+    # plaintext. We encrypt the URL itself and keep a SHA-256 hash for lookups
+    # and the (owner, endpoint) uniqueness contract.
+    #
+    # Sizing note: Fernet ciphertext is base64url(IV + padded_plaintext + HMAC)
+    # which works out to ~1.33 * len(plaintext) + 80 bytes. For the previous
+    # 500-char limit the worst-case ciphertext is ~760 chars; 1000 gives
+    # headroom for browser push endpoints that approach the limit without
+    # risking column-overflow on insert.
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="push_subscriptions")
-    endpoint = models.URLField(max_length=500)
+    endpoint = EncryptedCharField(max_length=1000)
+    endpoint_hash = models.CharField(max_length=64, db_index=True, default="")
     p256dh = EncryptedCharField(max_length=500)
     auth = EncryptedCharField(max_length=500)
 
     class Meta:
         ordering = ["-created_at"]
         constraints = [
-            models.UniqueConstraint(fields=["owner", "endpoint"], name="core_push_owner_endpoint_uniq"),
+            models.UniqueConstraint(fields=["owner", "endpoint_hash"], name="core_push_owner_endpoint_hash_uniq"),
         ]
 
     def __str__(self) -> str:
         return f"Subscription for {self.owner} ({self.created_at.date()})"
+
+    def save(self, *args, **kwargs):
+        if self.endpoint:
+            self.endpoint_hash = _hash_endpoint(self.endpoint)
+        super().save(*args, **kwargs)
 
 
 class ClientSubmission(TimeStampedModel):

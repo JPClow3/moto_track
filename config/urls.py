@@ -1,8 +1,11 @@
+import logging
+
 from allauth.account import views as allauth_views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.http import Http404
+from django.db import connection
+from django.http import Http404, JsonResponse
 from django.urls import include, path
 from django.views.generic import RedirectView, TemplateView
 
@@ -10,6 +13,26 @@ from apps.billing.views import pricing_view
 
 from .error_views import status_preview_view
 from .sitemaps import ForumArticleSitemap, StaticViewSitemap, sitemap_view
+
+logger = logging.getLogger(__name__)
+
+
+def healthz(_request):
+    """Liveness + readiness probe (I-L10).
+
+    Returns 200 if the DB is reachable. Container HEALTHCHECK and load balancers
+    can poll this without authentication. The exception detail is logged
+    server-side but never returned in the response body (CodeQL: Information
+    exposure through an exception).
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except Exception:  # noqa: BLE001 - we want to convert anything to 503
+        logger.exception("healthz DB probe failed")
+        return JsonResponse({"status": "error"}, status=503)
+    return JsonResponse({"status": "ok"})
 
 sitemaps = {
     "static": StaticViewSitemap,
@@ -23,6 +46,7 @@ def debug_status_preview_view(request, status_code):
     return status_preview_view(request, status_code)
 
 urlpatterns = [
+    path("healthz/", healthz, name="healthz"),
     path("", include("apps.core.urls")),
     path("precos/", pricing_view, name="pricing"),
     path("billing/", include("apps.billing.urls")),

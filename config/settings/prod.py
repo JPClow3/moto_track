@@ -17,6 +17,14 @@ USE_HTTPS = os.getenv("DJANGO_USE_HTTPS", "true").strip().lower() in {
 }
 
 SECURE_SSL_REDIRECT = USE_HTTPS
+# Exempt /healthz/ from the HTTPS redirect (Codex P2). Container HEALTHCHECK
+# and intra-VPC LB probes hit the app over plain HTTP — if we redirect them,
+# `curl --fail` happily treats the 301 as success and never reaches the actual
+# DB probe in `healthz()`, so the container can be marked healthy with a dead
+# database. The path is a no-secret read-only liveness endpoint, safe to serve
+# over HTTP for probes; real user traffic still arrives via Caddy/the edge
+# which terminates TLS upstream.
+SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
 
 SECURE_HSTS_SECONDS = 31536000 if USE_HTTPS else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = USE_HTTPS
@@ -27,7 +35,10 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 
 CSRF_COOKIE_SECURE = USE_HTTPS
-CSRF_COOKIE_HTTPONLY = False
+# I-H6: CSRF cookie does not need to be readable from JS — Django reads the
+# token from the form/meta tag (or the X-CSRFToken header sent by HTMX, which
+# we wire up in base.html), so HttpOnly is safe and prevents XSS exfiltration.
+CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -91,10 +102,53 @@ _fallback_hosts = ["127.0.0.1", "localhost"]
 ALLOWED_HOSTS = list(dict.fromkeys(_env_hosts + _railway_hosts + _fallback_hosts))
 
 # Align CSRF trusted origins with allowed hosts to avoid production POST failures.
-CSRF_TRUSTED_ORIGINS = list(
-    dict.fromkeys(
-        [f"https://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
-        + [f"http://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
-        + ["http://127.0.0.1", "http://localhost"]
+# B-L1: when DJANGO_CSRF_TRUSTED_ORIGINS is set we use it verbatim so prod
+# operators can override the derived list. Localhost fallbacks are only added
+# when no explicit override is provided.
+_explicit_csrf = _parse_hosts(os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", ""))
+if _explicit_csrf:
+    CSRF_TRUSTED_ORIGINS = _explicit_csrf
+else:
+    CSRF_TRUSTED_ORIGINS = list(
+        dict.fromkeys(
+            [f"https://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
+            + [f"http://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}]
+        )
     )
-)
+
+# --------------------------------------------------------------------------- #
+# Caching + sessions: Redis is already running for Celery; wire it up as the
+# Django cache and session store so we stop hitting Postgres for every session
+# read/write and so any `cache.get/set` in app code has a real backend.
+# REDIS_URL defaults match the docker-compose `redis` service. In managed-host
+# deployments (Upstash, ElastiCache, etc.) point REDIS_URL at the provider.
+# --------------------------------------------------------------------------- #
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+        "TIMEOUT": int(os.getenv("DJANGO_CACHE_TIMEOUT", "300")),
+        "KEY_PREFIX": "mototrack",
+    }
+}
+# Cached-DB sessions: writes go to Postgres (durability), reads served from
+# Redis (speed). Hot path: every request reads the session.
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+SESSION_CACHE_ALIAS = "default"
+
+# --------------------------------------------------------------------------- #
+# Outbound email. The shared base.py defaults to the console backend (good for
+# dev). In prod the operator MUST supply SMTP credentials — otherwise password
+# resets, email verification, and admin alerts would silently disappear into
+# stdout. We refuse to boot in that state.
+# --------------------------------------------------------------------------- #
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+if (
+    EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
+    and not os.getenv("EMAIL_HOST")
+):
+    raise ImproperlyConfigured(
+        "EMAIL_HOST must be configured in production (or set EMAIL_BACKEND to a "
+        "non-SMTP backend explicitly — e.g. anymail provider, console for staging)."
+    )

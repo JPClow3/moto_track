@@ -16,6 +16,7 @@ from apps.billing.entitlements import has_pro_access
 from apps.core.exports import safe_next_url
 from apps.core.forms import OdometerOverrideForm
 from apps.core.models import PushSubscription
+from apps.core.models import _hash_endpoint as _hash_push_endpoint
 from apps.core.services.dashboard import (
     get_active_reminders,
     get_catalog_links,
@@ -78,7 +79,19 @@ def dashboard_view(request):
 
     motorcycle = get_active_motorcycle(request)
     if not motorcycle:
-        return redirect("onboarding")
+        # First-run state: instead of silently redirecting we render a
+        # dedicated empty dashboard with a single primary CTA pointing at
+        # onboarding (or the garage if the user only has archived bikes).
+        # The previous `redirect("onboarding")` made bookmarked /dashboard/
+        # URLs feel broken because the navigation happened with no message.
+        from apps.garage.models import Motorcycle
+
+        has_archived = Motorcycle.objects.filter(owner=request.user, is_active=False).exists()
+        return render(
+            request,
+            "core/dashboard_empty.html",
+            {"has_archived": has_archived},
+        )
 
     current_odometer_km = motorcycle.current_odometer_km
     monthly = get_monthly_sparkline(motorcycle)
@@ -313,13 +326,15 @@ def push_subscribe_view(request):
         if not endpoint or not p256dh or not auth:
             return JsonResponse({"error": "Invalid subscription data"}, status=400)
 
+        # B-M10: look up by endpoint_hash because endpoint is encrypted at rest.
         sub, created = PushSubscription.objects.update_or_create(
             owner=request.user,
-            endpoint=endpoint,
+            endpoint_hash=_hash_push_endpoint(endpoint),
             defaults={
+                "endpoint": endpoint,
                 "p256dh": p256dh,
-                "auth": auth
-            }
+                "auth": auth,
+            },
         )
         return JsonResponse({"status": "ok", "created": created})
     except json.JSONDecodeError:

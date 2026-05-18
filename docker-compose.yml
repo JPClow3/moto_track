@@ -1,11 +1,37 @@
 name: moto_track
 
+# Cap container stdout/stderr so the host disk can't be filled by a single
+# misbehaving service. 10 MB per file × 3 files = 30 MB ceiling per container.
+# Applied via YAML anchor on every service that produces logs.
+x-logging: &default_logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 x-db: &db_common
   image: postgres:16
   environment:
     POSTGRES_DB: ${POSTGRES_DB:-motoapp}
     POSTGRES_USER: ${POSTGRES_USER:-postgres}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set_POSTGRES_PASSWORD}
+  # Postgres tuning: the upstream image ships extremely conservative defaults
+  # (shared_buffers=128MB) so a 2-4 GB VPS leaves most of its RAM on the table.
+  # Override via env vars in your .env when you know the host size, e.g.:
+  #   POSTGRES_SHARED_BUFFERS=512MB
+  #   POSTGRES_EFFECTIVE_CACHE_SIZE=1536MB
+  #   POSTGRES_WORK_MEM=16MB
+  # Leaving the values blank means "keep the upstream defaults" — safe.
+  command:
+    - postgres
+    - -c
+    - shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}
+    - -c
+    - effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-512MB}
+    - -c
+    - work_mem=${POSTGRES_WORK_MEM:-4MB}
+    - -c
+    - max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
   healthcheck:
     test:
       [
@@ -17,6 +43,11 @@ x-db: &db_common
     retries: 20
     start_period: 10s
   restart: unless-stopped
+  logging: *default_logging
+  deploy:
+    resources:
+      limits:
+        memory: ${DB_MEMORY_LIMIT:-1g}
   volumes:
     - postgres_data:/var/lib/postgresql/data
 
@@ -33,6 +64,7 @@ x-web: &web_common
     redis:
       condition: service_started
   restart: unless-stopped
+  logging: *default_logging
   user: "1000:1000"
 
 services:
@@ -41,8 +73,28 @@ services:
 
   redis:
     image: redis:7-alpine
+    # Bound Redis memory so a runaway cache key can't OOM-kill the host.
+    # `allkeys-lru` makes Redis behave correctly as a cache when it fills up
+    # (drop the least-recently-used keys instead of refusing writes).
+    command:
+      - redis-server
+      - --maxmemory
+      - ${REDIS_MAX_MEMORY:-256mb}
+      - --maxmemory-policy
+      - allkeys-lru
     profiles: ["dev", "prod", "test"]
     restart: unless-stopped
+    logging: *default_logging
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_MEMORY_LIMIT:-384m}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   web:
     <<: *web_common
@@ -84,13 +136,46 @@ services:
 
   web-prod:
     <<: *web_common
+    # I-C1: migrate via a one-shot side-car (see `migrate` service) so a slow
+    # migration doesn't block the boot of every replica. The CMD here only
+    # ensures admin + boots gunicorn.
+    # I-H2: workers/threads come from env so capacity tuning doesn't require a
+    # compose rebuild.
     command: >
       sh -c "
-        python manage.py migrate --noinput &&
         python manage.py ensure_admin &&
-        gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 4 --timeout 60 --forwarded-allow-ips='*'
+        gunicorn config.wsgi:application
+          --bind 0.0.0.0:8000
+          --workers ${GUNICORN_WORKERS:-3}
+          --threads ${GUNICORN_THREADS:-4}
+          --timeout ${GUNICORN_TIMEOUT:-60}
+          --forwarded-allow-ips='*'
+          --access-logfile -
+          --error-logfile -
       "
     profiles: ["prod"]
+    # `service_completed_successfully` makes web-prod wait for the migrate
+    # sidecar to finish before booting. With this in place we can scale
+    # web-prod to N replicas — every replica still sees an already-migrated
+    # schema, instead of racing each other on `manage.py migrate` and
+    # deadlocking.
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: ${WEB_MEMORY_LIMIT:-1g}
     volumes:
       # MEDIA: with `STORAGES["default"]` = S3 in prod, uploads go to S3; this mount is optional
       # (e.g. local exports or if you override storage). Safe to remove on Lightsail when using S3 only.
@@ -109,6 +194,19 @@ services:
     <<: *web_common
     command: celery -A config worker --loglevel=INFO
     profiles: ["prod"]
+    # Workers also depend on migrations completing — a worker that wakes up
+    # against an unmigrated DB raises confusing OperationalErrors.
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: ${CELERY_WORKER_MEMORY_LIMIT:-768m}
     env_file:
       - path: .env
         required: false
@@ -122,6 +220,17 @@ services:
     <<: *web_common
     command: celery -A config beat --loglevel=INFO
     profiles: ["prod"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: ${CELERY_BEAT_MEMORY_LIMIT:-256m}
     env_file:
       - path: .env
         required: false
@@ -130,6 +239,24 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
+
+  # I-C1: dedicated migration step. Run with: `docker compose --profile prod run --rm migrate`
+  # DATABASE_URL mirrors the web-prod fallback expression: when the deployment
+  # supplies an external DATABASE_URL (managed Postgres, Railway, RDS, etc.)
+  # the migrate sidecar must target that same database, not the bundled `db`
+  # service. Otherwise we'd migrate the wrong schema and the app would boot
+  # against an unmigrated database. (Codex P1.)
+  migrate:
+    <<: *web_common
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    profiles: ["prod", "migrate"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}}
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+    restart: "no"
 
   test:
     <<: *web_common
@@ -159,8 +286,21 @@ services:
     profiles: ["edge"]
     depends_on:
       web-prod:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
+    logging: *default_logging
+    deploy:
+      resources:
+        limits:
+          memory: ${CADDY_MEMORY_LIMIT:-128m}
+    # I-M1: Caddy can be UP while still reloading its config; healthcheck so
+    # orchestrators don't route traffic prematurely.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     ports:
       - "80:80"
       - "443:443"

@@ -9,6 +9,7 @@ from apps.accounts.verification import user_needs_email_verification
 class EmailVerificationRequiredMiddleware:
     PUBLIC_EXACT_PATHS = {
         "/",
+        "/healthz/",  # I-L10: must always be reachable for container/LB probes
         "/precos/",
         "/politica/",
         "/termos/",

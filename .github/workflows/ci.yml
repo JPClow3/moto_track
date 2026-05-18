@@ -15,14 +15,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # I-C4 / I-H1: enable buildx + GHA cache so subsequent builds reuse layers
+      # instead of fetching Tailwind / pip wheels from scratch every time.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build production Docker image
-        run: |
-          docker build \
-            --pull \
-            --no-cache \
-            --build-arg REQUIREMENTS_FILE=prod.txt \
-            --tag moto-track-ci:${{ github.sha }} \
-            .
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: moto-track-ci:${{ github.sha }}
+          build-args: |
+            REQUIREMENTS_FILE=prod.txt
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   test:
     runs-on: ubuntu-latest
@@ -49,13 +56,15 @@ jobs:
         with:
           python-version: "3.12"
 
+      # I-L1: include the python version in the cache key so different runners
+      # (linux/macos/windows) and python upgrades don't share stale wheel caches.
       - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements/*.txt') }}
+          key: ${{ runner.os }}-py3.12-pip-${{ hashFiles('requirements/*.txt') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-py3.12-pip-
 
       - name: Install dependencies
         run: |
@@ -69,13 +78,23 @@ jobs:
           DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
         run: python manage.py migrate --noinput
 
+      - name: Run deploy check
+        env:
+          DATABASE_URL: postgres://moto:moto@localhost:5432/moto_test
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
+        # I-C3: catch missing required env / settings *before* we waste a build.
+        run: python manage.py check
+
       - name: Run tests
         env:
           DATABASE_URL: postgres://moto:moto@localhost:5432/moto_test
           DJANGO_SETTINGS_MODULE: config.settings.test
           DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
+        # I-H5: enforce branch coverage too, not just line coverage.
         run: |
-          pytest tests/unit tests/integration tests/system tests/regression tests/performance tests/security --cov=apps --cov-report=xml --cov-report=term -q
+          pytest tests/unit tests/integration tests/system tests/regression tests/performance tests/security \
+            --cov=apps --cov-branch --cov-report=xml --cov-report=term -q
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4

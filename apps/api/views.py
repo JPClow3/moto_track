@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import time
+
+from django.core.cache import cache
+from rest_framework import throttling
 from rest_framework.negotiation import BaseContentNegotiation
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
@@ -31,9 +35,42 @@ class JsonOnlyContentNegotiation(BaseContentNegotiation):
         return renderer, renderer.media_type
 
 
+class ApiTokenThrottle(throttling.BaseThrottle):
+    """Per-ApiToken rate limit, ~60 requests / minute (B-M12).
+
+    Keyed on the authenticating token's pk rather than the user, so multiple
+    tokens belonging to the same user have independent budgets. Uses a
+    fixed-window counter in cache — cheap enough not to need a per-request DB
+    write, with the well-known trade-off of allowing a small burst at the
+    window boundary. Acceptable for our threat model (runaway script
+    protection, not abuse prevention).
+    """
+
+    rate_limit_per_minute = 60
+    window_seconds = 60
+
+    def allow_request(self, request, view):
+        token = getattr(request, "auth", None)
+        if token is None or getattr(token, "pk", None) is None:
+            # No token => upstream auth will reject; don't double-deny here.
+            return True
+        window = int(time.time() // self.window_seconds)
+        cache_key = f"api:rate:{token.pk}:{window}"
+        try:
+            count = cache.incr(cache_key)
+        except ValueError:
+            cache.set(cache_key, 1, self.window_seconds)
+            count = 1
+        return count <= self.rate_limit_per_minute
+
+    def wait(self):
+        return self.window_seconds
+
+
 class ScopedApiView(APIView):
     authentication_classes = [ApiTokenAuthentication]
     permission_classes = [HasApiScope]
+    throttle_classes = [ApiTokenThrottle]
     renderer_classes = [JSONRenderer]
     content_negotiation_class = JsonOnlyContentNegotiation
     required_scope = ""

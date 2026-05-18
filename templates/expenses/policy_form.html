@@ -116,8 +116,8 @@
                     </p>
                   </div>
                   <div class="flex items-center gap-2 shrink-0" role="group" aria-label="Ações do sinistro">
-                    <a class="ui-icon-btn !h-9 !w-9" href="{% url 'expenses:claim_update' claim.pk %}" aria-label="Editar sinistro"><i data-lucide="pencil" aria-hidden="true"></i></a>
-                    <a class="ui-icon-btn !h-9 !w-9 !text-error" href="{% url 'expenses:claim_delete' claim.pk %}" aria-label="Excluir sinistro"><i data-lucide="trash-2" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn ui-icon-btn-sm" href="{% url 'expenses:claim_update' claim.pk %}" aria-label="Editar sinistro"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                    <a class="ui-icon-btn ui-icon-btn-sm !text-error" href="{% url 'expenses:claim_delete' claim.pk %}" aria-label="Excluir sinistro"><i data-lucide="trash-2" aria-hidden="true"></i></a>
                   </div>
                 </li>
               {% endfor %}
