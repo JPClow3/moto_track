@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django_ratelimit.decorators import ratelimit
 
 from .entitlements import (
     get_subscription_profile,
@@ -24,6 +28,12 @@ from .stripe_client import (
     create_portal_session,
 )
 from .webhooks import WebhookProcessingError, process_stripe_event
+
+logger = logging.getLogger(__name__)
+
+# Stripe webhook payloads are typically <50 KB. 1 MB is a generous safety cap
+# that rejects oversized abuse without ever clipping a real Stripe event.
+STRIPE_WEBHOOK_MAX_BODY_BYTES = 1_048_576
 
 
 def pricing_view(request):
@@ -63,7 +73,6 @@ def checkout_view(request):
     except BillingConfigurationError as exc:
         messages.error(request, str(exc))
         return redirect("pricing")
-    invalidate_pro_access_cache(request.user)
     return redirect(session.url)
 
 
@@ -75,7 +84,6 @@ def portal_view(request):
     except BillingConfigurationError as exc:
         messages.error(request, str(exc))
         return redirect("billing:account")
-    invalidate_pro_access_cache(request.user)
     return redirect(session.url)
 
 
@@ -95,6 +103,12 @@ def data_export_view(request):
                 "documents": motorcycle.documents.count(),
             }
         )
+    AccountDataRequest.objects.create(
+        user=request.user,
+        request_type=AccountDataRequest.RequestType.EXPORT,
+        status=AccountDataRequest.Status.DONE,
+        fulfilled_at=timezone.now(),
+    )
     response = JsonResponse(
         {
             "user": {"username": request.user.username, "email": request.user.email},
@@ -117,8 +131,11 @@ def data_deletion_request_view(request):
 
 @csrf_exempt
 @require_POST
+@ratelimit(key="ip", rate="120/m", block=True)
 def stripe_webhook_view(request):
     payload = request.body
+    if len(payload) > STRIPE_WEBHOOK_MAX_BODY_BYTES:
+        return HttpResponse("Payload too large.", status=413)
     signature = request.headers.get("Stripe-Signature", "")
     try:
         event = construct_webhook_event(payload, signature)
@@ -129,6 +146,16 @@ def stripe_webhook_view(request):
 
     try:
         process_stripe_event(event)
-    except WebhookProcessingError:
-        return HttpResponse("Invalid webhook payload.", status=400)
+    except WebhookProcessingError as exc:
+        # Return 5xx so Stripe retries with backoff. The event is still
+        # recorded on BillingEvent.processing_error for triage. Sentry
+        # capture surfaces the failure to oncall via the Django integration.
+        logger.exception("Stripe webhook processing failed", extra={"event_type": event.get("type")})
+        try:
+            import sentry_sdk
+
+            sentry_sdk.capture_exception(exc)
+        except ImportError:
+            pass
+        return HttpResponse("Webhook processing failed.", status=500)
     return HttpResponse(status=200)

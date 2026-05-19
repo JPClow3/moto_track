@@ -139,8 +139,8 @@ def _apply_subscription(subscription) -> None:
         return
     price_id, billing_interval = _subscription_price(subscription)
     status = _get(subscription, "status", "") or ""
-    profile.stripe_customer_id = _get(subscription, "customer", "") or profile.stripe_customer_id
-    profile.stripe_subscription_id = _get(subscription, "id", "") or profile.stripe_subscription_id
+    profile.stripe_customer_id = _stripe_id(_get(subscription, "customer")) or profile.stripe_customer_id
+    profile.stripe_subscription_id = _stripe_id(_get(subscription, "id")) or profile.stripe_subscription_id
     profile.stripe_subscription_status = _subscription_transition_status(status, profile)
     profile.stripe_price_id = price_id
     profile.billing_interval = billing_interval
@@ -168,8 +168,8 @@ def _apply_checkout_session(session) -> None:
     if not user:
         return
     profile, _ = SubscriptionProfile.objects.get_or_create(user=user)
-    profile.stripe_customer_id = _get(session, "customer", "") or profile.stripe_customer_id
-    profile.stripe_subscription_id = _get(session, "subscription", "") or profile.stripe_subscription_id
+    profile.stripe_customer_id = _stripe_id(_get(session, "customer")) or profile.stripe_customer_id
+    profile.stripe_subscription_id = _stripe_id(_get(session, "subscription")) or profile.stripe_subscription_id
     profile.save(update_fields=["stripe_customer_id", "stripe_subscription_id", "updated_at"])
     invalidate_pro_access_cache(user)
 
@@ -191,14 +191,62 @@ def _apply_invoice(invoice, *, paid: bool) -> None:
             profile.stripe_subscription_status = invoice_status
             profile.grace_until = None
         profile.save()
+        invalidate_pro_access_cache(profile.user)
     else:
         if profile.stripe_subscription_status in TERMINAL_STATUSES:
             # Already terminal - just save the invoice URLs captured above
             profile.save()
+            invalidate_pro_access_cache(profile.user)
             return
         profile.stripe_subscription_status = "past_due"
         profile.grace_until = timezone.now() + timedelta(days=3)
         profile.save()
+        invalidate_pro_access_cache(profile.user)
+
+
+def _apply_trial_will_end(subscription) -> None:
+    profile = _profile_for(subscription)
+    if not profile:
+        return
+    profile.trial_will_end_notified_at = timezone.now()
+    period_end = _timestamp(_get(subscription, "current_period_end"))
+    if period_end:
+        profile.current_period_end = period_end
+    profile.save(update_fields=["trial_will_end_notified_at", "current_period_end", "updated_at"])
+    invalidate_pro_access_cache(profile.user)
+
+
+def _apply_invoice_upcoming(invoice) -> None:
+    profile = _profile_for(invoice)
+    if not profile:
+        return
+    next_at = _timestamp(_get(invoice, "next_payment_attempt")) or _timestamp(_get(invoice, "period_end"))
+    amount_due = _get(invoice, "amount_due")
+    currency = _get(invoice, "currency", "") or ""
+    profile.next_invoice_at = next_at
+    if isinstance(amount_due, int) and amount_due >= 0:
+        profile.next_invoice_amount_cents = amount_due
+    profile.next_invoice_currency = str(currency).upper()
+    profile.save(update_fields=[
+        "next_invoice_at",
+        "next_invoice_amount_cents",
+        "next_invoice_currency",
+        "updated_at",
+    ])
+
+
+def _apply_customer_updated(customer) -> None:
+    customer_id = _stripe_id(_get(customer, "id"))
+    if not customer_id:
+        return
+    profile = SubscriptionProfile.objects.select_for_update().filter(stripe_customer_id=customer_id).first()
+    if not profile:
+        # No-op: customer not linked to a profile yet.
+        return
+    deleted = bool(_get(customer, "deleted", False))
+    if deleted:
+        profile.stripe_customer_id = ""
+        profile.save(update_fields=["stripe_customer_id", "updated_at"])
 
 
 @transaction.atomic
@@ -233,6 +281,12 @@ def process_stripe_event(event: dict[str, Any]) -> BillingEvent:
             _apply_invoice(obj, paid=True)
         elif event_type == "invoice.payment_failed":
             _apply_invoice(obj, paid=False)
+        elif event_type == "customer.subscription.trial_will_end":
+            _apply_trial_will_end(obj)
+        elif event_type == "invoice.upcoming":
+            _apply_invoice_upcoming(obj)
+        elif event_type == "customer.updated":
+            _apply_customer_updated(obj)
     except WebhookProcessingError as exc:
         billing_event.processing_error = str(exc)
         billing_event.save(update_fields=["processing_error", "updated_at"])

@@ -3,7 +3,7 @@ from django.db import OperationalError, ProgrammingError
 
 def billing_context(request):
     try:
-        from apps.billing.entitlements import has_pro_access, plan_label, remaining_upload_slots
+        from apps.billing.entitlements import has_pro_access, plan_label
     except (OperationalError, ProgrammingError):
         return {}
 
@@ -14,7 +14,6 @@ def billing_context(request):
         return {
             "billing_plan_label": plan_label(user),
             "billing_has_pro": has_pro_access(user),
-            "billing_remaining_upload_slots": remaining_upload_slots(user),
         }
     except (OperationalError, ProgrammingError):
         return {"billing_plan_label": "Free", "billing_has_pro": False}

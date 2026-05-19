@@ -417,6 +417,11 @@ STRIPE_PRO_MONTHLY_PRICE_ID = env("STRIPE_PRO_MONTHLY_PRICE_ID", default="")
 STRIPE_PRO_YEARLY_PRICE_ID = env("STRIPE_PRO_YEARLY_PRICE_ID", default="")
 STRIPE_PAYMENT_METHOD_TYPES = env.list("STRIPE_PAYMENT_METHOD_TYPES", default=["pix", "card"])
 
+# django-ratelimit uses Django's cache backend for counter storage. In test
+# (DummyCache) this effectively disables rate-limiting, which is the desired
+# behaviour for the test suite.
+RATELIMIT_USE_CACHE = "default"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # I-H3: structured logging. Every record gets the active request_id (or "-"

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
-
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -37,18 +35,16 @@ class SubscriptionProfile(TimeStampedModel):
     grace_until = models.DateTimeField(null=True, blank=True)
     latest_invoice_url = models.URLField(max_length=500, blank=True, default="")
     latest_receipt_url = models.URLField(max_length=500, blank=True, default="")
+    trial_will_end_notified_at = models.DateTimeField(null=True, blank=True)
+    next_invoice_at = models.DateTimeField(null=True, blank=True)
+    next_invoice_amount_cents = models.PositiveIntegerField(null=True, blank=True)
+    next_invoice_currency = models.CharField(max_length=8, blank=True, default="")
 
     class Meta:
         ordering = ["user__username"]
 
     def __str__(self) -> str:
         return f"{self.user} - {self.get_plan_display()}"
-
-    def mark_payment_failed(self) -> None:
-        self.grace_until = timezone.now() + timedelta(days=3)
-        if not self.stripe_subscription_status:
-            self.stripe_subscription_status = "past_due"
-        self.save(update_fields=["grace_until", "stripe_subscription_status", "updated_at"])
 
     def has_pro_access(self, *, now=None) -> bool:
         now = now or timezone.now()

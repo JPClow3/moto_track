@@ -76,10 +76,6 @@ def plan_label(user) -> str:
     return "Pro" if has_pro_access(user) else "Free"
 
 
-def is_free(user) -> bool:
-    return not has_pro_access(user)
-
-
 def can_add_active_motorcycle(user, *, instance: Motorcycle | None = None) -> bool:
     if has_pro_access(user):
         return True
@@ -142,12 +138,3 @@ def can_add_work_session(user, *, work_date: date | None = None, instance=None) 
     if instance and instance.pk:
         sessions = sessions.exclude(pk=instance.pk)
     return sessions.count() < FREE_WORK_SESSION_MONTHLY_LIMIT
-
-
-def pro_features() -> dict[str, str]:
-    return {
-        "exports": "Exportacoes CSV/PDF",
-        "sale_report": "Dossie publico de venda",
-        "advanced_reports": "Relatorios avancados",
-        "professional_dashboard": "Painel de lucro profissional",
-    }
