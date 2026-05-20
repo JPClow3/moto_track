@@ -485,7 +485,7 @@
     </div>
   </div>
 
-  <div id="toast-container" hx-get="{% url 'message_list' %}" hx-trigger="load, htmx:afterSwap from:body" hx-target="this" hx-swap="innerHTML" aria-live="polite"></div>
+  <div id="toast-container" hx-get="{% url 'message_list' %}" hx-trigger="load, htmx:afterSwap from:body [detail.target.id !== 'toast-container']" hx-target="this" hx-swap="innerHTML" aria-live="polite"></div>
 
   <div id="client-snackbar" class="snackbar hidden" role="status" aria-live="polite"></div>
 

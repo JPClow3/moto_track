@@ -54,40 +54,12 @@ Use Windows-friendly commands from the project root [moto_track](.).
 - After any model refactor, always generate and apply migrations before touching dependent views/admin.
 - Prefer explicit migration behavior when Django rename detection is ambiguous.
 
-## Frontend Stack (Strict — No Exceptions Without Approval)
+## Frontend Stack & Template Rules (Strict)
 
-This project's frontend stack is **locked to three technologies**. Any deviation must be explicitly justified and tagged with `AI-NOTE: justified-exception`.
+This project's frontend stack is strictly locked to three technologies (HTMX, Alpine.js, and Tailwind CSS). 
 
-| Technology | Purpose | CDN / Location |
-|-----------|---------|---------------|
-| **HTMX** | Server-rendered AJAX, partial page updates, form submissions | `https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js` |
-| **Alpine.js** | Reactive UI state: `x-data`, `x-show`, `x-init`, `@click`, transitions | `https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js` |
-| **Tailwind CSS** | All styling via utility classes | `static/css/tailwind.generated.css` (built from `static/css/input.css`) |
+For the complete tables of allowed/restricted/forbidden technologies, template development rules, the exception justification process, and the AI contributor checklist, refer directly to the authoritative guidelines in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-| Technology | Status |
-|-----------|--------|
-| **Chart.js** | Allowed **only** for dashboard charts, initialized via Alpine `x-init` |
-| **Lucide** | Allowed for icons |
-| **jQuery** | Forbidden — isolate and remove. Only tolerated for third-party deps (django-autocomplete-light) |
-| **Vanilla JS in templates** | Forbidden for UI state. Allowed only for: Service Workers, Push API, Web Crypto, HTMX event glue, Chart.js init |
-| **React / Vue / Svelte / Angular** | Forbidden — overkill for server-rendered Django |
-| **Bootstrap / Bulma / Foundation** | Forbidden — conflicts with Tailwind |
-| **Inline `<style>` blocks** | Forbidden — use Tailwind or `static/css/input.css` |
-| **Inline `style="..."` attributes** | Forbidden — use Tailwind classes; dynamic numeric values (percentages) are the only exception |
-| **`onclick=` / `onchange=` / `onload=`** | Forbidden — use Alpine `@click`, `@change`, `x-init` |
-| **`<script>` blocks in templates for UI state** | Forbidden — use Alpine `x-data` |
-
-### Template Rules
-1. All modals, menus, snackbars, toggles, tabs, wizards use Alpine.js `x-data` + `x-show`.
-2. All data fetching for partial updates uses HTMX `hx-get` / `hx-post`.
-3. On HTMX swaps that inject Alpine directives, call `Alpine.initTree(targetElement)` in `htmx:afterSwap`.
-4. Use `[x-cloak] { display: none !important; }` in `<head>` to prevent Alpine flicker.
-
-### Justification Tags
-If vanilla JS or a forbidden technology is genuinely required, tag the code:
-```html
-<!-- AI-NOTE: justified-exception — ServiceWorker registration requires imperative JS -->
-```
 
 ## UI and Accessibility Conventions
 - Keep templates server-rendered and simple first; use HTMX and Alpine.js for interactivity.

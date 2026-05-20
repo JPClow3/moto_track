@@ -2,6 +2,13 @@
 	@www host www.{$SITE_DOMAIN}
 	redir @www https://{$SITE_DOMAIN}{uri} permanent
 
+	# Block internal endpoints (Prometheus scrape, health diagnostics) from
+	# the public internet. Alloy reaches them via the docker network, which
+	# bypasses Caddy. Anyone hitting these from outside gets a flat 404 —
+	# no body, no hint that the path exists.
+	@internal path /internal/*
+	respond @internal 404
+
 	encode zstd gzip
 
 	reverse_proxy web-prod:8000 {

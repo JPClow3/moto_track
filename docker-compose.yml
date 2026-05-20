@@ -141,8 +141,13 @@ services:
     # ensures admin + boots gunicorn.
     # I-H2: workers/threads come from env so capacity tuning doesn't require a
     # compose rebuild.
+    # PROMETHEUS_MULTIPROC_DIR + the rm/mkdir prelude make django-prometheus
+    # safe under gunicorn's pre-fork model. Each worker writes its counters to
+    # the shared dir and the /metrics endpoint aggregates across the whole
+    # pool. Without it, scrapes see one worker at random and counts drift.
     command: >
       sh -c "
+        rm -rf /tmp/prometheus_multiproc && mkdir -p /tmp/prometheus_multiproc &&
         python manage.py ensure_admin &&
         gunicorn config.wsgi:application
           --bind 0.0.0.0:8000
@@ -189,6 +194,13 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
+      # OTel exporter target — Alloy receives OTLP/HTTP on 4318 inside the
+      # docker network. When the observability profile isn't running, the
+      # variable is still set but the SDK retries silently and drops spans
+      # (acceptable: traces are best-effort).
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-moto-track-web}
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
 
   celery-worker-prod:
     <<: *web_common
@@ -215,6 +227,8 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME_WORKER:-moto-track-worker}
 
   celery-beat-prod:
     <<: *web_common
@@ -239,6 +253,8 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME_BEAT:-moto-track-beat}
 
   # I-C1: dedicated migration step. Run with: `docker compose --profile prod run --rm migrate`
   # DATABASE_URL mirrors the web-prod fallback expression: when the deployment
@@ -311,7 +327,123 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+  # ---------------------------------------------------------------------------
+  # Observability stack (profile: "observability")
+  #
+  # One Alloy container is the single egress point — scrapes Prometheus targets
+  # on the docker network, tails container stdout for Loki, receives OTLP traces
+  # from Django/Celery, and remote-writes everything to Grafana Cloud.
+  #
+  # Run with prod:
+  #   docker compose --profile prod --profile observability up -d
+  #
+  # Requires (in .env):
+  #   GRAFANA_CLOUD_PROM_URL, GRAFANA_CLOUD_PROM_USER,
+  #   GRAFANA_CLOUD_LOKI_URL, GRAFANA_CLOUD_LOKI_USER,
+  #   GRAFANA_CLOUD_TEMPO_URL, GRAFANA_CLOUD_TEMPO_USER,
+  #   GRAFANA_CLOUD_API_KEY  (single Access Policy token, all three scopes)
+  # ---------------------------------------------------------------------------
+  alloy:
+    image: grafana/alloy:v1.5.1
+    profiles: ["observability"]
+    restart: unless-stopped
+    logging: *default_logging
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./deploy/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy/data
+      # Tail container stdout via the docker socket. Read-only mount is enough
+      # because Alloy only reads logs and discovers containers, never writes.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL:?set_GRAFANA_CLOUD_PROM_URL}
+      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER:?set_GRAFANA_CLOUD_PROM_USER}
+      GRAFANA_CLOUD_LOKI_URL: ${GRAFANA_CLOUD_LOKI_URL:?set_GRAFANA_CLOUD_LOKI_URL}
+      GRAFANA_CLOUD_LOKI_USER: ${GRAFANA_CLOUD_LOKI_USER:?set_GRAFANA_CLOUD_LOKI_USER}
+      GRAFANA_CLOUD_TEMPO_URL: ${GRAFANA_CLOUD_TEMPO_URL:?set_GRAFANA_CLOUD_TEMPO_URL}
+      GRAFANA_CLOUD_TEMPO_USER: ${GRAFANA_CLOUD_TEMPO_USER:?set_GRAFANA_CLOUD_TEMPO_USER}
+      GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:?set_GRAFANA_CLOUD_API_KEY}
+      DEPLOY_ENV: ${SENTRY_ENVIRONMENT:-production}
+    deploy:
+      resources:
+        limits:
+          memory: ${ALLOY_MEMORY_LIMIT:-200m}
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.17.1
+    profiles: ["observability"]
+    restart: unless-stopped
+    logging: *default_logging
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}?sslmode=disable
+      PG_EXPORTER_EXTEND_QUERY_PATH: ""
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: ${PG_EXPORTER_MEMORY_LIMIT:-64m}
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0-alpine
+    profiles: ["observability"]
+    restart: unless-stopped
+    logging: *default_logging
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_EXPORTER_MEMORY_LIMIT:-48m}
+
+  celery-exporter:
+    image: danihodovic/celery-exporter:0.10.13
+    profiles: ["observability"]
+    restart: unless-stopped
+    logging: *default_logging
+    environment:
+      CE_BROKER_URL: redis://redis:6379/0
+      CE_ACCEPT_CONTENT: json
+    depends_on:
+      redis:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: ${CELERY_EXPORTER_MEMORY_LIMIT:-96m}
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.2
+    profiles: ["observability"]
+    restart: unless-stopped
+    logging: *default_logging
+    # cAdvisor reads the host's container runtime metadata. The mounts below
+    # are the minimum read-only set required for Docker on a standard Linux
+    # host. `privileged: true` is required for /proc and cgroup inspection.
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    deploy:
+      resources:
+        limits:
+          memory: ${CADVISOR_MEMORY_LIMIT:-200m}
+
 volumes:
   postgres_data:
   caddy_data:
   caddy_config:
+  alloy_data:

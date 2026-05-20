@@ -136,9 +136,15 @@ INSTALLED_APPS = [
     "apps.forum",
     "apps.billing",
     "apps.work",
+    # Observability: exposes /internal/metrics/ + per-view RED metrics. Kept
+    # last so its system checks see the full INSTALLED_APPS list.
+    "django_prometheus",
 ]
 
+# django-prometheus middleware brackets the rest of the stack to time every
+# request. `Before` MUST be first and `After` MUST be last for accurate timing.
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "config.middleware.RequestIDMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -150,6 +156,7 @@ MIDDLEWARE = [
     "apps.accounts.middleware.EmailVerificationRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

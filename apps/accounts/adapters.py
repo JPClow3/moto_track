@@ -10,6 +10,8 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse
 
+from apps.core.metrics import signups_total
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,6 +26,13 @@ class MotoAccountAdapter(DefaultAccountAdapter):
                 email=user.email,
                 defaults={"primary": True, "verified": True},
             )
+        # SocialAccountAdapter.save_user (below) increments the counter for
+        # OAuth signups — it calls super() into here, so we can't tell which
+        # path we're on reliably (AUTO_SIGNUP passes form=None). The social
+        # adapter records its outcome AFTER super() returns and tags
+        # method="google". For everything else this is a password signup.
+        if not getattr(request, "_moto_signup_counted", False):
+            signups_total.labels(method="password").inc()
         return user
 
     def send_confirmation_mail(self, request, emailconfirmation, signup):
@@ -39,6 +48,17 @@ class MotoAccountAdapter(DefaultAccountAdapter):
 
 
 class MotoSocialAccountAdapter(DefaultSocialAccountAdapter):
+    def save_user(self, request, sociallogin, form=None):
+        # Mark the request BEFORE super() so the account adapter (which super()
+        # routes into) skips its "password" counter and lets us own the label.
+        if request is not None:
+            request._moto_signup_counted = True
+        user = super().save_user(request, sociallogin, form=form)
+        provider_id = getattr(sociallogin, "account", None)
+        provider = getattr(provider_id, "provider", "social") or "social"
+        signups_total.labels(method=str(provider)).inc()
+        return user
+
     def on_authentication_error(self, request, provider, error=None, exception=None, extra_context=None):
         provider_name = getattr(provider, "name", "provedor externo")
         messages.error(

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings.test .venv/Scripts/python.exe manage.py migrate --run-syncdb)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings.test .venv/Scripts/python.exe -m pytest tests/integration/test_stripe_webhook.py -x --tb=short)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings.test .venv/Scripts/python.exe manage.py makemigrations reminders)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings.test .venv/Scripts/python.exe manage.py check)"
+    ]
+  }
+}

@@ -1,0 +1,167 @@
+// Grafana Alloy config — moto_track observability pipeline.
+//
+// Pipeline overview:
+//   metrics: prometheus.scrape -> prometheus.relabel -> prometheus.remote_write
+//   logs:    discovery.docker  -> loki.source.docker -> loki.process -> loki.write
+//   traces:  otelcol.receiver.otlp -> otelcol.processor.batch -> otelcol.exporter.otlphttp
+//
+// All three sinks point at Grafana Cloud. Credentials come from env vars and
+// are NEVER baked into the image.
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// ============================================================================
+// METRICS
+// ============================================================================
+
+// Static targets — every exporter exposes /metrics on a well-known port on the
+// docker network. We tag them with `job` so they group cleanly in Grafana.
+prometheus.scrape "infra" {
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+
+  targets = [
+    { __address__ = "web-prod:8000",         __metrics_path__ = "/internal/metrics/", job = "django" },
+    { __address__ = "postgres-exporter:9187", job = "postgres" },
+    { __address__ = "redis-exporter:9121",    job = "redis" },
+    { __address__ = "celery-exporter:9808",   job = "celery" },
+    { __address__ = "cadvisor:8080",          job = "cadvisor" },
+    { __address__ = "alloy:12345",            job = "alloy" },
+  ]
+
+  forward_to = [prometheus.relabel.add_env.receiver]
+}
+
+// Stamp every series with the deployment environment so we can split prod/staging
+// dashboards from the same Grafana Cloud instance.
+prometheus.relabel "add_env" {
+  rule {
+    target_label = "env"
+    replacement  = sys.env("DEPLOY_ENV")
+  }
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_PROM_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_PROM_USER")
+      password = sys.env("GRAFANA_CLOUD_API_KEY")
+    }
+  }
+}
+
+// ============================================================================
+// LOGS
+// ============================================================================
+
+// Discover every container on the host's docker daemon. Alloy gets the labels
+// (compose service name, etc.) so log lines are queryable by service.
+discovery.docker "compose" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Drop noisy containers we don't care about (the exporters, alloy itself).
+discovery.relabel "compose_filtered" {
+  targets = discovery.docker.compose.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+  }
+  // Keep only services we want logs for. Adjust as new services are added.
+  rule {
+    source_labels = ["service"]
+    regex         = "web-prod|celery-worker-prod|celery-beat-prod|caddy|migrate|db|redis"
+    action        = "keep"
+  }
+}
+
+loki.source.docker "compose" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.compose_filtered.output
+  forward_to = [loki.process.django.receiver]
+  labels     = {
+    env = sys.env("DEPLOY_ENV"),
+  }
+}
+
+// Parse Django's structured stdout format produced by config.middleware.RequestIDFilter:
+//   2026-05-19 12:34:56,789 INFO [req-id] logger.name - message
+// We extract level and request_id as Loki labels (low cardinality).
+loki.process "django" {
+  forward_to = [loki.write.grafana_cloud.receiver]
+
+  stage.match {
+    selector = "{service=\"web-prod\"} or {service=\"celery-worker-prod\"} or {service=\"celery-beat-prod\"}"
+
+    stage.regex {
+      expression = "^(?P<ts>\\S+ \\S+) (?P<level>\\w+) \\[(?P<request_id>[^\\]]+)\\] (?P<logger>\\S+) - (?P<msg>.*)$"
+    }
+
+    stage.labels {
+      values = {
+        level      = "",
+        request_id = "",
+      }
+    }
+  }
+}
+
+loki.write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_LOKI_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_LOKI_USER")
+      password = sys.env("GRAFANA_CLOUD_API_KEY")
+    }
+  }
+}
+
+// ============================================================================
+// TRACES (OTLP)
+// ============================================================================
+
+// Django and Celery push OTLP traces here via OTEL_EXPORTER_OTLP_ENDPOINT.
+// We accept both gRPC (4317) and HTTP (4318) so instrumentation can pick.
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  send_batch_size = 512
+  timeout         = "5s"
+
+  output {
+    traces = [otelcol.exporter.otlphttp.grafana_cloud.input]
+  }
+}
+
+otelcol.exporter.otlphttp "grafana_cloud" {
+  client {
+    endpoint = sys.env("GRAFANA_CLOUD_TEMPO_URL")
+    auth     = otelcol.auth.basic.grafana_cloud.handler
+  }
+}
+
+otelcol.auth.basic "grafana_cloud" {
+  username = sys.env("GRAFANA_CLOUD_TEMPO_USER")
+  password = sys.env("GRAFANA_CLOUD_API_KEY")
+}

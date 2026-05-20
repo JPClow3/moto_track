@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -7,6 +8,8 @@ from typing import Any
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
+
+from apps.core.metrics import stripe_webhook_duration_seconds, stripe_webhook_total
 
 from .entitlements import invalidate_pro_access_cache
 from .models import BillingEvent, BillingInterval, BillingPlan, SubscriptionProfile
@@ -255,11 +258,16 @@ def process_stripe_event(event: dict[str, Any]) -> BillingEvent:
     event_type = str(_get(event, "type", "") or "")
     if not event_id or not event_type:
         raise WebhookProcessingError("Stripe event is missing id or type.")
+    # Metric label cardinality concern: event_type comes from a closed Stripe
+    # enum, so labelling on it is safe (~30 distinct values).
+    _started = time.monotonic()
     billing_event, created = BillingEvent.objects.get_or_create(
         stripe_event_id=event_id,
         defaults={"event_type": event_type, "payload": _plain(event)},
     )
     if not created and billing_event.processed_at:
+        stripe_webhook_total.labels(event_type=event_type, outcome="duplicate").inc()
+        stripe_webhook_duration_seconds.labels(event_type=event_type).observe(time.monotonic() - _started)
         return billing_event
 
     obj = _get(_get(event, "data", {}) or {}, "object", {}) or {}
@@ -290,6 +298,8 @@ def process_stripe_event(event: dict[str, Any]) -> BillingEvent:
     except WebhookProcessingError as exc:
         billing_event.processing_error = str(exc)
         billing_event.save(update_fields=["processing_error", "updated_at"])
+        stripe_webhook_total.labels(event_type=event_type, outcome="error").inc()
+        stripe_webhook_duration_seconds.labels(event_type=event_type).observe(time.monotonic() - _started)
         raise
 
     billing_event.event_type = event_type
@@ -297,4 +307,6 @@ def process_stripe_event(event: dict[str, Any]) -> BillingEvent:
     billing_event.processed_at = timezone.now()
     billing_event.processing_error = ""
     billing_event.save(update_fields=["event_type", "payload", "processed_at", "processing_error", "updated_at"])
+    stripe_webhook_total.labels(event_type=event_type, outcome="processed").inc()
+    stripe_webhook_duration_seconds.labels(event_type=event_type).observe(time.monotonic() - _started)
     return billing_event

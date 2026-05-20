@@ -47,6 +47,10 @@ def debug_status_preview_view(request, status_code):
 
 urlpatterns = [
     path("healthz/", healthz, name="healthz"),
+    # Prometheus scrape endpoint. Mounted under /internal/ so Caddy can block
+    # it from the public internet with one prefix rule (see deploy/caddy).
+    # Alloy reaches it via the docker network, which never traverses Caddy.
+    path("internal/metrics/", include("django_prometheus.urls")),
     path("", include("apps.core.urls")),
     path("precos/", pricing_view, name="pricing"),
     path("billing/", include("apps.billing.urls")),

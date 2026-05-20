@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
 
+from apps.core.metrics import (
+    reminders_processed_total,
+    reminders_run_duration_seconds,
+    reminders_run_total,
+)
 from apps.reminders.models import Reminder
 from apps.reminders.services import ReminderStatus, evaluate_reminder
 
@@ -73,8 +79,21 @@ def process_due_reminders(*, mark_notified: bool = False, writer=None) -> dict[s
     retry_kwargs={"max_retries": 3},
 )
 def process_reminders_task(self, *, mark_notified: bool = False):  # noqa: ARG001
+    started = time.monotonic()
     try:
-        return process_due_reminders(mark_notified=mark_notified)
+        result = process_due_reminders(mark_notified=mark_notified)
     except Exception:
+        reminders_run_total.labels(outcome="error").inc()
+        reminders_run_duration_seconds.observe(time.monotonic() - started)
         logger.exception("Reminder processing failed.")
         raise
+
+    reminders_run_total.labels(outcome="success").inc()
+    reminders_run_duration_seconds.observe(time.monotonic() - started)
+    # `inc(N)` instead of N separate `inc()` calls keeps the histogram on the
+    # job duration honest — we don't want to charge "200 reminders processed"
+    # against the per-reminder counter latency.
+    reminders_processed_total.labels(action="due").inc(result.get("due", 0))
+    reminders_processed_total.labels(action="emailed").inc(result.get("emailed", 0))
+    reminders_processed_total.labels(action="marked").inc(result.get("marked", 0))
+    return result
