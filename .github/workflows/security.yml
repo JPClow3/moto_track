@@ -40,7 +40,15 @@ jobs:
           python-version: "3.12"
       - run: |
           pip install pip-audit
-          pip-audit -r requirements/prod.txt
+          # PYSEC-2025-183 / CVE-2025-45768: disputed pyjwt advisory about
+          # "weak encryption" that flags every published version with no fix
+          # available. The maintainer's response is that key length is the
+          # application's choice and not a library defect. We use PyJWT only
+          # with secrets generated from settings.SECRET_KEY (>= 50 chars,
+          # enforced in config/settings/prod.py), so the alleged weakness
+          # does not apply. Revisit if an upstream fix or scoped advisory
+          # ships.
+          pip-audit -r requirements/prod.txt --ignore-vuln PYSEC-2025-183
 
   dynamic-security:
     runs-on: ubuntu-latest

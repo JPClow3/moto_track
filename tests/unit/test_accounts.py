@@ -214,12 +214,13 @@ class AccountsSmokeTests(TestCase):
 
         self.assertEqual(social_login.user, user)
 
-    def test_login_page_copy_mentions_single_step_google_login(self):
+    def test_login_page_offers_both_auth_methods(self):
         response = self.client.get(reverse("account_login"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Continuar com Google")
-        self.assertContains(response, "não repete a tela de confirmação")
+        # Subtitle that surfaces the two auth methods in one short line.
+        self.assertContains(response, "E-mail e senha, ou Google.")
 
     def test_login_handles_garbage_payload_without_500(self):
         client = Client(raise_request_exception=False)
