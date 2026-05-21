@@ -236,9 +236,12 @@ class BillingFlowTests(TestCase):
                 HTTP_STRIPE_SIGNATURE="t=123,v1=sig",
             )
 
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.content, b"Invalid webhook payload.")
-        self.assertNotContains(response, "metadata processing detail", status_code=400)
+        # ce0fe8a: webhook now returns 5xx on WebhookProcessingError so Stripe
+        # retries with backoff. The body stays generic so we don't leak the
+        # processor's internal detail string.
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.content, b"Webhook processing failed.")
+        self.assertNotContains(response, "metadata processing detail", status_code=500)
 
     @override_settings(STRIPE_WEBHOOK_SECRET="whsec_test")
     def test_stripe_webhook_unexpected_processing_exception_surfaces(self):
