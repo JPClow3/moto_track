@@ -31,6 +31,14 @@ jobs:
             git reset --hard origin/main
             git clean -fd --exclude=.env --exclude=media/
 
+            # Tag the build with the commit SHA so Sentry releases (and the
+            # static-asset cache-buster in base.html) bucket by deploy
+            # instead of the "local-dev" string sitting in .env. Computed
+            # AFTER the git reset so it reflects the code actually deployed,
+            # not just the SHA that triggered the workflow.
+            export APP_BUILD_ID="$(git rev-parse HEAD)"
+            echo "Deploying APP_BUILD_ID=${APP_BUILD_ID}"
+
             docker compose --profile prod --profile edge pull db caddy
             docker compose --profile prod --profile edge build --pull --no-cache web-prod
 

@@ -204,6 +204,11 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-moto-track-web}
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
+      # Release identifier surfaced to Sentry (and used as the static-asset
+      # cache-buster in base.html). Default "dev" is fine for local; the
+      # GitHub Deploy workflow exports the commit SHA before `docker compose
+      # up` so production releases bucket by commit instead of "local-dev".
+      APP_BUILD_ID: ${APP_BUILD_ID:-dev}
 
   celery-worker-prod:
     <<: *web_common
@@ -239,6 +244,7 @@ services:
       # alongside `--profile observability`.
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME_WORKER:-moto-track-worker}
+      APP_BUILD_ID: ${APP_BUILD_ID:-dev}
 
   celery-beat-prod:
     <<: *web_common
@@ -272,6 +278,7 @@ services:
       # alongside `--profile observability`.
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME_BEAT:-moto-track-beat}
+      APP_BUILD_ID: ${APP_BUILD_ID:-dev}
 
   # I-C1: dedicated migration step. Run with: `docker compose --profile prod run --rm migrate`
   # DATABASE_URL mirrors the web-prod fallback expression: when the deployment
