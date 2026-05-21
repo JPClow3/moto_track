@@ -360,13 +360,21 @@ services:
       # because Alloy only reads logs and discovers containers, never writes.
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL:?set_GRAFANA_CLOUD_PROM_URL}
-      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER:?set_GRAFANA_CLOUD_PROM_USER}
-      GRAFANA_CLOUD_LOKI_URL: ${GRAFANA_CLOUD_LOKI_URL:?set_GRAFANA_CLOUD_LOKI_URL}
-      GRAFANA_CLOUD_LOKI_USER: ${GRAFANA_CLOUD_LOKI_USER:?set_GRAFANA_CLOUD_LOKI_USER}
-      GRAFANA_CLOUD_TEMPO_URL: ${GRAFANA_CLOUD_TEMPO_URL:?set_GRAFANA_CLOUD_TEMPO_URL}
-      GRAFANA_CLOUD_TEMPO_USER: ${GRAFANA_CLOUD_TEMPO_USER:?set_GRAFANA_CLOUD_TEMPO_USER}
-      GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:?set_GRAFANA_CLOUD_API_KEY}
+      # Use empty defaults so a host that doesn't ship Grafana Cloud secrets
+      # can still parse this compose file for non-observability profiles
+      # (`prod`, `edge`, etc.). Docker Compose evaluates env interpolation
+      # for every service regardless of `profiles:` filtering, so the prior
+      # `${VAR:?error}` form broke `docker compose up` on hosts running only
+      # the prod profile. Alloy itself surfaces missing values at startup
+      # when the `observability` profile is activated, which is the right
+      # failure surface for misconfigured observability.
+      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL:-}
+      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER:-}
+      GRAFANA_CLOUD_LOKI_URL: ${GRAFANA_CLOUD_LOKI_URL:-}
+      GRAFANA_CLOUD_LOKI_USER: ${GRAFANA_CLOUD_LOKI_USER:-}
+      GRAFANA_CLOUD_TEMPO_URL: ${GRAFANA_CLOUD_TEMPO_URL:-}
+      GRAFANA_CLOUD_TEMPO_USER: ${GRAFANA_CLOUD_TEMPO_USER:-}
+      GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:-}
       DEPLOY_ENV: ${SENTRY_ENVIRONMENT:-production}
     deploy:
       resources:
