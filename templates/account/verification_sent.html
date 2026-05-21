@@ -3,7 +3,7 @@
 
 {% block head_title %}Verifique seu e-mail - Moto Track{% endblock %}
 {% block auth_title %}Confirme seu e-mail{% endblock %}
-{% block auth_subtitle %}Enviamos um link de confirmação. Abra a caixa de entrada para ativar sua conta.{% endblock %}
+{% block auth_subtitle %}Enviamos um link de confirmação. A confirmação é opcional — você já pode usar o app.{% endblock %}
 
 {% block content %}
   <header class="sr-only">
@@ -24,8 +24,8 @@
             </p>
           {% endif %}
           <p class="mt-2 text-sm leading-6 text-on-surface-variant">
-            Clique no link da mensagem para liberar o acesso ao painel. O link expira em algumas horas — se você já confirmou,
-            <a class="font-semibold text-primary hover:underline" href="{% url 'account_login' %}">faça login novamente</a>.
+            Clique no link quando puder — não é obrigatório.
+            <a class="font-semibold text-primary hover:underline" href="{% url 'dashboard' %}">Ir para o painel</a>.
           </p>
         </div>
       </div>
@@ -34,9 +34,8 @@
     <div class="rounded-md border border-dashed border-outline-variant/60 bg-surface/40 p-5">
       <p class="text-sm font-semibold text-on-surface">Não recebeu o e-mail?</p>
       <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-on-surface-variant">
-        <li>Confira a pasta de spam ou promoções.</li>
-        <li>Verifique se o endereço acima está correto.</li>
-        <li>Aguarde até 2 minutos antes de tentar novamente.</li>
+        <li>Confira o spam.</li>
+        <li>Verifique o endereço acima.</li>
       </ul>
 
       {% if user.is_authenticated %}

@@ -60,6 +60,7 @@
         document.documentElement.dataset.theme = "system";
         document.documentElement.dataset.resolvedTheme = "light";
       }
+      document.documentElement.classList.add("js-anim");
     })();
   </script>
   <link rel="stylesheet" href="{% static 'css/tailwind.generated.css' %}" />
@@ -379,7 +380,7 @@
             <p class="mt-0.5 text-xs text-on-surface-variant">
               <span data-offline-pending-count>0</span> pendente(s)
               <span class="mx-1">/</span>
-              <span data-offline-failed-count>0</span> precisa(m) de atenção
+              <span data-offline-failed-count>0</span> com erro
             </p>
           </div>
           <button type="button" class="ui-btn-secondary !min-h-9 !px-3 !py-2 !text-xs" data-offline-sync-now>
@@ -436,8 +437,7 @@
     <section x-ref="mobileMenuDialog" class="absolute inset-x-0 bottom-0 rounded-t-xl border border-outline-variant/60 bg-surface-lowest p-5" role="dialog" aria-modal="true" aria-labelledby="mobile-more-title">
       <div class="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 id="mobile-more-title" class="text-2xl font-semibold tracking-normal">Mais recursos</h2>
-          <p class="mt-1 text-sm text-on-surface-variant">Atalhos do restante do app.</p>
+          <h2 id="mobile-more-title" class="text-2xl font-semibold tracking-normal">Mais</h2>
         </div>
         <button type="button" class="ui-icon-btn" @click="closeMobileMenu()" aria-label="Fechar menu">
           <i data-lucide="x" aria-hidden="true"></i>
@@ -547,7 +547,7 @@
     <div class="flex items-start gap-3">
       <div class="flex-1">
         <p class="text-sm font-semibold text-on-surface">Adicionar à tela inicial</p>
-        <p class="mt-1 text-xs text-on-surface-variant">Acesse o Moto Track como um app nativo direto da sua tela inicial.</p>
+        <p class="mt-1 text-xs text-on-surface-variant">Use o Moto Track como um app.</p>
       </div>
       <div class="flex gap-2">
         <button type="button" class="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-on-primary" @click="if(pwaDeferred){ pwaDeferred.prompt(); pwaDeferred.userChoice.then(() => { pwaVisible = false; pwaDeferred = null; }); }">Instalar</button>

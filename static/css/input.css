@@ -1224,45 +1224,40 @@
     transform: translateX(-100%);
   }
 
-  [data-animate-once] {
+  /* Animations are opt-in via the .js-anim flag set by the inline head script.
+     Without JS (or if JS fails to run) content stays fully visible — the prior
+     `opacity:0` default left the hero blank when the IntersectionObserver
+     never fired. */
+  .js-anim [data-animate-once]:not(.is-visible) {
     opacity: 0;
     transform: translateY(0.5rem);
   }
 
-  [data-animate-once].is-visible {
+  .js-anim [data-animate-once].is-visible {
     opacity: 1;
     transform: translateY(0);
     transition: opacity 180ms ease-out, transform 180ms ease-out;
   }
 
-  [data-chart-reveal] {
+  .js-anim [data-chart-reveal]:not(.is-visible) {
     transform-origin: bottom;
     transform: scaleY(0.08);
     transition: transform 420ms ease-out;
   }
 
-  [data-chart-reveal].is-visible {
+  .js-anim [data-chart-reveal].is-visible {
     transform: scaleY(1);
   }
 
-  svg [data-chart-reveal] {
+  .js-anim svg [data-chart-reveal]:not(.is-visible) {
     opacity: 0;
     transform: none;
     transition: opacity 220ms ease-out;
   }
 
-  svg [data-chart-reveal].is-visible {
+  .js-anim svg [data-chart-reveal].is-visible {
     opacity: 1;
     transform: none;
-  }
-
-  .lucide {
-    opacity: 0;
-    transition: opacity 140ms ease-out;
-  }
-
-  .lucide-icons-ready .lucide {
-    opacity: 1;
   }
 
   .is-loading,

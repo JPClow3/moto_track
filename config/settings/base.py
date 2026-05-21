@@ -254,10 +254,10 @@ ACCOUNT_FORMS = {
     "signup": "apps.accounts.forms.SignupForm",
 }
 ACCOUNT_UNIQUE_EMAIL = True
-_account_email_verification_raw = env("ACCOUNT_EMAIL_VERIFICATION", default="mandatory")
-ACCOUNT_EMAIL_VERIFICATION = _account_email_verification_raw.split("#", 1)[0].strip().lower() or "mandatory"
+_account_email_verification_raw = env("ACCOUNT_EMAIL_VERIFICATION", default="optional")
+ACCOUNT_EMAIL_VERIFICATION = _account_email_verification_raw.split("#", 1)[0].strip().lower() or "optional"
 if ACCOUNT_EMAIL_VERIFICATION not in {"mandatory", "optional", "none"}:
-    ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+    ACCOUNT_EMAIL_VERIFICATION = "optional"
 
 APP_BUILD_ID = env("APP_BUILD_ID", default="dev")
 WEB_PUSH_PUBLIC_KEY = env("WEB_PUSH_PUBLIC_KEY", default=env("PUSH_PUBLIC_KEY", default=""))

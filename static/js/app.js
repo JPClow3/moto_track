@@ -136,7 +136,6 @@ if (typeof Alpine !== "undefined") {
   function renderLucideIcons() {
     if (window.lucide) {
       window.lucide.createIcons();
-      document.documentElement.classList.add("lucide-icons-ready");
     }
   }
 

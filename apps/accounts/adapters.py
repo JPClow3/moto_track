@@ -36,8 +36,9 @@ class MotoAccountAdapter(DefaultAccountAdapter):
         return user
 
     def send_confirmation_mail(self, request, emailconfirmation, signup):
+        delivered = True
         try:
-            return super().send_confirmation_mail(request, emailconfirmation, signup)
+            result = super().send_confirmation_mail(request, emailconfirmation, signup)
         except SMTPException:
             logger.warning(
                 "Email verification delivery failed; continuing auth flow. email=%s signup=%s",
@@ -45,6 +46,16 @@ class MotoAccountAdapter(DefaultAccountAdapter):
                 signup,
                 exc_info=True,
             )
+            result = None
+            delivered = False
+        if request is not None and delivered:
+            messages.info(
+                request,
+                "Enviamos um e-mail de confirmação para "
+                f"{emailconfirmation.email_address.email}. "
+                "Você já pode usar a plataforma — confirme quando puder.",
+            )
+        return result
 
 
 class MotoSocialAccountAdapter(DefaultSocialAccountAdapter):
