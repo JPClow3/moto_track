@@ -194,11 +194,14 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
-      # OTel exporter target — Alloy receives OTLP/HTTP on 4318 inside the
-      # docker network. When the observability profile isn't running, the
-      # variable is still set but the SDK retries silently and drops spans
-      # (acceptable: traces are best-effort).
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
+      # OTel exporter target. Default is empty so `config/otel.py` skips
+      # trace setup entirely when the `observability` profile isn't active —
+      # otherwise OTel kept retrying http://alloy:4318, the failures were
+      # promoted to Sentry events via the LoggingIntegration, and prod was
+      # noisy with "Failed to export span batch" errors. To enable tracing,
+      # explicitly set OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318 in .env
+      # alongside `--profile observability`.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-moto-track-web}
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
 
@@ -227,7 +230,14 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
+      # OTel exporter target. Default is empty so `config/otel.py` skips
+      # trace setup entirely when the `observability` profile isn't active —
+      # otherwise OTel kept retrying http://alloy:4318, the failures were
+      # promoted to Sentry events via the LoggingIntegration, and prod was
+      # noisy with "Failed to export span batch" errors. To enable tracing,
+      # explicitly set OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318 in .env
+      # alongside `--profile observability`.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME_WORKER:-moto-track-worker}
 
   celery-beat-prod:
@@ -253,7 +263,14 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
+      # OTel exporter target. Default is empty so `config/otel.py` skips
+      # trace setup entirely when the `observability` profile isn't active —
+      # otherwise OTel kept retrying http://alloy:4318, the failures were
+      # promoted to Sentry events via the LoggingIntegration, and prod was
+      # noisy with "Failed to export span batch" errors. To enable tracing,
+      # explicitly set OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318 in .env
+      # alongside `--profile observability`.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME_BEAT:-moto-track-beat}
 
   # I-C1: dedicated migration step. Run with: `docker compose --profile prod run --rm migrate`
