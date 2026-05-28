@@ -42,7 +42,7 @@ class MotorcycleForm(forms.ModelForm):
             "previous_owners": forms.NumberInput(attrs={"placeholder": "0"}),
             "odometer_override_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "year": forms.NumberInput(attrs={"inputmode": "numeric"}),
-            "purchase_date": forms.DateInput(attrs={"type": "date"}),
+            "purchase_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "observations": forms.Textarea(
                 attrs={"placeholder": "Ex.: revisões feitas, detalhes do estado, mods, etc."}
             ),

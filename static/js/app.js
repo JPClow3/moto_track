@@ -117,21 +117,53 @@ if (typeof Alpine !== "undefined") {
     snackbar.textContent = message;
     snackbar.classList.remove("hidden", "snackbar-exit");
     snackbar.classList.add("snackbar-enter");
-    window.clearTimeout(snackbar.dataset.hideTimer);
+    window.clearTimeout(Number(snackbar.dataset.hideTimer || 0));
+    window.clearTimeout(Number(snackbar.dataset.exitTimer || 0));
     const timer = window.setTimeout(() => {
       snackbar.classList.remove("snackbar-enter");
       snackbar.classList.add("snackbar-exit");
-      snackbar.addEventListener("animationend", () => {
+      const hideSnackbar = () => {
         if (snackbar.classList.contains("snackbar-exit")) {
           snackbar.classList.add("hidden");
           snackbar.classList.remove("snackbar-exit");
         }
-      }, { once: true });
+        window.clearTimeout(Number(snackbar.dataset.exitTimer || 0));
+      };
+      snackbar.addEventListener("animationend", hideSnackbar, { once: true });
+      snackbar.dataset.exitTimer = window.setTimeout(hideSnackbar, 300);
     }, 5000);
     snackbar.dataset.hideTimer = timer;
   }
 
   window.showClientSnackbar = showClientSnackbar;
+
+  function bindAutoDismissToast(toast) {
+    if (!toast || toast.dataset.toastBound === "true") return;
+    toast.dataset.toastBound = "true";
+    toast.classList.add("snackbar-enter");
+    window.clearTimeout(Number(toast.dataset.hideTimer || 0));
+    window.clearTimeout(Number(toast.dataset.exitTimer || 0));
+
+    const hideToast = () => {
+      if (toast.classList.contains("snackbar-exit")) {
+        toast.classList.add("hidden");
+        toast.classList.remove("snackbar-exit");
+      }
+      window.clearTimeout(Number(toast.dataset.exitTimer || 0));
+    };
+
+    toast.dataset.hideTimer = window.setTimeout(() => {
+      toast.classList.remove("snackbar-enter");
+      toast.classList.add("snackbar-exit");
+      toast.addEventListener("animationend", hideToast, { once: true });
+      toast.dataset.exitTimer = window.setTimeout(hideToast, 300);
+    }, 5000);
+  }
+
+  function initToasts(container) {
+    const scope = container || document;
+    scope.querySelectorAll("[data-auto-dismiss-toast]").forEach(bindAutoDismissToast);
+  }
 
   function renderLucideIcons() {
     if (window.lucide) {
@@ -170,6 +202,7 @@ if (typeof Alpine !== "undefined") {
     const scope = container || document;
     const targets = scope.querySelectorAll("[data-animate-once], [data-chart-reveal]");
     if (!targets.length) return;
+    document.documentElement.classList.add("js-anim");
     if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       targets.forEach((el) => el.classList.add("is-visible"));
       return;
@@ -319,6 +352,7 @@ if (typeof Alpine !== "undefined") {
     initFilterForms(document.body);
     initExportLinks(document.body);
     initDismissibleCards(document.body);
+    initToasts(document.body);
   });
 
   document.body.addEventListener("htmx:afterSwap", (event) => {
@@ -333,6 +367,7 @@ if (typeof Alpine !== "undefined") {
       initFilterForms(event.detail.target);
       initExportLinks(event.detail.target);
       initDismissibleCards(event.detail.target);
+      initToasts(event.detail.target);
     }
   });
 

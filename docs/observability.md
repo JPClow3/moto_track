@@ -5,6 +5,9 @@ This document is the runbook for the observability stack. The system covers
 Grafana Cloud workspace. Sentry stays as the primary error-tracking surface;
 OTel traces feed Tempo so the Grafana side has a unified view.
 
+Environment variables for this stack are documented only in
+[`.env.example`](../.env.example); this runbook covers setup and operations.
+
 ## Architecture
 
 ```

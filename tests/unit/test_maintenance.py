@@ -33,7 +33,12 @@ class MaintenanceModelTests(TestCase):
         )
         Motorcycle.objects.create(owner=self.other_user, name="Moto 2", brand="Yamaha", model="MT-03", year=2024)
         self.part = MaintenancePart.objects.create(
-            owner=self.user, name="Filtro de oleo", part_type=MaintenancePartType.FILTER
+            owner=self.user,
+            name="Filtro de oleo",
+            part_type=MaintenancePartType.FILTER,
+            track_stock=True,
+            stock_quantity=3,
+            low_stock_threshold=1,
         )
         MaintenancePart.objects.create(
             owner=self.other_user, name="Pastilha", part_type=MaintenancePartType.BRAKE_PAD
@@ -81,6 +86,49 @@ class MaintenanceModelTests(TestCase):
             MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
 
         self.assertTrue(MaintenanceRecordPart.objects.filter(maintenance_record=record, part=self.part).exists())
+
+    def test_quick_create_decrements_tracked_stock_with_quantity(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("maintenance:quick_create"),
+            {
+                "motorcycle": self.motorcycle.pk,
+                "maintenance_type": MaintenanceType.OIL_CHANGE,
+                "date": "2026-04-13",
+                "odometer_km": 1000,
+                "cost_0": "50.00",
+                "cost_1": "BRL",
+                "parts": [self.part.pk],
+                f"part_quantity_{self.part.pk}": "2",
+                "client_submission_id": "stock-token",
+            },
+            HTTP_HOST="localhost",
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.stock_quantity, 1)
+        record = MaintenanceRecord.objects.get(motorcycle=self.motorcycle, odometer_km=1000)
+        row = MaintenanceRecordPart.objects.get(maintenance_record=record, part=self.part)
+        self.assertEqual(row.quantity, 2)
+
+    def test_quick_form_rejects_over_consumption_for_tracked_stock(self):
+        form = MaintenanceRecordQuickForm(
+            data={
+                "motorcycle": self.motorcycle.pk,
+                "maintenance_type": MaintenanceType.OIL_CHANGE,
+                "date": "2026-04-13",
+                "odometer_km": 1000,
+                "cost_0": "50.00",
+                "cost_1": "BRL",
+                "parts": [self.part.pk],
+                f"part_quantity_{self.part.pk}": "4",
+            },
+            user=self.user,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("parts", form.errors)
 
     def test_catalog_view_only_shows_owned_parts(self):
         self.client.force_login(self.user)

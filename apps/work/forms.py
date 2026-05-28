@@ -24,6 +24,7 @@ class WorkSessionForm(forms.ModelForm):
             "odometer_end_km",
             "gross_income",
             "tips",
+            "fuel_spent",
             "deliveries_count",
             "platform_source",
             "payment_method",
@@ -38,19 +39,21 @@ class WorkSessionForm(forms.ModelForm):
             "odometer_end_km": "Km final",
             "gross_income": "Ganhos do turno",
             "tips": "Gorjetas",
+            "fuel_spent": "Combustível gasto",
             "deliveries_count": "Entregas/corridas",
             "platform_source": "Origem",
             "payment_method": "Pagamento",
             "notes": "Observacoes",
         }
         widgets = {
-            "work_date": forms.DateInput(attrs={"type": "date"}),
+            "work_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "started_at": forms.DateTimeInput(format=DATETIME_LOCAL_FORMATS[0], attrs={"type": "datetime-local"}),
             "ended_at": forms.DateTimeInput(format=DATETIME_LOCAL_FORMATS[0], attrs={"type": "datetime-local"}),
             "odometer_start_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "odometer_end_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "gross_income": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
             "tips": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
+            "fuel_spent": forms.NumberInput(attrs={"inputmode": "decimal", "step": "0.01"}),
             "deliveries_count": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
@@ -69,6 +72,7 @@ class WorkSessionForm(forms.ModelForm):
         self.fields["started_at"].input_formats = DATETIME_LOCAL_FORMATS + list(self.fields["started_at"].input_formats)
         self.fields["ended_at"].input_formats = DATETIME_LOCAL_FORMATS + list(self.fields["ended_at"].input_formats)
         self.fields["tips"].required = False
+        self.fields["fuel_spent"].required = False
         self.fields["deliveries_count"].required = False
         self.fields["notes"].required = False
 
@@ -93,6 +97,14 @@ class WorkSessionForm(forms.ModelForm):
             return 0
         return value
 
+    def clean_fuel_spent(self):
+        value = self.cleaned_data.get("fuel_spent")
+        if value in (None, ""):
+            return None
+        if value < 0:
+            raise ValidationError("O gasto com combustível nao pode ser negativo.")
+        return value
+
     def clean_notes(self):
         return sanitize_text(self.cleaned_data.get("notes"))
 
@@ -105,6 +117,7 @@ class WorkSessionForm(forms.ModelForm):
         odometer_end = cleaned_data.get("odometer_end_km")
         gross_income = cleaned_data.get("gross_income")
         tips = cleaned_data.get("tips")
+        fuel_spent = cleaned_data.get("fuel_spent")
 
         if motorcycle and self.user and motorcycle.owner_id != self.user.id:
             self.add_error("motorcycle", "Selecione uma moto da sua garagem.")
@@ -116,6 +129,8 @@ class WorkSessionForm(forms.ModelForm):
             self.add_error("gross_income", "O faturamento nao pode ser negativo.")
         if tips is not None and tips < 0:
             self.add_error("tips", "As gorjetas nao podem ser negativas.")
+        if fuel_spent is not None and fuel_spent < 0:
+            self.add_error("fuel_spent", "O gasto com combustível nao pode ser negativo.")
         return cleaned_data
 
 

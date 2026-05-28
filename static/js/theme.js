@@ -6,6 +6,14 @@
     dark: { icon: "moon", label: "escuro", next: "claro" },
     light: { icon: "sun", label: "claro", next: "sistema" },
   };
+  const themeIcons = {
+    monitor:
+      '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8"></path><path d="M12 16v4"></path></svg>',
+    moon:
+      '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.9 14.4A8.2 8.2 0 0 1 9.6 3.1 8.2 8.2 0 1 0 20.9 14.4Z"></path></svg>',
+    sun:
+      '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>',
+  };
 
   function isValidTheme(value) {
     return themeOrder.includes(value);
@@ -77,17 +85,13 @@
 
   function renderThemeButtons() {
     const currentTheme = document.documentElement.dataset.theme || readStoredTheme();
-    const resolvedTheme = getResolvedTheme(currentTheme);
-    const currentMeta = themeMeta[resolvedTheme] || themeMeta.light;
+    const currentMeta = themeMeta[currentTheme] || themeMeta.system;
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
       button.setAttribute("aria-label", "Tema " + currentMeta.label + ". Alternar para tema " + currentMeta.next + ".");
       button.setAttribute("title", "Tema " + currentMeta.label);
       button.dataset.themeMode = currentTheme;
-      button.innerHTML = '<i data-lucide="' + currentMeta.icon + '" aria-hidden="true"></i>';
+      button.innerHTML = themeIcons[currentMeta.icon] || themeIcons.sun;
     });
-    if (window.lucide) {
-      window.lucide.createIcons();
-    }
   }
 
   function applyTheme(theme, options) {

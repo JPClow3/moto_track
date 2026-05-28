@@ -203,19 +203,41 @@
   }
 
   .public-hero-layout {
-    @apply grid min-h-[calc(100svh-4.5rem)] content-center gap-10 py-12 sm:py-16;
+    @apply grid gap-6 py-6 sm:gap-8 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(28rem,1fr)] lg:items-center lg:gap-12 lg:py-8;
+  }
+
+  @media (min-width: 1024px) {
+    .public-hero-layout {
+      min-height: min(640px, calc(100svh - 9rem));
+    }
   }
 
   .public-hero-copy {
-    @apply max-w-4xl;
+    @apply max-w-3xl;
   }
 
   .public-hero-title {
-    @apply mt-4 text-4xl font-semibold leading-[1.04] tracking-normal text-on-surface sm:text-5xl lg:text-[4.35rem];
+    @apply mt-4 text-3xl font-semibold leading-[1.04] tracking-normal text-on-surface sm:text-5xl lg:text-[4rem];
   }
 
   .public-hero-copy-text {
-    @apply mt-5 max-w-2xl text-base leading-7 text-on-surface-variant sm:text-lg;
+    @apply mt-4 max-w-2xl text-sm leading-6 text-on-surface-variant sm:mt-5 sm:text-lg sm:leading-7;
+  }
+
+  .public-trust-list {
+    @apply mt-5 grid grid-cols-3 gap-2 border-t border-outline-variant/50 pt-3 sm:mt-7 sm:pt-4;
+  }
+
+  .public-trust-list div {
+    @apply min-w-0;
+  }
+
+  .public-trust-list dt {
+    @apply text-xs font-semibold uppercase tracking-normal text-on-surface;
+  }
+
+  .public-trust-list dd {
+    @apply hidden mt-1 text-xs leading-5 text-on-surface-variant sm:block;
   }
 
   .public-hero-visual {
@@ -223,7 +245,7 @@
   }
 
   .public-product-preview {
-    @apply mt-10 overflow-hidden border-y border-outline-variant/50 bg-surface-low px-4 py-4 sm:px-5 sm:py-5;
+    @apply overflow-hidden rounded-md border border-outline-variant/50 bg-surface-low px-3 py-3 sm:px-5 sm:py-5;
   }
 
   .preview-topbar {
@@ -239,15 +261,19 @@
   }
 
   .preview-grid {
-    @apply grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_18rem];
+    @apply grid gap-4 pt-4 md:grid-cols-[minmax(0,1fr)_16rem];
   }
 
   .preview-panel {
-    @apply rounded-md border border-outline-variant/50 bg-surface-lowest p-4;
+    @apply rounded-md border border-outline-variant/50 bg-surface-lowest p-3 sm:p-4;
+  }
+
+  .preview-panel-secondary {
+    @apply hidden sm:block;
   }
 
   .preview-metric-grid {
-    @apply mt-4 grid gap-3 sm:grid-cols-3;
+    @apply mt-3 grid grid-cols-3 gap-2 sm:mt-4 sm:gap-3;
   }
 
   .preview-metric {
@@ -255,15 +281,15 @@
   }
 
   .preview-metric p:first-child {
-    @apply text-xs font-semibold text-on-surface-variant;
+    @apply text-[0.68rem] font-semibold leading-4 text-on-surface-variant sm:text-xs;
   }
 
   .preview-metric p:last-child {
-    @apply mt-1 text-xl font-semibold tracking-normal text-on-surface;
+    @apply mt-1 text-sm font-semibold tracking-normal text-on-surface sm:text-xl;
   }
 
   .preview-chart {
-    @apply mt-5 flex h-28 items-end gap-2 border-t border-outline-variant/50 pt-5;
+    @apply mt-4 hidden h-16 items-end gap-1.5 border-t border-outline-variant/50 pt-4 sm:flex sm:h-24 sm:gap-2;
   }
 
   .preview-chart span {
@@ -351,6 +377,10 @@
     @apply mt-1 h-5 w-5;
   }
 
+  .public-row > svg {
+    @apply mt-1;
+  }
+
   .public-row h3,
   .public-step h3 {
     @apply text-base font-semibold tracking-normal text-on-surface;
@@ -387,6 +417,30 @@
 
   .public-article-row:hover h3 {
     @apply text-primary;
+  }
+
+  .public-plan-strip {
+    @apply grid gap-6 py-4 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)_auto] lg:items-center;
+  }
+
+  .public-plan-grid {
+    @apply grid gap-4 sm:grid-cols-2;
+  }
+
+  .public-plan-grid article {
+    @apply border-t border-outline-variant/50 pt-4;
+  }
+
+  .public-plan-grid article > p:first-child {
+    @apply text-xs font-semibold uppercase tracking-normal text-primary;
+  }
+
+  .public-plan-grid h3 {
+    @apply mt-2 text-base font-semibold tracking-normal text-on-surface;
+  }
+
+  .public-plan-grid article > p:last-child {
+    @apply mt-2 text-sm leading-6 text-on-surface-variant;
   }
 
   .public-article-body {
@@ -452,7 +506,8 @@
     @apply flex items-start gap-2;
   }
 
-  .pricing-card li .lucide {
+  .pricing-card li .lucide,
+  .pricing-card li svg {
     @apply mt-0.5 h-4 w-4 shrink-0 text-primary;
   }
 
@@ -1224,7 +1279,7 @@
     transform: translateX(-100%);
   }
 
-  /* Animations are opt-in via the .js-anim flag set by the inline head script.
+  /* Animations are opt-in via the .js-anim flag set by the enhancement script.
      Without JS (or if JS fails to run) content stays fully visible — the prior
      `opacity:0` default left the hero blank when the IntersectionObserver
      never fired. */
@@ -1306,6 +1361,25 @@
   @keyframes polish-sheet-in {
     from { opacity: 0; transform: translateY(0.75rem) scale(0.985); }
     to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes snackbar-slide-in {
+    from { opacity: 0; transform: translate(-50%, 0.75rem); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+
+  @keyframes snackbar-slide-out {
+    from { opacity: 1; transform: translate(-50%, 0); }
+    to { opacity: 0; transform: translate(-50%, 0.5rem); }
+  }
+
+  .snackbar-enter {
+    animation: snackbar-slide-in 180ms ease-out forwards;
+  }
+
+  .snackbar-exit {
+    animation: snackbar-slide-out 160ms ease-in forwards;
+    pointer-events: none;
   }
 
   @media (prefers-reduced-motion: reduce) {

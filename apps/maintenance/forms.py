@@ -59,7 +59,7 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
             "parts": "Pecas do catalogo",
         }
         widgets = {
-            "date": forms.DateInput(attrs={"type": "date"}),
+            "date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "interval_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "interval_days": forms.NumberInput(attrs={"inputmode": "numeric"}),
@@ -108,22 +108,63 @@ class MaintenanceRecordQuickForm(forms.ModelForm):
                 exclude_pk=self.instance.pk,
             ),
         )
+        parts = list(cleaned_data.get("parts") or [])
+        part_quantities = {}
+        quantity_errors = []
+        for part in parts:
+            raw_quantity = (
+                self.data.get(f"part_quantity_{part.pk}")
+                or self.data.get(f"part_quantities[{part.pk}]")
+                or self.data.get(f"quantity_{part.pk}")
+                or "1"
+            )
+            try:
+                quantity = int(raw_quantity)
+            except (TypeError, ValueError):
+                quantity = 0
+            if quantity <= 0:
+                quantity_errors.append(f"Informe uma quantidade maior que zero para {part.name}.")
+                continue
+            if part.track_stock and quantity > int(part.stock_quantity or 0):
+                quantity_errors.append(
+                    f"Estoque insuficiente para {part.name}: disponível {part.stock_quantity}, solicitado {quantity}."
+                )
+            part_quantities[part.pk] = quantity
+
+        if quantity_errors:
+            self.add_error("parts", " ".join(quantity_errors))
+        cleaned_data["part_quantities"] = part_quantities
         return cleaned_data
 
 
 class MaintenancePartForm(forms.ModelForm):
     class Meta:
         model = MaintenancePart
-        fields = ["name", "manufacturer", "part_type", "sku", "price", "notes"]
+        fields = [
+            "name",
+            "manufacturer",
+            "part_type",
+            "sku",
+            "price",
+            "track_stock",
+            "stock_quantity",
+            "low_stock_threshold",
+            "notes",
+        ]
         labels = {
             "name": "Nome",
             "manufacturer": "Fabricante",
             "part_type": "Tipo de peca",
             "sku": "Codigo/SKU",
             "price": "Preco",
+            "track_stock": "Controlar estoque",
+            "stock_quantity": "Quantidade em estoque",
+            "low_stock_threshold": "Alerta de estoque baixo",
             "notes": "Observacoes",
         }
         widgets = {
+            "stock_quantity": forms.NumberInput(attrs={"inputmode": "numeric", "min": "0"}),
+            "low_stock_threshold": forms.NumberInput(attrs={"inputmode": "numeric", "min": "0"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
 
@@ -157,7 +198,7 @@ class MaintenancePlanItemForm(forms.ModelForm):
             "interval_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "interval_days": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "last_done_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
-            "last_done_date": forms.DateInput(attrs={"type": "date"}),
+            "last_done_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
 

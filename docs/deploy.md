@@ -1,20 +1,136 @@
 # Deploy
 
-Este guia cobre os caminhos de deploy suportados: **Lightsail** (manual com Nginx + Gunicorn + S3 ou automatizado com Docker Compose + Caddy), **Coolify** (Docker Compose) e **VPS self-hosted** com Docker Compose.
+Este guia assume **Dokploy em uma EC2 na AWS** como caminho principal de
+produção. Os outros caminhos continuam documentados como fallback:
+**Docker Compose direto com Caddy** e **VM manual com Gunicorn + Nginx**.
+
+Use [`.env.example`](../.env.example) como fonte canônica das variáveis de
+ambiente. Este documento só destaca o que muda por alvo de deploy.
 
 ---
 
-## Lightsail VM + Nginx + Gunicorn + S3
+## Dokploy + EC2 (recomendado)
 
-> Fluxo atual de automação: o workflow **Deploy to Lightsail** em `.github/workflows/deploy.yml`
-> usa o caminho Docker Compose com os profiles `prod` + `edge` no host remoto.
-> O passo a passo abaixo continua válido para quem quiser operar a instância manualmente
-> com `systemd` + Nginx.
+Este é o fluxo mais alinhado com o estado atual do repositório.
+
+### O que muda em relação ao Compose "puro"
+
+- Use **Dokploy Docker Compose**, não **Docker Stack**. Este repositório usa
+  `build:` no [docker-compose.yml](../docker-compose.yml), e o modo Stack não
+  suporta esse fluxo.
+- Use o **proxy/domínios do Dokploy**. Não suba o serviço `caddy` no Dokploy.
+- Faça o deploy do **profile `prod`**. O profile `edge` só existe para o
+  fallback de Compose direto com Caddy.
+- Use o recurso nativo de **Domains** do Dokploy em vez de labels Traefik
+  manuais.
+
+### 1) Preparar a EC2
+
+- Ubuntu 22.04+ é o caminho mais simples.
+- Security Group:
+  - `22/tcp` liberada apenas para IPs administrativos
+  - `80/tcp` e `443/tcp` liberadas para a internet
+- Associe um domínio ao IP público da instância.
+- Se a instância for acessar S3 diretamente, prefira um **IAM instance role**
+  com acesso mínimo ao bucket em vez de `AWS_ACCESS_KEY_ID` /
+  `AWS_SECRET_ACCESS_KEY`.
+
+### 2) Registrar o servidor no Dokploy
+
+Siga o fluxo de **Remote Server** do Dokploy para:
+
+1. criar/adicionar a chave SSH no painel;
+2. cadastrar a EC2 como servidor remoto;
+3. executar o `Setup Server` uma única vez.
+
+### 3) Criar a aplicação Docker Compose
+
+No Dokploy:
+
+1. crie uma aplicação do tipo **Docker Compose**;
+2. aponte para este repositório;
+3. use o [docker-compose.yml](../docker-compose.yml);
+4. mantenha o modo **Docker Compose**.
+
+### 4) Variáveis de ambiente
+
+Copie o bloco **Production Baseline** de [`.env.example`](../.env.example) para
+as variáveis do ambiente no Dokploy.
+
+Obrigatórias na prática:
+
+- `POSTGRES_PASSWORD`
+- `DJANGO_SECRET_KEY`
+- `DJANGO_ALLOWED_HOSTS`
+- `AWS_STORAGE_BUCKET_NAME`
+
+Fortemente recomendadas:
+
+- `APP_BUILD_ID`
+- `WEB_PUSH_PUBLIC_KEY`
+- `PUSH_ENCRYPTION_KEY`
+- `SESSION_COOKIE_AGE`
+
+Observações:
+
+- Em EC2 com IAM role, normalmente você **omite**
+  `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`.
+- Se `APP_BUILD_ID` não for definido, a aplicação cai no default `dev`, o que
+  piora o rastreamento de release no Sentry.
+
+### 5) Profile de deploy no Dokploy
+
+O compose deste repositório separa dev/test/prod com **profiles**. Para o
+Dokploy incluir os serviços corretos, configure o deploy para executar o
+profile `prod`.
+
+Na prática, isso significa que o comando de Compose do Dokploy precisa incluir:
+
+```text
+--profile prod
+```
+
+Se você também for subir a stack de observabilidade, inclua:
+
+```text
+--profile prod --profile observability
+```
+
+Depois disso, use o **Preview Compose** do Dokploy para confirmar que o deploy
+inclui `web-prod`, `celery-worker-prod`, `celery-beat-prod`, `migrate`,
+`redis` e `db`.
+
+> Inferência importante: o Dokploy documenta que permite acrescentar flags ao
+> comando interno de Docker Compose; aqui a flag necessária é `--profile prod`
+> porque os serviços de produção deste repositório não sobem sem ela.
+
+### 6) Domínio e TLS
+
+No Dokploy, adicione o domínio na aba **Domains** da aplicação.
+
+- Caminho recomendado: **Domains do Dokploy**
+- Não use o serviço `caddy` neste cenário
+- Não adicione labels Traefik manualmente, a menos que tenha um motivo muito
+  específico
+
+### 7) Auto deploy
+
+Se o deploy de produção passa por Dokploy, prefira o **Auto Deploy** nativo do
+Dokploy (GitHub/webhook/API). O workflow
+[`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) foi mantido
+apenas como fallback manual para o caminho legado de SSH direto.
+
+---
+
+## VM manual (legado) em AWS com Nginx + Gunicorn + S3
+
+O passo a passo abaixo continua válido para quem quiser operar a instância
+manualmente com `systemd` + Nginx, fora do Dokploy.
 
 ### Pré-requisitos
 
-- Lightsail Region: **us-east-1** (Virginia) / Zone A (**us-east-1a**)
-- Static IP (anexar na instance)
+- Região AWS: **us-east-1** (Virginia) é um baseline simples
+- Elastic IP ou equivalente anexado à instância
 - Bucket S3: **`moto-track`**
 - Python 3.12+ e Node 18+ (para build de assets localmente/CI)
 
@@ -53,7 +169,7 @@ Exemplo de policy (ajuste o ARN do bucket):
 }
 ```
 
-### 2) Lightsail: instance + rede
+### 2) AWS: instância + rede
 
 1. Criar instance Linux (Debian/Ubuntu)
 2. Anexar o Static IP
@@ -99,11 +215,16 @@ python3 -m venv .venv
 
 #### Alternativa: Docker (mesmo servidor)
 
-Se preferir container em vez de venv + Nginx na VM, use o `Dockerfile` deste repositório e passe as mesmas variáveis (em especial `DJANGO_SECRET_KEY`, `DATABASE_URL`, `DJANGO_ALLOWED_HOSTS`, `AWS_STORAGE_BUCKET_NAME` e credenciais AWS ou IAM role). O profile Compose `web-prod` em `docker-compose.yml` documenta variáveis típicas.
+Se preferir container em vez de venv + Nginx na VM, use o `Dockerfile` deste
+repositório e parta do bloco de produção em [`.env.example`](../.env.example).
+O `docker-compose.yml` já define `DJANGO_SETTINGS_MODULE=config.settings.prod`
+para o serviço `web-prod`.
 
 ### 5) Variáveis de ambiente (produção)
 
-Este projeto exige `DJANGO_SECRET_KEY` e usa `config.settings.prod` em produção.
+Este projeto exige `DJANGO_SECRET_KEY` e usa `config.settings.prod` em
+produção. Para evitar drift, copie o bloco **Production Baseline** de
+[`.env.example`](../.env.example) e adapte para o host.
 
 Exemplo (arquivo `/etc/systemd/system/mototrack.env`):
 
@@ -219,61 +340,7 @@ Para HTTPS com Let’s Encrypt, você precisa de um **domínio** apontando para 
 
 ---
 
-## Coolify (Docker Compose)
-
-Este projeto está pronto para rodar no Coolify usando `docker-compose.yml`.
-
-### O que o Coolify gerencia
-
-- Reverse proxy + HTTPS (próprio proxy do Coolify)
-- Domain routing
-- Environment variables / secrets
-- App restarts
-
-O Compose file deste repo separa o reverse proxy (Caddy) em um profile `edge` para deploys autogerenciados via Docker Compose. No Coolify, **não** use o profile `edge` — o Coolify já termina HTTPS e gerencia o edge proxy.
-
-### Configuração no Coolify
-
-- **New Resource**: Docker Compose
-- **Compose file**: `docker-compose.yml`
-- **Start command / compose command**: `docker compose --profile prod up -d`
-- **Expose service**: `web-prod`
-- **Port**: `8000`
-
-### Variáveis de ambiente obrigatórias (Coolify)
-
-- `POSTGRES_PASSWORD`: senha forte para o container Postgres
-- `DJANGO_SECRET_KEY`: valor longo e aleatório (>= 50 chars)
-- `DJANGO_ALLOWED_HOSTS`: hosts separados por vírgula (seu(s) domínio(s) + opcionalmente o IP do servidor)
-- `AWS_STORAGE_BUCKET_NAME`: bucket S3 para uploads (default file storage usa django-storages)
-- `AWS_S3_REGION_NAME`: ex: `us-east-1` (opcional; default no app é `us-east-1`)
-- `APP_BUILD_ID`: identificador do deploy usado pelo service worker para limpar caches antigos
-- `WEB_PUSH_PUBLIC_KEY`: chave pública VAPID exposta ao navegador para inscrição push
-- `PUSH_ENCRYPTION_KEY`: chave dedicada para criptografar dados da inscrição push no banco
-- `SESSION_COOKIE_AGE`: tempo da sessão em segundos; default do app é 30 dias (`2592000`)
-
-Opcional:
-
-- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`: omita se o host usar IAM instance profile / role com acesso S3
-- `AWS_S3_ENDPOINT_URL`: normalmente omita na AWS; defina para endpoints S3-compatíveis se necessário
-
-`DJANGO_SETTINGS_MODULE` e `DJANGO_DEBUG` são definidos em `docker-compose.yml` para o serviço `web-prod`.
-
-Exemplo de `DJANGO_ALLOWED_HOSTS`:
-
-```text
-your-domain.com,www.your-domain.com,54.86.112.205
-```
-
-### Notas
-
-- Static files são built na imagem (`collectstatic` roda durante o Docker build usando `config.settings.build`).
-- Uploads de **media** são armazenados em **S3** quando usando `config.settings.prod`. O volume `media_data` é um caminho local opcional para `MEDIA_ROOT`; ele não substitui o S3 para `FileField` storage a menos que você altere `STORAGES`.
-- O profile `prod` sobe Redis, worker Celery e beat Celery junto com o app. O beat agenda `apps.reminders.tasks.process_reminders_task`; ajuste `REMINDER_PROCESS_INTERVAL_SECONDS` se precisar mudar a frequência.
-
----
-
-## VPS com Docker Compose direto (sem Coolify/Traefik/Nginx externo)
+## VPS com Docker Compose direto (fallback sem Dokploy)
 
 Para subir Caddy na frente do Django com certificado TLS automático, use:
 

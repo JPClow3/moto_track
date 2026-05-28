@@ -1,7 +1,12 @@
 {% extends "public/base.html" %}
+{% load static %}
 
 {% block title %}Preços - Moto Track{% endblock %}
 {% block meta_description %}Planos Free e Pro do Moto Track para motoboys, mototáxis e motociclistas profissionais.{% endblock %}
+
+{% block extra_public_scripts %}
+  <script src="{% static 'vendor/alpine/alpine.min.js' %}" defer></script>
+{% endblock %}
 
 {% block content %}
 <section class="public-section border-b border-outline-variant/40" aria-labelledby="pricing-title">
@@ -32,11 +37,12 @@
           <p class="mt-2 text-sm leading-6 text-on-surface-variant">Para criar hábito sem travar o registro.</p>
         </div>
         <ul class="mt-6 space-y-3 text-sm text-on-surface-variant">
-          <li><i data-lucide="check" aria-hidden="true"></i>1 moto ativa</li>
-          <li><i data-lucide="check" aria-hidden="true"></i>Abastecimentos e manutenções livres</li>
-          <li><i data-lucide="check" aria-hidden="true"></i>Histórico e painel básicos</li>
-          <li><i data-lucide="check" aria-hidden="true"></i>3 documentos, fotos ou recibos</li>
-          <li><i data-lucide="check" aria-hidden="true"></i>3 lembretes ativos</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}1 moto ativa</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}Abastecimentos e manutenções livres</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}Histórico e painel básicos</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}3 documentos, fotos ou recibos</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}3 turnos de trabalho por mês</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}3 lembretes ativos</li>
         </ul>
         <a class="ui-btn-secondary mt-6 w-full justify-center" href="{% url 'account_signup' %}">Começar grátis</a>
       </article>
@@ -57,11 +63,11 @@
           <p class="mt-2 text-sm leading-6 text-on-surface-variant">Para motoboys, mototáxis e uso profissional.</p>
         </div>
         <ul class="mt-6 space-y-3 text-sm text-on-surface-variant">
-          <li><i data-lucide="check" aria-hidden="true"></i>Múltiplas motos</li>
-          <li><i data-lucide="check" aria-hidden="true"></i>Turnos, ganhos e lucro mensal</li>
-          <li><i data-lucide="check" aria-hidden="true"></i>Custo por km e reserva de manutenção</li>
-          <li><i data-lucide="check" aria-hidden="true"></i>Documentos, fotos e recibos sem limite prático</li>
-          <li><i data-lucide="check" aria-hidden="true"></i>CSV/PDF, dossiê de venda e relatórios avançados</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}Múltiplas motos</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}Turnos, ganhos e lucro mensal</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}Custo por km e reserva de manutenção</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}Documentos, fotos e recibos sem limite prático</li>
+          <li>{% include "core/partials/icon.html" with icon_name="check" icon_class="h-4 w-4" %}CSV/PDF, dossiê de venda e relatórios avançados</li>
         </ul>
         {% if request.user.is_authenticated %}
           <form class="mt-6 grid gap-2" method="post" action="{% url 'billing:checkout' %}">

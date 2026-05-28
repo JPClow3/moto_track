@@ -28,6 +28,7 @@ const PRECACHE = [
 const QUEUEABLE_PATHS = [
   "/fuel/quick-create/",
   "/maintenance/quick-create/",
+  "/trabalho/turnos/novo/",
   "/quick-odometer-update/",
   "/documents/",
 ];
@@ -201,6 +202,7 @@ async function requestToQueueRecord(req) {
 function actionFromPath(pathname) {
   if (pathname.startsWith("/fuel/quick-create/")) return "fuel:quick_create";
   if (pathname.startsWith("/maintenance/quick-create/")) return "maintenance:quick_create";
+  if (pathname.startsWith("/trabalho/turnos/novo/")) return "work:session_create";
   if (pathname.startsWith("/quick-odometer-update/")) return "quick_odometer_update";
   if (pathname.startsWith("/documents/")) return "documents:list";
   return "form_submit";

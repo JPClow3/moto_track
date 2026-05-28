@@ -174,7 +174,9 @@ def reminder_snooze_days_view(request, pk: int, days: int):
         base = reminder.reference_date or today
         reminder.reference_date = base + timedelta(days=days)
         reminder.last_notified_at = None
-        reminder.save(update_fields=["reference_date", "last_notified_at", "updated_at"])
+        reminder.last_email_notified_at = None
+        reminder.last_push_notified_at = None
+        reminder.save(update_fields=["reference_date", "last_notified_at", "last_email_notified_at", "last_push_notified_at", "updated_at"])
         messages.success(request, f"Lembrete adiado em {days} dias.")
     else:
         messages.info(request, "Este lembrete não é por data.")
@@ -195,7 +197,9 @@ def reminder_snooze_km_view(request, pk: int, km: int):
         base = reminder.reference_km if reminder.reference_km is not None else current_odo
         reminder.reference_km = int(base) + km
         reminder.last_notified_at = None
-        reminder.save(update_fields=["reference_km", "last_notified_at", "updated_at"])
+        reminder.last_email_notified_at = None
+        reminder.last_push_notified_at = None
+        reminder.save(update_fields=["reference_km", "last_notified_at", "last_email_notified_at", "last_push_notified_at", "updated_at"])
         messages.success(request, f"Lembrete adiado em +{km} km.")
     else:
         messages.info(request, "Este lembrete não é por km.")

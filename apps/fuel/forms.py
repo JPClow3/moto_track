@@ -56,7 +56,7 @@ class FuelRecordBaseForm(forms.ModelForm):
             "notes": "Observações",
         }
         widgets = {
-            "date": forms.DateInput(attrs={"type": "date"}),
+            "date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "odometer_km": forms.NumberInput(attrs={"inputmode": "numeric"}),
             "liters": CommaNormalizedDecimalInput(attrs={"inputmode": "decimal", "step": "0.001"}),
             "receipt_file": forms.ClearableFileInput(attrs={"accept": "image/*,.pdf"}),

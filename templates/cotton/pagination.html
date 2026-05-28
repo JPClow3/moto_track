@@ -1,11 +1,12 @@
-{# U-M1: pagination primitive with a scoped aria-label.
+{% comment %}
+U-M1: pagination primitive with a scoped aria-label.
 
    Usage:
      <c-pagination page_obj="{{ page_obj }}" label="Paginação de abastecimentos" />
 
    Falls back to "Paginação" if no label is given. Renders nothing when there
    is only one page.
-#}
+{% endcomment %}
 {% if page_obj and page_obj.paginator.num_pages > 1 %}
   <nav class="flex items-center justify-between gap-4 border-t border-outline-variant/40 pt-4"
        aria-label="{{ label|default:'Paginação' }}">

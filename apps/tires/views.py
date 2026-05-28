@@ -6,6 +6,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.billing.decorators import pro_required
+from apps.billing.entitlements import can_add_uploads
 from apps.core.exports import parse_date_param
 from apps.core.forms import configure_form_accessibility
 from apps.core.pagination import paginate
@@ -17,6 +18,18 @@ from .forms import TirePressureRecordForm, TireProductForm, TireRecordForm
 from .models import TirePosition, TirePressureRecord, TireProduct, TireRecord
 
 TIRE_RING_RADIUS = 88
+UPLOAD_LIMIT_MESSAGE = (
+    "O Plano Free permite ate 3 documentos, fotos ou recibos. "
+    "O Plano Pro libera armazenamento profissional."
+)
+
+
+def _add_tire_product_image_limit_error(request, form, *, existing_image_name: str = "") -> bool:
+    incoming_count = 0 if existing_image_name else 1
+    if request.FILES.get("image") and not can_add_uploads(request.user, incoming_count=incoming_count):
+        form.add_error("image", UPLOAD_LIMIT_MESSAGE)
+        return True
+    return False
 
 
 @login_required
@@ -221,7 +234,7 @@ def tire_delete_view(request, pk):
 def tire_product_create_view(request):
     if request.method == "POST":
         form = TireProductForm(request.POST, request.FILES)
-        if form.is_valid():
+        if form.is_valid() and not _add_tire_product_image_limit_error(request, form):
             product = form.save(commit=False)
             product.owner = request.user
             product.save()
@@ -242,8 +255,11 @@ def tire_product_create_view(request):
 def tire_product_update_view(request, pk: int):
     product = get_object_or_404(TireProduct, pk=pk, owner=request.user)
     if request.method == "POST":
+        existing_image_name = product.image.name if product.image else ""
         form = TireProductForm(request.POST, request.FILES, instance=product)
-        if form.is_valid():
+        if form.is_valid() and not _add_tire_product_image_limit_error(
+            request, form, existing_image_name=existing_image_name
+        ):
             product = form.save()
             messages.success(request, f"Pneu {product} atualizado com sucesso.")
             return redirect("tires:catalogs")

@@ -1,15 +1,13 @@
-name: Deploy to Lightsail
+name: Legacy direct Lightsail deploy
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: lightsail-production
+  group: legacy-lightsail-production
   cancel-in-progress: false
 
 jobs:
@@ -17,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      - name: Legacy path notice
+        run: |
+          echo "This workflow is kept as a manual fallback."
+          echo "Primary production deploys are expected to run through Dokploy on EC2."
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:

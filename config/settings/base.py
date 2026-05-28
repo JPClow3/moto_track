@@ -261,6 +261,8 @@ if ACCOUNT_EMAIL_VERIFICATION not in {"mandatory", "optional", "none"}:
 
 APP_BUILD_ID = env("APP_BUILD_ID", default="dev")
 WEB_PUSH_PUBLIC_KEY = env("WEB_PUSH_PUBLIC_KEY", default=env("PUSH_PUBLIC_KEY", default=""))
+WEB_PUSH_PRIVATE_KEY = env("WEB_PUSH_PRIVATE_KEY", default=env("PUSH_PRIVATE_KEY", default=""))
+WEB_PUSH_CONTACT_EMAIL = env("WEB_PUSH_CONTACT_EMAIL", default=env("PUSH_CONTACT_EMAIL", default=""))
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/0")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="")
 CELERY_TASK_TRACK_STARTED = True

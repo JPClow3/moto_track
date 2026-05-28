@@ -10,8 +10,9 @@ from apps.fuel.models import FuelRecord
 from apps.garage.models import Motorcycle
 from apps.maintenance.models import MaintenancePhoto
 from apps.reminders.models import Reminder
+from apps.tires.models import TireProduct
 
-from .models import SubscriptionProfile
+from .models import BillingPlan, SubscriptionProfile
 
 # B-H9: request-scoped cache for has_pro_access. Dashboard / templates can call
 # this 3-5 times per render; without caching that's a query per call. The cache
@@ -23,6 +24,7 @@ FREE_ACTIVE_MOTORCYCLE_LIMIT = 1
 FREE_UPLOAD_LIMIT = 3
 FREE_REMINDER_LIMIT = 3
 FREE_WORK_SESSION_MONTHLY_LIMIT = 3
+ADMIN_SUBSCRIPTION_STATUS = "admin"
 
 
 def get_subscription_profile(user) -> SubscriptionProfile | None:
@@ -34,7 +36,52 @@ def get_subscription_profile(user) -> SubscriptionProfile | None:
         return None
 
 
+def is_admin_entitled(user) -> bool:
+    return bool(
+        getattr(user, "is_authenticated", False)
+        and (getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+    )
+
+
+def sync_admin_subscription_profile(user) -> SubscriptionProfile | None:
+    """Ensure staff/superusers keep the internal top-tier subscription."""
+    if not is_admin_entitled(user):
+        return get_subscription_profile(user)
+    try:
+        profile, _created = SubscriptionProfile.objects.get_or_create(
+            user=user,
+            defaults={
+                "plan": BillingPlan.PRO,
+                "stripe_subscription_status": ADMIN_SUBSCRIPTION_STATUS,
+                "cancel_at_period_end": False,
+                "grace_until": None,
+            },
+        )
+    except (OperationalError, ProgrammingError):
+        return None
+
+    changed = False
+    desired = {
+        "plan": BillingPlan.PRO,
+        "stripe_subscription_status": ADMIN_SUBSCRIPTION_STATUS,
+        "cancel_at_period_end": False,
+        "grace_until": None,
+    }
+    for field, value in desired.items():
+        if getattr(profile, field) != value:
+            setattr(profile, field, value)
+            changed = True
+    if changed:
+        profile.save()
+    invalidate_pro_access_cache(user)
+    return profile
+
+
 def ensure_subscription_profile(user) -> SubscriptionProfile:
+    if is_admin_entitled(user):
+        profile = sync_admin_subscription_profile(user)
+        if profile:
+            return profile
     profile = get_subscription_profile(user)
     if profile:
         return profile
@@ -54,8 +101,11 @@ def has_pro_access(user) -> bool:
     cached = getattr(user, _PRO_ACCESS_ATTR, None)
     if cached is not None:
         return cached
-    profile = get_subscription_profile(user)
-    value = bool(profile and profile.has_pro_access())
+    if is_admin_entitled(user):
+        value = True
+    else:
+        profile = get_subscription_profile(user)
+        value = bool(profile and profile.has_pro_access())
     try:
         setattr(user, _PRO_ACCESS_ATTR, value)
     except (AttributeError, TypeError):
@@ -95,7 +145,12 @@ def upload_count(user) -> int:
     maintenance_photos = MaintenancePhoto.objects.filter(
         maintenance_record__motorcycle__owner=user,
     ).count()
-    return docs + fuel_receipts + maintenance_photos
+    tire_product_images = (
+        TireProduct.objects.filter(owner=user, image__isnull=False)
+        .exclude(image="")
+        .count()
+    )
+    return docs + fuel_receipts + maintenance_photos + tire_product_images
 
 
 def remaining_upload_slots(user) -> int | None:

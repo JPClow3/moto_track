@@ -13,6 +13,7 @@ from apps.core.metrics import (
     reminders_run_duration_seconds,
     reminders_run_total,
 )
+from apps.core.services.push import send_push
 from apps.reminders.models import Reminder
 from apps.reminders.services import ReminderStatus, evaluate_reminder
 
@@ -24,11 +25,13 @@ def process_due_reminders(*, mark_notified: bool = False, writer=None) -> dict[s
     qs = (
         Reminder.objects.filter(is_active=True, motorcycle__is_active=True)
         .select_related("motorcycle", "motorcycle__owner")
+        .prefetch_related("motorcycle__owner__push_subscriptions")
         .order_by("motorcycle__name", "title")
     )
 
     due = 0
     emailed = 0
+    pushed = 0
     marked = 0
     for reminder in qs:
         current_odo = int(reminder.motorcycle.current_odometer_km or 0)
@@ -41,8 +44,15 @@ def process_due_reminders(*, mark_notified: bool = False, writer=None) -> dict[s
             writer(f"[{evaluation.status}] {reminder.motorcycle.name} :: {reminder.title}")
 
         notified = False
+        now = timezone.now()
         owner = reminder.motorcycle.owner
-        if reminder.send_email and owner.email and reminder.last_notified_at is None:
+        update_fields = []
+        legacy_already_notified = bool(
+            reminder.last_notified_at
+            and reminder.last_email_notified_at is None
+            and reminder.last_push_notified_at is None
+        )
+        if reminder.send_email and owner.email and reminder.last_email_notified_at is None and not legacy_already_notified:
             subject = f"Moto Track: {reminder.title}"
             message = (
                 f"{reminder.motorcycle.name}: {reminder.title}\n"
@@ -60,15 +70,43 @@ def process_due_reminders(*, mark_notified: bool = False, writer=None) -> dict[s
                 notified = sent > 0
                 if notified:
                     emailed += 1
+                    reminder.last_email_notified_at = now
+                    update_fields.append("last_email_notified_at")
             except Exception:
                 logger.exception("Failed to send reminder email to %s", owner.email)
 
-        if mark_notified or notified:
-            reminder.last_notified_at = timezone.now()
-            reminder.save(update_fields=["last_notified_at"])
+        push_notified = False
+        if reminder.send_push and reminder.last_push_notified_at is None and not legacy_already_notified:
+            payload = {
+                "title": f"Moto Track: {reminder.title}",
+                "body": f"{reminder.motorcycle.name}: {evaluation.status}",
+                "url": "/reminders/",
+            }
+            for subscription in owner.push_subscriptions.all():
+                result = send_push(subscription, payload)
+                if result.delivered:
+                    push_notified = True
+            if push_notified:
+                pushed += 1
+                reminder.last_push_notified_at = now
+                update_fields.append("last_push_notified_at")
+
+        if mark_notified:
+            if reminder.send_email and reminder.last_email_notified_at is None:
+                reminder.last_email_notified_at = now
+                update_fields.append("last_email_notified_at")
+            if reminder.send_push and reminder.last_push_notified_at is None:
+                reminder.last_push_notified_at = now
+                update_fields.append("last_push_notified_at")
+
+        if mark_notified or notified or push_notified:
+            reminder.last_notified_at = now
+            update_fields.append("last_notified_at")
+        if update_fields:
+            reminder.save(update_fields=sorted(set(update_fields + ["updated_at"])))
             marked += 1
 
-    return {"due": due, "emailed": emailed, "marked": marked}
+    return {"due": due, "emailed": emailed, "pushed": pushed, "marked": marked}
 
 
 @shared_task(
@@ -95,5 +133,6 @@ def process_reminders_task(self, *, mark_notified: bool = False):  # noqa: ARG00
     # against the per-reminder counter latency.
     reminders_processed_total.labels(action="due").inc(result.get("due", 0))
     reminders_processed_total.labels(action="emailed").inc(result.get("emailed", 0))
+    reminders_processed_total.labels(action="pushed").inc(result.get("pushed", 0))
     reminders_processed_total.labels(action="marked").inc(result.get("marked", 0))
     return result

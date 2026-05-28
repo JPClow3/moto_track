@@ -61,6 +61,7 @@ class WorkSession(TimeStampedModel):
     odometer_end_km = models.PositiveIntegerField()
     gross_income = models.DecimalField(max_digits=10, decimal_places=2)
     tips = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    fuel_spent = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     deliveries_count = models.PositiveSmallIntegerField(default=0)
     platform_source = models.CharField(max_length=24, choices=PlatformSource.choices, default=PlatformSource.OTHER)
     payment_method = models.CharField(max_length=16, choices=WorkPaymentMethod.choices, default=WorkPaymentMethod.PIX)
@@ -104,5 +105,7 @@ class WorkSession(TimeStampedModel):
             errors["gross_income"] = "O faturamento nao pode ser negativo."
         if self.tips is not None and Decimal(self.tips) < 0:
             errors["tips"] = "As gorjetas nao podem ser negativas."
+        if self.fuel_spent is not None and Decimal(self.fuel_spent) < 0:
+            errors["fuel_spent"] = "O gasto com combustível nao pode ser negativo."
         if errors:
             raise ValidationError(errors)

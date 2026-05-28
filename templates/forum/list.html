@@ -33,7 +33,7 @@
             </div>
             <a class="ui-btn-secondary !min-h-10 !px-4 md:justify-self-end" href="{% url 'blog:detail' article.slug %}">
               Ler
-              <i data-lucide="arrow-right" aria-hidden="true"></i>
+              {% include "core/partials/icon.html" with icon_name="arrow-right" icon_class="h-4 w-4" %}
             </a>
           </article>
         {% endfor %}
@@ -61,7 +61,7 @@
     </div>
     <a href="{% url 'account_signup' %}" class="ui-btn-primary !min-h-12 !px-5">
       Criar conta grátis
-      <i data-lucide="arrow-right" aria-hidden="true"></i>
+      {% include "core/partials/icon.html" with icon_name="arrow-right" icon_class="h-4 w-4" %}
     </a>
   </div>
 </section>

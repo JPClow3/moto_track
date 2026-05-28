@@ -11,3 +11,6 @@ class InventoryItemAdmin(UserScopedAdmin):
     list_filter = ("owner", "created_at")
     search_fields = ("name", "part_number", "description")
     ordering = ("name",)
+
+    def has_module_permission(self, request):
+        return False

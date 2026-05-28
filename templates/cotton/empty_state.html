@@ -1,4 +1,5 @@
-{# U-H12: reusable empty-state primitive. Usage:
+{% comment %}
+U-H12: reusable empty-state primitive. Usage:
 
   <c-empty-state
     icon="bell-off"
@@ -13,7 +14,7 @@
   <c-empty-state icon="inbox" title="Caixa vazia" description="Nada por aqui.">
     <a class="ui-btn-primary" href="/something">Ação custom</a>
   </c-empty-state>
-#}
+{% endcomment %}
 <div class="empty-state flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-outline-variant/60 bg-surface-low/60 px-6 py-10 text-center"
      role="status"
      aria-live="polite">

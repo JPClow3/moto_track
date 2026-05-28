@@ -48,6 +48,8 @@ class SubscriptionProfile(TimeStampedModel):
 
     def has_pro_access(self, *, now=None) -> bool:
         now = now or timezone.now()
+        if getattr(self.user, "is_staff", False) or getattr(self.user, "is_superuser", False):
+            return True
         if self.plan != BillingPlan.PRO:
             return False
         if self.stripe_subscription_status in {"active", "trialing"}:

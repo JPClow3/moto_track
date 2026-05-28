@@ -16,10 +16,31 @@
       <p class="page-copy">Dossiê de venda gerado a partir dos registros informados pelo proprietário.</p>
     </div>
     <div class="page-actions print:hidden">
+      <form method="post" action="{% url 'reports:sale_report_share_create' motorcycle.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="ui-btn-secondary">Criar link público</button>
+      </form>
       <a class="ui-btn-secondary" href="{% url 'reports:sale_report_pdf' motorcycle.pk %}">Baixar PDF</a>
       <button class="ui-btn-primary" @click="window.print()">Imprimir</button>
     </div>
   </header>
+
+  {% if shares %}
+    <section class="space-y-3 rounded-md border border-outline-variant/20 bg-surface-low p-4 print:hidden" aria-label="Links públicos ativos">
+      <h3 class="font-semibold text-on-surface">Links públicos ativos</h3>
+      <div class="space-y-2">
+        {% for share in shares %}
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-md bg-surface px-3 py-2 text-sm">
+            <span class="text-on-surface-variant">Expira em {{ share.expires_at|date:"d/m/Y H:i" }} - {{ share.access_count }} acesso(s)</span>
+            <form method="post" action="{% url 'reports:sale_report_share_revoke' share.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="ui-btn-secondary !text-error">Revogar</button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
 
   <section class="space-y-6" aria-label="Resumo do veículo">
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">

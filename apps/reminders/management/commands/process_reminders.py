@@ -9,7 +9,7 @@ class Command(BaseCommand):
     help = "Process active reminders or enqueue the Celery task."
 
     def add_arguments(self, parser):
-        parser.add_argument("--mark-notified", action="store_true", help="Update last_notified_at for due reminders.")
+        parser.add_argument("--mark-notified", action="store_true", help="Update reminder notification timestamps for due reminders.")
         parser.add_argument("--enqueue", action="store_true", help="Send the work to Celery instead of running inline.")
 
     def handle(self, *args, **options):  # noqa: ARG002
@@ -20,4 +20,9 @@ class Command(BaseCommand):
             return
 
         summary = process_due_reminders(mark_notified=mark, writer=self.stdout.write)
-        self.stdout.write(self.style.SUCCESS(f"Processed reminders. Due/soon/overdue: {summary['due']}"))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Processed reminders. Due/soon/overdue: {summary['due']}. "
+                f"Emails: {summary.get('emailed', 0)}. Push: {summary.get('pushed', 0)}."
+            )
+        )

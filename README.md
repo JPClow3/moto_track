@@ -18,6 +18,15 @@ Moto Track is a personal motorcycle management platform built for riders who wan
 
 ---
 
+## Documentation Map
+
+- Setup, validation, and daily workflows: [README.md](README.md)
+- Frontend contribution rules: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Runtime configuration reference: [`.env.example`](.env.example)
+- Operations, deploy, observability, backups, and ADRs: [docs/README.md](docs/README.md)
+
+---
+
 ## What You Get
 
 ### Ride & Cost Tracking
@@ -99,10 +108,12 @@ docker compose --profile dev exec web python manage.py migrate
 
 ```bash
 cp .env.example .env
-# Set: SITE_DOMAIN, DJANGO_ALLOWED_HOSTS, DJANGO_SECRET_KEY,
-#      AWS_STORAGE_BUCKET_NAME, POSTGRES_PASSWORD
 docker compose --profile prod --profile edge up -d --build
 ```
+
+Set the production values from [`.env.example`](.env.example) first, then use
+[docs/deploy.md](docs/deploy.md) for target-specific steps. This is the
+fallback path when you are not fronting the app with Dokploy.
 
 Caddy auto-provisions TLS certificates — ports `80/443` exposed, `www` redirects to apex.
 
@@ -169,24 +180,27 @@ apps/
 npm run build:css
 python manage.py check
 python manage.py makemigrations --check --dry-run
+python scripts/local_ci.py
 docker compose --profile test up --build --abort-on-container-exit --exit-code-from test
 ```
 
 Automated tests intentionally use PostgreSQL. For local pytest outside Docker, set
 `DJANGO_SETTINGS_MODULE=config.settings.test` and `TEST_DATABASE_URL` or `DATABASE_URL`
-to a PostgreSQL database.
+to a PostgreSQL database. The canonical runtime variable list lives in
+[`.env.example`](.env.example).
 
 ---
 
 ## Deploy
 
-Full guide: **[docs/deploy.md](docs/deploy.md)**
+Start with [docs/deploy.md](docs/deploy.md) for the deploy flow and
+[`.env.example`](.env.example) for the environment contract.
 
 | Path | Command |
 | :--- | :--- |
-| **Coolify / managed proxy** | `docker compose --profile prod up -d` |
+| **Dokploy on EC2 (managed Traefik)** | Use `docker-compose.yml` in Dokploy and deploy the `prod` profile |
 | **Self-hosted VPS (Caddy TLS)** | `docker compose --profile prod --profile edge up -d --build` |
-| **Bare metal (Nginx + Gunicorn)** | See [deploy.md](docs/deploy.md) for systemd + Nginx setup |
+| **Bare metal (Nginx + Gunicorn)** | See [docs/deploy.md](docs/deploy.md) for systemd + Nginx setup |
 
 ---
 

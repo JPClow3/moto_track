@@ -24,10 +24,26 @@ class PublicUiShellTests(TestCase):
                 self.assertContains(response, "moto-track-logo-horizontal-light.svg")
                 self.assertContains(response, "moto-track-logo-horizontal-dark.svg")
 
-    def test_public_and_auth_theme_controls_are_icon_only_before_js_runs(self):
+    def test_public_theme_controls_are_icon_only_without_lucide_bundle(self):
         route_names = [
             "landing",
             "pricing",
+            "blog:list",
+        ]
+
+        for route_name in route_names:
+            with self.subTest(route=route_name):
+                response = self.client.get(reverse(route_name))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "data-theme-toggle")
+                self.assertContains(response, "ui-icon-btn")
+                self.assertContains(response, "<svg")
+                self.assertNotContains(response, 'data-lucide="sun"')
+                self.assertNotContains(response, "vendor/lucide")
+                self.assertNotContains(response, "<span>Tema</span>")
+
+    def test_auth_theme_controls_keep_icon_only_before_js_runs(self):
+        route_names = [
             "account_login",
             "account_signup",
         ]
@@ -41,6 +57,16 @@ class PublicUiShellTests(TestCase):
                 self.assertContains(response, "ui-icon-btn")
                 self.assertNotContains(response, "<span>Tema</span>")
                 self.assertNotContains(response, 'class="ui-toolbar-btn" data-theme-toggle')
+
+    def test_landing_has_trust_plan_teaser_and_semantic_preview(self):
+        response = self.client.get(reverse("landing"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sem cartão")
+        self.assertContains(response, "Privado")
+        self.assertContains(response, "Comparar planos")
+        self.assertContains(response, "Exemplo de painel")
+        self.assertNotContains(response, 'role="img"')
 
     def test_reviewed_marketing_pages_use_normal_tracking_markup(self):
         route_names = ["landing", "pricing"]

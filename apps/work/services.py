@@ -64,9 +64,11 @@ def professional_summary(*, user, motorcycle: Motorcycle | None = None, start: d
     session_rows = list(sessions)
     revenue = sum((row.total_revenue for row in session_rows), Decimal("0"))
     distance_km = sum((row.distance_km for row in session_rows), 0)
+    estimated_distance_km = sum((row.distance_km for row in session_rows if row.fuel_spent is None), 0)
     hours = sum((row.duration_hours for row in session_rows), Decimal("0"))
     fuel_records = list(fuel.order_by("date", "odometer_km", "pk"))
-    fuel_total = _estimated_work_fuel_cost(fuel_records, distance_km)
+    explicit_fuel_total = sum((_decimal(row.fuel_spent) for row in session_rows if row.fuel_spent is not None), Decimal("0"))
+    fuel_total = explicit_fuel_total + _estimated_work_fuel_cost(fuel_records, estimated_distance_km)
 
     settings = None
     if motorcycle:

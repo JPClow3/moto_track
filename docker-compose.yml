@@ -58,6 +58,7 @@ x-web: &web_common
   environment:
     DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-motoapp}
     CELERY_BROKER_URL: redis://redis:6379/0
+    VOLUME_MOUNT_PATH: ${VOLUME_MOUNT_PATH:-/app}
   depends_on:
     db:
       condition: service_healthy
@@ -182,10 +183,14 @@ services:
         limits:
           memory: ${WEB_MEMORY_LIMIT:-1g}
     volumes:
-      # MEDIA: with `STORAGES["default"]` = S3 in prod, uploads go to S3; this mount is optional
-      # (e.g. local exports or if you override storage). Safe to remove on Lightsail when using S3 only.
-      - ./media:/app/media
-      - ./.env:/app/.env:ro
+      # MEDIA: with `STORAGES["default"]` = S3 in prod, uploads go to S3; this
+      # volume is only a local fallback (e.g. exports or a storage override).
+      # Keep it as a named volume so Dokploy and plain Compose don't depend on
+      # repo-relative bind mounts for persistence. The target mirrors
+      # VOLUME_MOUNT_PATH so Django's MEDIA_ROOT and the volume stay aligned.
+      - type: volume
+        source: media_data
+        target: ${VOLUME_MOUNT_PATH:-/app}/media
     env_file:
       - path: .env
         required: false
@@ -476,6 +481,7 @@ services:
 
 volumes:
   postgres_data:
+  media_data:
   caddy_data:
   caddy_config:
   alloy_data:

@@ -1,9 +1,13 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Avg
-from django.http import HttpResponse
+from django.db.models import Avg, F
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from apps.billing.decorators import pro_required
 from apps.billing.entitlements import has_pro_access
@@ -13,6 +17,7 @@ from apps.core.ui import get_density, per_page_for_density
 from apps.garage.active_motorcycle import get_active_motorcycle
 from apps.garage.models import Motorcycle
 from apps.reports.export import detailed_csv_response, sale_pdf_response
+from apps.reports.models import SaleReportShare
 from apps.reports.services import (
     cost_summary,
     health_score,
@@ -136,7 +141,51 @@ def sale_pdf_export_view(request):
 def sale_report_html_view(request, pk: int):
     motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user)
     data = sale_report_data(motorcycle=motorcycle)
-    return render(request, "reports/sale_report.html", {"motorcycle": motorcycle, "data": data})
+    shares = SaleReportShare.objects.filter(
+        owner=request.user,
+        motorcycle=motorcycle,
+        revoked_at__isnull=True,
+        expires_at__gte=timezone.now(),
+    )
+    return render(request, "reports/sale_report.html", {"motorcycle": motorcycle, "data": data, "shares": shares})
+
+
+@login_required
+@pro_required("Dossie publico de venda")
+@require_POST
+def sale_report_share_create_view(request, pk: int):
+    motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user)
+    _share, token = SaleReportShare.create_for(motorcycle=motorcycle, owner=request.user, days=14)
+    public_url = request.build_absolute_uri(reverse("reports:sale_report_public", args=[token]))
+    messages.success(request, f"Link público criado por 14 dias: {public_url}")
+    return redirect("reports:sale_report_html", pk=motorcycle.pk)
+
+
+@login_required
+@pro_required("Dossie publico de venda")
+@require_POST
+def sale_report_share_revoke_view(request, pk: int):
+    share = get_object_or_404(SaleReportShare, pk=pk, owner=request.user)
+    motorcycle_pk = share.motorcycle_id
+    share.revoke()
+    messages.success(request, "Link público revogado.")
+    return redirect("reports:sale_report_html", pk=motorcycle_pk)
+
+
+def sale_report_public_view(request, token: str):
+    token_hash = SaleReportShare.hash_token(token)
+    share = get_object_or_404(
+        SaleReportShare.objects.select_related("motorcycle", "owner"),
+        token_hash=token_hash,
+    )
+    if not share.is_active:
+        raise Http404
+    SaleReportShare.objects.filter(pk=share.pk).update(
+        last_accessed_at=timezone.now(),
+        access_count=F("access_count") + 1,
+    )
+    data = sale_report_data(motorcycle=share.motorcycle)
+    return render(request, "reports/public_sale_report.html", {"share": share, "motorcycle": share.motorcycle, "data": data})
 
 
 @login_required

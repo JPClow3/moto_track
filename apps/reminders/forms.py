@@ -20,6 +20,7 @@ class ReminderForm(forms.ModelForm):
             "reference_date",
             "is_active",
             "send_email",
+            "send_push",
             "notes",
         ]
         labels = {
@@ -33,12 +34,13 @@ class ReminderForm(forms.ModelForm):
             "reference_date": "Data de referência",
             "is_active": "Ativo",
             "send_email": "Enviar e-mail",
+            "send_push": "Enviar push",
             "notes": "Observações",
         }
         widgets = {
             "description": forms.Textarea(attrs={"rows": 2}),
             "notes": forms.Textarea(attrs={"rows": 2}),
-            "reference_date": forms.DateInput(attrs={"type": "date"}),
+            "reference_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
         }
 
     def __init__(self, *args, user=None, **kwargs):

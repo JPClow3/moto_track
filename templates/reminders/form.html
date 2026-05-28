@@ -137,6 +137,16 @@
                 <span class="text-xs text-on-surface-variant">- Receba um aviso adicional por e-mail quando disponível</span>
               </div>
             </div>
+
+            <div class="form-field md:col-span-2">
+              <div class="flex flex-wrap items-center gap-3 rounded-md border border-outline-variant/40 bg-surface-low p-3">
+                {{ form.send_push }}
+                <label for="{{ form.send_push.id_for_label }}" class="mb-0 text-sm font-medium">
+                  Enviar push
+                </label>
+                <span class="text-xs text-on-surface-variant">- Receba aviso no dispositivo quando as notificações estiverem ativas</span>
+              </div>
+            </div>
           </div>
 
           <div class="quick-actions-row-split pt-4 border-t border-outline-variant/40">

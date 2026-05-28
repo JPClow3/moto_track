@@ -27,7 +27,7 @@ class DocumentUploadForm(forms.ModelForm):
         }
         widgets = {
             "file": forms.ClearableFileInput(attrs={"accept": "image/*,.pdf,.doc,.docx"}),
-            "valid_until": forms.DateInput(attrs={"type": "date"}),
+            "valid_until": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
 

@@ -27,6 +27,14 @@
       {{ form.media }}
       {{ form|crispy }}
 
+      <div class="mt-4 space-y-3 rounded-md border border-outline-variant/40 bg-surface-low p-3" data-part-quantity-panel hidden>
+        <div class="flex items-center gap-2 text-sm font-semibold text-on-surface">
+          <i data-lucide="package-minus" class="h-4 w-4" aria-hidden="true"></i>
+          <span>Quantidades usadas</span>
+        </div>
+        <div class="space-y-2" data-part-quantity-rows></div>
+      </div>
+
       <div class="quick-actions-row-split">
         <button type="button" class="secondary-btn" @click="closeQuickFormModal()">Cancelar</button>
         <button type="submit" class="primary-btn">{{ submit_label }}</button>
@@ -34,3 +42,43 @@
     </form>
   </div>
 </div>
+
+<script>
+(function () {
+  const root = document.currentScript.closest(".modal-panel");
+  const form = root ? root.querySelector("form") : null;
+  if (!form) return;
+  const select = form.querySelector('[name="parts"]');
+  const panel = form.querySelector("[data-part-quantity-panel]");
+  const rows = form.querySelector("[data-part-quantity-rows]");
+  if (!select || !panel || !rows) return;
+
+  function syncPartQuantities() {
+    const selected = Array.from(select.selectedOptions || []).filter((option) => option.value);
+    panel.hidden = selected.length === 0;
+    rows.innerHTML = "";
+    selected.forEach((option) => {
+      const wrapper = document.createElement("label");
+      wrapper.className = "flex flex-wrap items-center justify-between gap-3 rounded-md border border-outline-variant/30 bg-surface px-3 py-2 text-sm";
+      const label = document.createElement("span");
+      label.className = "min-w-0 flex-1 truncate font-medium text-on-surface";
+      label.textContent = option.textContent || "Peça";
+      const input = document.createElement("input");
+      input.type = "number";
+      input.name = `part_quantity_${option.value}`;
+      input.value = "1";
+      input.min = "1";
+      input.inputMode = "numeric";
+      input.className = "w-24 rounded-md border border-outline-variant/40 bg-surface-low px-3 py-2 text-right";
+      wrapper.append(label, input);
+      rows.appendChild(wrapper);
+    });
+  }
+
+  select.addEventListener("change", syncPartQuantities);
+  if (window.jQuery) {
+    window.jQuery(select).on("select2:select select2:unselect change", syncPartQuantities);
+  }
+  syncPartQuantities();
+})();
+</script>

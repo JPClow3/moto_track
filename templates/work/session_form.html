@@ -48,8 +48,11 @@
           </div>
         </div>
 
-        <form method="post" class="data-form space-y-5" novalidate x-ref="sessionForm" @input="updateCompletion()">
+        <form method="post" class="data-form space-y-5" novalidate x-ref="sessionForm" @input="updateCompletion()"{% if offline_queue_action %} data-offline-queue="{{ offline_queue_action }}"{% endif %}>
           {% csrf_token %}
+          {% if client_submission_id %}
+            <input type="hidden" name="client_submission_id" value="{{ client_submission_id }}" />
+          {% endif %}
 
           <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div class="form-field">
@@ -76,19 +79,55 @@
               </div>
             </div>
 
+            <div class="form-field" @focusin="showTip('inicio')" @focusout="hideTip('inicio')">
+              {{ form.started_at|as_crispy_field }}
+              <div x-show="tips.inicio" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
+                <i data-lucide="clock" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
+                <span>Horário de início, se quiser calcular produtividade por hora</span>
+              </div>
+            </div>
+
+            <div class="form-field" @focusin="showTip('fim')" @focusout="hideTip('fim')">
+              {{ form.ended_at|as_crispy_field }}
+              <div x-show="tips.fim" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
+                <i data-lucide="clock3" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
+                <span>Horário final do turno</span>
+              </div>
+            </div>
+
             <div class="form-field" @focusin="showTip('ganhos')" @focusout="hideTip('ganhos')">
-              {{ form.earnings|as_crispy_field }}
+              {{ form.gross_income|as_crispy_field }}
               <div x-show="tips.ganhos" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
                 <i data-lucide="banknote" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
                 <span>Total bruto ganho no turno</span>
               </div>
             </div>
 
-            <div class="form-field" @focusin="showTip('tempo')" @focusout="hideTip('tempo')">
-              {{ form.hours_worked|as_crispy_field }}
-              <div x-show="tips.tempo" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
-                <i data-lucide="clock" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
-                <span>Horas trabalhadas (ex: 8.5 = 8h30min)</span>
+            <div class="form-field">
+              {{ form.tips|as_crispy_field }}
+            </div>
+
+            <div class="form-field" @focusin="showTip('combustivel')" @focusout="hideTip('combustivel')">
+              {{ form.fuel_spent|as_crispy_field }}
+              <div x-show="tips.combustivel" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
+                <i data-lucide="fuel" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
+                <span>Informe o gasto real do dia quando souber; o resumo estima apenas o que ficar em branco</span>
+              </div>
+            </div>
+
+            <div class="form-field">
+              {{ form.deliveries_count|as_crispy_field }}
+            </div>
+
+            <div class="form-field">
+              {{ form.platform_source|as_crispy_field }}
+            </div>
+
+            <div class="form-field" @focusin="showTip('pagamento')" @focusout="hideTip('pagamento')">
+              {{ form.payment_method|as_crispy_field }}
+              <div x-show="tips.pagamento" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
+                <i data-lucide="wallet" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
+                <span>Use o método predominante do turno</span>
               </div>
             </div>
 
@@ -154,10 +193,13 @@ function workSessionForm(initialTotal) {
     isComplete: false,
     tips: {
       data: false,
+      inicio: false,
+      fim: false,
       odometro_inicio: false,
       odometro_fim: false,
       ganhos: false,
-      tempo: false
+      combustivel: false,
+      pagamento: false
     },
 
     init() {
@@ -200,7 +242,9 @@ function workSessionForm(initialTotal) {
       this.completion = requiredFields.length > 0
         ? Math.round((requiredFilled / requiredFields.length) * 100)
         : Math.round((filled / (fields.length || 1)) * 100);
-      this.isComplete = this.completion >= 50;
+      this.isComplete = requiredFields.length > 0
+        ? requiredFilled === requiredFields.length
+        : filled === fields.length;
     }
   };
 }

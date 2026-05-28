@@ -131,6 +131,9 @@ def garage_delete_view(request, pk):
 def garage_restore_view(request, pk):
     motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user, is_active=False)
     if request.method == "POST":
+        if not can_add_active_motorcycle(request.user, instance=motorcycle):
+            messages.info(request, "O Plano Free permite 1 moto ativa. O Plano Pro libera multiplas motos.")
+            return redirect("garage:list")
         motorcycle.reactivate()
         messages.success(request, f"Moto {motorcycle.name} reativada com sucesso.")
     return redirect("garage:list")

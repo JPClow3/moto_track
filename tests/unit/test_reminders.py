@@ -9,6 +9,8 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.core.models import PushSubscription
+from apps.core.services.push import PushDeliveryResult
 from apps.garage.models import Motorcycle
 from apps.reminders.forms import ReminderForm
 from apps.reminders.models import Reminder, TriggerType
@@ -388,9 +390,10 @@ class ReminderCommandTests(TestCase):
 
         failed.refresh_from_db()
         sent.refresh_from_db()
-        self.assertEqual(summary, {"due": 2, "emailed": 1, "marked": 1})
+        self.assertEqual(summary, {"due": 2, "emailed": 1, "pushed": 0, "marked": 1})
         self.assertIsNone(failed.last_notified_at)
         self.assertIsNotNone(sent.last_notified_at)
+        self.assertIsNotNone(sent.last_email_notified_at)
 
     def test_process_reminders_does_not_resend_already_notified_email(self):
         reminder = Reminder.objects.create(
@@ -410,7 +413,36 @@ class ReminderCommandTests(TestCase):
 
         reminder.refresh_from_db()
         send_mail.assert_not_called()
-        self.assertEqual(summary, {"due": 1, "emailed": 0, "marked": 0})
+        self.assertEqual(summary, {"due": 1, "emailed": 0, "pushed": 0, "marked": 0})
+        self.assertIsNotNone(reminder.last_notified_at)
+
+    def test_process_reminders_sends_push_independently_from_email(self):
+        reminder = Reminder.objects.create(
+            motorcycle=self.motorcycle,
+            title="Push avisa",
+            trigger_type=TriggerType.BY_KM,
+            trigger_value_km=100,
+            reference_km=0,
+            send_email=False,
+            send_push=True,
+        )
+        PushSubscription.objects.create(
+            owner=self.user,
+            endpoint="https://push.example/subscription",
+            p256dh="p256dh",
+            auth="auth",
+        )
+
+        from apps.reminders.tasks import process_due_reminders
+
+        with patch("apps.reminders.tasks.send_push", return_value=PushDeliveryResult(delivered=True)) as send_push:
+            summary = process_due_reminders()
+
+        reminder.refresh_from_db()
+        send_push.assert_called_once()
+        self.assertEqual(summary, {"due": 1, "emailed": 0, "pushed": 1, "marked": 1})
+        self.assertIsNone(reminder.last_email_notified_at)
+        self.assertIsNotNone(reminder.last_push_notified_at)
         self.assertIsNotNone(reminder.last_notified_at)
 
     def test_process_reminders_celery_task_runs_same_processing(self):

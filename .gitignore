@@ -1,28 +1,34 @@
 __pycache__/
 *.py[cod]
 *.sqlite3
+
 .venv/
 .env
-# Mistaken copy of `.env` (never commit secrets here)
 /env
-media/
-staticfiles/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .vscode/
-node_modules/
 .tools/
+node_modules/
+
+media/
+staticfiles/
 static/css/tailwind.generated.css
+
 .coverage
 .coverage.*
 coverage.xml
 htmlcov/
+playwright-report/
+test-results/
 
 # Test and CI output files
 *_output.txt
 *_tests.txt
 *_test.txt
 *_exit.txt
+*_report.txt
 test_*.txt
 test_result.txt
 test_*_results.txt
@@ -36,24 +42,16 @@ test_results_new.txt
 tests_output.txt
 full_test*.txt
 git_diff_*.txt
+latest_versions.txt
+pip_outdated.txt
 
 # Temporary scripts and logs
 tmp_*.py
 *.log
+runserver-*.out.log
+runserver-*.err.log
 tailwind-error.txt
 tailwind_err.txt
 screenshot.png
 --db
 check_updates.py
-*_report.txt
-latest_versions.txt
-pip_outdated.txt
-
-# Dev-server output and coverage artifacts (I-C2)
-*.log
-runserver-*.out.log
-runserver-*.err.log
-coverage.xml
-.coverage
-.coverage.*
-htmlcov/

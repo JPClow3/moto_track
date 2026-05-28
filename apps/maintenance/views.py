@@ -5,7 +5,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import F, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -41,6 +41,28 @@ from .models import (
 )
 
 # pylint: disable=no-member
+
+
+def _attach_parts_and_consume_stock(*, record: MaintenanceRecord, parts, quantities: dict[int, int], owner) -> None:
+    for selected_part in parts:
+        quantity = int(quantities.get(selected_part.pk, 1) or 1)
+        part = MaintenancePart.objects.select_for_update().get(pk=selected_part.pk, owner=owner)
+        if part.track_stock:
+            available = int(part.stock_quantity or 0)
+            if quantity > available:
+                raise forms.ValidationError(
+                    f"Estoque insuficiente para {part.name}: disponível {available}, solicitado {quantity}."
+                )
+            MaintenancePart.objects.filter(pk=part.pk).update(
+                stock_quantity=F("stock_quantity") - quantity,
+                updated_at=timezone.now(),
+            )
+            part.refresh_from_db(fields=["stock_quantity"])
+        MaintenanceRecordPart.objects.update_or_create(
+            maintenance_record=record,
+            part=part,
+            defaults={"quantity": quantity, "unit_price": part.price},
+        )
 
 
 class MaintenancePartAutocomplete(autocomplete.Select2QuerySetView):
@@ -404,70 +426,80 @@ def maintenance_quick_create_view(request):
         form = MaintenanceRecordQuickForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             parts = form.cleaned_data.pop("parts", [])
-            with transaction.atomic():
-                submission, should_process = claim_client_submission(
-                    request,
-                    token=submission_token,
-                    action="maintenance:quick_create",
-                )
-                if not should_process:
-                    if is_htmx:
-                        response = HttpResponse()
-                        response["HX-Redirect"] = next_url
-                        return response
-                    return redirect(next_url)
-                record = form.save()  # parts & photos are not model fields, so this is safe
-                if parts:
-                    for part in parts:
-                        MaintenanceRecordPart.objects.get_or_create(maintenance_record=record, part=part)
-                photos = request.FILES.getlist("photos") if request.FILES else []
-                if photos:
-                    img_validator = forms.ImageField(required=False)
-                    slots = remaining_upload_slots(request.user)
-                    allowed_photos = photos if slots is None else photos[:slots]
-                    if slots == 0:
-                        messages.info(
-                            request,
-                            "Manutencao salva sem fotos: o Plano Free permite ate 3 documentos, fotos ou recibos.",
+            part_quantities = form.cleaned_data.pop("part_quantities", {})
+            try:
+                with transaction.atomic():
+                    submission, should_process = claim_client_submission(
+                        request,
+                        token=submission_token,
+                        action="maintenance:quick_create",
+                    )
+                    if not should_process:
+                        if is_htmx:
+                            response = HttpResponse()
+                            response["HX-Redirect"] = next_url
+                            return response
+                        return redirect(next_url)
+                    record = form.save()  # parts, quantities & photos are not model fields, so this is safe
+                    if parts:
+                        _attach_parts_and_consume_stock(
+                            record=record,
+                            parts=parts,
+                            quantities=part_quantities,
+                            owner=request.user,
                         )
-                    elif slots is not None and len(photos) > len(allowed_photos):
-                        messages.info(request, "Algumas fotos nao foram anexadas porque o limite do Plano Free foi atingido.")
-                    for photo in allowed_photos:
-                        try:
-                            img_validator.clean(photo, None)
-                        except forms.ValidationError:
-                            continue
-                        MaintenancePhoto.objects.create(maintenance_record=record, image=photo)
-                record_client_submission(
+                    photos = request.FILES.getlist("photos") if request.FILES else []
+                    if photos:
+                        img_validator = forms.ImageField(required=False)
+                        slots = remaining_upload_slots(request.user)
+                        allowed_photos = photos if slots is None else photos[:slots]
+                        if slots == 0:
+                            messages.info(
+                                request,
+                                "Manutencao salva sem fotos: o Plano Free permite ate 3 documentos, fotos ou recibos.",
+                            )
+                        elif slots is not None and len(photos) > len(allowed_photos):
+                            messages.info(request, "Algumas fotos nao foram anexadas porque o limite do Plano Free foi atingido.")
+                        for photo in allowed_photos:
+                            try:
+                                img_validator.clean(photo, None)
+                            except forms.ValidationError:
+                                continue
+                            MaintenancePhoto.objects.create(maintenance_record=record, image=photo)
+                    record_client_submission(
+                        request,
+                        token=submission_token,
+                        action="maintenance:quick_create",
+                        result=record,
+                        submission=submission,
+                    )
+            except forms.ValidationError as exc:
+                form.add_error("parts", " ".join(exc.messages))
+                status = 422 if is_htmx else 200
+            else:
+                create_undo_token(
                     request,
-                    token=submission_token,
-                    action="maintenance:quick_create",
-                    result=record,
-                    submission=submission,
+                    model_label="maintenance.MaintenanceRecord",
+                    object_id=record.pk,
+                    label="Desfazer manutenção",
                 )
-            create_undo_token(
-                request,
-                model_label="maintenance.MaintenanceRecord",
-                object_id=record.pk,
-                label="Desfazer manutenção",
-            )
-            today = timezone.localdate()
-            due = list_due_reminders(
-                reminders=list(Reminder.objects.filter(motorcycle=record.motorcycle, is_active=True).order_by("title")[:10]),
-                current_odometer_km=int(record.motorcycle.current_odometer_km or 0),
-                today=today,
-            )
-            if due:
-                messages.info(
-                    request,
-                    f"{len(due)} lembrete(s) está(ão) vencido(s) ou em breve. Você pode revisar em Lembretes.",
+                today = timezone.localdate()
+                due = list_due_reminders(
+                    reminders=list(Reminder.objects.filter(motorcycle=record.motorcycle, is_active=True).order_by("title")[:10]),
+                    current_odometer_km=int(record.motorcycle.current_odometer_km or 0),
+                    today=today,
                 )
-            messages.success(request, f"Manutenção registrada para {record.motorcycle.name}.")
-            if is_htmx:
-                response = HttpResponse()
-                response["HX-Redirect"] = next_url
-                return response
-            return redirect(next_url)
+                if due:
+                    messages.info(
+                        request,
+                        f"{len(due)} lembrete(s) está(ão) vencido(s) ou em breve. Você pode revisar em Lembretes.",
+                    )
+                messages.success(request, f"Manutenção registrada para {record.motorcycle.name}.")
+                if is_htmx:
+                    response = HttpResponse()
+                    response["HX-Redirect"] = next_url
+                    return response
+                return redirect(next_url)
         status = 422 if is_htmx else 200
     else:
         initial = {"next": request.GET.get("next") or ""}

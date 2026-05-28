@@ -23,7 +23,10 @@ class Reminder(TimeStampedModel):
     reference_date = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     last_notified_at = models.DateTimeField(null=True, blank=True)
+    last_email_notified_at = models.DateTimeField(null=True, blank=True)
+    last_push_notified_at = models.DateTimeField(null=True, blank=True)
     send_email = models.BooleanField(default=True)
+    send_push = models.BooleanField(default=True)
     notes = models.TextField(blank=True)
 
     class Meta:

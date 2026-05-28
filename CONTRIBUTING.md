@@ -1,5 +1,9 @@
 # Contributing to Moto Track
 
+This document is intentionally scoped to frontend contribution rules. For setup,
+validation, deployment, and runtime configuration, use [README.md](README.md),
+[docs/README.md](docs/README.md), and [`.env.example`](.env.example).
+
 ## Frontend Architecture Rules (Strict)
 
 This project's frontend stack is **locked to three technologies**. Any deviation must be explicitly justified and tagged.

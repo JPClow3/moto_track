@@ -1,4 +1,5 @@
-{# Unified page header (#9). Replaces ad-hoc `page-hero` / `dashboard-hero`
+{% comment %}
+Unified page header (#9). Replaces ad-hoc `page-hero` / `dashboard-hero`
    / `public-section-heading` divergence. Usage:
 
    <c-page-header
@@ -13,7 +14,7 @@
    - `subtitle` (optional): one-line description.
    - Body slot: primary/secondary action buttons rendered in `page-actions`
      to the right on desktop, stacked below on mobile.
-#}
+{% endcomment %}
 <header class="page-hero">
   <div class="min-w-0">
     {% if kicker %}<p class="page-kicker">{{ kicker }}</p>{% endif %}

@@ -81,7 +81,7 @@
             </div>
 
             <div class="form-field" @focusin="showTip('antecedencia')" @focusout="hideTip('antecedencia')">
-              {{ form.remind_days_before|as_crispy_field }}
+              {{ form.notify_before_days|as_crispy_field }}
               <div x-show="tips.antecedencia" x-transition.opacity class="mt-2 flex items-start gap-2 text-xs text-info">
                 <i data-lucide="bell" class="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
                 <span>Dias de antecedência para receber alerta</span>
@@ -206,4 +206,3 @@ function feeForm(initialTotal) {
 }
 </script>
 {% endblock %}
-

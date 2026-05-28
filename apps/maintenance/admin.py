@@ -9,8 +9,8 @@ from .models import MaintenancePart, MaintenancePhoto, MaintenanceRecord, Mainte
 
 @admin.register(MaintenancePart)
 class MaintenancePartAdmin(UserScopedAdmin):
-    list_display = ("name", "manufacturer", "part_type", "price")
-    list_filter = ("part_type",)
+    list_display = ("name", "manufacturer", "part_type", "price", "track_stock", "stock_quantity", "low_stock_threshold")
+    list_filter = ("part_type", "track_stock")
     search_fields = ("name", "manufacturer", "sku")
 
 

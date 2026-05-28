@@ -106,6 +106,14 @@ class ExpensesExportTests(TestCase):
         self.assertEqual(response.context["fees_page_obj"].paginator.count, 55)
         self.assertEqual(response.context["policies_page_obj"].paginator.count, 55)
 
+    def test_fee_create_form_renders_current_notify_field(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("expenses:fee_create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="notify_before_days"')
+
 
 class ExpensesModelTests(TestCase):
     def setUp(self):

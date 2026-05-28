@@ -1,13 +1,14 @@
-{# U-M7: HTMX loading skeleton for list views.
+{% comment %}
+U-M7: HTMX loading skeleton for list views.
 
    Usage inside a list view template:
      <c-list-skeleton rows="5" />
 
    Wire as the indicator for an htmx swap:
      <div hx-get="..." hx-target="..." hx-indicator="#list-skel">
-       <c-list-skeleton id="list-skel" rows="6" />
-     </div>
-#}
+     <c-list-skeleton id="list-skel" rows="6" />
+   </div>
+{% endcomment %}
 <div id="{{ id|default:'list-skeleton' }}"
      class="htmx-indicator space-y-3"
      role="status"

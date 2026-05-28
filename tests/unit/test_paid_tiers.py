@@ -17,6 +17,12 @@ from apps.fuel.models import FuelRecord
 from apps.garage.models import Motorcycle
 from apps.reminders.models import Reminder, TriggerType
 
+GIF_IMAGE_BYTES = (
+    b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00"
+    b"\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,"
+    b"\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+)
+
 
 class PaidTierEntitlementTests(TestCase):
     def setUp(self):
@@ -99,6 +105,62 @@ class PaidTierEntitlementTests(TestCase):
 
         self.assertFalse(can_add_uploads(self.user))
 
+    def test_free_upload_limit_counts_tire_product_images(self):
+        from apps.billing.entitlements import FREE_UPLOAD_LIMIT, can_add_uploads, upload_count
+        from apps.tires.models import TireProduct, TireType
+
+        motorcycle = Motorcycle.objects.create(owner=self.user, name="Moto 1", brand="Honda", model="CG", year=2024)
+        for idx in range(FREE_UPLOAD_LIMIT - 1):
+            MotorcycleDocument.objects.create(
+                motorcycle=motorcycle,
+                name=f"Doc {idx}",
+                document_type=DocumentType.OTHER,
+                file=SimpleUploadedFile(f"doc-{idx}.pdf", b"pdf", content_type="application/pdf"),
+            )
+        TireProduct.objects.create(
+            owner=self.user,
+            manufacturer="Pirelli",
+            model_name="Angel GT",
+            image=SimpleUploadedFile("pneu.gif", GIF_IMAGE_BYTES, content_type="image/gif"),
+            tire_type=TireType.TOURING,
+        )
+
+        self.assertEqual(upload_count(self.user), FREE_UPLOAD_LIMIT)
+        self.assertFalse(can_add_uploads(self.user))
+
+    def test_admin_user_receives_internal_pro_entitlement(self):
+        from apps.billing.entitlements import (
+            ADMIN_SUBSCRIPTION_STATUS,
+            ensure_subscription_profile,
+            has_pro_access,
+            plan_label,
+            remaining_upload_slots,
+        )
+        from apps.billing.models import BillingPlan
+
+        User = get_user_model()
+        admin = User.objects.create_superuser(
+            username="tier-admin",
+            email="tier-admin@example.com",
+            password="pass12345",
+        )
+
+        profile = ensure_subscription_profile(admin)
+
+        self.assertTrue(has_pro_access(admin))
+        self.assertEqual(plan_label(admin), "Pro")
+        self.assertIsNone(remaining_upload_slots(admin))
+        self.assertEqual(profile.plan, BillingPlan.PRO)
+        self.assertEqual(profile.stripe_subscription_status, ADMIN_SUBSCRIPTION_STATUS)
+
+        profile.plan = BillingPlan.FREE
+        profile.stripe_subscription_status = "canceled"
+        profile.save()
+        profile.refresh_from_db()
+
+        self.assertEqual(profile.plan, BillingPlan.PRO)
+        self.assertEqual(profile.stripe_subscription_status, ADMIN_SUBSCRIPTION_STATUS)
+
 
 @override_settings(
     STRIPE_SECRET_KEY="sk_test_123",
@@ -135,6 +197,24 @@ class BillingFlowTests(TestCase):
         self.assertEqual(created_payload["mode"], "subscription")
         self.assertEqual(created_payload["line_items"][0]["price"], "price_monthly")
         self.assertEqual(created_payload["payment_method_types"], ["pix", "card"])
+
+    def test_checkout_view_redirects_when_subscription_is_already_pro(self):
+        from apps.billing.models import BillingPlan, SubscriptionProfile
+
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.PRO,
+            stripe_subscription_status="active",
+            current_period_end=timezone.now() + timedelta(days=30),
+        )
+        self.client.force_login(self.user)
+
+        with patch("apps.billing.views.create_checkout_session") as create_checkout:
+            response = self.client.post(reverse("billing:checkout"), {"interval": "monthly"})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("billing:account"))
+        create_checkout.assert_not_called()
 
     def test_billing_account_renders_without_subscription_profile(self):
         self.client.force_login(self.user)
@@ -541,6 +621,65 @@ class BillingFlowTests(TestCase):
         self.assertEqual(response["Content-Disposition"], 'attachment; filename="moto_track_dados.json"')
         self.assertEqual(AccountDataRequest.objects.filter(user=self.user).count(), 0)
 
+    def test_data_export_includes_structured_records_and_file_metadata(self):
+        from apps.core.models import ApiToken
+        from apps.maintenance.models import MaintenancePart, MaintenanceRecord, MaintenanceRecordPart
+        from apps.work.models import PlatformSource, WorkSession
+
+        motorcycle = Motorcycle.objects.create(owner=self.user, name="Moto LGPD", brand="Honda", model="CG", year=2024)
+        FuelRecord.objects.create(
+            motorcycle=motorcycle,
+            date=date(2026, 5, 1),
+            odometer_km=1000,
+            liters=Decimal("5.000"),
+            total_price=Decimal("35.00"),
+            price_per_liter=Decimal("7.000"),
+            receipt_file=SimpleUploadedFile("recibo.pdf", b"pdf", content_type="application/pdf"),
+        )
+        part = MaintenancePart.objects.create(
+            owner=self.user,
+            name="Filtro LGPD",
+            track_stock=True,
+            stock_quantity=2,
+        )
+        maintenance = MaintenanceRecord.objects.create(
+            motorcycle=motorcycle,
+            date=date(2026, 5, 2),
+            odometer_km=1100,
+            cost=Decimal("80.00"),
+        )
+        MaintenanceRecordPart.objects.create(maintenance_record=maintenance, part=part, quantity=1)
+        MotorcycleDocument.objects.create(
+            motorcycle=motorcycle,
+            name="CRLV",
+            document_type=DocumentType.CRLV,
+            file=SimpleUploadedFile("crlv.pdf", b"pdf", content_type="application/pdf"),
+        )
+        WorkSession.objects.create(
+            owner=self.user,
+            motorcycle=motorcycle,
+            work_date=date(2026, 5, 3),
+            odometer_start_km=1100,
+            odometer_end_km=1150,
+            gross_income=Decimal("150.00"),
+            fuel_spent=Decimal("20.00"),
+            platform_source=PlatformSource.IFOOD,
+        )
+        token = ApiToken.objects.create(owner=self.user, name="API", scopes="fuel:read")
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("billing:data_export"))
+        data = response.json()
+
+        exported_motorcycle = data["motorcycles"][0]
+        self.assertIn("recibo", exported_motorcycle["fuel_records"][0]["receipt_file"]["name"])
+        self.assertEqual(exported_motorcycle["maintenance_records"][0]["parts"][0]["name"], "Filtro LGPD")
+        self.assertIn("crlv", exported_motorcycle["documents"][0]["file"]["name"])
+        self.assertEqual(exported_motorcycle["work_sessions"][0]["fuel_spent"], "20.00")
+        self.assertEqual(data["catalogs"]["maintenance_parts"][0]["stock_quantity"], 2)
+        self.assertEqual(data["api_tokens"][0]["key_prefix"], token.key_prefix)
+        self.assertNotIn("key", data["api_tokens"][0])
+
 
 class WorkSessionTests(TestCase):
     def setUp(self):
@@ -681,6 +820,56 @@ class WorkSessionTests(TestCase):
 
         self.assertEqual(summary.fuel_cost, Decimal("0.00"))
 
+    def test_professional_summary_uses_explicit_fuel_spent_before_estimating_remainder(self):
+        from apps.work.models import PlatformSource, WorkSession
+        from apps.work.services import professional_summary
+
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date=date(2026, 5, 1),
+            odometer_km=10000,
+            liters=Decimal("5.000"),
+            total_price=Decimal("20.00"),
+            price_per_liter=Decimal("4.000"),
+        )
+        FuelRecord.objects.create(
+            motorcycle=self.motorcycle,
+            date=date(2026, 5, 31),
+            odometer_km=10200,
+            liters=Decimal("5.000"),
+            total_price=Decimal("20.00"),
+            price_per_liter=Decimal("4.000"),
+        )
+        WorkSession.objects.create(
+            owner=self.user,
+            motorcycle=self.motorcycle,
+            work_date=date(2026, 5, 3),
+            odometer_start_km=10000,
+            odometer_end_km=10050,
+            gross_income=Decimal("50.00"),
+            fuel_spent=Decimal("5.00"),
+            platform_source=PlatformSource.IFOOD,
+        )
+        WorkSession.objects.create(
+            owner=self.user,
+            motorcycle=self.motorcycle,
+            work_date=date(2026, 5, 4),
+            odometer_start_km=10050,
+            odometer_end_km=10100,
+            gross_income=Decimal("50.00"),
+            platform_source=PlatformSource.IFOOD,
+        )
+
+        summary = professional_summary(
+            user=self.user,
+            motorcycle=self.motorcycle,
+            start=date(2026, 5, 1),
+            end=date(2026, 5, 31),
+        )
+
+        self.assertEqual(summary.distance_km, 100)
+        self.assertEqual(summary.fuel_cost, Decimal("15.00"))
+
     def test_work_session_form_renders_datetime_local_values(self):
         from apps.work.forms import WorkSessionForm
         from apps.work.models import PlatformSource, WorkSession
@@ -701,6 +890,21 @@ class WorkSessionTests(TestCase):
 
         self.assertIn('value="2026-05-03T08:00"', str(form["started_at"]))
         self.assertIn('value="2026-05-03T16:00"', str(form["ended_at"]))
+
+    def test_work_session_create_view_renders_current_form_fields(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("work:session_create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="gross_income"')
+        self.assertContains(response, 'name="fuel_spent"')
+        self.assertContains(response, 'name="started_at"')
+        self.assertContains(response, 'name="ended_at"')
+        self.assertContains(response, 'data-offline-queue="work:session_create"')
+        self.assertContains(response, 'name="client_submission_id"')
+        self.assertContains(response, "requiredFilled === requiredFields.length")
+        self.assertNotContains(response, "this.isComplete = this.completion >= 50")
 
     def test_work_session_form_rejects_invalid_owner_odometer_and_time(self):
         from apps.work.forms import WorkSessionForm
@@ -724,6 +928,7 @@ class WorkSessionTests(TestCase):
                 "odometer_end_km": "10000",
                 "gross_income": "100.00",
                 "tips": "0.00",
+                "fuel_spent": "-1.00",
                 "deliveries_count": "0",
                 "platform_source": "ifood",
                 "payment_method": "pix",
@@ -735,6 +940,7 @@ class WorkSessionTests(TestCase):
         self.assertIn("motorcycle", form.errors)
         self.assertIn("ended_at", form.errors)
         self.assertIn("odometer_end_km", form.errors)
+        self.assertIn("fuel_spent", form.errors)
 
     def test_work_session_form_allows_editing_archived_motorcycle_session(self):
         from apps.work.forms import WorkSessionForm
@@ -762,6 +968,7 @@ class WorkSessionTests(TestCase):
                 "odometer_end_km": "10100",
                 "gross_income": "200.00",
                 "tips": "0.00",
+                "fuel_spent": "",
                 "deliveries_count": "0",
                 "platform_source": "ifood",
                 "payment_method": "pix",
@@ -786,6 +993,7 @@ class WorkSessionTests(TestCase):
                 "odometer_end_km": "10100",
                 "gross_income": "200.00",
                 "tips": "",
+                "fuel_spent": "",
                 "deliveries_count": "",
                 "platform_source": "ifood",
                 "payment_method": "pix",
@@ -797,7 +1005,93 @@ class WorkSessionTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         session = form.save()
         self.assertEqual(session.tips, Decimal("0.00"))
+        self.assertIsNone(session.fuel_spent)
         self.assertEqual(session.deliveries_count, 0)
+
+    def test_work_session_create_replay_with_same_client_submission_is_idempotent(self):
+        from apps.work.models import WorkSession
+
+        token = "work-replay-token"
+        payload = {
+            "motorcycle": self.motorcycle.pk,
+            "work_date": "2026-05-03",
+            "started_at": "",
+            "ended_at": "",
+            "odometer_start_km": "10000",
+            "odometer_end_km": "10100",
+            "gross_income": "200.00",
+            "tips": "0.00",
+            "fuel_spent": "25.00",
+            "deliveries_count": "8",
+            "platform_source": "ifood",
+            "payment_method": "pix",
+            "notes": "",
+            "client_submission_id": token,
+        }
+
+        self.client.force_login(self.user)
+        first = self.client.post(reverse("work:session_create"), payload)
+        second = self.client.post(reverse("work:session_create"), payload)
+
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(second.status_code, 302)
+        self.assertEqual(WorkSession.objects.filter(owner=self.user, odometer_start_km=10000).count(), 1)
+
+    def test_work_session_delete_is_owner_scoped(self):
+        from apps.work.models import PlatformSource, WorkSession
+
+        other = get_user_model().objects.create_user(username="work-delete-other", email="work-delete-other@example.com")
+        other_motorcycle = Motorcycle.objects.create(owner=other, name="Outra", brand="Yamaha", model="Factor", year=2024)
+        session = WorkSession.objects.create(
+            owner=self.user,
+            motorcycle=self.motorcycle,
+            work_date=date(2026, 5, 3),
+            odometer_start_km=10000,
+            odometer_end_km=10100,
+            gross_income=Decimal("200.00"),
+            platform_source=PlatformSource.IFOOD,
+        )
+        other_session = WorkSession.objects.create(
+            owner=other,
+            motorcycle=other_motorcycle,
+            work_date=date(2026, 5, 3),
+            odometer_start_km=100,
+            odometer_end_km=200,
+            gross_income=Decimal("100.00"),
+            platform_source=PlatformSource.IFOOD,
+        )
+
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.post(reverse("work:session_delete", args=[other_session.pk])).status_code, 404)
+        response = self.client.post(reverse("work:session_delete", args=[session.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(WorkSession.objects.filter(pk=session.pk).exists())
+        self.assertTrue(WorkSession.objects.filter(pk=other_session.pk).exists())
+
+    def test_dashboard_exposes_today_summary(self):
+        from apps.work.models import PlatformSource, WorkSession
+
+        WorkSession.objects.create(
+            owner=self.user,
+            motorcycle=self.motorcycle,
+            work_date=timezone.localdate(),
+            started_at=timezone.now() - timedelta(hours=2),
+            ended_at=timezone.now(),
+            odometer_start_km=10000,
+            odometer_end_km=10100,
+            gross_income=Decimal("200.00"),
+            fuel_spent=Decimal("25.00"),
+            platform_source=PlatformSource.IFOOD,
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("work:dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["today_summary"].revenue, Decimal("200.00"))
+        self.assertEqual(response.context["today_summary"].fuel_cost, Decimal("25.00"))
+        self.assertContains(response, "Hoje")
 
     def test_professional_cost_settings_form_rejects_negative_values(self):
         from apps.work.forms import ProfessionalCostSettingsForm
@@ -813,6 +1107,37 @@ class WorkSessionTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("maintenance_reserve_per_km", form.errors)
         self.assertIn("fixed_daily_cost", form.errors)
+
+    def test_professional_cost_settings_page_saves_current_fields(self):
+        from apps.billing.models import BillingPlan, SubscriptionProfile
+        from apps.work.models import ProfessionalCostSettings
+
+        SubscriptionProfile.objects.create(
+            user=self.user,
+            plan=BillingPlan.PRO,
+            stripe_subscription_status="active",
+            current_period_end=timezone.now() + timedelta(days=30),
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("work:cost_settings", args=[self.motorcycle.pk]))
+        self.assertContains(response, 'name="maintenance_reserve_per_km"')
+        self.assertContains(response, 'name="depreciation_per_km"')
+        self.assertContains(response, 'name="fixed_daily_cost"')
+
+        response = self.client.post(
+            reverse("work:cost_settings", args=[self.motorcycle.pk]),
+            {
+                "maintenance_reserve_per_km": "0.200",
+                "depreciation_per_km": "0.050",
+                "fixed_daily_cost": "12.50",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        settings_obj = ProfessionalCostSettings.objects.get(motorcycle=self.motorcycle)
+        self.assertEqual(settings_obj.maintenance_reserve_per_km, Decimal("0.200"))
+        self.assertEqual(settings_obj.depreciation_per_km, Decimal("0.050"))
+        self.assertEqual(settings_obj.fixed_daily_cost, Decimal("12.50"))
 
 
 class PaidTierGateTests(TestCase):
@@ -830,6 +1155,24 @@ class PaidTierGateTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Plano Pro")
+        self.assertEqual(Motorcycle.objects.filter(owner=self.user, is_active=True).count(), 1)
+
+    def test_free_user_cannot_restore_second_active_motorcycle(self):
+        archived = Motorcycle.objects.create(
+            owner=self.user,
+            name="Moto 2",
+            brand="Yamaha",
+            model="Factor",
+            year=2023,
+            is_active=False,
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("garage:restore", args=[archived.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        archived.refresh_from_db()
+        self.assertFalse(archived.is_active)
         self.assertEqual(Motorcycle.objects.filter(owner=self.user, is_active=True).count(), 1)
 
     def test_free_user_fuel_logging_keeps_record_but_drops_receipt_after_upload_limit(self):
@@ -862,6 +1205,37 @@ class PaidTierGateTests(TestCase):
         self.assertEqual(response.status_code, 302)
         record = FuelRecord.objects.get(motorcycle=self.motorcycle, odometer_km=1200)
         self.assertFalse(record.receipt_file)
+
+    def test_free_user_cannot_add_tire_product_image_after_upload_limit(self):
+        from apps.tires.models import TireProduct, TireType
+
+        for idx in range(3):
+            MotorcycleDocument.objects.create(
+                motorcycle=self.motorcycle,
+                name=f"Doc {idx}",
+                document_type=DocumentType.OTHER,
+                file=SimpleUploadedFile(f"doc-{idx}.pdf", b"pdf", content_type="application/pdf"),
+            )
+
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("tires:product_create"),
+            {
+                "manufacturer": "Metzeler",
+                "model_name": "Roadtec",
+                "tire_type": TireType.TOURING,
+                "width_mm": 150,
+                "aspect_ratio": 70,
+                "rim_diameter_in": 17,
+                "price_0": "900.00",
+                "price_1": "BRL",
+                "image": SimpleUploadedFile("pneu.gif", GIF_IMAGE_BYTES, content_type="image/gif"),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Plano Free")
+        self.assertFalse(TireProduct.objects.filter(owner=self.user, manufacturer="Metzeler").exists())
 
     def test_free_user_cannot_export_advanced_reports(self):
         self.client.force_login(self.user)

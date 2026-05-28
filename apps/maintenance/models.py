@@ -41,6 +41,9 @@ class MaintenancePart(TimeStampedModel, UserOwnedModel):
     part_type = models.CharField(max_length=24, choices=MaintenancePartType.choices, default=MaintenancePartType.OTHER)
     sku = models.CharField(max_length=80, blank=True)
     price = MoneyField(max_digits=10, decimal_places=2, null=True, blank=True)
+    track_stock = models.BooleanField(default=False)
+    stock_quantity = models.PositiveIntegerField(default=0)
+    low_stock_threshold = models.PositiveIntegerField(default=0)
     notes = models.TextField(blank=True)
 
     class Meta:
@@ -49,6 +52,14 @@ class MaintenancePart(TimeStampedModel, UserOwnedModel):
 
     def __str__(self) -> str:
         return str(self.name)
+
+    @property
+    def is_low_stock(self) -> bool:
+        return bool(
+            self.track_stock
+            and self.low_stock_threshold
+            and int(self.stock_quantity or 0) <= int(self.low_stock_threshold or 0)
+        )
 
 
 class MaintenanceRecord(TimeStampedModel):

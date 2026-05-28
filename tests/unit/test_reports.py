@@ -1,17 +1,20 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from apps.billing.models import BillingPlan, SubscriptionProfile
+from apps.documents.models import DocumentType, MotorcycleDocument
 from apps.expenses.models import AnnualFee, InsurancePolicy
 from apps.fuel.models import FuelRecord, FuelStation
 from apps.garage.models import Motorcycle
 from apps.maintenance.models import MaintenanceRecord, MaintenanceType
 from apps.reminders.models import Reminder, TriggerType
+from apps.reports.models import SaleReportShare
 from apps.reports.services import (
     cost_summary,
     health_score,
@@ -321,3 +324,44 @@ class ReportOverviewTests(TestCase):
                 sys.modules["weasyprint"] = real_module
             else:
                 sys.modules.pop("weasyprint", None)
+
+    def test_sale_report_public_share_is_tokenized_and_privacy_scoped(self):
+        self.motorcycle.license_plate = "ABC1D23"
+        self.motorcycle.save(update_fields=["license_plate"])
+        MotorcycleDocument.objects.create(
+            motorcycle=self.motorcycle,
+            name="CRLV privado",
+            document_type=DocumentType.CRLV,
+            file=SimpleUploadedFile("crlv-privado.pdf", b"pdf", content_type="application/pdf"),
+            valid_until="2026-12-31",
+        )
+        share, token = SaleReportShare.create_for(motorcycle=self.motorcycle, owner=self.user)
+
+        response = self.client.get(reverse("reports:sale_report_public", args=[token]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Honda CB 2023")
+        self.assertContains(response, "CRLV")
+        self.assertNotContains(response, self.user.email)
+        self.assertNotContains(response, "ABC1D23")
+        self.assertNotContains(response, "crlv-privado.pdf")
+        self.assertNotContains(response, "/media/")
+        share.refresh_from_db()
+        self.assertEqual(share.access_count, 1)
+
+        share.revoke()
+        self.assertEqual(self.client.get(reverse("reports:sale_report_public", args=[token])).status_code, 404)
+
+    def test_sale_report_share_create_and_revoke_are_pro_owner_only(self):
+        self._grant_pro()
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("reports:sale_report_share_create", args=[self.motorcycle.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        share = SaleReportShare.objects.get(owner=self.user, motorcycle=self.motorcycle)
+
+        response = self.client.post(reverse("reports:sale_report_share_revoke", args=[share.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        share.refresh_from_db()
+        self.assertIsNotNone(share.revoked_at)

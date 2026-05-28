@@ -35,22 +35,35 @@
         A garagem digital da sua moto.
       </h1>
       <p class="public-hero-copy-text">
-        Abastecimentos, revisões, pneus e documentos em um painel rápido e privado.
+        Registre abastecimentos, revisões, pneus e documentos em um painel privado, rápido e pronto para a rotina.
       </p>
-      <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+      <div class="mt-7 flex flex-col gap-3 sm:flex-row">
         <a class="ui-btn-primary !min-h-12 !px-6" href="{% url 'account_signup' %}">
           Criar conta grátis
-          <i data-lucide="arrow-right" aria-hidden="true"></i>
+          {% include "core/partials/icon.html" with icon_name="arrow-right" icon_class="h-4 w-4" %}
         </a>
-        <a class="ui-btn-secondary !min-h-12 !px-6" href="{% url 'pricing' %}">Preços</a>
-        <a class="ui-btn-ghost !min-h-12 !px-4" href="{% url 'blog:list' %}">Guias</a>
+        <a class="ui-btn-secondary !min-h-12 !px-6" href="#workflow-title">Ver como funciona</a>
       </div>
+      <dl class="public-trust-list" aria-label="Garantias do Moto Track">
+        <div>
+          <dt>Sem cartão</dt>
+          <dd>comece no plano grátis</dd>
+        </div>
+        <div>
+          <dt>Privado</dt>
+          <dd>dados da sua garagem protegidos</dd>
+        </div>
+        <div>
+          <dt>LGPD</dt>
+          <dd>controle e exportação dos registros</dd>
+        </div>
+      </dl>
     </div>
 
-    <div class="public-product-preview" aria-label="Prévia visual do painel Moto Track" role="img">
+    <aside class="public-product-preview" aria-labelledby="preview-title">
       <div class="preview-topbar">
         <div class="preview-dot-row" aria-hidden="true"><span></span><span></span><span></span></div>
-        <span>Painel da moto</span>
+        <span id="preview-title">Exemplo de painel</span>
         <span>Hoje</span>
       </div>
       <div class="preview-grid">
@@ -88,7 +101,7 @@
             <span style="height: 86%" data-chart-reveal></span>
           </div>
         </section>
-        <section class="preview-panel">
+        <section class="preview-panel preview-panel-secondary">
           <p class="text-xs font-semibold uppercase tracking-normal text-primary">Próximas ações</p>
           <ul class="preview-list">
             <li><strong>Troca de óleo</strong><span>650 km</span></li>
@@ -97,11 +110,11 @@
           </ul>
         </section>
       </div>
-    </div>
+    </aside>
   </div>
 </section>
 
-<section class="public-section" aria-labelledby="features-title" data-animate-once>
+<section class="public-section" aria-labelledby="features-title">
   <div class="public-container public-split">
     <div class="public-section-heading">
       <p class="page-kicker">Rotina organizada</p>
@@ -111,21 +124,21 @@
     </div>
     <div class="public-row-list">
       <article class="public-row">
-        <i data-lucide="bike" class="text-primary" aria-hidden="true"></i>
+        {% include "core/partials/icon.html" with icon_name="bike" icon_class="h-5 w-5 text-primary" %}
         <div>
           <h3>Garagem e histórico</h3>
           <p>Motos, odômetro e documentos conectados desde o primeiro registro.</p>
         </div>
       </article>
       <article class="public-row">
-        <i data-lucide="fuel" class="text-primary" aria-hidden="true"></i>
+        {% include "core/partials/icon.html" with icon_name="fuel" icon_class="h-5 w-5 text-primary" %}
         <div>
           <h3>Consumo e custo real</h3>
           <p>Cada abastecimento vira consumo, gasto mensal e custo por km.</p>
         </div>
       </article>
       <article class="public-row">
-        <i data-lucide="bell-ring" class="text-primary" aria-hidden="true"></i>
+        {% include "core/partials/icon.html" with icon_name="bell-ring" icon_class="h-5 w-5 text-primary" %}
         <div>
           <h3>Próximas ações</h3>
           <p>Revisões, pneus e documentos por prioridade — sem deixar passar.</p>
@@ -135,7 +148,7 @@
   </div>
 </section>
 
-<section class="public-section border-t border-outline-variant/40 bg-surface-low/40" aria-labelledby="workflow-title" data-animate-once>
+<section class="public-section border-t border-outline-variant/40 bg-surface-low/40" aria-labelledby="workflow-title">
   <div class="public-container">
     <div class="public-section-heading">
       <p class="page-kicker">Uso diário</p>
@@ -163,6 +176,28 @@
   </div>
 </section>
 
+<section class="public-section border-t border-outline-variant/40" aria-labelledby="plans-title">
+  <div class="public-container public-plan-strip">
+    <div>
+      <p class="page-kicker">Free + Pro</p>
+      <h2 id="plans-title" class="public-section-title">Comece registrando. Ative leitura profissional quando fizer sentido.</h2>
+    </div>
+    <div class="public-plan-grid">
+      <article>
+        <p>Free</p>
+        <h3>Organização essencial</h3>
+        <p>1 moto ativa, histórico, abastecimentos, manutenções, documentos e lembretes básicos.</p>
+      </article>
+      <article>
+        <p>Pro</p>
+        <h3>Custo real e lucro</h3>
+        <p>Múltiplas motos, turnos, custo por km, exportações e dossiê de venda.</p>
+      </article>
+    </div>
+    <a class="ui-btn-secondary !min-h-12 !px-5" href="{% url 'pricing' %}">Comparar planos</a>
+  </div>
+</section>
+
 {% if latest_blog %}
 <section class="public-section border-t border-outline-variant/40" aria-labelledby="blog-title">
   <div class="public-container">
@@ -173,7 +208,7 @@
       </div>
       <a class="ui-btn-secondary !min-h-10 !px-4" href="{% url 'blog:list' %}">
         Todos
-        <i data-lucide="arrow-right" aria-hidden="true"></i>
+        {% include "core/partials/icon.html" with icon_name="arrow-right" icon_class="h-4 w-4" %}
       </a>
     </div>
     <div class="public-row-list">

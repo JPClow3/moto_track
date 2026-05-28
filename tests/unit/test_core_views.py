@@ -82,6 +82,19 @@ class CoreViewsTests(TestCase):
         self.assertContains(response, 'id="spendingChartSummary"')
         self.assertContains(response, 'data-theme="system"')
         self.assertContains(response, "data-theme-toggle")
+        self.assertNotContains(response, "{#")
+
+    def test_quick_forms_render_iso_default_dates(self):
+        self.client.force_login(self.user)
+        today = timezone.localdate().isoformat()
+
+        fuel_response = self.client.get(reverse("fuel:quick_create"))
+        maintenance_response = self.client.get(reverse("maintenance:quick_create"))
+
+        self.assertEqual(fuel_response.status_code, 200)
+        self.assertContains(fuel_response, f'value="{today}"')
+        self.assertEqual(maintenance_response.status_code, 200)
+        self.assertContains(maintenance_response, f'value="{today}"')
 
     def test_odometer_quick_update_rejects_lower_value(self):
         self.client.force_login(self.user)
@@ -519,6 +532,8 @@ class CoreMiscViewTests(TestCase):
         self.assertIn("android-chrome-192x192.png", body)
         self.assertIn("QUEUEABLE_PATHS.includes", body)
         self.assertIn("fuel:quick_create", body)
+        self.assertIn("/trabalho/turnos/novo/", body)
+        self.assertIn("work:session_create", body)
         self.assertIn("offlineQueuedFragmentResponse", body)
         self.assertIn('if (req.mode === "navigate")', body)
         self.assertIn("cache.match(OFFLINE_URL)", body)
@@ -591,8 +606,17 @@ class CoreMiscViewTests(TestCase):
 
     def test_message_list(self):
         self.client.force_login(self.user)
+        self.client.post(
+            reverse("quick_odometer_update"),
+            {"odometer_override_km": 12000, "next": reverse("dashboard")},
+        )
+
         response = self.client.get(reverse("message_list"))
+
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="snackbar"')
+        self.assertContains(response, "data-auto-dismiss-toast")
+        self.assertContains(response, "Odometro atualizado com sucesso.")
 
 
 class SentryInitializationTests(TestCase):

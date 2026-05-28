@@ -32,8 +32,8 @@ class AnnualFeeForm(forms.ModelForm):
             "notes": "Observações",
         }
         widgets = {
-            "due_date": forms.DateInput(attrs={"type": "date"}),
-            "paid_date": forms.DateInput(attrs={"type": "date"}),
+            "due_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "paid_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
 
@@ -77,8 +77,8 @@ class InsurancePolicyForm(forms.ModelForm):
             "notes": "Observações",
         }
         widgets = {
-            "coverage_start": forms.DateInput(attrs={"type": "date"}),
-            "coverage_end": forms.DateInput(attrs={"type": "date"}),
+            "coverage_start": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "coverage_end": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
 
@@ -109,7 +109,7 @@ class InsuranceClaimForm(forms.ModelForm):
             "description": "Descrição",
         }
         widgets = {
-            "claim_date": forms.DateInput(attrs={"type": "date"}),
+            "claim_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "description": forms.Textarea(attrs={"rows": 3}),
         }
 

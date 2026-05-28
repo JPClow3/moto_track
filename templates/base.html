@@ -119,9 +119,11 @@
     Pular para o conteúdo principal
   </a>
 
-  {# Sidebar appears at md: (tablets/iPad portrait), not just lg:. Narrower
-     gutter on md so the main column doesn't get squeezed; widens to 17.5rem
-     at lg: for desktop comfort. #}
+  {% comment %}
+    Sidebar appears at md: (tablets/iPad portrait), not just lg:. Narrower
+    gutter on md so the main column doesn't get squeezed; widens to 17.5rem
+    at lg: for desktop comfort.
+  {% endcomment %}
   <div id="app-shell-main" class="min-h-screen {% if request.user.is_authenticated %}md:grid md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[17.5rem_minmax(0,1fr)]{% endif %}">
     {% if request.user.is_authenticated %}
     <aside class="hidden border-r border-outline-variant/80 bg-surface-low/85 md:flex md:sticky md:top-0 md:h-screen md:flex-col md:px-3 md:py-5 lg:px-4 print:hidden" aria-label="Navegação principal">
@@ -240,8 +242,10 @@
     </aside>
     {% endif %}
 
-    {# Bottom-nav (only on mobile) needs main padding-bottom to stay above it.
-       Drop the padding at md: where the sidebar takes over. #}
+    {% comment %}
+      Bottom-nav (only on mobile) needs main padding-bottom to stay above it.
+      Drop the padding at md: where the sidebar takes over.
+    {% endcomment %}
     <div class="min-w-0 pb-24 md:pb-0">
       <header class="sticky top-0 z-40 border-b border-outline-variant/80 bg-surface/88 backdrop-blur print:hidden">
         <div class="mx-auto flex w-[min(1280px,94%)] items-center justify-between gap-4 py-4">
@@ -358,9 +362,11 @@
         </div>
       </header>
 
-      {# U-H5: leave room under the mobile bottom-nav (fixed ~4.5rem) so the last
-         row/section of the page isn't hidden. The safe-area-inset accommodates
-         iOS notches/home indicator on PWA installs. #}
+      {% comment %}
+        U-H5: leave room under the mobile bottom-nav (fixed ~4.5rem) so the last
+        row/section of the page isn't hidden. The safe-area-inset accommodates
+        iOS notches/home indicator on PWA installs.
+      {% endcomment %}
       <main id="main-content"
             class="mx-auto w-[min(1280px,94%)] pt-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-10"
             tabindex="-1">
@@ -485,7 +491,7 @@
     </div>
   </div>
 
-  <div id="toast-container" hx-get="{% url 'message_list' %}" hx-trigger="load, htmx:afterSwap from:body [detail.target.id !== 'toast-container']" hx-target="this" hx-swap="innerHTML" aria-live="polite"></div>
+  <div id="toast-container" hx-get="{% url 'message_list' %}" hx-trigger="load, htmx:afterSwap[detail.target.id !== 'toast-container'] from:body" hx-target="this" hx-swap="innerHTML" aria-live="polite"></div>
 
   <div id="client-snackbar" class="snackbar hidden" role="status" aria-live="polite"></div>
 
