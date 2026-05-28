@@ -90,6 +90,7 @@ Moto Track is a personal motorcycle management platform built for riders who wan
 ```bash
 pip install -r requirements/dev.txt
 cp .env.example .env
+# For local SQLite dev, apply the "LOCAL DEVELOPMENT OVERRIDE" block from .env.example.
 npm install
 python manage.py migrate
 npm run watch:css          # Terminal 1 — live CSS rebuild
