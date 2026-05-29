@@ -313,7 +313,7 @@ services:
 
   caddy:
     image: caddy:2.10-alpine
-    profiles: ["prod"]
+    profiles: ["edge"]
     depends_on:
       web-prod:
         condition: service_healthy
