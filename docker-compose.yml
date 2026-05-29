@@ -83,7 +83,7 @@ services:
       - ${REDIS_MAX_MEMORY:-256mb}
       - --maxmemory-policy
       - allkeys-lru
-    profiles: ["dev", "prod", "test"]
+    profiles: ["dev", "prod", "test", "migrate"]
     restart: unless-stopped
     logging: *default_logging
     deploy:
@@ -199,14 +199,9 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
-      # OTel exporter target. Default is empty so `config/otel.py` skips
-      # trace setup entirely when the `observability` profile isn't active —
-      # otherwise OTel kept retrying http://alloy:4318, the failures were
-      # promoted to Sentry events via the LoggingIntegration, and prod was
-      # noisy with "Failed to export span batch" errors. To enable tracing,
-      # explicitly set OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318 in .env
-      # alongside `--profile observability`.
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      # Alloy is always started with the prod profile, so default to its
+      # in-network address. Override in .env to point at an external collector.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-moto-track-web}
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
       # Release identifier surfaced to Sentry (and used as the static-asset
@@ -240,14 +235,9 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
-      # OTel exporter target. Default is empty so `config/otel.py` skips
-      # trace setup entirely when the `observability` profile isn't active —
-      # otherwise OTel kept retrying http://alloy:4318, the failures were
-      # promoted to Sentry events via the LoggingIntegration, and prod was
-      # noisy with "Failed to export span batch" errors. To enable tracing,
-      # explicitly set OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318 in .env
-      # alongside `--profile observability`.
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      # Alloy is always started with the prod profile, so default to its
+      # in-network address. Override in .env to point at an external collector.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME_WORKER:-moto-track-worker}
       APP_BUILD_ID: ${APP_BUILD_ID:-dev}
 
@@ -274,14 +264,9 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
-      # OTel exporter target. Default is empty so `config/otel.py` skips
-      # trace setup entirely when the `observability` profile isn't active —
-      # otherwise OTel kept retrying http://alloy:4318, the failures were
-      # promoted to Sentry events via the LoggingIntegration, and prod was
-      # noisy with "Failed to export span batch" errors. To enable tracing,
-      # explicitly set OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318 in .env
-      # alongside `--profile observability`.
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      # Alloy is always started with the prod profile, so default to its
+      # in-network address. Override in .env to point at an external collector.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME_BEAT:-moto-track-beat}
       APP_BUILD_ID: ${APP_BUILD_ID:-dev}
 
@@ -328,7 +313,7 @@ services:
 
   caddy:
     image: caddy:2.10-alpine
-    profiles: ["edge"]
+    profiles: ["prod"]
     depends_on:
       web-prod:
         condition: service_healthy
@@ -357,16 +342,18 @@ services:
       - caddy_config:/config
 
   # ---------------------------------------------------------------------------
-  # Observability stack (profile: "observability")
+  # Observability stack — included in the "prod" profile.
   #
   # One Alloy container is the single egress point — scrapes Prometheus targets
   # on the docker network, tails container stdout for Loki, receives OTLP traces
   # from Django/Celery, and remote-writes everything to Grafana Cloud.
+  # Sentry is configured via SENTRY_DSN in .env and is always active in prod.
   #
-  # Run with prod:
-  #   docker compose --profile prod --profile observability up -d
+  # Run everything:
+  #   docker compose --profile prod up -d
   #
   # Requires (in .env):
+  #   SENTRY_DSN
   #   GRAFANA_CLOUD_PROM_URL, GRAFANA_CLOUD_PROM_USER,
   #   GRAFANA_CLOUD_LOKI_URL, GRAFANA_CLOUD_LOKI_USER,
   #   GRAFANA_CLOUD_TEMPO_URL, GRAFANA_CLOUD_TEMPO_USER,
@@ -374,7 +361,7 @@ services:
   # ---------------------------------------------------------------------------
   alloy:
     image: grafana/alloy:v1.5.1
-    profiles: ["observability"]
+    profiles: ["prod"]
     restart: unless-stopped
     logging: *default_logging
     command:
@@ -412,7 +399,7 @@ services:
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.17.1
-    profiles: ["observability"]
+    profiles: ["prod"]
     restart: unless-stopped
     logging: *default_logging
     environment:
@@ -428,7 +415,7 @@ services:
 
   redis-exporter:
     image: oliver006/redis_exporter:v1.66.0-alpine
-    profiles: ["observability"]
+    profiles: ["prod"]
     restart: unless-stopped
     logging: *default_logging
     environment:
@@ -443,7 +430,7 @@ services:
 
   celery-exporter:
     image: danihodovic/celery-exporter:0.10.13
-    profiles: ["observability"]
+    profiles: ["prod"]
     restart: unless-stopped
     logging: *default_logging
     environment:
@@ -459,7 +446,7 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.2
-    profiles: ["observability"]
+    profiles: ["prod"]
     restart: unless-stopped
     logging: *default_logging
     # cAdvisor reads the host's container runtime metadata. The mounts below
