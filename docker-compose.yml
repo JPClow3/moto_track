@@ -199,9 +199,11 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
-      # Alloy is always started with the prod profile, so default to its
-      # in-network address. Override in .env to point at an external collector.
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
+      # OTel exporter target. Empty by default so `config/otel.py` skips
+      # trace setup when no collector is running. Set in .env to enable:
+      #   OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318   (with observability profile)
+      #   OTEL_EXPORTER_OTLP_ENDPOINT=http://host:4318    (external collector)
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-moto-track-web}
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
       # Release identifier surfaced to Sentry (and used as the static-asset
@@ -235,9 +237,11 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
-      # Alloy is always started with the prod profile, so default to its
-      # in-network address. Override in .env to point at an external collector.
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
+      # OTel exporter target. Empty by default so `config/otel.py` skips
+      # trace setup when no collector is running. Set in .env to enable:
+      #   OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318   (with observability profile)
+      #   OTEL_EXPORTER_OTLP_ENDPOINT=http://host:4318    (external collector)
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME_WORKER:-moto-track-worker}
       APP_BUILD_ID: ${APP_BUILD_ID:-dev}
 
@@ -264,9 +268,11 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
-      # Alloy is always started with the prod profile, so default to its
-      # in-network address. Override in .env to point at an external collector.
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
+      # OTel exporter target. Empty by default so `config/otel.py` skips
+      # trace setup when no collector is running. Set in .env to enable:
+      #   OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318   (with observability profile)
+      #   OTEL_EXPORTER_OTLP_ENDPOINT=http://host:4318    (external collector)
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME_BEAT:-moto-track-beat}
       APP_BUILD_ID: ${APP_BUILD_ID:-dev}
 
@@ -342,26 +348,25 @@ services:
       - caddy_config:/config
 
   # ---------------------------------------------------------------------------
-  # Observability stack — included in the "prod" profile.
+  # Observability stack (profile: "observability")
   #
-  # One Alloy container is the single egress point — scrapes Prometheus targets
-  # on the docker network, tails container stdout for Loki, receives OTLP traces
-  # from Django/Celery, and remote-writes everything to Grafana Cloud.
-  # Sentry is configured via SENTRY_DSN in .env and is always active in prod.
+  # Optional — add alongside prod for full metrics/logs/traces:
+  #   docker compose --profile prod --profile observability up -d
   #
-  # Run everything:
-  #   docker compose --profile prod up -d
+  # Alloy scrapes Prometheus targets, tails container stdout for Loki,
+  # receives OTLP traces, and remote-writes to Grafana Cloud.
+  # Sentry is separate (SENTRY_DSN env var in the Django app).
   #
   # Requires (in .env):
-  #   SENTRY_DSN
   #   GRAFANA_CLOUD_PROM_URL, GRAFANA_CLOUD_PROM_USER,
   #   GRAFANA_CLOUD_LOKI_URL, GRAFANA_CLOUD_LOKI_USER,
   #   GRAFANA_CLOUD_TEMPO_URL, GRAFANA_CLOUD_TEMPO_USER,
   #   GRAFANA_CLOUD_API_KEY  (single Access Policy token, all three scopes)
+  #   OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
   # ---------------------------------------------------------------------------
   alloy:
     image: grafana/alloy:v1.5.1
-    profiles: ["prod"]
+    profiles: ["observability"]
     restart: unless-stopped
     logging: *default_logging
     command:
@@ -399,7 +404,7 @@ services:
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.17.1
-    profiles: ["prod"]
+    profiles: ["observability"]
     restart: unless-stopped
     logging: *default_logging
     environment:
@@ -415,7 +420,7 @@ services:
 
   redis-exporter:
     image: oliver006/redis_exporter:v1.66.0-alpine
-    profiles: ["prod"]
+    profiles: ["observability"]
     restart: unless-stopped
     logging: *default_logging
     environment:
@@ -430,7 +435,7 @@ services:
 
   celery-exporter:
     image: danihodovic/celery-exporter:0.10.13
-    profiles: ["prod"]
+    profiles: ["observability"]
     restart: unless-stopped
     logging: *default_logging
     environment:
@@ -446,7 +451,7 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.2
-    profiles: ["prod"]
+    profiles: ["observability"]
     restart: unless-stopped
     logging: *default_logging
     # cAdvisor reads the host's container runtime metadata. The mounts below
