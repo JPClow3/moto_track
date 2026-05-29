@@ -160,6 +160,15 @@ services:
           --error-logfile -
       "
     profiles: ["prod"]
+    # web-prod joins both networks: `default` so it can reach db/redis/celery,
+    # and `dokploy-network` so Dokploy's Traefik proxy can route the public
+    # domain to it. Only this service needs the proxy network — celery workers
+    # serve no HTTP. `dokploy-network` is external (created by Dokploy on the
+    # host); plain `docker compose --profile prod up` outside Dokploy needs
+    # `docker network create dokploy-network` first, or drop this from the list.
+    networks:
+      - default
+      - dokploy-network
     # `service_completed_successfully` makes web-prod wait for the migrate
     # sidecar to finish before booting. With this in place we can scale
     # web-prod to N replicas — every replica still sees an already-migrated
@@ -470,6 +479,15 @@ services:
       resources:
         limits:
           memory: ${CADVISOR_MEMORY_LIMIT:-200m}
+
+networks:
+  # Dokploy creates this network on the host and runs its Traefik proxy on it.
+  # `web-prod` joins it so the public domain can be routed to the app. Marked
+  # external so Compose attaches to Dokploy's existing network instead of
+  # creating its own. Non-Dokploy hosts running the prod profile must
+  # `docker network create dokploy-network` first.
+  dokploy-network:
+    external: true
 
 volumes:
   postgres_data:
