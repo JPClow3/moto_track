@@ -1,10 +1,10 @@
-﻿import pytest
+import pytest
 from django.urls import reverse
 from unittest.mock import patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 @pytest.mark.django_db
-@patch('apps.fuel.services.ocr.parse_receipt_image')
+@patch('apps.fuel.ocr.parse_receipt_image')
 def test_fuel_ocr_scan_view(mock_parse, client, django_user_model):
     user = django_user_model.objects.create(username="testuser", password="password")
     client.force_login(user)

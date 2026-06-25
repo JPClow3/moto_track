@@ -809,7 +809,7 @@ def fuel_ocr_scan_view(request):
         form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user)
     else:
         try:
-            from .services.ocr import parse_receipt_image
+            from .ocr import parse_receipt_image
             data = parse_receipt_image(upload.file)
             
             if not data or not any(data.values()):
