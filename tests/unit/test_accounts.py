@@ -133,7 +133,6 @@ class AccountsSmokeTests(TestCase):
         public_response = self.client.get(reverse("blog:list"))
 
         self.assertEqual(landing_response.status_code, 200)
-        self.assertContains(landing_response, "Verificar e-mail")
         self.assertEqual(private_response.status_code, 302)
         self.assertEqual(private_response["Location"], reverse("account_email_verification_sent"))
         self.assertEqual(public_response.status_code, 200)

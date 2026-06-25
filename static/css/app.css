@@ -158,28 +158,5 @@ html[data-theme="dark"] {
   animation: snackbar-slide-out 0.2s ease-in forwards;
 }
 
-@media print {
-  aside, header, .fixed, nav[aria-label="Navegação rápida"], .ui-icon-btn, .ui-btn-primary, .ui-btn-secondary, .ui-toolbar-btn, .quick-actions-row-split, .quick-actions-row {
-    display: none !important;
-  }
-  body {
-    background: white;
-    color: black;
-  }
-  a {
-    text-decoration: none;
-    color: inherit;
-  }
-  main {
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  canvas {
-    width: 100% !important;
-    height: auto !important;
-  }
-  .page-shell {
-    max-width: 100% !important;
-  }
-}
+
+

@@ -33,10 +33,100 @@
               {{ pending_alerts }} alerta(s)
             </span>
             {% if health %}
-              <span class="dashboard-chip {% if health.total >= 80 %}border-success/30 bg-success/10 text-success{% elif health.total >= 50 %}border-warning/30 bg-warning/10 text-warning{% else %}border-error/30 bg-error/10 text-error{% endif %}">
-                <i data-lucide="{% if health.total >= 80 %}check-circle{% elif health.total >= 50 %}alert-circle{% else %}alert-triangle{% endif %}" class="h-4 w-4" aria-hidden="true"></i>
-                {{ health.readable_status }}
-              </span>
+              <div x-data="{ showHealth: false, chart: null }" class="inline-block" @keydown.escape.window="showHealth = false">
+                <button type="button" @click="showHealth = true; $nextTick(() => initHealthChart())" class="dashboard-chip {% if health.total >= 80 %}border-success/30 bg-success/10 text-success hover:bg-success/20{% elif health.total >= 50 %}border-warning/30 bg-warning/10 text-warning hover:bg-warning/20{% else %}border-error/30 bg-error/10 text-error hover:bg-error/20{% endif %} transition-colors cursor-pointer">
+                  <i data-lucide="{% if health.total >= 80 %}check-circle{% elif health.total >= 50 %}alert-circle{% else %}alert-triangle{% endif %}" class="h-4 w-4" aria-hidden="true"></i>
+                  {{ health.readable_status }} ({{ health.total }}/100)
+                </button>
+
+                <div x-show="showHealth" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-sm" x-cloak x-transition.opacity>
+                  <div @click.away="showHealth = false" class="bg-surface-low border border-outline-variant/40 rounded-xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                    <div class="p-5 border-b border-outline-variant/40 flex justify-between items-center shrink-0">
+                      <h3 class="text-lg font-semibold text-on-surface">Índice de Saúde</h3>
+                      <button @click="showHealth = false" class="text-on-surface-variant hover:text-on-surface"><i data-lucide="x" class="h-5 w-5"></i></button>
+                    </div>
+                    
+                    <div class="p-5 overflow-y-auto space-y-6">
+                      <div class="flex flex-col sm:flex-row gap-6 items-center">
+                        <div class="relative w-40 h-40 shrink-0">
+                          <canvas id="healthChart"></canvas>
+                          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span class="text-3xl font-bold text-on-surface {% if health.total >= 80 %}text-success{% elif health.total >= 50 %}text-warning{% else %}text-error{% endif %}">{{ health.total }}</span>
+                            <span class="text-xs text-on-surface-variant">/ 100</span>
+                          </div>
+                        </div>
+                        <div class="flex-1 w-full space-y-3">
+                          <div>
+                            <div class="flex justify-between text-sm mb-1"><span class="text-on-surface">Manutenção</span><span class="font-semibold">{{ health.maintenance }}</span></div>
+                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-primary" style="width: {{ health.maintenance }}%"></div></div>
+                          </div>
+                          <div>
+                            <div class="flex justify-between text-sm mb-1"><span class="text-on-surface">Pneus</span><span class="font-semibold">{{ health.tires }}</span></div>
+                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-[#10B981]" style="width: {{ health.tires }}%"></div></div>
+                          </div>
+                          <div>
+                            <div class="flex justify-between text-sm mb-1"><span class="text-on-surface">Documentos</span><span class="font-semibold">{{ health.documents }}</span></div>
+                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-[#F59E0B]" style="width: {{ health.documents }}%"></div></div>
+                          </div>
+                          <div>
+                            <div class="flex justify-between text-sm mb-1"><span class="text-on-surface">Qualidade</span><span class="font-semibold">{{ health.data_quality }}</span></div>
+                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-[#6366F1]" style="width: {{ health.data_quality }}%"></div></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {% if health.notes %}
+                      <div class="bg-surface-high rounded-lg p-4 space-y-2">
+                        <p class="text-xs font-semibold uppercase text-on-surface-variant mb-2">Observações</p>
+                        <ul class="text-sm space-y-2 text-on-surface">
+                          {% for note in health.notes %}
+                          <li class="flex items-start gap-2">
+                            <i data-lucide="info" class="h-4 w-4 mt-0.5 shrink-0 text-primary"></i>
+                            <span>{{ note }}</span>
+                          </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                      {% endif %}
+                    </div>
+                    <div class="p-4 border-t border-outline-variant/40 flex justify-end shrink-0">
+                      <button @click="showHealth = false" class="ui-btn-secondary">Fechar</button>
+                    </div>
+                  </div>
+                </div>
+                
+                <script>
+                  function initHealthChart() {
+                    const ctx = document.getElementById('healthChart');
+                    if (!ctx || window.healthChartInstance) return;
+                    
+                    window.healthChartInstance = new Chart(ctx, {
+                      type: 'doughnut',
+                      data: {
+                        labels: ['Manutenção', 'Pneus', 'Documentos', 'Qualidade'],
+                        datasets: [{
+                          data: [{{ health.maintenance }}, {{ health.tires }}, {{ health.documents }}, {{ health.data_quality }}],
+                          backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#6366F1'],
+                          borderWidth: 0,
+                          cutout: '75%'
+                        }]
+                      },
+                      options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                          legend: { display: false },
+                          tooltip: {
+                            callbacks: {
+                              label: function(context) { return ' ' + context.label + ': ' + context.raw + '/100'; }
+                            }
+                          }
+                        }
+                      }
+                    });
+                  }
+                </script>
+              </div>
             {% endif %}
           </div>
         </div>
@@ -488,6 +578,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'vendor/chart/chart.umd.js' %}" defer></script>
 <script src="{% static 'js/dashboard-charts.js' %}" defer></script>
 {% endblock %}

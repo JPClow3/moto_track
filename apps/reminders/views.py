@@ -229,7 +229,18 @@ def reminder_concluir_view(request, pk: int):
         messages.error(request, f"Não foi possível registrar a manutenção: {exc}")
         return _htmx_or_redirect(request, "reminders:list")
 
-    reminder.is_active = False
-    reminder.save(update_fields=["is_active", "updated_at"])
-    messages.success(request, f"Lembrete '{reminder.title}' concluído e registrado na manutenção.")
+    if reminder.is_recurring:
+        if reminder.trigger_type in {TriggerType.BY_KM, TriggerType.BY_INTERVAL}:
+            reminder.reference_km = current_odo
+        if reminder.trigger_type in {TriggerType.BY_DATE, TriggerType.BY_INTERVAL}:
+            reminder.reference_date = today
+        reminder.last_notified_at = None
+        reminder.last_email_notified_at = None
+        reminder.last_push_notified_at = None
+        reminder.save(update_fields=["reference_km", "reference_date", "last_notified_at", "last_email_notified_at", "last_push_notified_at", "updated_at"])
+        messages.success(request, f"Lembrete '{reminder.title}' concluído e resetado para a próxima ocorrência.")
+    else:
+        reminder.is_active = False
+        reminder.save(update_fields=["is_active", "updated_at"])
+        messages.success(request, f"Lembrete '{reminder.title}' concluído e registrado na manutenção.")
     return _htmx_or_redirect(request, "reminders:list")

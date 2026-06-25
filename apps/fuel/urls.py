@@ -10,6 +10,7 @@ from .views import (
 	fuel_import_confirm_view,
 	fuel_import_preview_view,
 	fuel_list_view,
+	fuel_ocr_scan_view,
 	fuel_quick_create_view,
 	fuel_record_delete_view,
 	fuel_record_update_view,
@@ -40,4 +41,5 @@ urlpatterns = [
 	path("grades/<int:pk>/delete/", fuel_grade_delete_view, name="grade_delete"),
 	path("quick-create/", fuel_quick_create_view, name="quick_create"),
 	path("repeat-last/", fuel_repeat_last_view, name="repeat_last"),
+	path("ocr-scan/", fuel_ocr_scan_view, name="ocr_scan"),
 ]

@@ -274,6 +274,26 @@ def monthly_real_costs(*, user, motorcycle=None, months: int = 6, today: date | 
     return rows
 
 
+def yoy_comparison(*, user, motorcycle=None, today: date | None = None) -> dict[str, Any]:
+    today = today or timezone.localdate()
+    current_year_start = date(today.year, 1, 1)
+    last_year_start = date(today.year - 1, 1, 1)
+    last_year_end = date(today.year - 1, 12, 31)
+
+    current_summary = cost_summary(user=user, motorcycle=motorcycle, start=current_year_start, end=today)
+    last_summary = cost_summary(user=user, motorcycle=motorcycle, start=last_year_start, end=last_year_end)
+
+    return {
+        "current_year": current_summary,
+        "last_year": last_summary,
+        "variance_percent": (
+            ((current_summary.total - last_summary.total) / last_summary.total * 100).quantize(Decimal("0.1"))
+            if last_summary.total > 0
+            else Decimal("0")
+        )
+    }
+
+
 def _average_km_between_fillups(records: list[FuelRecord]) -> int | None:
     ordered = sorted(records, key=lambda record: (record.date, int(record.odometer_km or 0), record.pk or 0))
     deltas = [

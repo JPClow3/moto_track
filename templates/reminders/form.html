@@ -130,6 +130,16 @@
 
             <div class="form-field md:col-span-2">
               <div class="flex flex-wrap items-center gap-3 rounded-md border border-outline-variant/40 bg-surface-low p-3">
+                {{ form.is_recurring }}
+                <label for="{{ form.is_recurring.id_for_label }}" class="mb-0 text-sm font-medium">
+                  Recorrente
+                </label>
+                <span class="text-xs text-on-surface-variant">- Reinicia automaticamente após concluído</span>
+              </div>
+            </div>
+
+            <div class="form-field md:col-span-2">
+              <div class="flex flex-wrap items-center gap-3 rounded-md border border-outline-variant/40 bg-surface-low p-3">
                 {{ form.send_email }}
                 <label for="{{ form.send_email.id_for_label }}" class="mb-0 text-sm font-medium">
                   Enviar e-mail
@@ -161,6 +171,19 @@
     </article>
 
     <aside class="space-y-6">
+      <div class="insight-panel">
+        <div class="section-heading">
+          <h3 class="section-heading-title">Lembretes Rápidos</h3>
+          <span class="ui-eyebrow">Templates 1-Click</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button type="button" class="ui-btn-secondary !py-1 !px-3 text-xs" @click="applyTemplate('Troca de Óleo', 'by_interval', 3000, 180, 'Trocar óleo do motor')">Óleo (3.000km/6m)</button>
+          <button type="button" class="ui-btn-secondary !py-1 !px-3 text-xs" @click="applyTemplate('Revisão Geral', 'by_interval', 10000, 365, 'Revisão geral da moto')">Revisão (10.000km/1a)</button>
+          <button type="button" class="ui-btn-secondary !py-1 !px-3 text-xs" @click="applyTemplate('Troca de Pneus', 'by_km', 15000, '', 'Verificar e trocar pneus')">Pneus (15.000km)</button>
+          <button type="button" class="ui-btn-secondary !py-1 !px-3 text-xs" @click="applyTemplate('Lubrificar Corrente', 'by_km', 500, '', 'Limpar e lubrificar a corrente')">Corrente (500km)</button>
+        </div>
+      </div>
+
       <div class="insight-panel insight-panel-primary">
         <div class="flex items-start justify-between gap-3">
           <div>
@@ -235,6 +258,18 @@ function reminderForm(initialTotal) {
     },
 
     init() {
+      this.updateCompletion();
+    },
+
+    applyTemplate(title, type, km, days, desc) {
+      const form = this.$refs.reminderForm;
+      if (!form) return;
+      form.querySelector('[name=title]').value = title;
+      form.querySelector('[name=trigger_type]').value = type;
+      form.querySelector('[name=trigger_value_km]').value = km || '';
+      form.querySelector('[name=trigger_value_days]').value = days || '';
+      form.querySelector('[name=description]').value = desc;
+      form.querySelector('[name=is_recurring]').checked = true;
       this.updateCompletion();
     },
 

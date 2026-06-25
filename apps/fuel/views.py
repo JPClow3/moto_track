@@ -10,6 +10,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from djmoney.money import Money
 
 from apps.billing.decorators import pro_required
@@ -797,3 +798,45 @@ def fuel_defaults_view(request):
             "station_name": pref.station_name,
         }
     )
+
+
+@login_required
+@require_POST
+def fuel_ocr_scan_view(request):
+    upload = request.FILES.get("receipt_file")
+    if not upload:
+        messages.error(request, "Nenhuma imagem selecionada para leitura.")
+        form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user)
+    else:
+        try:
+            from .services.ocr import parse_receipt_image
+            data = parse_receipt_image(upload.file)
+            
+            if not data or not any(data.values()):
+                messages.warning(request, "Não foi possível extrair dados do recibo. Por favor, preencha manualmente.")
+                form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user)
+            else:
+                post_data = request.POST.copy()
+                if data.get("liters"):
+                    post_data["liters"] = str(data["liters"])
+                if data.get("total_price"):
+                    post_data["total_price"] = str(data["total_price"])
+                if data.get("price_per_liter"):
+                    post_data["price_per_liter"] = str(data["price_per_liter"])
+                    
+                form = FuelRecordQuickForm(post_data, request.FILES, user=request.user)
+                messages.success(request, "Recibo lido com sucesso! Verifique os dados preenchidos.")
+        except Exception as e:
+            messages.error(request, f"Erro ao processar imagem: {str(e)}")
+            form = FuelRecordQuickForm(request.POST, request.FILES, user=request.user)
+        
+    context = {
+        "form": form,
+        "title": "Adicionar abastecimento",
+        "submit_label": "Salvar abastecimento",
+        "next_url": request.POST.get("next") or "",
+        "form_action_url": reverse("fuel:quick_create"),
+        "client_submission_id": request.POST.get("client_submission_id") or "",
+    }
+    configure_form_accessibility(form)
+    return render(request, "fuel/partials/quick_form.html", context)

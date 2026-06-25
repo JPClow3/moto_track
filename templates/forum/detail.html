@@ -50,6 +50,7 @@
       </a>
       <p class="mt-8 text-sm font-medium text-on-surface-variant">
         Publicado em {{ article.published_at|date:"d/m/Y" }}{% if article.updated_at != article.published_at %} · Atualizado em {{ article.updated_at|date:"d/m/Y" }}{% endif %}
+        · {{ article.estimated_reading_time }} min de leitura
       </p>
       <h1 id="article-title" class="mt-3 text-4xl font-semibold leading-tight tracking-normal text-on-surface sm:text-5xl">{{ article.title }}</h1>
       <p class="mt-5 text-base leading-7 text-on-surface-variant sm:text-lg">{{ article.summary }}</p>
@@ -62,12 +63,75 @@
     {% endif %}
 
     <div class="mx-auto mt-10 grid max-w-5xl gap-10 lg:grid-cols-[minmax(0,44rem)_14rem] lg:items-start">
-      <section class="public-article-body">
-        {{ article.body|markdown_lite }}
-      </section>
+      <div>
+        <section class="public-article-body">
+          {{ article.body|markdown_lite }}
+        </section>
+
+        <section class="mt-12 border-t border-outline-variant/50 pt-8" aria-label="Reações">
+          <div class="flex items-center gap-4">
+            <h3 class="text-lg font-semibold text-on-surface">Reações</h3>
+            <div class="flex items-center gap-2">
+              {% for emoji in emojis %}
+                <form method="post" action="{% url 'blog:toggle_reaction' article.slug %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="emoji" value="{{ emoji }}">
+                  <button type="submit" class="ui-btn-secondary !min-h-8 !px-3 {% if user_reaction == emoji %}bg-primary/10{% endif %}">
+                    {{ emoji }} {% for key, count in reaction_counts.items %}{% if key == emoji %}{{ count }}{% endif %}{% endfor %}
+                  </button>
+                </form>
+              {% endfor %}
+            </div>
+          </div>
+        </section>
+
+        <section class="mt-12 border-t border-outline-variant/50 pt-8" aria-label="Comentários">
+          <h3 class="text-xl font-semibold text-on-surface">Comentários ({{ comments.count }})</h3>
+          
+          {% if request.user.is_authenticated %}
+            <form method="post" action="{% url 'blog:add_comment' article.slug %}" class="mt-6">
+              {% csrf_token %}
+              <textarea name="body" rows="3" class="ui-input w-full" placeholder="Adicione um comentário..." required></textarea>
+              <div class="mt-3 flex justify-end">
+                <button type="submit" class="ui-btn-primary">Comentar</button>
+              </div>
+            </form>
+          {% else %}
+            <p class="mt-4 text-sm text-on-surface-variant"><a href="{% url 'account_login' %}" class="text-primary hover:underline">Faça login</a> para comentar.</p>
+          {% endif %}
+
+          <div class="mt-8 space-y-6">
+            {% for comment in comments %}
+              <div class="flex gap-4">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-variant font-semibold text-on-surface-variant">
+                  {{ comment.author.username|make_list|first|upper }}
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-on-surface">{{ comment.author.username }} <span class="text-xs text-on-surface-variant font-normal">{{ comment.created_at|date:"d/m/Y H:i" }}</span></p>
+                  <p class="mt-1 text-sm text-on-surface-variant">{{ comment.body }}</p>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+
       <aside class="hidden border-l border-outline-variant/50 pl-6 text-sm leading-6 text-on-surface-variant lg:block" aria-label="Sobre o guia">
         <p class="font-semibold text-on-surface">Guia Moto Track</p>
         <p class="mt-2">Conteúdo prático para consulta rápida antes de registrar, revisar ou planejar manutenção.</p>
+        
+        {% if related %}
+          <div class="mt-8">
+            <p class="font-semibold text-on-surface">Guias Relacionados</p>
+            <ul class="mt-4 space-y-4">
+              {% for rel in related %}
+                <li>
+                  <a href="{% url 'blog:detail' rel.slug %}" class="transition-colors hover:text-primary">{{ rel.title }}</a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
       </aside>
     </div>
   </div>

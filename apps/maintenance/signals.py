@@ -4,7 +4,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from apps.garage.services import bump_motorcycle_odometer, recompute_motorcycle_odometer
-from apps.maintenance.models import MaintenanceRecord
+from apps.maintenance.models import MaintenanceRecord, MaintenancePlanItem
 
 
 @receiver(pre_save, sender=MaintenanceRecord)
@@ -37,3 +37,15 @@ def _maintenance_record_saved(sender, instance: MaintenanceRecord, **kwargs):  #
 @receiver(post_delete, sender=MaintenanceRecord)
 def _maintenance_record_deleted(sender, instance: MaintenanceRecord, **kwargs):  # pylint: disable=unused-argument
     recompute_motorcycle_odometer(instance.motorcycle_id)
+
+
+@receiver(post_save, sender=MaintenancePlanItem)
+def _maintenance_plan_saved(sender, instance: MaintenancePlanItem, **kwargs):
+    from apps.reminders.services import sync_maintenance_reminders
+    sync_maintenance_reminders(instance)
+
+
+@receiver(post_delete, sender=MaintenancePlanItem)
+def _maintenance_plan_deleted(sender, instance: MaintenancePlanItem, **kwargs):
+    from apps.reminders.models import Reminder
+    Reminder.objects.filter(linked_plan_item=instance).delete()

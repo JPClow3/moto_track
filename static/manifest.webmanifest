@@ -24,6 +24,44 @@
       "type": "image/png",
       "purpose": "any"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Adicionar abastecimento",
+      "short_name": "Abastecimento",
+      "description": "Registrar um novo abastecimento",
+      "url": "/fuel/quick-create/",
+      "icons": [{ "src": "/static/brand/favicon-32x32.png", "sizes": "32x32", "type": "image/png" }]
+    },
+    {
+      "name": "Ver painel",
+      "short_name": "Painel",
+      "description": "Ver painel principal",
+      "url": "/dashboard/"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/brand/og-card.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/static/brand/og-card.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "share_target": {
+    "action": "/documents/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }
 

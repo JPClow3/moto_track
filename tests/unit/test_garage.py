@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 
 from apps.billing.models import BillingPlan, SubscriptionProfile
@@ -241,8 +241,14 @@ class GarageViewTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
-class MotorcycleTemplateModelTests(TestCase):
+class MotorcycleTemplateModelTests(TransactionTestCase):
+    serialized_rollback = True
+
     def test_seeded_catalog_is_available_after_migrations(self):
+        from apps.garage.catalog_seed import seed_motorcycle_templates
+        from apps.garage.models import MotorcycleTemplateSpec, MotorcycleTemplateMaintenanceInterval
+        seed_motorcycle_templates(MotorcycleTemplate, MotorcycleTemplateSpec, MotorcycleTemplateMaintenanceInterval)
+        
         self.assertTrue(
             MotorcycleTemplate.objects.filter(brand="Honda", model="CG 160 Titan / Fan / Start").exists()
         )

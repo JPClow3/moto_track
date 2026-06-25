@@ -14,6 +14,8 @@ from apps.billing.entitlements import has_pro_access
 from apps.core.exports import parse_date_param
 from apps.core.severity import SEVERITY_LABELS
 from apps.core.ui import get_density, per_page_for_density
+from apps.fuel.models import FuelRecord
+from apps.fuel.services import monthly_fuel_trend
 from apps.garage.active_motorcycle import get_active_motorcycle
 from apps.garage.models import Motorcycle
 from apps.reports.export import detailed_csv_response, sale_pdf_response
@@ -28,6 +30,7 @@ from apps.reports.services import (
     sale_report_data,
     timeline_events,
     timeline_events_count,
+    yoy_comparison,
 )
 
 
@@ -43,8 +46,10 @@ def report_overview_view(request):
     comparisons = period_comparisons(user=request.user, motorcycle=motorcycle)
     health = health_score(motorcycle=motorcycle)
     alerts = intelligent_alerts(user=request.user, motorcycle=motorcycle)[:6]
-    monthly_costs = monthly_real_costs(user=request.user, motorcycle=motorcycle)
+    monthly_costs = monthly_real_costs(user=request.user, motorcycle=motorcycle, months=12)
+    fuel_trend = monthly_fuel_trend(FuelRecord.objects.filter(motorcycle=motorcycle), months_count=12)
     recommendations = maintenance_recommendations(motorcycle=motorcycle)
+    yoy = yoy_comparison(user=request.user, motorcycle=motorcycle)
 
     context = {
         "summary": summary,
@@ -53,6 +58,8 @@ def report_overview_view(request):
         "health": health,
         "alerts": alerts,
         "monthly_costs": monthly_costs,
+        "fuel_trend": fuel_trend,
+        "yoy": yoy,
         "recommendations": recommendations,
         "severity_labels": SEVERITY_LABELS,
         # Backwards-compatible context used by existing tests/templates.

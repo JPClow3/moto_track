@@ -221,6 +221,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "account_login"
+ACCOUNT_SIGNUP_REDIRECT_URL = "onboarding"
 # B-M1: 30-day sessions are too long-lived for an app that handles billing data.
 # Reduced to 7 days; override via env if needed. We deliberately do NOT enable
 # SESSION_SAVE_EVERY_REQUEST: it forces a DB write on every request to slide

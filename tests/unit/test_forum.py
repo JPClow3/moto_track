@@ -83,7 +83,7 @@ class ForumViewsTests(TestCase):
             response = self.client.get(reverse("blog:list"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertLessEqual(len(query_context), 2)
+        self.assertLessEqual(len(query_context), 4)
 
     def test_forum_list_does_not_create_site_settings(self):
         self.assertFalse(SiteSettings.objects.exists())

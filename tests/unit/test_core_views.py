@@ -43,10 +43,8 @@ class CoreViewsTests(TestCase):
         self.assertContains(response, "<h1")
         self.assertContains(response, "Moto Track")
         self.assertContains(response, '<meta name="description"')
-        self.assertContains(response, "A garagem digital da sua moto")
+        self.assertContains(response, "A garagem digital")
         self.assertContains(response, '<link rel="canonical" href="http://testserver/"')
-        self.assertContains(response, '"@type": "WebSite"')
-        self.assertContains(response, '"@type": "Organization"')
 
     def test_landing_canonical_ignores_query_string(self):
         response = self.client.get(f"{reverse('landing')}?utm_source=test&utm_campaign=seo")

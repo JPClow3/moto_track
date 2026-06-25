@@ -23,6 +23,7 @@ const PRECACHE = [
   "/static/brand/favicon-32x32.png",
   "/static/brand/web/android-chrome-192x192.png",
   "/static/brand/web/android-chrome-512x512.png",
+  "/fuel/quick-create/",
 ];
 
 const QUEUEABLE_PATHS = [

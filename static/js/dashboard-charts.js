@@ -18,8 +18,20 @@
     if (consumptionChart) { consumptionChart.destroy(); consumptionChart = null; }
   }
 
-  function renderDashboardCharts() {
-    if (typeof Chart === "undefined") return;
+  async function renderDashboardCharts() {
+    const spendingCanvas = document.getElementById("spendingChart");
+    const consumptionCanvas = document.getElementById("consumptionChart");
+    if (!spendingCanvas && !consumptionCanvas) return;
+
+    if (typeof Chart === "undefined") {
+      try {
+        await import('/static/vendor/chart/chart.umd.js');
+      } catch (e) {
+        console.error("Failed to load Chart.js", e);
+        return;
+      }
+    }
+    
     destroyCharts();
     const textColor = cssColor("--color-on-surface-variant");
     const gridColor = cssColor("--color-outline-variant", 0.35);
@@ -32,8 +44,6 @@
 
     const spendingDataEl = document.getElementById("spendingData");
     const consumptionDataEl = document.getElementById("consumptionData");
-    const spendingCanvas = document.getElementById("spendingChart");
-    const consumptionCanvas = document.getElementById("consumptionChart");
     if (!spendingDataEl || !consumptionDataEl || !spendingCanvas || !consumptionCanvas) return;
 
     const spendingDataObj = JSON.parse(spendingDataEl.textContent);

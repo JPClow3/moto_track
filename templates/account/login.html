@@ -20,7 +20,7 @@
     </div>
   {% endif %}
 
-  <form method="post" action="{% url 'account_login' %}" class="auth-form-stack" novalidate>
+  <form method="post" action="{% url 'account_login' %}" class="auth-form-stack" x-data="formValidator()" novalidate>
     {% csrf_token %}
 
     <div class="auth-field">

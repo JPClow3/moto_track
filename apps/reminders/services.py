@@ -120,3 +120,47 @@ def save_date_reminder(
     reminder.full_clean()
     reminder.save()
     return reminder
+
+
+def sync_maintenance_reminders(plan_item) -> None:
+    if not getattr(plan_item, "is_active", False) or (not plan_item.interval_km and not plan_item.interval_days):
+        Reminder.objects.filter(linked_plan_item=plan_item).update(is_active=False)
+        return
+
+    title = f"Manutenção: {plan_item.get_maintenance_type_display()}"
+    description = plan_item.notes or ""
+
+    reminder = Reminder.objects.filter(linked_plan_item=plan_item).first()
+    if not reminder:
+        reminder = Reminder(
+            motorcycle=plan_item.motorcycle,
+            linked_plan_item=plan_item,
+            is_recurring=True,
+            title=title,
+        )
+
+    reminder.description = description
+    reminder.is_active = True
+
+    if plan_item.interval_km and plan_item.interval_days:
+        reminder.trigger_type = TriggerType.BY_INTERVAL
+        reminder.trigger_value_km = plan_item.interval_km
+        reminder.trigger_value_days = plan_item.interval_days
+        reminder.reference_km = plan_item.last_done_km or plan_item.motorcycle.current_odometer_km or 0
+        reminder.reference_date = plan_item.last_done_date or date.today()
+    elif plan_item.interval_km:
+        reminder.trigger_type = TriggerType.BY_KM
+        reminder.trigger_value_km = plan_item.interval_km
+        reminder.reference_km = plan_item.last_done_km or plan_item.motorcycle.current_odometer_km or 0
+        reminder.reference_date = None
+        reminder.trigger_value_days = None
+    elif plan_item.interval_days:
+        reminder.trigger_type = TriggerType.BY_DATE
+        reminder.trigger_value_days = plan_item.interval_days
+        reminder.reference_date = plan_item.last_done_date or date.today()
+        reminder.reference_km = None
+        reminder.trigger_value_km = None
+
+    reminder.full_clean()
+    reminder.save()
+

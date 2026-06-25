@@ -37,26 +37,57 @@ module.exports = {
         brand: "#DC2626",
         "brand-hover": "#EF4444",
         "brand-active": "#B91C1C",
+        
+        // Luminous Visual System
+        luminous: {
+          bg: "#050505",
+          card: "#0A0A0A",
+          primary: "#f97316",
+          primaryStart: "#fb923c",
+          primaryEnd: "#ea580c",
+          text: "#ffffff",
+          muted: "#a3a3a3",
+          border: "rgba(255, 255, 255, 0.05)",
+          glow: "rgba(249, 115, 22, 0.3)"
+        }
       },
       fontFamily: {
-        sans: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Inter", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
-        headline: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Inter", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
-        display: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Inter", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        sans: ["'Inter'", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        headline: ["'Bricolage Grotesque'", "'Inter'", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        display: ["'Bricolage Grotesque'", "'Inter'", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
       },
       spacing: {
         18: "4.5rem",
+        section: "6rem",
       },
       borderRadius: {
         xl: "0.5rem",
         "2xl": "0.625rem",
-        card: "0.5rem",
+        card: "var(--radius-card)",
+        button: "var(--radius-button)",
         control: "0.5rem",
+        large: "32px",
       },
       boxShadow: {
         ambient: "var(--shadow-panel)",
         panel: "var(--shadow-panel)",
         subtle: "var(--shadow-soft)",
+        electric: "0 0 40px rgba(249, 115, 22, 0.2), inset 0 0 20px rgba(249, 115, 22, 0.1)",
       },
+      animation: {
+        'fade-in-up-blur': 'fadeInUpBlur 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+        'pulse-glow': 'pulseGlow 2s infinite',
+      },
+      keyframes: {
+        fadeInUpBlur: {
+          '0%': { opacity: '0', transform: 'translateY(20px)', filter: 'blur(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)', filter: 'blur(0)' },
+        },
+        pulseGlow: {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '.7', transform: 'scale(1.05)' },
+        }
+      }
     }
   },
   plugins: []

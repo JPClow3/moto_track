@@ -124,6 +124,19 @@
           {{ form.receipt_file }}
         </label>
         {% if form.receipt_file.errors %}<div id="{{ form.receipt_file.id_for_label }}_error" class="field-error mt-1">{{ form.receipt_file.errors }}</div>{% endif %}
+        
+        <button 
+          type="button" 
+          class="mt-3 w-full secondary-btn text-sm flex items-center justify-center gap-2 !min-h-[2.5rem]"
+          hx-post="{% url 'fuel:ocr_scan' %}"
+          hx-encoding="multipart/form-data"
+          hx-target="#quick-form-root"
+          hx-swap="innerHTML"
+          hx-include="closest form"
+        >
+          <i data-lucide="scan" class="h-4 w-4" aria-hidden="true"></i>
+          Extrair dados do cupom (OCR Mock)
+        </button>
       </div>
 
       <details class="rounded-md bg-surface-low p-4 mt-3">

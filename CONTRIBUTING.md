@@ -4,6 +4,11 @@ This document is intentionally scoped to frontend contribution rules. For setup,
 validation, deployment, and runtime configuration, use [README.md](README.md),
 [docs/README.md](docs/README.md), and [`.env.example`](.env.example).
 
+## Language Policy (Strict)
+
+All user-facing copy (HTML templates, views, and emails) must be written in **Brazilian Portuguese** (PT-BR).
+The tone should be tailored to the motorcycle sector (e.g., using terms like "garagem", "nave", "na ponta do lápis", "setor duas rodas", etc.). Do not use English for UI strings.
+
 ## Frontend Architecture Rules (Strict)
 
 This project's frontend stack is **locked to three technologies**. Any deviation must be explicitly justified and tagged.
@@ -109,7 +114,11 @@ templates/
 static/
   css/
     input.css            # Tailwind entry point
-    app.css              # Minimal HTMX/loading states only
+    tokens.css           # Design system variables and typography
+    components.css       # Reusable component patterns
+    dashboard.css        # Dashboard-specific styling
+    landing.css          # Landing page styling
+    app.css              # Miscellaneous / legacy overrides
     tailwind.generated.css # Build output (do not edit)
   vendor/                # Generated from npm packages and committed for Compose dev
   js/

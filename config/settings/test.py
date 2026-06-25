@@ -5,6 +5,8 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403,F401
 
+ALLOWED_HOSTS = ["*"]
+
 _test_database_url = os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL")
 _test_settings_selected = os.getenv("DJANGO_SETTINGS_MODULE") == "config.settings.test"
 if not _test_database_url and _test_settings_selected:

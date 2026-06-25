@@ -3,6 +3,7 @@ from django.db import models
 
 from apps.core.models import TimeStampedModel
 from apps.garage.models import Motorcycle
+from apps.maintenance.models import MaintenancePlanItem
 
 
 class TriggerType(models.TextChoices):
@@ -28,6 +29,8 @@ class Reminder(TimeStampedModel):
     send_email = models.BooleanField(default=True)
     send_push = models.BooleanField(default=True)
     notes = models.TextField(blank=True)
+    is_recurring = models.BooleanField(default=False)
+    linked_plan_item = models.ForeignKey(MaintenancePlanItem, on_delete=models.SET_NULL, null=True, blank=True, related_name="linked_reminders")
 
     class Meta:
         ordering = ["-is_active", "title"]

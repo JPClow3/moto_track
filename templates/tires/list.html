@@ -87,7 +87,7 @@
             <div class="relative mx-auto mt-4 flex h-44 w-44 items-center justify-center">
               <svg class="h-full w-full -rotate-90" viewBox="0 0 192 192" aria-hidden="true">
                 <circle class="text-surface-high" cx="96" cy="96" fill="transparent" r="{{ front.radius }}" stroke="currentColor" stroke-width="12"></circle>
-                <circle class="{{ front.ring_class }}" cx="96" cy="96" fill="transparent" r="{{ front.radius }}" stroke="currentColor"
+                <circle class="transition-all duration-700 ease-out {{ front.ring_class }}" cx="96" cy="96" fill="transparent" r="{{ front.radius }}" stroke="currentColor"
                         stroke-width="12" stroke-linecap="round"
                         style="stroke-dasharray: {{ front.circumference|default:'0'|unlocalize }}; stroke-dashoffset: {{ front.dash_offset|default:'0'|unlocalize }};" data-chart-reveal></circle>
               </svg>
@@ -129,7 +129,7 @@
             <div class="relative mx-auto mt-4 flex h-44 w-44 items-center justify-center">
               <svg class="h-full w-full -rotate-90" viewBox="0 0 192 192" aria-hidden="true">
                 <circle class="text-surface-high" cx="96" cy="96" fill="transparent" r="{{ rear.radius }}" stroke="currentColor" stroke-width="12"></circle>
-                <circle class="{{ rear.ring_class }}" cx="96" cy="96" fill="transparent" r="{{ rear.radius }}" stroke="currentColor"
+                <circle class="transition-all duration-700 ease-out {{ rear.ring_class }}" cx="96" cy="96" fill="transparent" r="{{ rear.radius }}" stroke="currentColor"
                         stroke-width="12" stroke-linecap="round"
                         style="stroke-dasharray: {{ rear.circumference|default:'0'|unlocalize }}; stroke-dashoffset: {{ rear.dash_offset|default:'0'|unlocalize }};" data-chart-reveal></circle>
               </svg>

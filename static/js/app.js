@@ -79,6 +79,73 @@ function registerAppShell() {
       return active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "SELECT" || active.isContentEditable;
     },
   }));
+
+  Alpine.data("formValidator", () => ({
+    init() {
+      this.$el.setAttribute("novalidate", "true");
+      this.$el.addEventListener("submit", (e) => {
+        if (!this.$el.checkValidity()) {
+          e.preventDefault();
+          this.showErrors();
+        }
+      });
+      const inputs = this.$el.querySelectorAll("input, select, textare");
+      inputs.forEach((input) => {
+        input.addEventListener("blur", () => this.validateField(input));
+        input.addEventListener("input", () => {
+          if (input.classList.contains("border-error") || input.getAttribute("aria-invalid") === "true") {
+            this.validateField(input);
+          }
+        });
+      });
+    },
+
+    validateField(input) {
+      if (input.type === "hidden" || input.disabled || input.readOnly) return;
+      let errorEl = document.getElementById(input.id + "-error");
+      
+      // If errorEl doesn't exist, try to find an adjacent .field-error container
+      if (!errorEl) {
+        const wrapper = input.closest('.auth-field, .form-group') || input.parentElement;
+        errorEl = wrapper.querySelector('.field-error');
+        
+        if (!errorEl) {
+           errorEl = document.createElement('div');
+           errorEl.id = input.id + "-error";
+           errorEl.className = "field-error mt-1 text-sm font-medium text-error hidden";
+           errorEl.setAttribute("aria-live", "polite");
+           wrapper.appendChild(errorEl);
+        }
+      }
+
+      if (!input.checkValidity()) {
+        input.classList.add("border-error", "focus:ring-error", "focus:border-error");
+        input.setAttribute("aria-invalid", "true");
+        if (errorEl) {
+          // If we have custom django error messages, we could pull from a data attribute. 
+          // Defaulting to HTML5 validationMessage.
+          errorEl.textContent = input.dataset.errorMessage || input.validationMessage;
+          errorEl.classList.remove("hidden");
+        }
+      } else {
+        input.classList.remove("border-error", "focus:ring-error", "focus:border-error");
+        input.removeAttribute("aria-invalid");
+        if (errorEl) {
+          errorEl.textContent = "";
+          errorEl.classList.add("hidden");
+        }
+      }
+    },
+
+    showErrors() {
+      const inputs = this.$el.querySelectorAll("input, select, textarea");
+      inputs.forEach((input) => this.validateField(input));
+      const firstInvalid = this.$el.querySelector(":invalid");
+      if (firstInvalid) {
+        firstInvalid.focus();
+      }
+    },
+  }));
 }
 
 if (typeof Alpine !== "undefined") {
@@ -370,6 +437,10 @@ if (typeof Alpine !== "undefined") {
       initToasts(event.detail.target);
     }
   });
+
+  if (typeof htmx !== "undefined") {
+    htmx.config.globalViewTransitions = true;
+  }
 
   document.body.addEventListener("htmx:configRequest", (event) => {
     event.detail.headers["X-CSRFToken"] = getCsrfToken();

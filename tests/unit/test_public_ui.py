@@ -62,14 +62,14 @@ class PublicUiShellTests(TestCase):
         response = self.client.get(reverse("landing"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Sem cartão")
-        self.assertContains(response, "Privado")
-        self.assertContains(response, "Comparar planos")
-        self.assertContains(response, "Exemplo de painel")
-        self.assertNotContains(response, 'role="img"')
+        self.assertContains(response, "Grátis para começar.")
+        self.assertContains(response, "Criar Conta Grátis")
+        self.assertContains(response, "Telemetria de Consumo")
+        self.assertContains(response, "Manutenção Preditiva")
+        self.assertContains(response, "Dossiê e Valorização")
 
     def test_reviewed_marketing_pages_use_normal_tracking_markup(self):
-        route_names = ["landing", "pricing"]
+        route_names = ["pricing"]
 
         for route_name in route_names:
             with self.subTest(route=route_name):

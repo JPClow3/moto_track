@@ -1,241 +1,122 @@
 {% extends "public/base.html" %}
 {% load static %}
-{% block title %}Moto Track - Controle de manutenção de motocicletas{% endblock %}
-{% block meta_description %}Moto Track organiza garagem, abastecimentos, revisões, pneus, documentos e relatórios em um painel privado e intuitivo para motociclistas.{% endblock %}
-{% block og_title %}Moto Track - Controle de manutenção de motocicletas{% endblock %}
-{% block og_description %}Painel privado para gerenciar garagem, manutenções, consumo, pneus e documentos da sua moto.{% endblock %}
-{% block extra_meta %}
-  <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "Moto Track",
-      "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'landing' %}",
-      "inLanguage": "pt-BR",
-      "description": "Moto Track organiza garagem, abastecimentos, revisões, pneus, documentos e relatórios em um painel privado e intuitivo para motociclistas."
-    }
-  </script>
-  <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Moto Track",
-      "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'landing' %}",
-      "logo": "{{ request.scheme }}://{{ request.get_host }}{% static 'brand/web/android-chrome-512x512.png' %}"
-    }
-  </script>
-{% endblock %}
+{% block title %}Moto Track - A garagem digital da sua moto{% endblock %}
+{% block meta_description %}A infraestrutura definitiva para o setor duas rodas. Controle consumo, manutenção e histórico da sua moto ou oficina com precisão.{% endblock %}
 
 {% block content %}
-<section class="public-hero" aria-labelledby="hero-title" data-animate-once>
-  <div class="public-container public-hero-layout">
-    <div class="public-hero-copy">
-      <p class="page-kicker">Sua moto, sob controle</p>
-      <h1 id="hero-title" class="public-hero-title">
-        A garagem digital da sua moto.
-      </h1>
-      <p class="public-hero-copy-text">
-        Registre abastecimentos, revisões, pneus e documentos em um painel privado, rápido e pronto para a rotina.
-      </p>
-      <div class="mt-7 flex flex-col gap-3 sm:flex-row">
-        <a class="ui-btn-primary !min-h-12 !px-6" href="{% url 'account_signup' %}">
-          Criar conta grátis
-          {% include "core/partials/icon.html" with icon_name="arrow-right" icon_class="h-4 w-4" %}
-        </a>
-        <a class="ui-btn-secondary !min-h-12 !px-6" href="#workflow-title">Ver como funciona</a>
-      </div>
-      <dl class="public-trust-list" aria-label="Garantias do Moto Track">
-        <div>
-          <dt>Sem cartão</dt>
-          <dd>comece no plano grátis</dd>
-        </div>
-        <div>
-          <dt>Privado</dt>
-          <dd>dados da sua garagem protegidos</dd>
-        </div>
-        <div>
-          <dt>LGPD</dt>
-          <dd>controle e exportação dos registros</dd>
-        </div>
-      </dl>
+<div class="bg-luminous-bg text-luminous-text min-h-screen relative overflow-hidden font-sans pb-section">
+
+  <!-- Ethereal Background Glows -->
+  <div class="absolute top-[-10%] left-[20%] w-[60%] h-[50%] bg-luminous-glow rounded-full blur-[120px] opacity-40 mix-blend-screen pointer-events-none" aria-hidden="true"></div>
+  <div class="absolute top-[40%] right-[-10%] w-[40%] h-[40%] bg-luminous-glow rounded-full blur-[100px] opacity-20 mix-blend-screen pointer-events-none" aria-hidden="true"></div>
+
+  <!-- Hero Section -->
+  <section class="relative z-10 pt-32 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col items-center text-center animate-fade-in-up-blur">
+    
+    <!-- Status Pill -->
+    <div class="mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-luminous-muted backdrop-blur-md">
+      <span class="relative flex h-2 w-2">
+        <span class="animate-pulse-glow absolute inline-flex h-full w-full rounded-full bg-luminous-primary opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-luminous-primary"></span>
+      </span>
+      SYSTEM V2.0 LIVE
     </div>
 
-    <aside class="public-product-preview" aria-labelledby="preview-title">
-      <div class="preview-topbar">
-        <div class="preview-dot-row" aria-hidden="true"><span></span><span></span><span></span></div>
-        <span id="preview-title">Exemplo de painel</span>
-        <span>Hoje</span>
-      </div>
-      <div class="preview-grid">
-        <section class="preview-panel">
-          <p class="text-xs font-semibold uppercase tracking-normal text-primary">Moto ativa</p>
-          <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p class="text-2xl font-semibold tracking-normal text-on-surface">CB 500F 2024</p>
-              <p class="mt-1 text-sm text-on-surface-variant">34.280 km registrados</p>
-            </div>
-            <span class="severity-badge severity-success">Em dia</span>
-          </div>
-          <div class="preview-metric-grid">
-            <div class="preview-metric">
-              <p>Consumo médio</p>
-              <p>28,4 km/l</p>
-            </div>
-            <div class="preview-metric">
-              <p>Custo mensal</p>
-              <p>R$ 486</p>
-            </div>
-            <div class="preview-metric">
-              <p>Próxima revisão</p>
-              <p>720 km</p>
-            </div>
-          </div>
-          <div class="preview-chart" aria-hidden="true">
-            <span style="height: 36%" data-chart-reveal></span>
-            <span style="height: 52%" data-chart-reveal></span>
-            <span style="height: 44%" data-chart-reveal></span>
-            <span style="height: 68%" data-chart-reveal></span>
-            <span style="height: 58%" data-chart-reveal></span>
-            <span style="height: 78%" data-chart-reveal></span>
-            <span style="height: 64%" data-chart-reveal></span>
-            <span style="height: 86%" data-chart-reveal></span>
-          </div>
-        </section>
-        <section class="preview-panel preview-panel-secondary">
-          <p class="text-xs font-semibold uppercase tracking-normal text-primary">Próximas ações</p>
-          <ul class="preview-list">
-            <li><strong>Troca de óleo</strong><span>650 km</span></li>
-            <li><strong>Seguro</strong><span>12 dias</span></li>
-            <li><strong>Pneu traseiro</strong><span>verificar</span></li>
-          </ul>
-        </section>
-      </div>
-    </aside>
-  </div>
-</section>
+    <h1 class="font-headline text-5xl sm:text-7xl lg:text-8xl tracking-tight leading-[1.1] text-luminous-text mb-6">
+      A garagem digital<br />
+      <span class="text-transparent bg-clip-text bg-gradient-to-r from-luminous-primaryStart to-luminous-primaryEnd drop-shadow-[0_0_20px_rgba(249,115,22,0.4)]">da sua moto.</span>
+    </h1>
+    
+    <p class="max-w-2xl mx-auto text-lg sm:text-xl text-luminous-muted mb-10 font-sans font-light">
+      Controle o consumo na ponta do lápis, programe revisões e tenha o dossiê completo da sua nave. Feito por motociclistas para quem não vive sem o setor duas rodas.
+    </p>
 
-<section class="public-section" aria-labelledby="features-title">
-  <div class="public-container public-split">
-    <div class="public-section-heading">
-      <p class="page-kicker">Rotina organizada</p>
-      <h2 id="features-title" class="public-section-title">
-        Da conversa e da planilha para um histórico confiável.
-      </h2>
-    </div>
-    <div class="public-row-list">
-      <article class="public-row">
-        {% include "core/partials/icon.html" with icon_name="bike" icon_class="h-5 w-5 text-primary" %}
-        <div>
-          <h3>Garagem e histórico</h3>
-          <p>Motos, odômetro e documentos conectados desde o primeiro registro.</p>
-        </div>
-      </article>
-      <article class="public-row">
-        {% include "core/partials/icon.html" with icon_name="fuel" icon_class="h-5 w-5 text-primary" %}
-        <div>
-          <h3>Consumo e custo real</h3>
-          <p>Cada abastecimento vira consumo, gasto mensal e custo por km.</p>
-        </div>
-      </article>
-      <article class="public-row">
-        {% include "core/partials/icon.html" with icon_name="bell-ring" icon_class="h-5 w-5 text-primary" %}
-        <div>
-          <h3>Próximas ações</h3>
-          <p>Revisões, pneus e documentos por prioridade — sem deixar passar.</p>
-        </div>
-      </article>
-    </div>
-  </div>
-</section>
-
-<section class="public-section border-t border-outline-variant/40 bg-surface-low/40" aria-labelledby="workflow-title">
-  <div class="public-container">
-    <div class="public-section-heading">
-      <p class="page-kicker">Uso diário</p>
-      <h2 id="workflow-title" class="public-section-title">
-        Abra, registre e volte para a estrada.
-      </h2>
-    </div>
-    <div class="mt-10 grid gap-8 md:grid-cols-3">
-      <div class="public-step">
-        <span>01</span>
-        <h3>Registre rápido</h3>
-        <p>Abastecimento, manutenção, pneu ou documento — em poucos campos.</p>
-      </div>
-      <div class="public-step">
-        <span>02</span>
-        <h3>Leia o contexto</h3>
-        <p>Consumo, custo, odômetro e pendências em um só painel.</p>
-      </div>
-      <div class="public-step">
-        <span>03</span>
-        <h3>Planeje o próximo cuidado</h3>
-        <p>Revisão e vencimento viram lembrete — a moto sempre em dia.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="public-section border-t border-outline-variant/40" aria-labelledby="plans-title">
-  <div class="public-container public-plan-strip">
-    <div>
-      <p class="page-kicker">Free + Pro</p>
-      <h2 id="plans-title" class="public-section-title">Comece registrando. Ative leitura profissional quando fizer sentido.</h2>
-    </div>
-    <div class="public-plan-grid">
-      <article>
-        <p>Free</p>
-        <h3>Organização essencial</h3>
-        <p>1 moto ativa, histórico, abastecimentos, manutenções, documentos e lembretes básicos.</p>
-      </article>
-      <article>
-        <p>Pro</p>
-        <h3>Custo real e lucro</h3>
-        <p>Múltiplas motos, turnos, custo por km, exportações e dossiê de venda.</p>
-      </article>
-    </div>
-    <a class="ui-btn-secondary !min-h-12 !px-5" href="{% url 'pricing' %}">Comparar planos</a>
-  </div>
-</section>
-
-{% if latest_blog %}
-<section class="public-section border-t border-outline-variant/40" aria-labelledby="blog-title">
-  <div class="public-container">
-    <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p class="page-kicker">Guias</p>
-        <h2 id="blog-title" class="public-section-title">Manutenção sem adivinhação.</h2>
-      </div>
-      <a class="ui-btn-secondary !min-h-10 !px-4" href="{% url 'blog:list' %}">
-        Todos
-        {% include "core/partials/icon.html" with icon_name="arrow-right" icon_class="h-4 w-4" %}
+    <div class="flex flex-col sm:flex-row items-center gap-4">
+      <a href="{% url 'account_signup' %}" data-umami-event="cta-signup" class="inline-flex items-center justify-center h-14 px-8 rounded-full bg-gradient-to-r from-luminous-primaryStart to-luminous-primaryEnd text-white font-medium shadow-electric hover:scale-105 transition-all duration-300">
+        Criar Conta Grátis
+      </a>
+      <a href="#features" class="inline-flex items-center justify-center h-14 px-8 rounded-full border border-white/10 bg-white/5 text-luminous-text font-medium hover:bg-white/10 backdrop-blur-md transition-all duration-300">
+        Conhecer o Sistema <span class="ml-2">→</span>
       </a>
     </div>
-    <div class="public-row-list">
-      {% for article in latest_blog %}
-        <a class="public-article-row" href="{% url 'blog:detail' article.slug %}">
-          <p>{{ article.published_at|date:"d/m/Y" }}</p>
-          <h3>{{ article.title }}</h3>
-          <span aria-hidden="true">Ler</span>
-        </a>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-{% endif %}
+  </section>
 
-<section class="public-section border-t border-outline-variant/40 bg-surface-low/40" aria-labelledby="cta-title">
-  <div class="public-container grid gap-6 py-12 sm:grid-cols-[1fr_auto] sm:items-center">
-    <div>
-      <p class="page-kicker">Comece simples</p>
-      <h2 id="cta-title" class="public-section-title">
-        Gratuita, sem cartão, pronta em um minuto.
-      </h2>
+  <!-- Features Dashboard Preview -->
+  <section id="features" class="relative z-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mt-section">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Feature Card 1 -->
+      <article class="p-8 rounded-large border border-white/10 bg-luminous-card backdrop-blur-md shadow-panel hover:scale-[1.02] transition-transform duration-300">
+        <div class="w-12 h-12 rounded-full bg-luminous-primary/10 flex items-center justify-center mb-6">
+          {% include "core/partials/icon.html" with icon_name="activity" icon_class="h-6 w-6 text-luminous-primary" %}
+        </div>
+        <h3 class="font-headline text-2xl mb-3 text-luminous-text tracking-tight">Telemetria de Consumo</h3>
+        <p class="text-luminous-muted text-sm leading-relaxed">
+          Abastecimento rápido e na mão. O sistema calcula a média (km/l), custo por km e avisa se o rendimento da nave cair.
+        </p>
+      </article>
+
+      <!-- Feature Card 2 (Electric) -->
+      <article class="p-8 rounded-large border border-luminous-glow bg-luminous-card shadow-electric hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-luminous-primaryStart to-luminous-primaryEnd"></div>
+        <div class="w-12 h-12 rounded-full bg-luminous-primary/20 flex items-center justify-center mb-6 border border-luminous-primary/30 shadow-[0_0_15px_rgba(249,115,22,0.5)]">
+          {% include "core/partials/icon.html" with icon_name="zap" icon_class="h-6 w-6 text-luminous-primary" %}
+        </div>
+        <h3 class="font-headline text-2xl mb-3 text-luminous-text tracking-tight">Manutenção Preditiva</h3>
+        <p class="text-luminous-muted text-sm leading-relaxed">
+          Lembretes baseados no odômetro ou tempo. Não perca a hora de trocar o óleo, relação ou fazer aquela revisão completa.
+        </p>
+      </article>
+
+      <!-- Feature Card 3 -->
+      <article class="p-8 rounded-large border border-white/10 bg-luminous-card backdrop-blur-md shadow-panel hover:scale-[1.02] transition-transform duration-300">
+        <div class="w-12 h-12 rounded-full bg-luminous-primary/10 flex items-center justify-center mb-6">
+          {% include "core/partials/icon.html" with icon_name="shield" icon_class="h-6 w-6 text-luminous-primary" %}
+        </div>
+        <h3 class="font-headline text-2xl mb-3 text-luminous-text tracking-tight">Dossiê e Valorização</h3>
+        <p class="text-luminous-muted text-sm leading-relaxed">
+          Sua garagem segura. Guarde documentos, recibos e exporte o histórico para valorizar sua moto na hora da revenda.
+        </p>
+      </article>
+
     </div>
-    <div class="flex flex-col gap-3 sm:flex-row">
-      <a class="ui-btn-primary !min-h-12 !px-6" href="{% url 'account_signup' %}">Criar conta grátis</a>
-      <a class="ui-btn-secondary !min-h-12 !px-6" href="{% url 'account_login' %}">Já tenho conta</a>
+  </section>
+
+  <!-- Stats Section -->
+  <section class="relative z-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mt-section border-t border-white/10 pt-20">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <div>
+        <p class="font-headline text-5xl font-light text-luminous-text mb-2">99.9%</p>
+        <p class="text-xs uppercase tracking-wider text-luminous-muted font-medium">Disponibilidade</p>
+      </div>
+      <div>
+        <p class="font-headline text-5xl font-light text-luminous-text mb-2">Fast</p>
+        <p class="text-xs uppercase tracking-wider text-luminous-muted font-medium">Respostas Rápidas</p>
+      </div>
+      <div>
+        <p class="font-headline text-5xl font-light text-luminous-primary mb-2">0</p>
+        <p class="text-xs uppercase tracking-wider text-luminous-primary font-medium">Burocracia</p>
+      </div>
+      <div>
+        <p class="font-headline text-5xl font-light text-luminous-text mb-2">24/7</p>
+        <p class="text-xs uppercase tracking-wider text-luminous-muted font-medium">Sua garagem na nuvem</p>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="relative z-10 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto mt-section text-center">
+    <div class="p-12 rounded-large border border-white/10 bg-white/5 backdrop-blur-xl relative overflow-hidden">
+      <!-- Inner subtle glow -->
+      <div class="absolute inset-0 bg-gradient-to-b from-luminous-primary/10 to-transparent pointer-events-none"></div>
+      
+      <h2 class="font-headline text-4xl mb-4 text-luminous-text">Acelere com a gente hoje mesmo.</h2>
+      <p class="text-luminous-muted mb-8 text-lg">Experimente o controle total da sua nave na palma da mão. Grátis para começar.</p>
+      <a href="{% url 'account_signup' %}" class="inline-flex items-center justify-center h-14 px-8 rounded-full bg-gradient-to-r from-luminous-primaryStart to-luminous-primaryEnd text-white font-medium shadow-electric hover:scale-105 transition-all duration-300">
+        Começar Agora
+      </a>
+    </div>
+  </section>
+
+</div>
 {% endblock %}
