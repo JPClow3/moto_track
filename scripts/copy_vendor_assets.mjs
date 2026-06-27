@@ -9,6 +9,7 @@ const assets = [
   ["node_modules/alpinejs/dist/cdn.min.js", "static/vendor/alpine/alpine.min.js"],
   ["node_modules/lucide/dist/umd/lucide.min.js", "static/vendor/lucide/lucide.min.js"],
   ["node_modules/chart.js/dist/chart.umd.js", "static/vendor/chart/chart.umd.js"],
+  ["node_modules/compressorjs/dist/compressor.min.js", "static/vendor/compressorjs/compressor.min.js"],
 ];
 
 for (const [source, target] of assets) {

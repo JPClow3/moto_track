@@ -16,6 +16,7 @@ if _env_path.is_file():
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
 )
+DJANGO_ENV = env("DJANGO_ENV", default="production" if not env("DJANGO_DEBUG") else "development")
 
 _settings_module = os.environ.get("DJANGO_SETTINGS_MODULE", "")
 _local_secret_key_default = (
@@ -27,7 +28,7 @@ SECRET_KEY = env("DJANGO_SECRET_KEY", default=_local_secret_key_default)
 PUSH_ENCRYPTION_KEY = env("PUSH_ENCRYPTION_KEY", default="")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
-SITE_DOMAIN = env("SITE_DOMAIN", default="")
+SITE_DOMAIN = env("SITE_DOMAIN", default="moto-track.net")
 
 SENTRY_DSN = env("SENTRY_DSN", default="")
 if SENTRY_DSN:
@@ -230,7 +231,7 @@ ACCOUNT_SIGNUP_REDIRECT_URL = "onboarding"
 SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=60 * 60 * 24 * 7)
 
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@motoapp.local")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@moto-track.net")
 EMAIL_HOST = env("EMAIL_HOST", default="")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
@@ -272,7 +273,11 @@ CELERY_BEAT_SCHEDULE = {
     "process-reminders": {
         "task": "apps.reminders.tasks.process_reminders_task",
         "schedule": env.int("REMINDER_PROCESS_INTERVAL_SECONDS", default=3600),
-    }
+    },
+    "predict-maintenance": {
+        "task": "apps.maintenance.tasks.predict_maintenance_needs",
+        "schedule": 86400,  # Run daily
+    },
 }
 ACCOUNT_CONFIRM_EMAIL_ON_GET = env.bool("ACCOUNT_CONFIRM_EMAIL_ON_GET", default=True)
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = env(
@@ -324,7 +329,7 @@ UNFOLD = {
             "href": _admin_static("brand/favicon-32x32.png"),
             "type": "image/png",
             "sizes": "32x32",
-        }
+        },
     ],
     "STYLES": [
         _admin_static("admin/mototrack_admin.css"),
@@ -471,3 +476,19 @@ LOGGING = {
 # Production security headers (HTTPS, HSTS, secure cookies) live in `config.settings.prod`.
 # Do not gate them on `DEBUG` here: the test runner forces `DEBUG=False`, which would
 # incorrectly enable `SECURE_SSL_REDIRECT` during tests and break HTTP clients with 301s.
+
+if DJANGO_ENV == "production":
+    SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
+    SESSION_COOKIE_SECURE = env.bool("DJANGO_SESSION_COOKIE_SECURE", default=True)
+    CSRF_COOKIE_SECURE = env.bool("DJANGO_CSRF_COOKIE_SECURE", default=True)
+    SECURE_HSTS_SECONDS = env.int("DJANGO_SECURE_HSTS_SECONDS", default=60)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True)
+    SECURE_HSTS_PRELOAD = env.bool("DJANGO_SECURE_HSTS_PRELOAD", default=True)
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("REDIS_URL", default="redis://redis:6379/1"),
+    }
+}

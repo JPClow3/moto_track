@@ -80,6 +80,13 @@ function registerAppShell() {
     },
   }));
 
+  Alpine.store("offlineQueue", {
+    items: [],
+    setItems(newItems) {
+      this.items = newItems;
+    }
+  });
+
   Alpine.data("formValidator", () => ({
     init() {
       this.$el.setAttribute("novalidate", "true");
@@ -144,8 +151,6 @@ function registerAppShell() {
       if (firstInvalid) {
         firstInvalid.focus();
       }
-    },
-  }));
 }
 
 if (typeof Alpine !== "undefined") {
@@ -153,6 +158,54 @@ if (typeof Alpine !== "undefined") {
 } else {
   document.addEventListener("alpine:init", registerAppShell);
 }
+
+document.addEventListener("change", (event) => {
+  const input = event.target;
+  if (input.tagName !== "INPUT" || input.type !== "file") return;
+  
+  if (!input.files || input.files.length === 0) return;
+  
+  if (typeof window.Compressor === "undefined") return;
+
+  const dataTransfer = new DataTransfer();
+  let filesProcessed = 0;
+  const totalFiles = input.files.length;
+
+  Array.from(input.files).forEach((file) => {
+    if (!file.type.startsWith("image/")) {
+      dataTransfer.items.add(file);
+      filesProcessed++;
+      if (filesProcessed === totalFiles) input.files = dataTransfer.files;
+      return;
+    }
+
+    new window.Compressor(file, {
+      quality: 0.8,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      mimeType: "image/jpeg",
+      success(result) {
+        const compressedFile = new File([result], result.name || file.name, {
+          type: result.type,
+          lastModified: Date.now(),
+        });
+        dataTransfer.items.add(compressedFile);
+        filesProcessed++;
+        if (filesProcessed === totalFiles) {
+          input.files = dataTransfer.files;
+        }
+      },
+      error(err) {
+        console.error("Compression error:", err.message);
+        dataTransfer.items.add(file); // fallback to original file
+        filesProcessed++;
+        if (filesProcessed === totalFiles) {
+          input.files = dataTransfer.files;
+        }
+      }
+    });
+  });
+});
 
 (function () {
   let previousFocusedElement = null;
@@ -464,10 +517,33 @@ if (typeof Alpine !== "undefined") {
     }
   });
 
+  document.body.addEventListener("htmx:sendError", (event) => {
+    if (typeof window.showClientSnackbar === "function") {
+      window.showClientSnackbar("Conexão perdida. Verifique sua internet.");
+    }
+    const trigger = event.detail.elt;
+    if (trigger) {
+      trigger.removeAttribute("aria-busy");
+      trigger.classList.remove("is-loading");
+    }
+  });
+
+  document.body.addEventListener("htmx:responseError", (event) => {
+    if (typeof window.showClientSnackbar === "function" && event.detail.xhr.status !== 0) {
+      window.showClientSnackbar("Ocorreu um erro inesperado na requisição.");
+    }
+  });
+
   document.body.addEventListener("htmx:afterSwap", (event) => {
     if (event.target && event.target.id === "quick-form-root") {
       setupQuickFormAccessibility();
     }
+  });
+
+  document.body.addEventListener("offline-queue-synced", () => {
+    // The offline queue just finished uploading all pending records.
+    // Refresh the page to render the true state from the server.
+    window.location.reload();
   });
 
   document.addEventListener("click", (event) => {

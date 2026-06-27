@@ -3,6 +3,7 @@ import json
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.http import FileResponse, HttpResponse, JsonResponse
@@ -55,9 +56,11 @@ def landing_view(request):
         return redirect("dashboard")
     from apps.forum.models import ForumArticle
 
-    latest_blog = ForumArticle.objects.filter(is_published=True).only(
-        "title", "slug", "summary", "published_at"
-    ).order_by("-published_at")[:3]
+    latest_blog = (
+        ForumArticle.objects.filter(is_published=True)
+        .only("title", "slug", "summary", "published_at")
+        .order_by("-published_at")[:3]
+    )
     return render(request, "core/landing.html", {"latest_blog": latest_blog})
 
 
@@ -94,13 +97,28 @@ def dashboard_view(request):
         )
 
     current_odometer_km = motorcycle.current_odometer_km
-    monthly = get_monthly_sparkline(motorcycle)
+
+    cache_key_prefix = f"moto_dashboard_{motorcycle.id}"
+
+    monthly = cache.get_or_set(f"{cache_key_prefix}_monthly", lambda: get_monthly_sparkline(motorcycle), timeout=600)
+
     active_reminders = get_active_reminders(motorcycle, current_odometer_km)
     status_cards, pending_alerts = get_status_cards(motorcycle, current_odometer_km, active_reminders)
 
     setup_progress = get_setup_progress(motorcycle)
     professional = professional_summary(user=request.user, motorcycle=motorcycle)
     user_has_pro = has_pro_access(request.user)
+
+    chart_spending_distribution = cache.get_or_set(
+        f"{cache_key_prefix}_spending", lambda: get_chart_spending_distribution(motorcycle), timeout=600
+    )
+
+    chart_consumption_trend = cache.get_or_set(
+        f"{cache_key_prefix}_consumption", lambda: get_chart_consumption_trend(motorcycle), timeout=600
+    )
+
+    health = cache.get_or_set(f"{cache_key_prefix}_health", lambda: health_score(motorcycle=motorcycle), timeout=600)
+
     context = {
         "motorcycle": motorcycle,
         "status_cards": status_cards,
@@ -112,9 +130,9 @@ def dashboard_view(request):
         "weekly_sparkline_points": monthly["weekly_sparkline_points"],
         "pending_alerts": pending_alerts,
         "cards": get_dashboard_cards(motorcycle, current_odometer_km, monthly["month_total"], pending_alerts),
-        "chart_spending_distribution": get_chart_spending_distribution(motorcycle),
-        "chart_consumption_trend": get_chart_consumption_trend(motorcycle),
-        "health": health_score(motorcycle=motorcycle),
+        "chart_spending_distribution": chart_spending_distribution,
+        "chart_consumption_trend": chart_consumption_trend,
+        "health": health,
         "recent_events": timeline_events(user=request.user, motorcycle=motorcycle, limit=5),
         "setup_progress": setup_progress,
         "setup_incomplete": any(not v for v in setup_progress.values()),
@@ -349,9 +367,7 @@ def theme_preference_view(request):
     theme = request.POST.get("theme", "system").strip().lower()
     if theme not in ("system", "dark", "light"):
         return JsonResponse({"error": "Invalid theme"}, status=400)
-    UserPreference.objects.update_or_create(
-        user=request.user, defaults={"theme": theme}
-    )
+    UserPreference.objects.update_or_create(user=request.user, defaults={"theme": theme})
     return JsonResponse({"theme": theme})
 
 

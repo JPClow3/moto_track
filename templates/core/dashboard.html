@@ -482,6 +482,36 @@
         <a class="text-link text-sm" href="{% url 'reports:timeline' %}">Linha do tempo</a>
       </div>
 
+      <div x-data="{
+          get queuedItems() {
+            return $store.offlineQueue ? $store.offlineQueue.items : [];
+          }
+        }"
+        x-show="queuedItems.length > 0"
+        x-cloak
+        class="mb-4 space-y-3"
+      >
+        <template x-for="item in queuedItems" :key="item.id">
+          <div class="insight-panel opacity-60 border-dashed border-outline-variant/60">
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-on-surface">
+                  <span x-text="item.action.split(':')[0].toUpperCase()"></span> &middot; <span x-text="item.action.includes('quick_create') ? 'Novo Registro' : 'Ação'"></span>
+                </p>
+                <p class="mt-1 text-xs text-on-surface-variant">
+                  Sincronização pendente. Salvo offline.
+                </p>
+              </div>
+              <div class="shrink-0 text-right">
+                <span class="text-sm font-semibold text-on-surface" title="Pendente">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-on-surface-variant inline-block"><path d="m2 2 20 20"/><path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3"/></svg>
+                </span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
       {% if recent_events %}
         <div class="space-y-3">
           {% for event in recent_events %}

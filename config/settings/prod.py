@@ -95,7 +95,7 @@ def _parse_hosts(value: str) -> list[str]:
     return [h.strip() for h in value.split(",") if h.strip()]
 
 
-_env_hosts = _parse_hosts(os.getenv("DJANGO_ALLOWED_HOSTS", ""))
+_env_hosts = _parse_hosts(os.getenv("DJANGO_ALLOWED_HOSTS", "moto-track.net,www.moto-track.net"))
 _railway_hosts = [h for h in (os.getenv("RAILWAY_PUBLIC_DOMAIN"), os.getenv("RAILWAY_PRIVATE_DOMAIN")) if h]
 _fallback_hosts = ["127.0.0.1", "localhost"]
 
@@ -105,7 +105,7 @@ ALLOWED_HOSTS = list(dict.fromkeys(_env_hosts + _railway_hosts + _fallback_hosts
 # B-L1: when DJANGO_CSRF_TRUSTED_ORIGINS is set we use it verbatim so prod
 # operators can override the derived list. Localhost fallbacks are only added
 # when no explicit override is provided.
-_explicit_csrf = _parse_hosts(os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", ""))
+_explicit_csrf = _parse_hosts(os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "https://moto-track.net,https://www.moto-track.net"))
 if _explicit_csrf:
     CSRF_TRUSTED_ORIGINS = _explicit_csrf
 else:

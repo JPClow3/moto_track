@@ -73,7 +73,7 @@
   <script src="{% static 'js/theme.js' %}" defer></script>
   <script src="{% static 'js/app.js' %}" defer></script>
   <script src="{% static 'vendor/alpine/alpine.min.js' %}" defer></script>
-  <script src="{% static 'js/offline-queue.js' %}" defer></script>
+  <script src="{% static 'vendor/compressorjs/compressor.min.js' %}" defer></script>
   {% block extra_scripts %}{% endblock %}
 </head>
 <body class="min-h-full overflow-x-hidden"
@@ -155,26 +155,6 @@
       </main>
 
       {% if request.user.is_authenticated %}
-      <div
-        class="fixed inset-x-3 bottom-[4.75rem] z-[55] hidden rounded-md border border-outline-variant/40 bg-surface-lowest p-3 text-sm shadow-lg md:bottom-4 md:left-auto md:right-4 md:w-96"
-        data-offline-banner
-        role="status"
-        aria-live="polite"
-      >
-        <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0">
-            <p class="font-semibold text-on-surface">Fila offline</p>
-            <p class="mt-0.5 text-xs text-on-surface-variant">
-              <span data-offline-pending-count>0</span> pendente(s)
-              <span class="mx-1">/</span>
-              <span data-offline-failed-count>0</span> com erro
-            </p>
-          </div>
-          <button type="button" class="ui-btn-secondary !min-h-9 !px-3 !py-2 !text-xs" data-offline-sync-now>
-            Sincronizar agora
-          </button>
-        </div>
-      </div>
       <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-outline-variant/80 bg-surface/92 backdrop-blur md:hidden print:hidden" aria-label="Navegação rápida">
         <div class="mx-auto grid w-[min(1280px,94%)] grid-cols-5 gap-1 py-2 text-xs font-medium">
           <a class="bottom-nav-item flex min-h-[3rem] flex-col items-center justify-center gap-1 rounded-md py-3 transition-colors duration-150 {% if request.resolver_match.url_name == 'dashboard' %}bg-primary/10 text-primary font-semibold{% else %}text-on-surface-variant{% endif %}"

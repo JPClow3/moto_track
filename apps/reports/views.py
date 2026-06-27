@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Avg, F
 from django.http import Http404, HttpResponse
@@ -42,14 +43,45 @@ def report_overview_view(request):
     if not has_pro_access(request.user):
         return render(request, "reports/locked.html")
 
-    summary = cost_summary(user=request.user, motorcycle=motorcycle)
-    comparisons = period_comparisons(user=request.user, motorcycle=motorcycle)
-    health = health_score(motorcycle=motorcycle)
-    alerts = intelligent_alerts(user=request.user, motorcycle=motorcycle)[:6]
-    monthly_costs = monthly_real_costs(user=request.user, motorcycle=motorcycle, months=12)
-    fuel_trend = monthly_fuel_trend(FuelRecord.objects.filter(motorcycle=motorcycle), months_count=12)
-    recommendations = maintenance_recommendations(motorcycle=motorcycle)
-    yoy = yoy_comparison(user=request.user, motorcycle=motorcycle)
+    cache_key_prefix = f"moto_report_{motorcycle.id}"
+
+    summary = cache.get_or_set(
+        f"{cache_key_prefix}_summary", lambda: cost_summary(user=request.user, motorcycle=motorcycle), timeout=600
+    )
+
+    comparisons = cache.get_or_set(
+        f"{cache_key_prefix}_comparisons",
+        lambda: period_comparisons(user=request.user, motorcycle=motorcycle),
+        timeout=600,
+    )
+
+    health = cache.get_or_set(f"{cache_key_prefix}_health", lambda: health_score(motorcycle=motorcycle), timeout=600)
+
+    alerts = cache.get_or_set(
+        f"{cache_key_prefix}_alerts",
+        lambda: intelligent_alerts(user=request.user, motorcycle=motorcycle)[:6],
+        timeout=600,
+    )
+
+    monthly_costs = cache.get_or_set(
+        f"{cache_key_prefix}_monthly_costs",
+        lambda: monthly_real_costs(user=request.user, motorcycle=motorcycle, months=12),
+        timeout=600,
+    )
+
+    fuel_trend = cache.get_or_set(
+        f"{cache_key_prefix}_fuel_trend",
+        lambda: monthly_fuel_trend(FuelRecord.objects.filter(motorcycle=motorcycle), months_count=12),
+        timeout=600,
+    )
+
+    recommendations = cache.get_or_set(
+        f"{cache_key_prefix}_recommendations", lambda: maintenance_recommendations(motorcycle=motorcycle), timeout=600
+    )
+
+    yoy = cache.get_or_set(
+        f"{cache_key_prefix}_yoy", lambda: yoy_comparison(user=request.user, motorcycle=motorcycle), timeout=600
+    )
 
     context = {
         "summary": summary,
@@ -118,7 +150,12 @@ def report_timeline_view(request):
         {
             "events": events,
             "page_obj": page_obj,
-            "filters": {"start": request.GET.get("start") or "", "end": request.GET.get("end") or "", "source": source, "severity": severity},
+            "filters": {
+                "start": request.GET.get("start") or "",
+                "end": request.GET.get("end") or "",
+                "source": source,
+                "severity": severity,
+            },
             "density": density,
         },
     )
@@ -192,7 +229,9 @@ def sale_report_public_view(request, token: str):
         access_count=F("access_count") + 1,
     )
     data = sale_report_data(motorcycle=share.motorcycle)
-    return render(request, "reports/public_sale_report.html", {"share": share, "motorcycle": share.motorcycle, "data": data})
+    return render(
+        request, "reports/public_sale_report.html", {"share": share, "motorcycle": share.motorcycle, "data": data}
+    )
 
 
 @login_required
@@ -201,13 +240,13 @@ def sale_report_weasyprint_view(request, pk: int):
     try:
         from weasyprint import HTML  # type: ignore[import-untyped]
     except ImportError as exc:
-        raise ImportError(
-            "weasyprint is required for PDF export. Install it: pip install 'weasyprint>=61.0'"
-        ) from exc
+        raise ImportError("weasyprint is required for PDF export. Install it: pip install 'weasyprint>=61.0'") from exc
 
     motorcycle = get_object_or_404(Motorcycle, pk=pk, owner=request.user)
     data = sale_report_data(motorcycle=motorcycle)
-    html_string = render_to_string("reports/sale_report.html", {"motorcycle": motorcycle, "data": data, "print_mode": True})
+    html_string = render_to_string(
+        "reports/sale_report.html", {"motorcycle": motorcycle, "data": data, "print_mode": True}
+    )
     pdf = HTML(string=html_string, base_url=request.build_absolute_uri("/")).write_pdf()
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="dossie_venda_{motorcycle.name}.pdf"'
