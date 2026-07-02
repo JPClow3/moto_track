@@ -19,30 +19,34 @@
         <span class="animate-pulse-glow absolute inline-flex h-full w-full rounded-full bg-luminous-primary opacity-75"></span>
         <span class="relative inline-flex rounded-full h-2 w-2 bg-luminous-primary"></span>
       </span>
-      SYSTEM V2.0 LIVE
+      Versão 2.0 no ar
     </div>
 
-    <h1 class="font-headline text-5xl sm:text-7xl lg:text-8xl tracking-tight leading-[1.1] text-luminous-text mb-6">
+    <h1 class="font-headline text-5xl sm:text-7xl lg:text-8xl tracking-tight leading-[1.05] text-luminous-text mb-6">
       A garagem digital<br />
       <span class="text-transparent bg-clip-text bg-gradient-to-r from-luminous-primaryStart to-luminous-primaryEnd drop-shadow-[0_0_20px_rgba(249,115,22,0.4)]">da sua moto.</span>
     </h1>
     
-    <p class="max-w-2xl mx-auto text-lg sm:text-xl text-luminous-muted mb-10 font-sans font-light">
+    <p class="max-w-2xl mx-auto text-lg sm:text-xl text-luminous-muted mb-10 font-sans font-light leading-relaxed">
       Controle o consumo na ponta do lápis, programe revisões e tenha o dossiê completo da sua nave. Feito por motociclistas para quem não vive sem o setor duas rodas.
     </p>
 
     <div class="flex flex-col sm:flex-row items-center gap-4">
-      <a href="{% url 'account_signup' %}" data-umami-event="cta-signup" class="inline-flex items-center justify-center h-14 px-8 rounded-full bg-gradient-to-r from-luminous-primaryStart to-luminous-primaryEnd text-white font-medium shadow-electric hover:scale-105 transition-all duration-300">
+      <a href="{% url 'account_signup' %}" data-umami-event="cta-signup" class="inline-flex items-center justify-center h-14 px-8 rounded-full bg-gradient-to-r from-luminous-primaryStart to-luminous-primaryEnd text-white font-semibold shadow-electric hover:scale-105 transition-all duration-300">
         Criar Conta Grátis
       </a>
-      <a href="#features" class="inline-flex items-center justify-center h-14 px-8 rounded-full border border-white/10 bg-white/5 text-luminous-text font-medium hover:bg-white/10 backdrop-blur-md transition-all duration-300">
+      <a href="#features" class="inline-flex items-center justify-center h-14 px-8 rounded-full border border-white/10 bg-white/5 text-luminous-text font-medium hover:bg-white/10 hover:border-white/20 backdrop-blur-md transition-all duration-300">
         Conhecer o Sistema <span class="ml-2">→</span>
       </a>
     </div>
   </section>
 
   <!-- Features Dashboard Preview -->
-  <section id="features" class="relative z-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mt-section">
+  <section id="features" class="relative z-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mt-section scroll-mt-24">
+    <div class="mb-10 max-w-2xl">
+      <h2 class="font-headline text-3xl sm:text-4xl text-luminous-text tracking-tight">Tudo o que sua moto pede.</h2>
+      <p class="mt-3 text-luminous-muted text-base sm:text-lg">Três pilares que mantêm sua nave rodando com previsibilidade.</p>
+    </div>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       
       <!-- Feature Card 1 -->
@@ -86,20 +90,20 @@
   <section class="relative z-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mt-section border-t border-white/10 pt-20">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
       <div>
-        <p class="font-headline text-5xl font-light text-luminous-text mb-2">99.9%</p>
+        <p class="font-headline text-5xl font-light text-luminous-text mb-2 tabular-nums">99.9%</p>
         <p class="text-xs uppercase tracking-wider text-luminous-muted font-medium">Disponibilidade</p>
       </div>
       <div>
-        <p class="font-headline text-5xl font-light text-luminous-text mb-2">Fast</p>
-        <p class="text-xs uppercase tracking-wider text-luminous-muted font-medium">Respostas Rápidas</p>
+        <p class="font-headline text-5xl font-light text-luminous-text mb-2 tabular-nums">&lt;200ms</p>
+        <p class="text-xs uppercase tracking-wider text-luminous-muted font-medium">Resposta rápida</p>
       </div>
       <div>
-        <p class="font-headline text-5xl font-light text-luminous-primary mb-2">0</p>
+        <p class="font-headline text-5xl font-light text-luminous-primary mb-2 tabular-nums">0</p>
         <p class="text-xs uppercase tracking-wider text-luminous-primary font-medium">Burocracia</p>
       </div>
       <div>
-        <p class="font-headline text-5xl font-light text-luminous-text mb-2">24/7</p>
-        <p class="text-xs uppercase tracking-wider text-luminous-muted font-medium">Sua garagem na nuvem</p>
+        <p class="font-headline text-5xl font-light text-luminous-text mb-2 tabular-nums">24/7</p>
+        <p class="text-xs uppercase tracking-wider text-luminous-muted font-medium">Na nuvem</p>
       </div>
     </div>
   </section>
@@ -110,8 +114,8 @@
       <!-- Inner subtle glow -->
       <div class="absolute inset-0 bg-gradient-to-b from-luminous-primary/10 to-transparent pointer-events-none"></div>
       
-      <h2 class="font-headline text-4xl mb-4 text-luminous-text">Acelere com a gente hoje mesmo.</h2>
-      <p class="text-luminous-muted mb-8 text-lg">Experimente o controle total da sua nave na palma da mão. Grátis para começar.</p>
+      <h2 class="font-headline text-4xl mb-4 text-luminous-text tracking-tight">Acelere com a gente hoje mesmo.</h2>
+      <p class="text-luminous-muted mb-8 text-lg max-w-xl mx-auto">Experimente o controle total da sua nave na palma da mão. Grátis para começar.</p>
       <a href="{% url 'account_signup' %}" class="inline-flex items-center justify-center h-14 px-8 rounded-full bg-gradient-to-r from-luminous-primaryStart to-luminous-primaryEnd text-white font-medium shadow-electric hover:scale-105 transition-all duration-300">
         Começar Agora
       </a>

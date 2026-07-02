@@ -13,9 +13,11 @@ import os
 # For image builds we provide a safe placeholder so importing prod settings works.
 os.environ.setdefault("DJANGO_SECRET_KEY", "build-only-not-a-secret-" + ("x" * 64))
 
-# `config.settings.prod` requires a non-empty `AWS_STORAGE_BUCKET_NAME` at import time.
-# Collectstatic does not need a real bucket; runtime containers must set the real bucket name.
-os.environ.setdefault("AWS_STORAGE_BUCKET_NAME", "build-placeholder-bucket")
+# `config.settings.prod` requires non-empty object-storage settings at import
+# time. Collectstatic does not need a real bucket; runtime containers must set
+# the real bucket and credentials.
+os.environ.setdefault("R2_BUCKET_NAME", "build-placeholder-bucket")
+os.environ.setdefault("R2_ACCOUNT_ID", "build-placeholder-account")
 
 # `config.settings.prod` refuses to boot without SMTP credentials. During
 # collectstatic / `manage.py check --deploy` we have no outbound mail to send,
@@ -26,4 +28,3 @@ from .prod import *  # noqa: F403,F401 pylint: disable=wildcard-import,unused-wi
 
 # Keep SECRET_KEY explicit for clarity (and to ensure it is non-insecure and long enough).
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]  # noqa: F405
-

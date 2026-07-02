@@ -58,19 +58,19 @@
                         <div class="flex-1 w-full space-y-3">
                           <div>
                             <div class="flex justify-between text-sm mb-1"><span class="text-on-surface">Manutenção</span><span class="font-semibold">{{ health.maintenance }}</span></div>
-                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-primary" style="width: {{ health.maintenance }}%"></div></div>
+                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-info rounded-full" style="width: {{ health.maintenance }}%"></div></div>
                           </div>
                           <div>
                             <div class="flex justify-between text-sm mb-1"><span class="text-on-surface">Pneus</span><span class="font-semibold">{{ health.tires }}</span></div>
-                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-[#10B981]" style="width: {{ health.tires }}%"></div></div>
+                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-success rounded-full" style="width: {{ health.tires }}%"></div></div>
                           </div>
                           <div>
                             <div class="flex justify-between text-sm mb-1"><span class="text-on-surface">Documentos</span><span class="font-semibold">{{ health.documents }}</span></div>
-                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-[#F59E0B]" style="width: {{ health.documents }}%"></div></div>
+                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-warning rounded-full" style="width: {{ health.documents }}%"></div></div>
                           </div>
                           <div>
                             <div class="flex justify-between text-sm mb-1"><span class="text-on-surface">Qualidade</span><span class="font-semibold">{{ health.data_quality }}</span></div>
-                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-[#6366F1]" style="width: {{ health.data_quality }}%"></div></div>
+                            <div class="h-1.5 rounded-full bg-surface-high overflow-hidden"><div class="h-full bg-primary rounded-full" style="width: {{ health.data_quality }}%"></div></div>
                           </div>
                         </div>
                       </div>
@@ -100,13 +100,13 @@
                     const ctx = document.getElementById('healthChart');
                     if (!ctx || window.healthChartInstance) return;
                     
-                    window.healthChartInstance = new Chart(ctx, {
+                      window.healthChartInstance = new Chart(ctx, {
                       type: 'doughnut',
                       data: {
                         labels: ['Manutenção', 'Pneus', 'Documentos', 'Qualidade'],
                         datasets: [{
                           data: [{{ health.maintenance }}, {{ health.tires }}, {{ health.documents }}, {{ health.data_quality }}],
-                          backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#6366F1'],
+                          backgroundColor: ['rgb(37 99 235)', 'rgb(22 163 74)', 'rgb(245 158 11)', 'rgb(220 38 38)'],
                           borderWidth: 0,
                           cutout: '75%'
                         }]
@@ -234,9 +234,9 @@
   </section>
 
   <section class="space-y-4" aria-labelledby="professional-title" data-animate-once>
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div class="section-heading">
       <div>
-        <p class="text-xs font-medium text-on-surface-variant">Trabalho</p>
+        <p class="page-kicker">Trabalho</p>
         <h3 id="professional-title" class="section-heading-title">Receita, lucro e ritmo do mês.</h3>
       </div>
       {% if has_pro %}
@@ -369,8 +369,11 @@
   {% endif %}
 
   <section class="space-y-4" aria-label="Lembretes e alertas">
-    <div class="flex items-center justify-between gap-4">
-      <h3 class="section-heading-title">Atenção</h3>
+    <div class="section-heading">
+      <div>
+        <h3 class="section-heading-title">Atenção</h3>
+        <p class="section-heading-copy">O que vence ou pede ação agora.</p>
+      </div>
       <a class="text-link text-sm" href="{% url 'reminders:list' %}">Ver lembretes</a>
     </div>
     {% if active_reminders %}
@@ -428,8 +431,11 @@
   </section>
 
   <section aria-label="Saúde dos pneus" class="space-y-4">
-    <div class="flex items-center justify-between gap-4">
-      <h3 class="section-heading-title">Pneus</h3>
+    <div class="section-heading">
+      <div>
+        <h3 class="section-heading-title">Pneus</h3>
+        <p class="section-heading-copy">Desgaste e previsão de troca.</p>
+      </div>
       <a class="text-link text-sm" href="{% url 'tires:list' %}">Abrir pneus</a>
     </div>
     {% if tire_cards %}
@@ -477,8 +483,11 @@
 
   <section class="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]" aria-label="Histórico e análise">
     <article class="space-y-4">
-      <div class="flex items-center justify-between gap-4">
-        <h3 class="section-heading-title">Histórico recente</h3>
+      <div class="section-heading">
+        <div>
+          <h3 class="section-heading-title">Histórico recente</h3>
+          <p class="section-heading-copy">Suas últimas movimentações.</p>
+        </div>
         <a class="text-link text-sm" href="{% url 'reports:timeline' %}">Linha do tempo</a>
       </div>
 
@@ -494,10 +503,6 @@
         <template x-for="item in queuedItems" :key="item.id">
           <div class="insight-panel opacity-60 border-dashed border-outline-variant/60">
             <div class="flex items-start justify-between gap-4">
-              <div class="min-w-0">
-                <p class="text-sm font-semibold text-on-surface">
-                  <span x-text="item.action.split(':')[0].toUpperCase()"></span> &middot; <span x-text="item.action.includes('quick_create') ? 'Novo Registro' : 'Ação'"></span>
-                </p>
                 <p class="mt-1 text-xs text-on-surface-variant">
                   Sincronização pendente. Salvo offline.
                 </p>

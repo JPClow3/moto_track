@@ -54,29 +54,63 @@ STORAGES = {
     },
 }
 
-MEDIA_ROOT = Path(
-    os.getenv(
-        "VOLUME_MOUNT_PATH",
-        os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "/data"),
-    )
-) / "media"
+# Production uploads go to Supabase Storage; MEDIA_ROOT is a local fallback only.
+MEDIA_ROOT = Path(os.getenv("VOLUME_MOUNT_PATH", "/tmp/media"))
 
-# S3 (django-storages) - default file storage
-# Only set access keys when provided; empty strings break boto3 and block IAM instance roles.
-_aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
-_aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-if _aws_access_key:
-    AWS_ACCESS_KEY_ID = _aws_access_key
-if _aws_secret_key:
-    AWS_SECRET_ACCESS_KEY = _aws_secret_key
+# ---------------------------------------------------------------------------
+# S3-compatible object storage.
+#
+# Production is configured for Cloudflare R2 by default:
+#   R2_ACCOUNT_ID, R2_BUCKET_NAME, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
+#
+# AWS_* names are also accepted for generic S3-compatible deployments, and the
+# older SUPABASE_* names remain supported so existing environments can roll
+# forward without a flag day.
+# ---------------------------------------------------------------------------
+_supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+_r2_account_id = os.getenv("R2_ACCOUNT_ID", "").strip()
 
-AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "")
-AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
-AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL") or None
+# Accept provider-specific names; fall back to legacy AWS_* for compatibility.
+_s3_access_key = (
+    os.getenv("R2_ACCESS_KEY_ID")
+    or os.getenv("AWS_ACCESS_KEY_ID")
+    or os.getenv("SUPABASE_S3_ACCESS_KEY_ID")
+)
+_s3_secret_key = (
+    os.getenv("R2_SECRET_ACCESS_KEY")
+    or os.getenv("AWS_SECRET_ACCESS_KEY")
+    or os.getenv("SUPABASE_S3_SECRET_ACCESS_KEY")
+)
+if _s3_access_key:
+    AWS_ACCESS_KEY_ID = _s3_access_key
+if _s3_secret_key:
+    AWS_SECRET_ACCESS_KEY = _s3_secret_key
 
+AWS_STORAGE_BUCKET_NAME = (
+    os.getenv("R2_BUCKET_NAME")
+    or os.getenv("AWS_STORAGE_BUCKET_NAME")
+    or os.getenv("SUPABASE_STORAGE_BUCKET_NAME", "")
+)
 if not AWS_STORAGE_BUCKET_NAME:
-    raise ImproperlyConfigured("AWS_STORAGE_BUCKET_NAME must be set in production.")
+    raise ImproperlyConfigured(
+        "R2_BUCKET_NAME or AWS_STORAGE_BUCKET_NAME must be set in production."
+    )
 
+AWS_S3_ENDPOINT_URL = (
+    os.getenv("AWS_S3_ENDPOINT_URL")
+    or (f"https://{_r2_account_id}.r2.cloudflarestorage.com" if _r2_account_id else None)
+    or (f"{_supabase_url}/storage/v1/s3" if _supabase_url else None)
+)
+if not AWS_S3_ENDPOINT_URL:
+    raise ImproperlyConfigured(
+        "Set R2_ACCOUNT_ID or AWS_S3_ENDPOINT_URL to configure file storage in production."
+    )
+
+AWS_S3_REGION_NAME = os.getenv(
+    "AWS_S3_REGION_NAME",
+    "auto" if _r2_account_id else "us-east-1",
+)
+AWS_S3_SIGNATURE_VERSION = os.getenv("AWS_S3_SIGNATURE_VERSION", "s3v4")
 AWS_DEFAULT_ACL = None
 AWS_QUERYSTRING_AUTH = True
 AWS_S3_OBJECT_PARAMETERS = {
@@ -96,10 +130,9 @@ def _parse_hosts(value: str) -> list[str]:
 
 
 _env_hosts = _parse_hosts(os.getenv("DJANGO_ALLOWED_HOSTS", "moto-track.net,www.moto-track.net"))
-_railway_hosts = [h for h in (os.getenv("RAILWAY_PUBLIC_DOMAIN"), os.getenv("RAILWAY_PRIVATE_DOMAIN")) if h]
 _fallback_hosts = ["127.0.0.1", "localhost"]
 
-ALLOWED_HOSTS = list(dict.fromkeys(_env_hosts + _railway_hosts + _fallback_hosts))
+ALLOWED_HOSTS = list(dict.fromkeys(_env_hosts + _fallback_hosts))
 
 # Align CSRF trusted origins with allowed hosts to avoid production POST failures.
 # B-L1: when DJANGO_CSRF_TRUSTED_ORIGINS is set we use it verbatim so prod

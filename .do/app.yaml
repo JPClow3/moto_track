@@ -1,0 +1,232 @@
+# =============================================================================
+# Digital Ocean App Platform — App Specification
+# https://docs.digitalocean.com/products/app-platform/reference/app-spec/
+#
+# Deploy:  doctl apps create --spec .do/app.yaml
+# Update:  doctl apps update <app-id> --spec .do/app.yaml
+#
+# Infrastructure:
+#   - Database : Supabase PostgreSQL  (DATABASE_URL set as a secret below)
+#   - Cache    : DO Managed Redis     (REDIS_URL auto-injected by platform)
+#   - Storage  : Cloudflare R2        (S3-compatible, R2_* vars below)
+#   - Email    : External SMTP        (e.g. Resend — EMAIL_* vars below)
+# =============================================================================
+
+name: moto-track
+region: nyc  # adjust to your preferred region (ams, fra, sgp, syd, …)
+
+services:
+  # ── Web (Gunicorn) ───────────────────────────────────────────────────────────
+  - name: web
+    dockerfile_path: Dockerfile
+    source_dir: /
+    http_port: 8000
+    instance_size_slug: basic-xs  # scale up as needed (basic-s, basic-m, …)
+    instance_count: 1
+    health_check:
+      http_path: /healthz/
+      initial_delay_seconds: 20
+      period_seconds: 30
+      timeout_seconds: 5
+      failure_threshold: 3
+    routes:
+      - path: /
+    run_command: >-
+      sh -c "
+        rm -rf /tmp/prometheus_multiproc && mkdir -p /tmp/prometheus_multiproc &&
+        python manage.py migrate --noinput &&
+        python manage.py ensure_admin &&
+        gunicorn config.wsgi:application
+          --bind 0.0.0.0:8000
+          --workers ${GUNICORN_WORKERS:-2}
+          --threads ${GUNICORN_THREADS:-4}
+          --timeout ${GUNICORN_TIMEOUT:-60}
+          --forwarded-allow-ips='*'
+          --access-logfile -
+          --error-logfile -
+      "
+    envs:
+      # ── Django ───────────────────────────────────────────────────────────────
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        type: SECRET
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ${APP_DOMAIN}       # DO injects the app's public domain automatically
+      - key: PROMETHEUS_MULTIPROC_DIR
+        value: /tmp/prometheus_multiproc
+      - key: APP_BUILD_ID
+        value: ${COMMIT_SHA}       # DO injects the deploying commit SHA
+
+      # ── Database (Supabase PostgreSQL — set manually from Supabase dashboard) ─
+      # Project: moto-track / ajsfgclyusivyjitwnxn
+      # Host: db.ajsfgclyusivyjitwnxn.supabase.co
+      # In App Platform, prefer the Supabase "Session pooler" connection string
+      # from Dashboard → Connect, and include sslmode=require. Direct DB
+      # connections are IPv6 unless the Supabase IPv4 add-on is enabled.
+      - key: DATABASE_URL
+        type: SECRET               # postgresql://postgres.<ref>:<pass>@<pooler-host>:5432/postgres?sslmode=require
+
+      # ── Redis (DO Managed Redis — auto-injected) ──────────────────────────────
+      - key: REDIS_URL
+        value: ${moto-track-redis.REDIS_URL}
+      - key: CELERY_BROKER_URL
+        value: ${moto-track-redis.REDIS_URL}
+      - key: CELERY_RESULT_BACKEND
+        value: ${moto-track-redis.REDIS_URL}
+
+      # ── Cloudflare R2 Storage (S3-compatible) ───────────────────────────────
+      # Bucket: moto-track-media
+      # Endpoint: https://3c40024664aa7a397235ba6029faed8f.r2.cloudflarestorage.com
+      # Create a scoped R2 Object Read & Write token in Cloudflare and store the
+      # Access Key ID / Secret Access Key as App Platform secrets below.
+      - key: R2_ACCOUNT_ID
+        value: 3c40024664aa7a397235ba6029faed8f
+      - key: R2_BUCKET_NAME
+        value: moto-track-media
+      - key: R2_ACCESS_KEY_ID
+        type: SECRET
+      - key: R2_SECRET_ACCESS_KEY
+        type: SECRET
+      - key: AWS_S3_ENDPOINT_URL
+        value: https://3c40024664aa7a397235ba6029faed8f.r2.cloudflarestorage.com
+      - key: AWS_S3_REGION_NAME
+        value: auto
+
+      # ── Email (SMTP — same provider as configured in Supabase Auth → SMTP) ───
+      - key: EMAIL_HOST
+        type: SECRET               # e.g. smtp.resend.com
+      - key: EMAIL_HOST_USER
+        type: SECRET               # e.g. resend
+      - key: EMAIL_HOST_PASSWORD
+        type: SECRET               # SMTP API key / password
+
+      # ── PWA Push Notifications ───────────────────────────────────────────────
+      - key: WEB_PUSH_PUBLIC_KEY
+        type: SECRET
+      - key: WEB_PUSH_PRIVATE_KEY
+        type: SECRET
+      - key: PUSH_ENCRYPTION_KEY
+        type: SECRET
+
+      # ── Stripe ───────────────────────────────────────────────────────────────
+      - key: STRIPE_SECRET_KEY
+        type: SECRET
+      - key: STRIPE_PUBLISHABLE_KEY
+        type: SECRET
+      - key: STRIPE_WEBHOOK_SECRET
+        type: SECRET
+      # Price IDs are not secrets — get them from Stripe Dashboard → Products.
+      # Set both before enabling billing; empty values make checkout raise an error.
+      - key: STRIPE_PRO_MONTHLY_PRICE_ID
+        type: SECRET
+      - key: STRIPE_PRO_YEARLY_PRICE_ID
+        type: SECRET
+
+      # ── Optional ─────────────────────────────────────────────────────────────
+      - key: SENTRY_DSN
+        type: SECRET
+      - key: SENTRY_ENVIRONMENT
+        value: production          # override per-environment if needed
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        value: "0.1"               # 10% — reduce under heavy load
+      - key: SENTRY_PROFILES_SAMPLE_RATE
+        value: "0.05"              # 5%
+      - key: GOOGLE_CLIENT_ID
+        type: SECRET
+      - key: GOOGLE_CLIENT_SECRET
+        type: SECRET
+
+  # ── Celery Worker ─────────────────────────────────────────────────────────────
+  - name: celery-worker
+    dockerfile_path: Dockerfile
+    source_dir: /
+    instance_size_slug: basic-xs
+    instance_count: 1
+    run_command: celery -A config worker --loglevel=INFO
+    envs:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        type: SECRET
+      - key: DATABASE_URL
+        type: SECRET
+      - key: REDIS_URL
+        value: ${moto-track-redis.REDIS_URL}
+      - key: CELERY_BROKER_URL
+        value: ${moto-track-redis.REDIS_URL}
+      - key: CELERY_RESULT_BACKEND
+        value: ${moto-track-redis.REDIS_URL}
+      - key: R2_ACCOUNT_ID
+        value: 3c40024664aa7a397235ba6029faed8f
+      - key: R2_BUCKET_NAME
+        value: moto-track-media
+      - key: R2_ACCESS_KEY_ID
+        type: SECRET
+      - key: R2_SECRET_ACCESS_KEY
+        type: SECRET
+      - key: AWS_S3_ENDPOINT_URL
+        value: https://3c40024664aa7a397235ba6029faed8f.r2.cloudflarestorage.com
+      - key: AWS_S3_REGION_NAME
+        value: auto
+      - key: EMAIL_HOST
+        type: SECRET
+      - key: EMAIL_HOST_USER
+        type: SECRET
+      - key: EMAIL_HOST_PASSWORD
+        type: SECRET
+      - key: SENTRY_DSN
+        type: SECRET
+
+  # ── Celery Beat ───────────────────────────────────────────────────────────────
+  - name: celery-beat
+    dockerfile_path: Dockerfile
+    source_dir: /
+    instance_size_slug: basic-xs
+    instance_count: 1
+    # Uses the default Django DB scheduler defined in settings.CELERY_BEAT_SCHEDULE.
+    # django-celery-beat is not installed; the beat schedule is configured in base.py.
+    run_command: celery -A config beat --loglevel=INFO
+    envs:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        type: SECRET
+      - key: DATABASE_URL
+        type: SECRET
+      - key: REDIS_URL
+        value: ${moto-track-redis.REDIS_URL}
+      - key: CELERY_BROKER_URL
+        value: ${moto-track-redis.REDIS_URL}
+      - key: CELERY_RESULT_BACKEND
+        value: ${moto-track-redis.REDIS_URL}
+      - key: R2_ACCOUNT_ID
+        value: 3c40024664aa7a397235ba6029faed8f
+      - key: R2_BUCKET_NAME
+        value: moto-track-media
+      - key: R2_ACCESS_KEY_ID
+        type: SECRET
+      - key: R2_SECRET_ACCESS_KEY
+        type: SECRET
+      - key: AWS_S3_ENDPOINT_URL
+        value: https://3c40024664aa7a397235ba6029faed8f.r2.cloudflarestorage.com
+      - key: AWS_S3_REGION_NAME
+        value: auto
+      - key: SENTRY_DSN
+        type: SECRET
+
+# ---------------------------------------------------------------------------
+# Managed Redis (DO provides REDIS_URL automatically via ${moto-track-redis.REDIS_URL})
+# ---------------------------------------------------------------------------
+databases:
+  - name: moto-track-redis
+    engine: REDIS
+    version: "7"
+    size: db-s-1vcpu-1gb  # starter; upgrade to db-s-2vcpu-2gb under load
+    num_nodes: 1
