@@ -1,227 +1,46 @@
 # Moto Track
 
-## Your motorcycle's command center
+Moto Track is now a SvelteKit + Supabase + Cloudflare application.
 
-**Fuel · Maintenance · Tires · Documents · Expenses — all in one dashboard.**
+## Stack
 
-[![Django](https://img.shields.io/badge/Django-5.x-092E20?logo=django&logoColor=white)](https://www.djangoproject.com/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.x-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![HTMX](https://img.shields.io/badge/HTMX-2.x-3366CC?logo=htmx&logoColor=white)](https://htmx.org/)
-[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-Private-gray)](https://github.com/JPClow3/moto_track)
+- SvelteKit, TypeScript, Tailwind, lucide-svelte, Chart.js
+- Supabase Auth and Postgres with SQL migrations and RLS
+- Cloudflare Pages and R2 for deployment and object storage
+- Stripe billing
+- Supabase Edge Functions + Resend for transactional app email
 
----
-
-Moto Track is a personal motorcycle management platform built for riders who want **one place** to track fuel economy, schedule maintenance, monitor tire wear, store documents, and visualize costs — no spreadsheets, no scattered notes, no clutter.
-
-> *"Ride more. Worry less. Let the dashboard handle the rest."*
-
----
-
-## Documentation Map
-
-- Setup, validation, and daily workflows: [README.md](README.md)
-- Frontend contribution rules: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Runtime configuration reference: [`.env.example`](.env.example)
-- Operations, deploy, observability, backups, and ADRs: [docs/README.md](docs/README.md)
-
----
-
-## What You Get
-
-### Ride & Cost Tracking
-
-- Real-time fuel economy (km/L, cost/km)
-- Maintenance history with interval alerts
-- Annual expenses (registration, insurance, taxes)
-- Tire lifecycle & wear monitoring
-
-### Organization & Insights
-
-- Document vault (license, insurance, receipts)
-- Smart reminders by date, km, or interval
-- Parts inventory management
-- Cost evolution charts & health score
-
-**Plus:** public blog/guides for SEO, REST API, Google OAuth, PWA install prompt, dark mode, and full accessibility (keyboard + screen reader).
-
----
-
-## Modules
-
-| Module | Description |
-| :--- | :--- |
-| **Dashboard** | Live overview — recent events, alerts, health score |
-| **Garage** | Motorcycle profiles, specs, and odometer tracking |
-| **Fuel** | Fill-up history, consumption trends, price tracking |
-| **Maintenance** | Service records, parts used, preventive intervals |
-| **Tires** | Structured catalog, installation & wear history |
-| **Documents** | File attachments with metadata (license, insurance, manual) |
-| **Reminders** | Trigger-based alerts (date, km, interval) |
-| **Expenses** | Annual taxes & fees (IPVA, DPVAT, licensing) |
-| **Inventory** | Spare parts & maintenance items stock |
-| **Reports** | Cost evolution, usage trends, data visualizations |
-| **Blog** | Public articles & guides (SEO-ready) |
-| **API** | REST endpoints for core data |
-
----
-
-## Tech Stack
-
-| Layer | Technologies |
-| :--- | :--- |
-| **Backend** | Django 5 · Django REST Framework · Celery · django-environ · django-money · django-autocomplete-light |
-| **Auth** | django-allauth + allauth-ui · Google OAuth |
-| **Frontend** | Tailwind CSS · HTMX · Alpine.js · Chart.js · Lucide Icons |
-| **Forms** | django-crispy-forms + crispy-tailwind · django-cotton |
-| **Database** | SQLite (local dev) · PostgreSQL (tests/prod) |
-| **Infra** | Docker · Redis · Gunicorn · Caddy/Nginx · S3 (media) · WhiteNoise (static/root assets) |
-| **Monitoring** | Sentry (errors + tracing + profiling) |
-| **CI/CD** | GitHub Actions · pytest · Bandit · pip-audit |
-
-> **Frontend philosophy:** server-rendered HTML with progressive enhancement. No SPA frameworks — just HTMX for AJAX, Alpine.js for reactive state, and Tailwind for styling. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full rules.
-
----
-
-## Quick Start
-
-### Without Docker
+## Local Development
 
 ```bash
-pip install -r requirements/dev.txt
-cp .env.example .env
-# For local SQLite dev, apply the "LOCAL DEVELOPMENT OVERRIDE" block from .env.example.
 npm install
-python manage.py migrate
-npm run watch:css          # Terminal 1 — live CSS rebuild
-python manage.py runserver # Terminal 2 — dev server
-```
-
-### With Docker
-
-```bash
 cp .env.example .env
-docker compose --profile dev up --build
-docker compose --profile dev exec web python manage.py migrate
+npm run dev
 ```
 
-### With Docker + HTTPS (self-hosted VPS)
+## Validation
 
 ```bash
-cp .env.example .env
-docker compose --profile prod --profile edge up -d --build
+npm run check
+npm run test
+npm run build
 ```
 
-Set the production values from [`.env.example`](.env.example) first, then use
-[docs/deploy.md](docs/deploy.md) for target-specific steps. This is the
-fallback path when you are not fronting the app with Dokploy.
+## Database
 
-Caddy auto-provisions TLS certificates — ports `80/443` exposed, `www` redirects to apex.
-
-> Open **<http://localhost:8000>** after starting.
-
----
-
-## First Login
+Apply Supabase migrations:
 
 ```bash
-python manage.py createadmin    # No-prompt superuser
-python manage.py createsuperuser # Standard Django alternative
+npm run db:migrate
 ```
 
-Login at `/accounts/login/` · Admin panel at `/admin/`.
-
----
-
-## Demo Data
+Generate database types:
 
 ```bash
-python manage.py seed_demo_data
+npm run supabase:types
 ```
 
-Idempotently creates: demo user, motorcycle, specs, gas station, fuel type, fill-up, maintenance record, tire, reminder, and sample document.
+## Legacy Reference
 
----
-
-## Project Structure
-
-```text
-apps/
-  core/         Dashboard, base models, shared utilities
-  garage/       Motorcycle profiles & structured specs
-  fuel/         Fill-ups, gas stations & fuel types
-  maintenance/  Service records, parts & recurring items
-  tires/        Tire catalog & installation history
-  documents/    Document vault & file attachments
-  reminders/    Trigger-based alerts
-  reports/      Aggregations & KPIs
-  expenses/     Annual taxes & fees
-  inventory/    Parts stock management
-  forum/        Public blog & articles
-  api/          REST API endpoints
-  accounts/     Authentication (django-allauth)
-```
-
----
-
-## Business Rules
-
-- All data is **owner-scoped** — users only see their own records.
-- Odometer is **derived from history**; manual override is optional.
-- Fill-ups require mileage, liters, total cost, and a `tank_full` flag.
-- Maintenance intervals track both **km** and **days**.
-- Reminders use explicit trigger types (date, km, interval).
-- Catalogs (stations, parts, tires) are **reusable** to reduce repeated input.
-
----
-
-## Verification
-
-```bash
-npm run build:css
-python manage.py check
-python manage.py makemigrations --check --dry-run
-python scripts/local_ci.py
-docker compose --profile test up --build --abort-on-container-exit --exit-code-from test
-```
-
-Automated tests intentionally use PostgreSQL. For local pytest outside Docker, set
-`DJANGO_SETTINGS_MODULE=config.settings.test` and `TEST_DATABASE_URL` or `DATABASE_URL`
-to a PostgreSQL database. The canonical runtime variable list lives in
-[`.env.example`](.env.example).
-
----
-
-## Deploy
-
-Start with [docs/deploy.md](docs/deploy.md) for the deploy flow and
-[`.env.example`](.env.example) for the environment contract.
-
-| Path | Command |
-| :--- | :--- |
-| **Dokploy on EC2 (managed Traefik)** | Use `docker-compose.yml` in Dokploy and deploy the `prod` profile |
-| **Self-hosted VPS (Caddy TLS)** | `docker compose --profile prod --profile edge up -d --build` |
-| **Bare metal (Nginx + Gunicorn)** | See [docs/deploy.md](docs/deploy.md) for systemd + Nginx setup |
-
----
-
-## Roadmap
-
-> These features are **planned** — none are implemented yet.
-
-| Feature | Description |
-| :--- | :--- |
-| **Receipt OCR** | Scan fuel receipts to auto-fill station, liters, and cost via Google Vision / AWS Textract |
-| **Shareable Dossier** | Generate a temporary public URL for mechanics or buyers to review full bike history |
-| **AI Maintenance Prediction** | Use monthly riding averages to predict the approximate date of the next service |
-| **Parts Marketplace Integration** | Link recommended parts to Amazon / Mercado Livre searches from maintenance history |
-
----
-
-## Accessibility
-
-The interface maintains visible focus indicators, semantic landmarks, and descriptive labels. Designed for comfortable use with keyboards and screen readers. Periodic manual audits are still recommended.
-
----
-
-> *Built with caffeine and two wheels.*
+The previous Django implementation is temporarily preserved under `_legacy/django`
+for feature parity and data import work.
