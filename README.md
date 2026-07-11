@@ -40,6 +40,10 @@ Generate database types:
 npm run supabase:types
 ```
 
+## Deployment
+
+See [`docs/deployment.md`](docs/deployment.md) for Pages bindings, server-only secrets, and the required preview acceptance test.
+
 ## Legacy Reference
 
 The previous Django implementation is temporarily preserved under `_legacy/django`

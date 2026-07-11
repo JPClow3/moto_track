@@ -4,7 +4,7 @@ import type { Database } from "$lib/types/database";
 import { requirePublicSupabaseEnv } from "$server/env";
 
 export function createSupabaseServerClient(event: RequestEvent) {
-  const { url, anonKey } = requirePublicSupabaseEnv();
+  const { url, anonKey } = requirePublicSupabaseEnv(event.platform);
   return createServerClient<Database>(url, anonKey, {
     cookies: {
       getAll: () => event.cookies.getAll(),

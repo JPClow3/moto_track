@@ -29,9 +29,18 @@ async function processReminders(env: Env) {
   const today = new Date().toISOString().slice(0, 10);
   const { data: reminders, error } = await supabase
     .from("reminders")
-    .select("*, motorcycles(current_odometer_km, name), profiles(email)")
+    .select("*, motorcycles(current_odometer_km, name)")
     .eq("is_active", true);
   if (error) throw error;
+
+  const ownerIds = [...new Set((reminders ?? []).map((row) => row.owner_id))];
+  const { data: profiles, error: profileError } = ownerIds.length
+    ? await supabase.from("profiles").select("id, email").in("id", ownerIds)
+    : { data: [], error: null };
+  if (profileError) throw profileError;
+  const emailByOwner = new Map(
+    (profiles ?? []).map((profile) => [profile.id, profile.email]),
+  );
 
   let due = 0;
   let emailed = 0;
@@ -47,7 +56,7 @@ async function processReminders(env: Env) {
     if (
       reminder.send_email &&
       !reminder.last_email_notified_at &&
-      reminder.profiles?.email
+      emailByOwner.get(reminder.owner_id)
     ) {
       const response = await fetch(env.EMAIL_FUNCTION_URL, {
         method: "POST",
@@ -56,7 +65,7 @@ async function processReminders(env: Env) {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          to: reminder.profiles.email,
+          to: emailByOwner.get(reminder.owner_id),
           subject: `Moto Track: ${reminder.title}`,
           text: `${reminder.motorcycles?.name ?? "Moto"}: ${reminder.title}\nStatus: ${evaluation.status}`,
         }),

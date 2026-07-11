@@ -17,3 +17,29 @@ export function objectKeyForUpload(
     .replace(/^-+|-+$/g, "");
   return `${ownerId}/${module}/${crypto.randomUUID()}-${safeName || "upload.bin"}`;
 }
+
+export async function uploadObjectFile({
+  file,
+  module,
+  ownerId,
+  platform,
+}: {
+  file: File;
+  module: string;
+  ownerId: string;
+  platform: App.Platform | undefined;
+}) {
+  const bucket = await requireR2Bucket(platform);
+  const objectKey = objectKeyForUpload(ownerId, module, file.name);
+  await bucket.put(objectKey, file.stream(), {
+    httpMetadata: {
+      contentType: file.type || "application/octet-stream",
+    },
+  });
+  return {
+    objectKey,
+    filename: file.name,
+    contentType: file.type || "application/octet-stream",
+    byteSize: file.size,
+  };
+}

@@ -11,6 +11,9 @@ declare global {
         SUPABASE_SERVICE_ROLE_KEY?: string;
         STRIPE_SECRET_KEY?: string;
         STRIPE_WEBHOOK_SECRET?: string;
+        STRIPE_PRO_MONTHLY_PRICE_ID?: string;
+        STRIPE_PRO_YEARLY_PRICE_ID?: string;
+        MISTRAL_API_KEY?: string;
         PUBLIC_SITE_URL?: string;
       };
       context: {

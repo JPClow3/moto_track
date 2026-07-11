@@ -1,54 +1,67 @@
 import Stripe from "stripe";
-import { env } from "$env/dynamic/private";
-import { siteUrl } from "$server/env";
+import { runtimeEnv } from "$server/runtime";
 
-export function stripeClient() {
-  if (!env.STRIPE_SECRET_KEY)
+export function stripeClient(platform?: App.Platform) {
+  const runtime = runtimeEnv(platform);
+  if (!runtime.STRIPE_SECRET_KEY)
     throw new Error("STRIPE_SECRET_KEY is not configured.");
-  return new Stripe(env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+  return new Stripe(runtime.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
 }
 
-export function priceIdForInterval(interval: string) {
+export function priceIdForInterval(interval: string, platform?: App.Platform) {
+  const runtime = runtimeEnv(platform);
   return interval === "yearly"
-    ? env.STRIPE_PRO_YEARLY_PRICE_ID
-    : env.STRIPE_PRO_MONTHLY_PRICE_ID;
+    ? runtime.STRIPE_PRO_YEARLY_PRICE_ID
+    : runtime.STRIPE_PRO_MONTHLY_PRICE_ID;
 }
 
 export async function createCheckoutSession({
   email,
   userId,
   interval,
+  platform,
 }: {
   email: string;
   userId: string;
   interval: string;
+  platform?: App.Platform;
 }) {
-  const price = priceIdForInterval(interval);
+  const runtime = runtimeEnv(platform);
+  const price = priceIdForInterval(interval, platform);
   if (!price) throw new Error("Stripe price ID is not configured.");
-  return stripeClient().checkout.sessions.create({
+  return stripeClient(platform).checkout.sessions.create({
     mode: "subscription",
     customer_email: email,
     client_reference_id: userId,
     line_items: [{ price, quantity: 1 }],
-    success_url: `${siteUrl()}/billing/conta?checkout=success`,
-    cancel_url: `${siteUrl()}/precos?checkout=cancelled`,
+    success_url: `${runtime.PUBLIC_SITE_URL || "http://localhost:5173"}/billing/conta?checkout=success`,
+    cancel_url: `${runtime.PUBLIC_SITE_URL || "http://localhost:5173"}/precos?checkout=cancelled`,
     metadata: { user_id: userId, interval },
   });
 }
 
-export async function createPortalSession(customerId: string) {
-  return stripeClient().billingPortal.sessions.create({
+export async function createPortalSession(
+  customerId: string,
+  platform?: App.Platform,
+) {
+  const runtime = runtimeEnv(platform);
+  return stripeClient(platform).billingPortal.sessions.create({
     customer: customerId,
-    return_url: `${siteUrl()}/billing/conta`,
+    return_url: `${runtime.PUBLIC_SITE_URL || "http://localhost:5173"}/billing/conta`,
   });
 }
 
-export function constructStripeEvent(payload: string, signature: string) {
-  if (!env.STRIPE_WEBHOOK_SECRET)
+export function constructStripeEvent(
+  payload: string,
+  signature: string,
+  platform?: App.Platform,
+) {
+  const runtime = runtimeEnv(platform);
+  if (!runtime.STRIPE_WEBHOOK_SECRET)
     throw new Error("STRIPE_WEBHOOK_SECRET is not configured.");
-  return stripeClient().webhooks.constructEvent(
+  return stripeClient(platform).webhooks.constructEvent(
     payload,
     signature,
-    env.STRIPE_WEBHOOK_SECRET,
+    runtime.STRIPE_WEBHOOK_SECRET,
   );
 }

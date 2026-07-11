@@ -515,6 +515,19 @@ create table public.account_data_requests (
   updated_at timestamptz not null default now()
 );
 
+create table public.sale_report_shares (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  motorcycle_id uuid not null references public.motorcycles(id) on delete cascade,
+  token_prefix text not null unique,
+  expires_at timestamptz not null,
+  revoked_at timestamptz,
+  access_count integer not null default 0,
+  last_accessed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table public.forum_categories (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -620,7 +633,7 @@ begin
     'maintenance_parts','maintenance_records','maintenance_record_parts','maintenance_plan_items','maintenance_photos',
     'tire_products','tire_records','tire_pressure_records','motorcycle_documents','reminders','annual_fees',
     'insurance_policies','insurance_claims','professional_cost_settings','work_sessions','subscription_profiles',
-    'billing_events','account_data_requests','forum_articles','article_comments','api_tokens','push_subscriptions',
+    'billing_events','account_data_requests','sale_report_shares','forum_articles','article_comments','api_tokens','push_subscriptions',
     'client_submissions'
   ] loop
     execute format('create trigger %I_set_updated_at before update on public.%I for each row execute function public.set_updated_at()', table_name, table_name);
@@ -652,6 +665,7 @@ alter table public.professional_cost_settings enable row level security;
 alter table public.work_sessions enable row level security;
 alter table public.subscription_profiles enable row level security;
 alter table public.account_data_requests enable row level security;
+alter table public.sale_report_shares enable row level security;
 alter table public.article_comments enable row level security;
 alter table public.article_reactions enable row level security;
 alter table public.api_tokens enable row level security;
@@ -674,7 +688,7 @@ begin
     'maintenance_parts','maintenance_records','maintenance_record_parts','maintenance_plan_items','maintenance_photos',
     'tire_products','tire_records','tire_pressure_records','motorcycle_documents','reminders','annual_fees',
     'insurance_policies','insurance_claims','professional_cost_settings','work_sessions','subscription_profiles',
-    'account_data_requests','article_comments','article_reactions','api_tokens','push_subscriptions','client_submissions',
+    'account_data_requests','sale_report_shares','article_comments','article_reactions','api_tokens','push_subscriptions','client_submissions',
     'object_files'
   ] loop
     execute format('create policy %L on public.%I for select using (owner_id = auth.uid())', table_name || ' owner select', table_name);
@@ -691,6 +705,46 @@ create policy "motorcycle specs via owner" on public.motorcycle_specs
 create policy "public articles read" on public.forum_articles for select using (is_published = true);
 create policy "public categories read" on public.forum_categories for select using (true);
 create policy "public article categories read" on public.forum_article_categories for select using (true);
+create policy "public sale shares read" on public.sale_report_shares
+  for select using (revoked_at is null and expires_at >= now());
+
+grant usage on schema public to anon, authenticated;
+grant select on public.forum_articles, public.forum_categories, public.forum_article_categories to anon;
+grant select on public.motorcycle_templates, public.motorcycle_template_specs to authenticated;
+grant select, insert, update, delete on
+  public.profiles,
+  public.motorcycles,
+  public.motorcycle_specs,
+  public.fuel_stations,
+  public.fuel_grades,
+  public.fuel_records,
+  public.fuel_preferences,
+  public.fuel_review_preferences,
+  public.maintenance_parts,
+  public.maintenance_records,
+  public.maintenance_record_parts,
+  public.maintenance_plan_items,
+  public.maintenance_photos,
+  public.tire_products,
+  public.tire_records,
+  public.tire_pressure_records,
+  public.motorcycle_documents,
+  public.reminders,
+  public.annual_fees,
+  public.insurance_policies,
+  public.insurance_claims,
+  public.professional_cost_settings,
+  public.work_sessions,
+  public.subscription_profiles,
+  public.account_data_requests,
+  public.sale_report_shares,
+  public.article_comments,
+  public.article_reactions,
+  public.api_tokens,
+  public.push_subscriptions,
+  public.client_submissions,
+  public.object_files
+to authenticated;
 
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$

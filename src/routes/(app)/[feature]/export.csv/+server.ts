@@ -1,5 +1,7 @@
 import { error } from "@sveltejs/kit";
 import { getFeature } from "$server/domain/features";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "$lib/types/database";
 
 function csvEscape(value: unknown) {
   const text = value == null ? "" : String(value);
@@ -9,7 +11,10 @@ function csvEscape(value: unknown) {
 export async function GET({ params, locals }) {
   if (!locals.user) throw error(401, "Authentication required.");
   const feature = getFeature(params.feature);
-  const { data, error: dbError } = await locals.supabase
+  const db = locals.supabase as unknown as {
+    from: (table: string) => ReturnType<SupabaseClient<Database>["from"]>;
+  };
+  const { data, error: dbError } = await db
     .from(feature.table)
     .select("*")
     .eq("owner_id", locals.user.id)

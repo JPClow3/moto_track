@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { PublicTableName } from "$lib/types/database";
 
 export type FieldKind =
   | "text"
@@ -17,6 +18,7 @@ export type FeatureField = {
   kind: FieldKind;
   required?: boolean;
   options?: Array<{ value: string; label: string }>;
+  source?: "motorcycles";
   help?: string;
 };
 
@@ -24,7 +26,7 @@ export type FeatureConfig = {
   slug: string;
   title: string;
   subtitle: string;
-  table: string;
+  table: PublicTableName;
   ownerScoped: boolean;
   orderBy: string;
   icon: string;
@@ -58,6 +60,13 @@ const bool = (key: string, label: string): FeatureField => ({
   key,
   label,
   kind: "boolean",
+});
+const motorcycle = (required = true): FeatureField => ({
+  key: "motorcycle_id",
+  label: "Motocicleta",
+  kind: "select",
+  source: "motorcycles",
+  required,
 });
 
 export const featureConfigs: Record<string, FeatureConfig> = {
@@ -123,6 +132,7 @@ export const featureConfigs: Record<string, FeatureConfig> = {
     orderBy: "date.desc",
     icon: "Wrench",
     fields: [
+      motorcycle(),
       date("date", "Data"),
       number("odometer_km", "Odômetro", true),
       text("maintenance_type", "Tipo", true),
@@ -150,6 +160,7 @@ export const featureConfigs: Record<string, FeatureConfig> = {
     orderBy: "installed_at.desc",
     icon: "CircleGauge",
     fields: [
+      motorcycle(),
       date("installed_at", "Instalado em"),
       text("position", "Posição", true),
       text("brand_model", "Marca/modelo", true),
@@ -177,12 +188,13 @@ export const featureConfigs: Record<string, FeatureConfig> = {
     orderBy: "name",
     icon: "FileText",
     fields: [
+      motorcycle(),
       text("name", "Nome", true),
       text("document_type", "Tipo", true),
       date("valid_until", "Validade", false),
       number("notify_before_days", "Avisar antes (dias)"),
       { key: "notes", label: "Notas", kind: "textarea" },
-      { key: "file_key", label: "Arquivo R2", kind: "text" },
+      { key: "file_key", label: "Arquivo", kind: "file" },
     ],
     listColumns: ["name", "document_type", "valid_until", "file_key"],
   },
@@ -196,6 +208,7 @@ export const featureConfigs: Record<string, FeatureConfig> = {
     orderBy: "is_active.desc",
     icon: "Bell",
     fields: [
+      motorcycle(),
       text("title", "Título", true),
       { key: "description", label: "Descrição", kind: "textarea" },
       text("trigger_type", "Gatilho", true),
@@ -225,6 +238,7 @@ export const featureConfigs: Record<string, FeatureConfig> = {
     orderBy: "due_date.desc",
     icon: "ReceiptText",
     fields: [
+      motorcycle(),
       text("fee_type", "Tipo", true),
       number("year", "Ano", true),
       date("due_date", "Vencimento"),
@@ -262,6 +276,7 @@ export const featureConfigs: Record<string, FeatureConfig> = {
     orderBy: "work_date.desc",
     icon: "BriefcaseBusiness",
     fields: [
+      motorcycle(),
       date("work_date", "Data"),
       text("platform_source", "Plataforma"),
       text("payment_method", "Pagamento"),

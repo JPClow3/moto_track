@@ -2,6 +2,34 @@ import { fail, type Actions } from "@sveltejs/kit";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getFeature, schemaForFeature, type FeatureConfig } from "./features";
 import type { Database } from "$lib/types/database";
+import { uploadObjectFile } from "$server/r2/files";
+import { syncMotorcycleOdometer } from "$server/domain/odometer";
+import { syncLinkedReminder } from "$server/domain/record-sync";
+
+function motorcycleIdFrom(payload: Record<string, unknown>) {
+  const value = payload.motorcycle_id;
+  return typeof value === "string" && value ? value : null;
+}
+
+async function syncRecordEffects({
+  supabase,
+  ownerId,
+  feature,
+  recordId,
+  payload,
+}: {
+  supabase: SupabaseClient<Database>;
+  ownerId: string;
+  feature: FeatureConfig;
+  recordId: string;
+  payload: Record<string, unknown>;
+}) {
+  const motorcycleId = motorcycleIdFrom(payload);
+  if (motorcycleId) {
+    await syncMotorcycleOdometer(supabase, ownerId, motorcycleId);
+  }
+  await syncLinkedReminder(supabase, ownerId, feature.table, recordId, payload);
+}
 
 export function normalizeFeaturePayload(
   feature: FeatureConfig,
@@ -10,6 +38,7 @@ export function normalizeFeaturePayload(
 ) {
   const raw: Record<string, unknown> = {};
   for (const field of feature.fields) {
+    if (field.kind === "file") continue;
     const formValue = formData.get(field.key);
     if (field.kind === "boolean") {
       raw[field.key] = formValue === "true";
@@ -25,6 +54,7 @@ export function normalizeFeaturePayload(
 
   const payload: Record<string, unknown> = {};
   for (const field of feature.fields) {
+    if (field.kind === "file") continue;
     const value = parsed.data[field.key];
     if (value === "" || value === undefined) continue;
     if (field.kind === "money") {
@@ -52,7 +82,10 @@ export async function loadFeature(
 ) {
   const feature = getFeature(slug);
   const [column, direction = "asc"] = feature.orderBy.split(".");
-  let query = supabase
+  const db = supabase as unknown as {
+    from: (table: string) => ReturnType<SupabaseClient<Database>["from"]>;
+  };
+  let query = db
     .from(feature.table)
     .select("*")
     .order(column, { ascending: direction !== "desc" })
@@ -60,22 +93,74 @@ export async function loadFeature(
   if (feature.ownerScoped) {
     query = query.eq("owner_id", user.id);
   }
-  const { data, error } = await query;
+  const [{ data, error }, { data: motorcycles, error: motorcyclesError }] =
+    await Promise.all([
+      query,
+      supabase
+        .from("motorcycles")
+        .select("id, name, brand, model")
+        .eq("owner_id", user.id)
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .order("name"),
+    ]);
   return {
     feature,
     rows: (data ?? []) as Array<Record<string, unknown>>,
-    errorMessage: error?.message ?? "",
+    motorcycles: motorcycles ?? [],
+    errorMessage: error?.message ?? motorcyclesError?.message ?? "",
   };
 }
 
 export function featureActions(slug: string): Actions {
   return {
-    default: async ({ request, locals }) => {
+    default: async ({ request, locals, platform }) => {
       if (!locals.user) {
         return fail(401, { message: "Authentication required." });
       }
       const feature = getFeature(slug);
       const formData = await request.formData();
+      const intent = String(formData.get("_intent") ?? "create");
+      const id = String(formData.get("id") ?? "");
+
+      if (intent === "delete") {
+        if (!id) return fail(400, { message: "Missing record id." });
+        const db = locals.supabase as unknown as {
+          from: (table: string) => ReturnType<SupabaseClient<Database>["from"]>;
+        };
+        const { data: existing, error: readError } = await db
+          .from(feature.table)
+          .select("motorcycle_id")
+          .eq("id", id)
+          .eq("owner_id", locals.user.id)
+          .maybeSingle();
+        if (readError) return fail(400, { message: readError.message });
+        const { error } = await db
+          .from(feature.table)
+          .delete()
+          .eq("id", id)
+          .eq("owner_id", locals.user.id);
+        if (error) return fail(400, { message: error.message });
+        await syncLinkedReminder(
+          locals.supabase,
+          locals.user.id,
+          feature.table,
+          id,
+          {},
+        );
+        const motorcycleId = motorcycleIdFrom(
+          (existing ?? {}) as Record<string, unknown>,
+        );
+        if (motorcycleId) {
+          await syncMotorcycleOdometer(
+            locals.supabase,
+            locals.user.id,
+            motorcycleId,
+          );
+        }
+        return { ok: true };
+      }
+
       const normalized = normalizeFeaturePayload(
         feature,
         formData,
@@ -88,12 +173,73 @@ export function featureActions(slug: string): Actions {
         });
       }
 
-      const { error } = await locals.supabase
-        .from(feature.table)
-        .insert(normalized.payload);
+      const payload = normalized.payload;
+      const recordId =
+        intent === "update" && id
+          ? id
+          : String(payload.id ?? crypto.randomUUID());
+      payload.id = recordId;
+
+      for (const field of feature.fields.filter(
+        (item) => item.kind === "file",
+      )) {
+        const file = formData.get(field.key);
+        if (!(file instanceof File) || file.size === 0) continue;
+        const uploaded = await uploadObjectFile({
+          file,
+          module: feature.slug,
+          ownerId: locals.user.id,
+          platform,
+        });
+        payload[field.key] = uploaded.objectKey;
+        const { error: fileError } = await locals.supabase
+          .from("object_files")
+          .insert({
+            owner_id: locals.user.id,
+            module: feature.slug,
+            source_table: feature.table,
+            source_id: recordId,
+            object_key: uploaded.objectKey,
+            filename: uploaded.filename,
+            content_type: uploaded.contentType,
+            byte_size: uploaded.byteSize,
+          });
+        if (fileError) return fail(400, { message: fileError.message });
+      }
+
+      const query =
+        intent === "update" && id
+          ? (
+              locals.supabase as unknown as {
+                from: (
+                  table: string,
+                ) => ReturnType<SupabaseClient<Database>["from"]>;
+              }
+            )
+              .from(feature.table)
+              .update(payload as never)
+              .eq("id", id)
+              .eq("owner_id", locals.user.id)
+          : (
+              locals.supabase as unknown as {
+                from: (
+                  table: string,
+                ) => ReturnType<SupabaseClient<Database>["from"]>;
+              }
+            )
+              .from(feature.table)
+              .insert(payload as never);
+      const { error } = await query;
       if (error) {
         return fail(400, { message: error.message });
       }
+      await syncRecordEffects({
+        supabase: locals.supabase,
+        ownerId: locals.user.id,
+        feature,
+        recordId,
+        payload,
+      });
       return { ok: true };
     },
   };

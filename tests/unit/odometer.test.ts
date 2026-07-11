@@ -9,7 +9,8 @@ describe("recomputeOdometer", () => {
         fuel: [{ odometer_km: 1800 }],
         maintenance: [{ odometer_km: 1600 }],
         tires: [{ installed_odometer_km: 2100 }],
+        work: [{ odometer_end_km: 2500 }],
       }),
-    ).toBe(2100);
+    ).toBe(2500);
   });
 });

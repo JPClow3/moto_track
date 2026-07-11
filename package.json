@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "supabase:types": "supabase gen types typescript --linked > src/lib/types/database.ts",
+    "supabase:types": "node scripts/generate-db-types.mjs",
     "db:migrate": "supabase db push",
     "import:legacy": "tsx scripts/import-legacy-data.ts",
     "worker:dev": "wrangler dev -c workers/reminders/wrangler.toml",
