@@ -197,9 +197,16 @@ export function averageConsumption(records: FuelRecord[]) {
   if (full.length < 2) return null;
   const first = full[0];
   const last = full[full.length - 1];
-  const liters = full
-    .slice(1)
-    .reduce((sum, record) => sum + Number(record.liters || 0), 0);
+  
+  const startIndex = ordered.indexOf(first);
+  const endIndex = ordered.indexOf(last);
+  const relevantRecords = ordered.slice(startIndex + 1, endIndex + 1);
+
+  const liters = relevantRecords.reduce(
+    (sum, record) => sum + Number(record.liters || 0),
+    0
+  );
+
   const distance = last.odometer_km - first.odometer_km;
   if (distance <= 0 || liters <= 0) return null;
   return Math.round((distance / liters) * 10) / 10;

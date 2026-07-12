@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   parseFuelCsv,
   parseReceiptText,
+  averageConsumption,
+  costPerKm,
 } from "../../src/lib/server/domain/fuel";
 
 describe("fuel parsing", () => {
@@ -31,5 +33,47 @@ describe("fuel parsing", () => {
     expect(rows[0].data.total_price_cents).toBe(6500);
     expect(rows[0].data.price_per_liter_millicents).toBe(650000);
     expect(rows[0].data.tank_full).toBe(true);
+  });
+});
+
+describe("fuel metrics", () => {
+  it("calculates average consumption between full tanks", () => {
+    const records = [
+      { date: "2026-07-01", odometer_km: 1000, liters: 10, tank_full: true },
+      { date: "2026-07-05", odometer_km: 1200, liters: 5, tank_full: false },
+      { date: "2026-07-10", odometer_km: 1400, liters: 15, tank_full: true },
+    ];
+    
+    // distance between full tanks: 1400 - 1000 = 400km
+    // liters used between full tanks: 5 + 15 = 20 liters
+    // average = 400 / 20 = 20 km/l
+    expect(averageConsumption(records)).toBe(20);
+  });
+
+  it("returns null for average consumption if less than 2 full tanks", () => {
+    const records = [
+      { date: "2026-07-01", odometer_km: 1000, liters: 10, tank_full: true },
+      { date: "2026-07-05", odometer_km: 1200, liters: 5, tank_full: false },
+    ];
+    expect(averageConsumption(records)).toBeNull();
+  });
+
+  it("calculates cost per km across all records", () => {
+    const records = [
+      { date: "2026-07-01", odometer_km: 1000, liters: 10, total_price_cents: 5000 },
+      { date: "2026-07-10", odometer_km: 1200, liters: 10, total_price_cents: 6000 },
+    ];
+    
+    // distance: 1200 - 1000 = 200km
+    // total cost: 11000 cents = 110 BRL
+    // cost per km = 110 / 200 = 0.55
+    expect(costPerKm(records)).toBe(0.55);
+  });
+
+  it("returns null for cost per km if less than 2 records", () => {
+    const records = [
+      { date: "2026-07-01", odometer_km: 1000, liters: 10, total_price_cents: 5000 },
+    ];
+    expect(costPerKm(records)).toBeNull();
   });
 });
