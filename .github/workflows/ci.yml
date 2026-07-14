@@ -47,3 +47,6 @@ jobs:
           # Note: If Playwright expects Supabase to be running, additional setup steps
           # using supabase-cli might be required in the future.
           CI: true
+
+      - name: Production Build
+        run: npm run build
