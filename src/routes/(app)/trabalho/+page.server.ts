@@ -1,0 +1,8 @@
+import { fail } from "@sveltejs/kit";
+import { featureActions, loadFeature } from "$server/domain/crud";
+import { calculateWorkProfitability } from "$server/domain/parity";
+const base=featureActions("trabalho");
+export const actions = {...base, saveCosts:async({request,locals})=>{const f=await request.formData();const motorcycleId=String(f.get("motorcycle_id")??"");const {error}=await locals.supabase.from("professional_cost_settings").upsert({owner_id:locals.user!.id,motorcycle_id:motorcycleId,maintenance_reserve_per_km_millicents:Math.round(Number(f.get("maintenance_reserve")??0)*100000),depreciation_per_km_millicents:Math.round(Number(f.get("depreciation")??0)*100000),fixed_daily_cost_cents:Math.round(Number(f.get("fixed_daily_cost")??0)*100)});return error?fail(400,{message:error.message}):{ok:true};}};
+export async function load({ locals }) {
+  const baseData=await loadFeature(locals.supabase,"trabalho",locals.user!);const {data:settings}=await locals.supabase.from("professional_cost_settings").select("*").eq("owner_id",locals.user!.id);const byMoto=new Map((settings??[]).map(s=>[s.motorcycle_id,s]));const summaries=baseData.rows.map((row)=>{const s=byMoto.get(String(row.motorcycle_id));return {...row,profitability:calculateWorkProfitability({distanceKm:Number(row.odometer_end_km??0)-Number(row.odometer_start_km??0),grossIncomeCents:Number(row.gross_income_cents??0),tipsCents:Number(row.tips_cents??0),fuelSpentCents:Number(row.fuel_spent_cents??0),fixedDailyCostCents:Number(s?.fixed_daily_cost_cents??0),maintenanceReservePerKmMillicents:Number(s?.maintenance_reserve_per_km_millicents??0),depreciationPerKmMillicents:Number(s?.depreciation_per_km_millicents??0)})};});return {...baseData,settings:settings??[],summaries};
+}

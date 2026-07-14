@@ -1,0 +1,1 @@
+import"../chunks/DsnmJJEf.js";import"../chunks/D8Ftf-Vz.js";import{a,d as s}from"../chunks/DsqTLcIk.js";var e=s('<section class="mx-auto max-w-3xl px-4 py-12 sm:px-6"><h1 class="text-4xl font-black">Offline</h1><p class="mt-4 text-[var(--muted)]">Moto Track is offline. Reconnect to sync your latest data.</p></section>');function m(t){var o=e();a(t,o)}export{m as component};
