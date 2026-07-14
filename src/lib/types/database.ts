@@ -1461,6 +1461,7 @@ export type Database = {
           owner_id: string;
           motorcycle_id: string;
           token_prefix: string;
+          token_hash: string;
           expires_at: string;
           revoked_at: string | null;
           access_count: number;
@@ -1473,6 +1474,7 @@ export type Database = {
           owner_id: string;
           motorcycle_id: string;
           token_prefix: string;
+          token_hash: string;
           expires_at: string;
           revoked_at?: string | null;
           access_count?: number;
@@ -1485,6 +1487,7 @@ export type Database = {
           owner_id?: string;
           motorcycle_id?: string;
           token_prefix?: string;
+          token_hash?: string;
           expires_at?: string;
           revoked_at?: string | null;
           access_count?: number;

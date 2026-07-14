@@ -1,14 +1,17 @@
 import { fail, redirect, type Actions } from "@sveltejs/kit";
+import { safeInternalRedirect } from "$server/auth-redirect";
 
 export const actions: Actions = {
   signIn: async ({ request, locals, url }) => {
     const form = await request.formData();
     const email = String(form.get("email") ?? "");
     const password = String(form.get("password") ?? "");
-    const redirectTo = String(
-      form.get("redirectTo") ??
-        url.searchParams.get("redirectTo") ??
-        "/dashboard",
+    const redirectTo = safeInternalRedirect(
+      String(
+        form.get("redirectTo") ??
+          url.searchParams.get("redirectTo") ??
+          "/dashboard",
+      ),
     );
     const { error } = await locals.supabase.auth.signInWithPassword({
       email,
@@ -58,6 +61,11 @@ export const actions: Actions = {
 
 export async function load({ locals, url }) {
   if (locals.user)
-    throw redirect(303, url.searchParams.get("redirectTo") ?? "/dashboard");
-  return { redirectTo: url.searchParams.get("redirectTo") ?? "/dashboard" };
+    throw redirect(
+      303,
+      safeInternalRedirect(url.searchParams.get("redirectTo")),
+    );
+  return {
+    redirectTo: safeInternalRedirect(url.searchParams.get("redirectTo")),
+  };
 }

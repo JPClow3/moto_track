@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type FuelRecord = {
   date: string;
   odometer_km: number;
@@ -142,6 +144,33 @@ export type FuelCsvPreviewRow = {
   errors: string[];
 };
 
+const fuelImportRowSchema = z.object({
+  date: z.string().date(),
+  odometer_km: z.number().int().nonnegative(),
+  liters: z.number().positive(),
+  total_price_cents: z.number().int().nonnegative(),
+  price_per_liter_millicents: z.number().int().nonnegative(),
+  fuel_type: z.string().trim().min(1),
+  tank_full: z.boolean(),
+  station_name: z.string(),
+  notes: z.string(),
+});
+
+export function parseFuelImportRows(value: string) {
+  try {
+    const rows = z
+      .array(fuelImportRowSchema)
+      .min(1)
+      .max(500)
+      .safeParse(JSON.parse(value));
+    return rows.success
+      ? { ok: true as const, rows: rows.data }
+      : { ok: false as const, message: "Import data is invalid." };
+  } catch {
+    return { ok: false as const, message: "Import data is invalid." };
+  }
+}
+
 export function parseFuelCsv(text: string): FuelCsvPreviewRow[] {
   const lines = text
     .split(/\r?\n/)
@@ -197,14 +226,14 @@ export function averageConsumption(records: FuelRecord[]) {
   if (full.length < 2) return null;
   const first = full[0];
   const last = full[full.length - 1];
-  
+
   const startIndex = ordered.indexOf(first);
   const endIndex = ordered.indexOf(last);
   const relevantRecords = ordered.slice(startIndex + 1, endIndex + 1);
 
   const liters = relevantRecords.reduce(
     (sum, record) => sum + Number(record.liters || 0),
-    0
+    0,
   );
 
   const distance = last.odometer_km - first.odometer_km;

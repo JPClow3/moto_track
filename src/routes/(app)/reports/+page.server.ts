@@ -1,4 +1,6 @@
+import { fail } from "@sveltejs/kit";
 import { featureActions, loadFeature } from "$server/domain/crud";
+import { shareTokenHash } from "$server/domain/sale-report-share";
 import { siteUrl } from "$server/env";
 
 const baseActions = featureActions("reports");
@@ -9,6 +11,15 @@ export const actions = {
     const form = await request.formData();
     const motorcycleId = String(form.get("motorcycle_id") ?? "");
     const days = Math.max(Number(form.get("days") ?? 14), 1);
+    const { data: motorcycle, error: motorcycleError } = await locals.supabase
+      .from("motorcycles")
+      .select("id")
+      .eq("id", motorcycleId)
+      .eq("owner_id", locals.user!.id)
+      .maybeSingle();
+    if (motorcycleError || !motorcycle) {
+      return fail(404, { message: "Motorcycle not found." });
+    }
     const token =
       crypto.randomUUID().replaceAll("-", "") +
       crypto.randomUUID().replaceAll("-", "");
@@ -18,6 +29,7 @@ export const actions = {
       owner_id: locals.user!.id,
       motorcycle_id: motorcycleId,
       token_prefix: token.slice(0, 12),
+      token_hash: await shareTokenHash(token),
       expires_at: expires.toISOString(),
     });
     if (error) return { ok: false, message: error.message };

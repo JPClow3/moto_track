@@ -2,6 +2,7 @@ import { fail, type Actions } from "@sveltejs/kit";
 import {
   averageConsumption,
   costPerKm,
+  parseFuelImportRows,
   parseFuelCsv,
   parseReceiptFile,
 } from "$server/domain/fuel";
@@ -276,11 +277,9 @@ export const actions: Actions = {
   },
   importConfirm: async ({ request, locals }) => {
     const form = await request.formData();
-    const rows = JSON.parse(String(form.get("rows_json") ?? "[]")) as Array<
-      Record<string, unknown>
-    >;
-    if (!rows.length)
-      return fail(400, { message: "Nenhuma linha válida para importar." });
+    const parsedRows = parseFuelImportRows(String(form.get("rows_json") ?? ""));
+    if (!parsedRows.ok) return fail(400, { message: parsedRows.message });
+    const rows = parsedRows.rows;
     const { error } = await locals.supabase.from("fuel_records").insert(
       rows.map((row) => ({
         ...row,

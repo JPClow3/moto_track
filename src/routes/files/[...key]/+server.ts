@@ -1,5 +1,5 @@
 import { error } from "@sveltejs/kit";
-import { requireR2Bucket } from "$server/r2/files";
+import { privateDownloadHeaders, requireR2Bucket } from "$server/r2/files";
 
 export async function GET({ params, locals, platform }) {
   const key = params.key;
@@ -17,11 +17,9 @@ export async function GET({ params, locals, platform }) {
   const file = await bucket.get(key);
   if (!file) throw error(404, "File not found");
   return new Response(file.body, {
-    headers: {
-      "content-type": String(
-        metadata.content_type ?? "application/octet-stream",
-      ),
-      "cache-control": "private, max-age=300",
-    },
+    headers: privateDownloadHeaders(
+      String(metadata.filename ?? "download"),
+      String(metadata.content_type ?? "application/octet-stream"),
+    ),
   });
 }

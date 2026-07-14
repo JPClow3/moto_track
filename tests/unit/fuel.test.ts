@@ -4,6 +4,7 @@ import {
   parseReceiptText,
   averageConsumption,
   costPerKm,
+  parseFuelImportRows,
 } from "../../src/lib/server/domain/fuel";
 
 describe("fuel parsing", () => {
@@ -34,6 +35,30 @@ describe("fuel parsing", () => {
     expect(rows[0].data.price_per_liter_millicents).toBe(650000);
     expect(rows[0].data.tank_full).toBe(true);
   });
+
+  it("rejects malformed and invalid browser-submitted import rows", () => {
+    expect(parseFuelImportRows("not json")).toEqual({
+      ok: false,
+      message: "Import data is invalid.",
+    });
+    expect(
+      parseFuelImportRows(
+        JSON.stringify([
+          {
+            date: "2026-07-10",
+            odometer_km: 12000,
+            liters: 0,
+            total_price_cents: 6500,
+            price_per_liter_millicents: 650000,
+            fuel_type: "gasoline",
+            tank_full: true,
+            station_name: "Centro",
+            notes: "",
+          },
+        ]),
+      ),
+    ).toEqual({ ok: false, message: "Import data is invalid." });
+  });
 });
 
 describe("fuel metrics", () => {
@@ -43,7 +68,7 @@ describe("fuel metrics", () => {
       { date: "2026-07-05", odometer_km: 1200, liters: 5, tank_full: false },
       { date: "2026-07-10", odometer_km: 1400, liters: 15, tank_full: true },
     ];
-    
+
     // distance between full tanks: 1400 - 1000 = 400km
     // liters used between full tanks: 5 + 15 = 20 liters
     // average = 400 / 20 = 20 km/l
@@ -60,10 +85,20 @@ describe("fuel metrics", () => {
 
   it("calculates cost per km across all records", () => {
     const records = [
-      { date: "2026-07-01", odometer_km: 1000, liters: 10, total_price_cents: 5000 },
-      { date: "2026-07-10", odometer_km: 1200, liters: 10, total_price_cents: 6000 },
+      {
+        date: "2026-07-01",
+        odometer_km: 1000,
+        liters: 10,
+        total_price_cents: 5000,
+      },
+      {
+        date: "2026-07-10",
+        odometer_km: 1200,
+        liters: 10,
+        total_price_cents: 6000,
+      },
     ];
-    
+
     // distance: 1200 - 1000 = 200km
     // total cost: 11000 cents = 110 BRL
     // cost per km = 110 / 200 = 0.55
@@ -72,7 +107,12 @@ describe("fuel metrics", () => {
 
   it("returns null for cost per km if less than 2 records", () => {
     const records = [
-      { date: "2026-07-01", odometer_km: 1000, liters: 10, total_price_cents: 5000 },
+      {
+        date: "2026-07-01",
+        odometer_km: 1000,
+        liters: 10,
+        total_price_cents: 5000,
+      },
     ];
     expect(costPerKm(records)).toBeNull();
   });

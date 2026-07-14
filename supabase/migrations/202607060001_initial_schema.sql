@@ -519,7 +519,8 @@ create table public.sale_report_shares (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
   motorcycle_id uuid not null references public.motorcycles(id) on delete cascade,
-  token_prefix text not null unique,
+  token_prefix text not null,
+  token_hash text not null unique,
   expires_at timestamptz not null,
   revoked_at timestamptz,
   access_count integer not null default 0,
@@ -688,7 +689,7 @@ begin
     'maintenance_parts','maintenance_records','maintenance_record_parts','maintenance_plan_items','maintenance_photos',
     'tire_products','tire_records','tire_pressure_records','motorcycle_documents','reminders','annual_fees',
     'insurance_policies','insurance_claims','professional_cost_settings','work_sessions','subscription_profiles',
-    'account_data_requests','sale_report_shares','article_comments','article_reactions','api_tokens','push_subscriptions','client_submissions',
+    'account_data_requests','article_comments','article_reactions','api_tokens','push_subscriptions','client_submissions',
     'object_files'
   ] loop
     execute format('create policy %L on public.%I for select using (owner_id = auth.uid())', table_name || ' owner select', table_name);
@@ -697,6 +698,27 @@ begin
     execute format('create policy %L on public.%I for delete using (owner_id = auth.uid())', table_name || ' owner delete', table_name);
   end loop;
 end $$;
+
+create policy "sale report shares owner select" on public.sale_report_shares
+  for select using (owner_id = auth.uid());
+create policy "sale report shares owner insert" on public.sale_report_shares
+  for insert with check (
+    owner_id = auth.uid()
+    and exists (
+      select 1 from public.motorcycles
+      where motorcycles.id = motorcycle_id and motorcycles.owner_id = auth.uid()
+    )
+  );
+create policy "sale report shares owner update" on public.sale_report_shares
+  for update using (owner_id = auth.uid()) with check (
+    owner_id = auth.uid()
+    and exists (
+      select 1 from public.motorcycles
+      where motorcycles.id = motorcycle_id and motorcycles.owner_id = auth.uid()
+    )
+  );
+create policy "sale report shares owner delete" on public.sale_report_shares
+  for delete using (owner_id = auth.uid());
 
 create policy "motorcycle specs via owner" on public.motorcycle_specs
   for all using (exists (select 1 from public.motorcycles m where m.id = motorcycle_id and m.owner_id = auth.uid()))

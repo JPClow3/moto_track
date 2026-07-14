@@ -18,6 +18,16 @@ export function objectKeyForUpload(
   return `${ownerId}/${module}/${crypto.randomUUID()}-${safeName || "upload.bin"}`;
 }
 
+export function privateDownloadHeaders(filename: string, contentType: string) {
+  const safeFilename = filename.replace(/[\r\n"]/g, "_") || "download";
+  return new Headers({
+    "content-type": contentType,
+    "content-disposition": `attachment; filename="${safeFilename}"`,
+    "x-content-type-options": "nosniff",
+    "cache-control": "private, max-age=300",
+  });
+}
+
 export async function uploadObjectFile({
   file,
   module,
