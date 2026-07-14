@@ -22,7 +22,10 @@ npm run dev
 
 ```bash
 npm run check
-npm run test
+npm run format:check
+npm run lint
+npm run test:unit
+npm run test:e2e
 npm run build
 ```
 
