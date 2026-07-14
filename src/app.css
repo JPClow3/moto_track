@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg: #f8f6f0;
+  --fg: #18211f;
+  --muted: #69736f;
+  --line: #ddd8cc;
+  --panel: #fffdf8;
+  --accent: #e6b325;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #151817;
+  --fg: #f4f1e8;
+  --muted: #a8b0aa;
+  --line: #333a36;
+  --panel: #1f2422;
+  --accent: #f0bf37;
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+.focus-ring {
+  @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 14px 40px rgba(24, 33, 31, 0.08);
+}
+
+.field {
+  @apply w-full rounded-md border px-3 py-2 text-sm outline-none transition;
+  background: var(--panel);
+  border-color: var(--line);
+}
+
+.field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(230, 179, 37, 0.18);
+}
+
+.button {
+  @apply focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition;
+}
+
+.button-primary {
+  @apply button bg-ink text-white hover:bg-asphalt;
+}
+
+.button-secondary {
+  @apply button border;
+  border-color: var(--line);
+  background: var(--panel);
+}
+
+.button-danger {
+  @apply button bg-danger text-white hover:brightness-95;
+}

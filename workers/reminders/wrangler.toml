@@ -1,0 +1,13 @@
+name = "moto-track-reminders"
+main = "index.ts"
+compatibility_date = "2026-07-01"
+
+[triggers]
+crons = ["0 8 * * *"] # Every day at 8:00 AM UTC
+
+# [vars]
+# You must manually set these secrets using `wrangler secret put` or via the Cloudflare Dashboard:
+# SUPABASE_URL
+# SUPABASE_SERVICE_ROLE_KEY
+# EMAIL_FUNCTION_URL
+# EMAIL_FUNCTION_TOKEN

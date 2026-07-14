@@ -1,0 +1,10 @@
+name = "moto-track"
+compatibility_date = "2026-07-01"
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "moto-track-media"
+
+[vars]
+PUBLIC_SITE_URL = "https://moto-track.net"
