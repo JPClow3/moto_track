@@ -24,13 +24,28 @@ describe("legacy parity domain helpers", () => {
   it("filters and sorts a cross-domain report timeline", () => {
     const events = buildTimeline(
       [
-        { source: "fuel", date: "2026-07-01", label: "Fuel", amountCents: 1000 },
-        { source: "maintenance", date: "2026-07-10", label: "Oil", amountCents: 2000 },
+        {
+          source: "fuel",
+          date: "2026-07-01",
+          label: "Fuel",
+          amountCents: 1000,
+        },
+        {
+          source: "maintenance",
+          date: "2026-07-10",
+          label: "Oil",
+          amountCents: 2000,
+        },
       ],
       { source: "maintenance", start: "2026-07-05" },
     );
     expect(events).toEqual([
-      { source: "maintenance", date: "2026-07-10", label: "Oil", amountCents: 2000 },
+      {
+        source: "maintenance",
+        date: "2026-07-10",
+        label: "Oil",
+        amountCents: 2000,
+      },
     ]);
   });
 

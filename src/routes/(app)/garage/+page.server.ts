@@ -1,5 +1,8 @@
 import { fail } from "@sveltejs/kit";
-import { FREE_ACTIVE_MOTORCYCLE_LIMIT, hasProAccess } from "$server/domain/entitlements";
+import {
+  FREE_ACTIVE_MOTORCYCLE_LIMIT,
+  hasProAccess,
+} from "$server/domain/entitlements";
 import { archiveMotorcycle, restoreMotorcycle } from "$server/domain/parity";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
 
@@ -11,7 +14,7 @@ export async function load({ locals }) {
   const [motorcycles, profile] = await Promise.all([
     locals.supabase
       .from("motorcycles")
-      .select("*, motorcycle_specs(*)")
+      .select("*")
       .eq("owner_id", locals.user!.id)
       .order("is_active", { ascending: false })
       .order("name"),
@@ -21,11 +24,27 @@ export async function load({ locals }) {
       .eq("owner_id", locals.user!.id)
       .maybeSingle(),
   ]);
+  const motorcycleIds = (motorcycles.data ?? []).map(
+    (motorcycle) => motorcycle.id,
+  );
+  const { data: specs } = motorcycleIds.length
+    ? await locals.supabase
+        .from("motorcycle_specs")
+        .select("*")
+        .in("motorcycle_id", motorcycleIds)
+    : { data: [] };
+  const specsByMotorcycle = new Map(
+    (specs ?? []).map((spec) => [spec.motorcycle_id, spec]),
+  );
+  const motorcyclesWithSpecs = (motorcycles.data ?? []).map((motorcycle) => ({
+    ...motorcycle,
+    motorcycle_specs: [specsByMotorcycle.get(motorcycle.id)].filter(Boolean),
+  }));
   return {
-    motorcycles: motorcycles.data ?? [],
+    motorcycles: motorcyclesWithSpecs,
     canAddActive:
       hasProAccess(profile.data) ||
-      (motorcycles.data ?? []).filter((motorcycle) => motorcycle.is_active).length <
+      motorcyclesWithSpecs.filter((motorcycle) => motorcycle.is_active).length <
         FREE_ACTIVE_MOTORCYCLE_LIMIT,
   };
 }
@@ -43,7 +62,10 @@ export const actions = {
       .select("plan, stripe_subscription_status, grace_until")
       .eq("owner_id", locals.user!.id)
       .maybeSingle();
-    if (!hasProAccess(profile) && (count ?? 0) >= FREE_ACTIVE_MOTORCYCLE_LIMIT) {
+    if (
+      !hasProAccess(profile) &&
+      (count ?? 0) >= FREE_ACTIVE_MOTORCYCLE_LIMIT
+    ) {
       return fail(403, { message: "O plano Free permite uma moto ativa." });
     }
     const name = value(form, "name");
@@ -51,7 +73,9 @@ export const actions = {
     const model = value(form, "model");
     const year = Number(form.get("year"));
     if (!name || !brand || !model || !Number.isInteger(year)) {
-      return fail(400, { message: "Informe nome, marca, modelo e ano válidos." });
+      return fail(400, {
+        message: "Informe nome, marca, modelo e ano válidos.",
+      });
     }
     const { error } = await locals.supabase.from("motorcycles").insert({
       owner_id: locals.user!.id,
@@ -59,7 +83,10 @@ export const actions = {
       brand,
       model,
       year,
-      current_odometer_km: Math.max(0, Number(form.get("current_odometer_km") ?? 0)),
+      current_odometer_km: Math.max(
+        0,
+        Number(form.get("current_odometer_km") ?? 0),
+      ),
       is_active: true,
     });
     return error ? fail(400, { message: error.message }) : { ok: true };
@@ -85,7 +112,10 @@ export const actions = {
       .select("plan, stripe_subscription_status, grace_until")
       .eq("owner_id", locals.user!.id)
       .maybeSingle();
-    if (!hasProAccess(profile) && (count ?? 0) >= FREE_ACTIVE_MOTORCYCLE_LIMIT) {
+    if (
+      !hasProAccess(profile) &&
+      (count ?? 0) >= FREE_ACTIVE_MOTORCYCLE_LIMIT
+    ) {
       return fail(403, { message: "O plano Free permite uma moto ativa." });
     }
     const { error } = await locals.supabase
@@ -102,8 +132,14 @@ export const actions = {
       motorcycle_id: motorcycleId,
       tire_size_front: value(form, "tire_size_front"),
       tire_size_rear: value(form, "tire_size_rear"),
-      recommended_tire_pressure_front: value(form, "recommended_tire_pressure_front"),
-      recommended_tire_pressure_rear: value(form, "recommended_tire_pressure_rear"),
+      recommended_tire_pressure_front: value(
+        form,
+        "recommended_tire_pressure_front",
+      ),
+      recommended_tire_pressure_rear: value(
+        form,
+        "recommended_tire_pressure_rear",
+      ),
       manual_reference: value(form, "manual_reference"),
     });
     return error ? fail(400, { message: error.message }) : { ok: true };
@@ -117,11 +153,18 @@ export const actions = {
     }
     const { error } = await locals.supabase
       .from("motorcycles")
-      .update({ odometer_override_km: override, odometer_override_at: new Date().toISOString() })
+      .update({
+        odometer_override_km: override,
+        odometer_override_at: new Date().toISOString(),
+      })
       .eq("id", motorcycleId)
       .eq("owner_id", locals.user!.id);
     if (error) return fail(400, { message: error.message });
-    await syncMotorcycleOdometer(locals.supabase, locals.user!.id, motorcycleId);
+    await syncMotorcycleOdometer(
+      locals.supabase,
+      locals.user!.id,
+      motorcycleId,
+    );
     return { ok: true };
   },
 };

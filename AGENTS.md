@@ -4,24 +4,25 @@ Use this file for agent-specific repo workflows. Keep broader product and fronte
 
 ## Validation Commands
 
-- Windows Django checks:
-  - `./.venv/Scripts/python.exe manage.py check`
-  - `./.venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
-  - `pytest tests/unit tests/integration tests/system tests/regression tests/performance tests/security -q` with `DJANGO_SETTINGS_MODULE=config.settings.test` and `TEST_DATABASE_URL` pointing at PostgreSQL
-- Frontend build:
-  - `npm run build:css`
+- **Type Checking**:
+  - `npm run check` (runs svelte-check)
+- **Formatting and Linting**:
+  - `npm run format:check`
+  - `npm run lint`
+- **Testing**:
+  - Unit Tests (Vitest): `npm run test:unit`
+  - End-to-End Tests (Playwright): `npm run test:e2e`
+- **Build**:
+  - `npm run build`
 
 ## Repo Workflows
 
-- Local CI helper:
-  - `python scripts/local_ci.py`
-  - Runs the repo's grouped pytest suite plus `bandit -r apps -ll` and `pip-audit -r requirements/prod.txt`.
-- CI-equivalent test scope:
-  - `pytest tests/unit tests/integration tests/system tests/regression tests/performance tests/security --cov=apps --cov-report=xml --cov-report=term -q`
-  - In CI this runs after `python manage.py migrate --noinput` with `DJANGO_SETTINGS_MODULE=config.settings.test`.
-  - Test settings intentionally require PostgreSQL via `TEST_DATABASE_URL` or `DATABASE_URL`; SQLite is not supported for automated tests.
-- Docker test profile:
-  - `docker compose --profile test up --build --abort-on-container-exit --exit-code-from test`
-- Docker HTTPS edge profile:
-  - `docker compose --profile prod --profile edge up -d --build`
-  - Use this path only when Caddy should terminate TLS directly on the host.
+- **Local Development Server**:
+  - `npm run dev`
+- **Cloudflare Worker Development**:
+  - `npm run worker:dev`
+- **Database / Supabase**:
+  - Push schema changes: `npm run db:migrate`
+  - Regenerate TypeScript types from database: `npm run supabase:types`
+- **CI Pipeline**:
+  - GitHub Actions runs check, lint, format:check, unit tests, and e2e tests on push to `main` and all Pull Requests.

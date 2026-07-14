@@ -1,9 +1,0 @@
-@import "./tokens.css";
-@import "./components.css";
-@import "./landing.css";
-@import "./app.css";
-@import "./print.css";
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;

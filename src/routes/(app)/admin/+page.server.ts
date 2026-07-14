@@ -76,7 +76,8 @@ export async function load({ locals, platform }) {
 
 export const actions = {
   fulfillDataRequest: async ({ request, locals, platform }) => {
-    if (!(await staffState(locals))) return fail(403, { message: "Staff only." });
+    if (!(await staffState(locals)))
+      return fail(403, { message: "Staff only." });
     const form = await request.formData();
     const { error } = await createSupabaseAdminClient(platform)
       .from("account_data_requests")
