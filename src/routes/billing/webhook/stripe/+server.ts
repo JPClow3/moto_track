@@ -1,7 +1,10 @@
 import { json } from "@sveltejs/kit";
 import type Stripe from "stripe";
 import { createSupabaseAdminClient } from "$server/supabase/admin";
-import { constructStripeEvent } from "$server/domain/billing";
+import {
+  constructStripeEvent,
+  subscriptionProfileUpdate,
+} from "$server/domain/billing";
 
 export async function POST({ request, platform }) {
   const payload = await request.text();
@@ -39,13 +42,14 @@ export async function POST({ request, platform }) {
   }
 
   if (
+    event.type === "customer.subscription.updated" ||
     event.type === "customer.subscription.deleted" ||
     event.type === "customer.subscription.paused"
   ) {
     const subscription = event.data.object as Stripe.Subscription;
     await supabase
       .from("subscription_profiles")
-      .update({ stripe_subscription_status: subscription.status, plan: "free" })
+      .update(subscriptionProfileUpdate(subscription.status))
       .eq("stripe_subscription_id", subscription.id);
   }
 

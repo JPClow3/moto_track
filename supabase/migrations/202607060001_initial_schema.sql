@@ -692,10 +692,10 @@ begin
     'account_data_requests','article_comments','article_reactions','api_tokens','push_subscriptions','client_submissions',
     'object_files'
   ] loop
-    execute format('create policy %L on public.%I for select using (owner_id = auth.uid())', table_name || ' owner select', table_name);
-    execute format('create policy %L on public.%I for insert with check (owner_id = auth.uid())', table_name || ' owner insert', table_name);
-    execute format('create policy %L on public.%I for update using (owner_id = auth.uid()) with check (owner_id = auth.uid())', table_name || ' owner update', table_name);
-    execute format('create policy %L on public.%I for delete using (owner_id = auth.uid())', table_name || ' owner delete', table_name);
+    execute format('create policy %I on public.%I for select using (owner_id = auth.uid())', table_name || ' owner select', table_name);
+    execute format('create policy %I on public.%I for insert with check (owner_id = auth.uid())', table_name || ' owner insert', table_name);
+    execute format('create policy %I on public.%I for update using (owner_id = auth.uid()) with check (owner_id = auth.uid())', table_name || ' owner update', table_name);
+    execute format('create policy %I on public.%I for delete using (owner_id = auth.uid())', table_name || ' owner delete', table_name);
   end loop;
 end $$;
 

@@ -9,13 +9,18 @@ where token_hash is null;
 
 alter table public.sale_report_shares
   alter column token_hash set not null;
-alter table public.sale_report_shares
-  add constraint sale_report_shares_token_hash_key unique (token_hash);
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.sale_report_shares'::regclass and conname = 'sale_report_shares_token_hash_key') then
+    alter table public.sale_report_shares
+      add constraint sale_report_shares_token_hash_key unique (token_hash);
+  end if;
+end $$;
 alter table public.sale_report_shares
   drop constraint if exists sale_report_shares_token_prefix_key;
 
-drop policy if exists "sale_report_shares owner insert" on public.sale_report_shares;
-drop policy if exists "sale_report_shares owner update" on public.sale_report_shares;
+drop policy if exists "sale report shares owner insert" on public.sale_report_shares;
+drop policy if exists "sale report shares owner update" on public.sale_report_shares;
 create policy "sale report shares owner insert" on public.sale_report_shares
   for insert with check (
     owner_id = auth.uid()

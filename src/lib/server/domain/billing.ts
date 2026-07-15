@@ -15,6 +15,13 @@ export function priceIdForInterval(interval: string, platform?: App.Platform) {
     : runtime.STRIPE_PRO_MONTHLY_PRICE_ID;
 }
 
+export function subscriptionProfileUpdate(status: string) {
+  return {
+    stripe_subscription_status: status,
+    plan: status === "active" || status === "trialing" ? "pro" : "free",
+  } as const;
+}
+
 export async function createCheckoutSession({
   email,
   userId,
