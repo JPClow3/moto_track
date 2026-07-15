@@ -10,14 +10,10 @@ export function GET() {
     theme_color: "#18211f",
     icons: [
       {
-        src: "/brand/android-chrome-192x192.png",
-        sizes: "192x192",
+        src: "/brand/moto-track-icon.png",
+        sizes: "any",
         type: "image/png",
-      },
-      {
-        src: "/brand/android-chrome-512x512.png",
-        sizes: "512x512",
-        type: "image/png",
+        purpose: "any maskable",
       },
     ],
   });
