@@ -1,5 +1,8 @@
 <script lang="ts">
   import { CheckCircle2 } from 'lucide-svelte';
+  import type { ProPricing } from '$types/billing';
+
+  export let data: { pricing: ProPricing };
 </script>
 
 <svelte:head><title>Preços · Moto Track</title></svelte:head>
@@ -54,8 +57,27 @@
         
         <h3 class="text-2xl font-black mb-2 flex items-center gap-2 text-ink dark:text-white">Pro <span class="flex h-3 w-3"><span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-signal opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-signal"></span></span></h3>
         <p class="text-[var(--muted)] text-sm h-10">Sem limites para quem usa a moto como ferramenta principal.</p>
-        <div class="my-6 flex items-center gap-2">
-          <span class="text-5xl font-black text-signal">Stripe</span>
+        <!-- Live from Stripe, so this can't drift from what checkout charges. -->
+        <div class="my-6">
+          {#if data.pricing.monthly}
+            <div class="flex items-baseline gap-1.5">
+              <span class="text-5xl font-black text-signal">{data.pricing.monthly.formatted}</span>
+              <span class="text-sm font-medium text-[var(--muted)]">/mês</span>
+            </div>
+            {#if data.pricing.yearly}
+              <!-- Actionable: the checkout endpoint already accepts ?interval=yearly,
+                   so the annual figure links to the plan it names. -->
+              <p class="mt-2 text-sm text-[var(--muted)]">
+                ou <a
+                  class="font-semibold text-ink underline underline-offset-2 hover:text-signal dark:text-white"
+                  href="/billing/checkout?interval=yearly"
+                >{data.pricing.yearly.formatted} por ano</a>
+              </p>
+            {/if}
+          {:else}
+            <span class="text-5xl font-black text-signal">R$&nbsp;—</span>
+            <p class="mt-2 text-sm text-[var(--muted)]">Preço confirmado no checkout</p>
+          {/if}
         </div>
         <ul class="space-y-4 mb-8 flex-1">
           <li class="flex items-start gap-3 text-sm font-medium">
@@ -79,7 +101,7 @@
             <span>Relatórios avançados de venda com selo Pro</span>
           </li>
         </ul>
-        <a class="button-primary w-full bg-signal text-ink hover:bg-signal/80 py-3 shadow-lg shadow-signal/20 flex items-center justify-center" href="/billing/checkout">Assinar Pro</a>
+        <a class="button-primary w-full bg-signal text-ink hover:bg-signal/80 py-3 shadow-lg shadow-signal/20 flex items-center justify-center" href="/billing/checkout?interval=monthly">Assinar Pro</a>
       </div>
     </div>
   </div>

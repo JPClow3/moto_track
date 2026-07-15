@@ -15,8 +15,8 @@
     <!-- Header -->
     <div class="text-center mb-8">
       <a href="/" class="inline-block transition hover:opacity-80 mb-8">
-        <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="h-8 mx-auto dark:hidden" />
-        <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-8 mx-auto hidden dark:block" />
+        <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-8 mx-auto dark:hidden" />
+        <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="h-8 mx-auto hidden dark:block" />
       </a>
       <h1 class="text-3xl font-black text-ink dark:text-white">Acesse sua garagem.</h1>
       <p class="mt-3 text-sm text-[var(--muted)]">

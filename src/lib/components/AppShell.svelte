@@ -53,8 +53,8 @@
   <!-- Sidebar -->
   <aside class="fixed inset-y-0 left-0 hidden w-72 border-r border-[var(--line)] bg-[var(--panel)] p-4 lg:flex flex-col">
     <a href="/dashboard" class="focus-ring flex items-center gap-3 rounded-md px-2 py-3 transition hover:opacity-80">
-      <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="h-6 dark:hidden" />
-      <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-6 hidden dark:block" />
+      <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-6 dark:hidden" />
+      <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="h-6 hidden dark:block" />
     </a>
 
     <nav class="mt-8 space-y-1.5 flex-1 overflow-y-auto pr-2">
@@ -87,8 +87,8 @@
     <header class="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--bg)]/80 backdrop-blur-md">
       <div class="mx-auto flex w-full items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <a href="/dashboard" class="font-semibold lg:hidden flex items-center transition hover:opacity-80">
-          <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="h-5 dark:hidden" />
-          <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-5 hidden dark:block" />
+          <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-5 dark:hidden" />
+          <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="h-5 hidden dark:block" />
         </a>
         <div class="hidden text-sm font-medium text-[var(--muted)] lg:block">
            Workspace Overview

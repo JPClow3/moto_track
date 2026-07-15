@@ -1,274 +1,512 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { fade, fly } from 'svelte/transition';
-  import { 
-    Wrench, Droplet, Bell, Briefcase, FileText, CheckCircle2, Shield, ArrowRight 
-  } from 'lucide-svelte';
-  
-  let visible = $state(false);
-  onMount(() => {
-    visible = true;
-  });
+  import { Wrench, Droplet, Bell, Briefcase, Gauge, Shield, ArrowRight } from "lucide-svelte";
+  import type { ProPricing } from "$types/billing";
+
+  export let data: { pricing: ProPricing };
+
+  const features = [
+    {
+      n: "01",
+      icon: Droplet,
+      title: "Custos & Combustível",
+      body: "Acompanhe cada abastecimento, visualize seu custo por km real e anexe recibos sem planilha nenhuma.",
+    },
+    {
+      n: "02",
+      icon: Wrench,
+      title: "Manutenção",
+      body: "Registre peças, serviços e desgaste dos pneus. Um histórico completo que vira valor na hora da revenda.",
+    },
+    {
+      n: "03",
+      icon: Bell,
+      title: "Lembretes",
+      body: "Nunca mais perca uma troca de óleo ou o IPVA. Alertas por quilometragem rodada ou por data.",
+    },
+    {
+      n: "04",
+      icon: Briefcase,
+      title: "Uso Profissional",
+      body: "Turnos, receita e custo por dia. Para quem tira o sustento da moto e precisa saber o lucro real.",
+    },
+  ];
+
+  // Each line is a list of segments so the emphasised part can be marked up
+  // without {@html}.
+  type Segment = { t: string; b?: boolean };
+
+  const freePlan: Segment[][] = [
+    [{ t: "Gestão de " }, { t: "1 moto ativa", b: true }],
+    [{ t: "Até 3 uploads de recibos e fotos" }],
+    [{ t: "3 lembretes ativos simultâneos" }],
+    [{ t: "3 turnos profissionais por mês" }],
+  ];
+
+  const proPlan: Segment[][] = [
+    [{ t: "Motos ilimitadas", b: true }, { t: " na garagem" }],
+    [{ t: "Uploads e anexos ilimitados", b: true }],
+    [{ t: "Lembretes ilimitados", b: true }],
+    [{ t: "Turnos ilimitados", b: true }, { t: " para profissionais" }],
+    [{ t: "Relatório de venda com selo Pro" }],
+  ];
 </script>
 
 <svelte:head>
-  <title>Moto Track - Centro de Comando da sua Moto</title>
-  <meta name="description" content="Controle de combustível, manutenção, pneus, documentos e lembretes para a sua moto." />
+  <title>Moto Track — Centro de Comando da sua Moto</title>
+  <meta
+    name="description"
+    content="Controle de combustível, manutenção, pneus, documentos e lembretes para a sua moto."
+  />
 </svelte:head>
 
-<!-- HERO WRAPPER -->
-<div class="min-h-screen flex flex-col relative overflow-hidden bg-[var(--bg)]">
-  <!-- Subtle Background Gradients -->
-  <div class="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-signal/15 blur-[100px] pointer-events-none z-0"></div>
-  <div class="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-moss/15 blur-[100px] pointer-events-none z-0"></div>
-
-  <!-- Navigation -->
-  <header class="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between z-10 relative">
-    <a href="/" class="flex items-center gap-2 transition hover:opacity-80">
-      <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="h-7 sm:h-8 dark:hidden" />
-      <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-7 sm:h-8 hidden dark:block" />
-    </a>
-    <div class="flex items-center gap-4">
-      <a class="text-sm font-semibold hover:text-signal transition" href="/precos">Planos</a>
-      <a class="button-primary shadow-lg shadow-ink/10" href="/auth">Entrar</a>
-    </div>
+<div class="landing">
+  <!-- ── NAV ───────────────────────────────────────────────── -->
+  <header class="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--bg)]/80 backdrop-blur-md">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <a href="/" class="focus-ring rounded transition hover:opacity-70">
+        <img
+          src="/brand/svg/moto-track-logo-horizontal-light.svg"
+          alt="Moto Track"
+          class="h-7 dark:hidden"
+          width="845"
+          height="160"
+        />
+        <img
+          src="/brand/svg/moto-track-logo-horizontal-dark.svg"
+          alt="Moto Track"
+          class="hidden h-7 dark:block"
+          width="845"
+          height="160"
+        />
+      </a>
+      <div class="flex items-center gap-2 sm:gap-6">
+        <a class="nav-link label-tech hidden sm:inline-block" href="/precos">Planos</a>
+        <a class="nav-link label-tech hidden sm:inline-block" href="/roadmap">Roadmap</a>
+        <a class="button-primary" href="/auth">Entrar</a>
+      </div>
+    </nav>
   </header>
 
-  <!-- Hero Section -->
-  <main class="flex-1 flex items-center z-10 relative">
-    <section class="mx-auto grid max-w-7xl items-center gap-16 px-6 py-12 lg:grid-cols-[1.1fr_.9fr]">
-      {#if visible}
-        <div in:fly={{ y: 30, duration: 800, delay: 100 }}>
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--panel)] border border-[var(--line)] text-xs font-semibold uppercase tracking-wider text-signal mb-6 shadow-sm">
-            <span class="w-2 h-2 rounded-full bg-signal animate-pulse"></span>
-            Bem-vindo ao Moto Track
+  <!-- ── HERO ──────────────────────────────────────────────── -->
+  <section class="relative overflow-hidden border-b border-[var(--line)]">
+    <div class="grid-backdrop" aria-hidden="true"></div>
+    <div class="hero-glow" aria-hidden="true"></div>
+
+    <div
+      class="relative mx-auto grid max-w-6xl items-center gap-16 px-6 py-20 lg:grid-cols-[1.05fr_.95fr] lg:py-28"
+    >
+      <div>
+        <p class="reveal label-tech flex items-center gap-3 text-[var(--accent)]" style="--d:0ms">
+          <span class="slash-rule" aria-hidden="true"></span>
+          Centro de comando
+        </p>
+
+        <h1 class="reveal display mt-6 text-6xl sm:text-7xl lg:text-8xl" style="--d:60ms">
+          Toda a vida da<br />sua moto,<br />
+          <span class="text-[var(--accent)]">num só painel.</span>
+        </h1>
+
+        <p class="reveal mt-8 max-w-lg text-lg leading-relaxed text-[var(--muted)]" style="--d:120ms">
+          Hodômetro, custos, revisões, documentos e lembretes num só lugar. Pare de adivinhar quanto
+          a sua moto custa — e saiba exatamente quando ela precisa de você.
+        </p>
+
+        <div class="reveal mt-10 flex flex-wrap items-center gap-3" style="--d:180ms">
+          <a class="button-accent px-7 py-3.5 text-base shadow-brand" href="/auth">
+            Começar de graça
+          </a>
+          <a class="button-secondary px-7 py-3.5 text-base" href="/precos">Ver planos</a>
+        </div>
+
+        <!-- Spec strip — reads like a service manual header. -->
+        <dl
+          class="reveal mt-14 grid max-w-lg grid-cols-3 border-t border-[var(--line)] pt-6"
+          style="--d:240ms"
+        >
+          <div>
+            <dt class="label-tech text-[var(--muted)]">Registros</dt>
+            <dd class="display numeric mt-1 text-3xl">Ilimitados</dd>
           </div>
-          
-          <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black leading-[1.1] tracking-tight text-ink dark:text-white">
-            Seu <span class="text-transparent bg-clip-text bg-gradient-to-r from-signal to-moss">centro de comando</span> sobre duas rodas.
-          </h1>
-          
-          <p class="mt-6 max-w-2xl text-lg sm:text-xl text-[var(--muted)] leading-relaxed">
-            Acompanhe o histórico do hodômetro, custos, lembretes, documentos e revisões em um só lugar. Tenha o controle total da sua moto com um design premium e inteligente.
+          <div class="border-l border-[var(--line)] pl-5">
+            <dt class="label-tech text-[var(--muted)]">Cartão</dt>
+            <dd class="display numeric mt-1 text-3xl">Não pede</dd>
+          </div>
+          <div class="border-l border-[var(--line)] pl-5">
+            <dt class="label-tech text-[var(--muted)]">Offline</dt>
+            <dd class="display numeric mt-1 text-3xl">Funciona</dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- ── INSTRUMENT CLUSTER ──────────────────────────────── -->
+      <div class="reveal" style="--d:300ms">
+        <div class="cluster panel p-6">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-4">
+            <p class="label-tech text-[var(--muted)]">Honda CB 500F</p>
+            <p class="label-tech numeric text-[var(--muted)]">32.418 km</p>
+          </div>
+
+          <!-- Health score, the hero number. -->
+          <div class="grid grid-cols-[1.2fr_1fr] gap-5 pt-6">
+            <div>
+              <p class="label-tech text-[var(--muted)]">Saúde da moto</p>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="display numeric text-7xl leading-none">87</span>
+                <span class="label-tech text-success">Bom</span>
+              </div>
+              <!-- Gauge track -->
+              <div class="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[var(--line)]">
+                <div class="gauge-fill h-full rounded-full bg-[var(--accent)]"></div>
+              </div>
+            </div>
+
+            <div class="border-l border-[var(--line)] pl-5">
+              <p class="label-tech text-[var(--muted)]">Custo / km</p>
+              <p class="display numeric mt-2 text-4xl leading-none">R$0,41</p>
+              <p class="mt-3 text-xs text-[var(--muted)]">Média dos últimos 30 dias</p>
+            </div>
+          </div>
+
+          <!-- Next alert — the one dark surface, like a dash readout. -->
+          <div class="mt-6 overflow-hidden rounded bg-ink p-5 text-paper">
+            <div class="flex items-center gap-2">
+              <span class="slash-rule slash-rule--sm text-[var(--accent)]" aria-hidden="true"></span>
+              <p class="label-tech text-paper/50">Próximo alerta</p>
+            </div>
+            <div class="mt-3 flex items-center gap-3">
+              <Bell class="h-5 w-5 shrink-0 text-[var(--accent)]" />
+              <p class="display text-2xl">Troca de óleo em 340 km</p>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-4">
+            <div class="flex items-center gap-2.5 rounded border border-[var(--line)] px-3 py-2.5">
+              <Shield class="h-4 w-4 shrink-0 text-success" />
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold">IPVA 2026</p>
+                <p class="text-xs text-[var(--muted)]">Pago</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2.5 rounded border border-[var(--line)] px-3 py-2.5">
+              <Gauge class="h-4 w-4 shrink-0 text-[var(--muted)]" />
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold">Pneus</p>
+                <p class="text-xs text-[var(--muted)]">62% de vida</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FEATURES ──────────────────────────────────────────── -->
+  <section class="border-b border-[var(--line)] px-6 py-24">
+    <div class="mx-auto max-w-6xl">
+      <div class="max-w-2xl">
+        <p class="label-tech flex items-center gap-3 text-[var(--accent)]">
+          <span class="slash-rule" aria-hidden="true"></span>
+          O que tem dentro
+        </p>
+        <h2 class="display mt-5 text-5xl sm:text-6xl">Tudo num só lugar</h2>
+        <p class="mt-5 text-lg text-[var(--muted)]">
+          Feito para reduzir custo e manter a moto pronta — no asfalto ou na pista.
+        </p>
+      </div>
+
+      <div class="mt-16 grid gap-px border border-[var(--line)] bg-[var(--line)] sm:grid-cols-2 lg:grid-cols-4">
+        {#each features as f (f.n)}
+          <article class="feature group bg-[var(--bg)] p-7">
+            <div class="flex items-start justify-between">
+              <svelte:component this={f.icon} class="h-6 w-6 text-[var(--accent)]" />
+              <span class="display numeric text-3xl text-[var(--line)] transition-colors group-hover:text-[var(--accent)]">
+                {f.n}
+              </span>
+            </div>
+            <h3 class="display mt-8 text-2xl">{f.title}</h3>
+            <p class="mt-3 text-sm leading-relaxed text-[var(--muted)]">{f.body}</p>
+          </article>
+        {/each}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PRICING ───────────────────────────────────────────── -->
+  <section class="border-b border-[var(--line)] px-6 py-24">
+    <div class="mx-auto max-w-6xl">
+      <div class="max-w-2xl">
+        <p class="label-tech flex items-center gap-3 text-[var(--accent)]">
+          <span class="slash-rule" aria-hidden="true"></span>
+          Planos
+        </p>
+        <h2 class="display mt-5 text-5xl sm:text-6xl">Comece de graça</h2>
+        <p class="mt-5 text-lg text-[var(--muted)]">
+          Sem cartão, sem pegadinha. Suba de plano só quando precisar de mais.
+        </p>
+      </div>
+
+      <div class="mt-16 grid gap-6 md:grid-cols-2">
+        <!-- Free -->
+        <div class="panel flex flex-col p-8">
+          <h3 class="display text-3xl">Free</h3>
+          <p class="mt-2 text-sm text-[var(--muted)]">O essencial para acompanhar uma moto.</p>
+          <div class="my-8">
+            <p class="display numeric text-6xl">R$0</p>
+            <p class="mt-2 text-xs text-[var(--muted)]">Para sempre</p>
+          </div>
+          <ul class="mb-8 flex-1 space-y-3.5">
+            {#each freePlan as item, i (i)}
+              <li class="flex items-start gap-3 text-sm text-[var(--muted)]">
+                <span class="tick" aria-hidden="true"></span>
+                <span>
+                  {#each item as seg, j (j)}
+                    {#if seg.b}<strong class="text-[var(--fg)]">{seg.t}</strong>{:else}{seg.t}{/if}
+                  {/each}
+                </span>
+              </li>
+            {/each}
+          </ul>
+          <a class="button-secondary w-full" href="/auth">Começar grátis</a>
+        </div>
+
+        <!-- Pro — inverted surface, so it out-weighs Free without shouting red. -->
+        <div
+          class="relative flex flex-col overflow-hidden rounded-panel bg-[var(--panel-invert)] p-8 text-paper shadow-lift"
+        >
+          <div class="corner-slashes" aria-hidden="true"></div>
+          <div class="flex items-center justify-between">
+            <h3 class="display text-3xl">Pro</h3>
+            <span class="label-tech rounded-sm bg-[var(--accent-solid)] px-2.5 py-1 text-white">
+              Recomendado
+            </span>
+          </div>
+          <p class="mt-2 text-sm text-paper/60">
+            Sem limites para quem usa a moto como ferramenta.
           </p>
-          
-          <div class="mt-10 flex flex-wrap gap-4 items-center">
-            <a class="button-primary text-base px-8 py-3.5 shadow-xl shadow-ink/20 hover:shadow-ink/40 hover:-translate-y-1 transition-all duration-300" href="/auth">
-              Começar Agora
-            </a>
-            <a class="button-secondary text-base px-8 py-3.5 hover:bg-[var(--line)]/30 transition-all duration-300" href="/precos">
-              Ver Planos
-            </a>
+          <!-- Live from Stripe. Falls back to a placeholder rather than a made-up
+               number if Stripe is unconfigured or unreachable. -->
+          <div class="my-8">
+            {#if data.pricing.monthly}
+              <p class="display numeric text-6xl text-[var(--accent)]">
+                {data.pricing.monthly.formatted}
+              </p>
+              <p class="mt-2 text-xs text-paper/50">
+                por mês
+                {#if data.pricing.yearly}&middot; ou {data.pricing.yearly.formatted} por ano{/if}
+              </p>
+            {:else}
+              <p class="display numeric text-6xl text-[var(--accent)]">R$&nbsp;—</p>
+              <p class="mt-2 text-xs text-paper/50">Preço confirmado no checkout</p>
+            {/if}
           </div>
-          
-          <!-- Features ticker -->
-          <div class="mt-12 flex flex-wrap items-center gap-6 text-sm font-medium text-[var(--muted)] border-t border-[var(--line)] pt-6">
-            <span class="flex items-center gap-2"><Droplet class="w-4 h-4 text-signal" /> Combustível</span>
-            <span class="flex items-center gap-2"><Wrench class="w-4 h-4 text-signal" /> Manutenção</span>
-            <span class="flex items-center gap-2"><CheckCircle2 class="w-4 h-4 text-signal" /> Pneus</span>
-          </div>
+          <ul class="mb-8 flex-1 space-y-3.5">
+            {#each proPlan as item, i (i)}
+              <li class="flex items-start gap-3 text-sm text-paper/80">
+                <span class="tick tick--accent" aria-hidden="true"></span>
+                <span>
+                  {#each item as seg, j (j)}
+                    {#if seg.b}<strong class="text-paper">{seg.t}</strong>{:else}{seg.t}{/if}
+                  {/each}
+                </span>
+              </li>
+            {/each}
+          </ul>
+          <a class="button-accent w-full" href="/precos">Assinar Pro</a>
         </div>
-        
-        <!-- Interactive Cards -->
-        <div class="relative grid gap-6" in:fly={{ x: 30, duration: 800, delay: 300 }}>
-          <!-- Main Card -->
-          <div class="panel p-8 relative overflow-hidden group hover:border-signal/50 transition-colors duration-500">
-            <div class="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-signal/10 to-transparent rounded-bl-full -z-10 group-hover:scale-125 transition-transform duration-700"></div>
-            
-            <div class="grid grid-cols-2 gap-6 relative z-10">
-              <div class="rounded-xl border border-[var(--line)] p-5 bg-[var(--bg)]/60 backdrop-blur-md group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-300">
-                <p class="text-sm font-medium text-[var(--muted)]">Saúde da Moto</p>
-                <div class="mt-3 flex items-end gap-2">
-                  <p class="text-5xl font-black text-ink dark:text-white">87</p>
-                  <p class="text-sm font-bold text-moss mb-1">Bom</p>
-                </div>
-              </div>
-              
-              <div class="rounded-xl border border-[var(--line)] p-5 bg-[var(--bg)]/60 backdrop-blur-md group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-300">
-                <p class="text-sm font-medium text-[var(--muted)]">Custo/km</p>
-                <div class="mt-3 flex items-end gap-2">
-                  <p class="text-4xl font-black text-ink dark:text-white">R$0,41</p>
-                </div>
-              </div>
-            </div>
-            
-            <div class="mt-6 rounded-xl bg-gradient-to-br from-ink to-asphalt p-6 text-white shadow-xl relative overflow-hidden group-hover:-translate-y-1 transition-transform duration-300 border border-white/10">
-              <div class="absolute -right-4 -top-4 opacity-10 group-hover:rotate-12 transition-transform duration-700">
-                 <!-- abstract shape -->
-                 <svg width="120" height="120" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="white" stroke-width="10" stroke-dasharray="20 10"/></svg>
-              </div>
-              <p class="text-sm font-medium text-white/70 relative z-10">Próximo Alerta</p>
-              <div class="mt-2 flex items-center gap-3 relative z-10">
-                <div class="p-2 bg-signal/20 rounded-lg text-signal backdrop-blur-sm">
-                  <Bell class="w-5 h-5" />
-                </div>
-                <p class="text-xl font-bold">Troca de óleo em 340 km</p>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Decorative Floating Card -->
-          <div class="absolute -bottom-6 -left-6 sm:-left-10 panel p-4 flex items-center gap-4 bg-[var(--panel)] shadow-2xl rounded-xl border border-[var(--line)] hover:border-moss/40 transition-colors animate-bounce" style="animation-duration: 4s;">
-             <div class="w-10 h-10 rounded-full bg-moss/10 flex items-center justify-center text-moss">
-               <Shield class="w-5 h-5" />
-             </div>
-             <div>
-               <p class="text-sm font-bold text-ink dark:text-white">IPVA 2024</p>
-               <p class="text-xs text-[var(--muted)]">Pago ontem</p>
-             </div>
-          </div>
-        </div>
-      {/if}
-    </section>
-  </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ───────────────────────────────────────────────── -->
+  <section class="relative overflow-hidden bg-ink px-6 py-28 text-paper">
+    <div class="cta-slashes" aria-hidden="true"></div>
+    <div class="relative mx-auto max-w-3xl text-center">
+      <h2 class="display text-6xl sm:text-7xl">Pronto para acelerar?</h2>
+      <p class="mx-auto mt-6 max-w-xl text-lg text-paper/60">
+        Larga a planilha e o caderno. O Moto Track guarda a saúde, o custo e o histórico da sua
+        companheira de estrada.
+      </p>
+      <a class="button-accent mx-auto mt-10 px-8 py-4 text-base shadow-brand" href="/auth">
+        Criar conta agora
+        <ArrowRight class="h-4 w-4" />
+      </a>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ────────────────────────────────────────────── -->
+  <footer class="border-t border-[var(--line)] px-6 py-8">
+    <div
+      class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row"
+    >
+      <div class="flex items-center gap-3">
+        <img
+          src="/brand/svg/moto-track-logo-horizontal-light.svg"
+          alt="Moto Track"
+          class="h-5 opacity-40 dark:hidden"
+        />
+        <img
+          src="/brand/svg/moto-track-logo-horizontal-dark.svg"
+          alt="Moto Track"
+          class="hidden h-5 opacity-40 dark:block"
+        />
+        <span class="border-l border-[var(--line)] pl-3 text-sm text-[var(--muted)]">
+          © {new Date().getFullYear()}
+        </span>
+      </div>
+      <div class="flex items-center gap-5 text-sm text-[var(--muted)]">
+        <a href="/termos" class="nav-link">Termos</a>
+        <a href="/politica" class="nav-link">Privacidade</a>
+        <a href="/lgpd" class="nav-link">LGPD</a>
+      </div>
+    </div>
+  </footer>
 </div>
 
-<!-- FEATURES SECTION -->
-<section class="py-24 px-6 relative bg-[var(--panel)] border-t border-[var(--line)]">
-  <div class="max-w-7xl mx-auto">
-    <div class="text-center max-w-2xl mx-auto mb-16">
-      <h2 class="text-4xl font-black mb-4">Tudo o que você precisa em um só lugar</h2>
-      <p class="text-lg text-[var(--muted)]">Ferramentas projetadas para reduzir custos e manter sua moto sempre pronta para a pista ou para o asfalto.</p>
-    </div>
-    
-    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-      <div class="panel p-6 hover:-translate-y-2 transition-transform duration-300">
-        <div class="w-12 h-12 rounded-xl bg-signal/10 flex items-center justify-center text-signal mb-6">
-          <Droplet class="w-6 h-6" />
-        </div>
-        <h3 class="text-xl font-bold mb-2">Custos & Combustível</h3>
-        <p class="text-[var(--muted)] text-sm leading-relaxed">Acompanhe cada abastecimento, visualize seu custo por KM e faça upload de recibos (com OCR em breve) com facilidade.</p>
-      </div>
+<style>
+  /* Red hairline that hovers up from under a nav link. */
+  .nav-link {
+    position: relative;
+    transition: color 0.2s;
+  }
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -4px;
+    width: 100%;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s ease;
+  }
+  .nav-link:hover {
+    color: var(--accent);
+  }
+  .nav-link:hover::after {
+    transform: scaleX(1);
+  }
 
-      <div class="panel p-6 hover:-translate-y-2 transition-transform duration-300">
-        <div class="w-12 h-12 rounded-xl bg-moss/10 flex items-center justify-center text-moss mb-6">
-          <Wrench class="w-6 h-6" />
-        </div>
-        <h3 class="text-xl font-bold mb-2">Manutenção</h3>
-        <p class="text-[var(--muted)] text-sm leading-relaxed">Registre peças, serviços e desgaste dos pneus. Crie um histórico detalhado que agrega valor real na hora da revenda.</p>
-      </div>
+  /* The logo's speed-mark, rebuilt as a rule. */
+  .slash-rule {
+    display: inline-block;
+    width: 26px;
+    height: 10px;
+    background: repeating-linear-gradient(
+      100deg,
+      currentColor 0 3px,
+      transparent 3px 7px
+    );
+  }
+  .slash-rule--sm {
+    width: 16px;
+    height: 8px;
+  }
 
-      <div class="panel p-6 hover:-translate-y-2 transition-transform duration-300">
-        <div class="w-12 h-12 rounded-xl bg-danger/10 flex items-center justify-center text-danger mb-6">
-          <Bell class="w-6 h-6" />
-        </div>
-        <h3 class="text-xl font-bold mb-2">Lembretes</h3>
-        <p class="text-[var(--muted)] text-sm leading-relaxed">Nunca mais esqueça uma troca de óleo ou IPVA. Configure lembretes baseados em quilometragem atual ou datas específicas.</p>
-      </div>
+  /* Blueprint grid — replaces the blurred-blob background. */
+  .grid-backdrop {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, var(--line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+    background-size: 72px 72px;
+    opacity: 0.5;
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+    pointer-events: none;
+  }
 
-      <div class="panel p-6 hover:-translate-y-2 transition-transform duration-300">
-        <div class="w-12 h-12 rounded-xl bg-steel/10 flex items-center justify-center text-steel mb-6">
-          <Briefcase class="w-6 h-6" />
-        </div>
-        <h3 class="text-xl font-bold mb-2">Uso Profissional</h3>
-        <p class="text-[var(--muted)] text-sm leading-relaxed">Registra turnos de trabalho, receita diária e custos. Perfeito para motoboys que querem saber a lucratividade real do dia.</p>
-      </div>
-    </div>
-  </div>
-</section>
+  /* A single warm red bloom, like a tail light. */
+  .hero-glow {
+    position: absolute;
+    top: -30%;
+    right: -10%;
+    width: 55%;
+    height: 90%;
+    background: radial-gradient(circle, var(--accent-soft) 0%, transparent 65%);
+    pointer-events: none;
+  }
 
-<!-- PRICING SECTION -->
-<section class="py-24 px-6 bg-[var(--bg)]">
-  <div class="max-w-7xl mx-auto">
-    <div class="text-center max-w-2xl mx-auto mb-16">
-      <h2 class="text-4xl font-black mb-4">Escolha o seu plano</h2>
-      <p class="text-lg text-[var(--muted)]">Planos acessíveis e sem surpresas. Comece de graça e faça o upgrade quando precisar de mais potência.</p>
-    </div>
-    
-    <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-      <!-- Free Plan -->
-      <div class="panel p-8 flex flex-col hover:border-[var(--muted)] transition-colors">
-        <h3 class="text-2xl font-black mb-2">Free</h3>
-        <p class="text-[var(--muted)] text-sm h-10">Essencial para acompanhar uma moto sem custo.</p>
-        <div class="my-6">
-          <span class="text-5xl font-black">R$0</span>
-        </div>
-        <ul class="space-y-4 mb-8 flex-1">
-          <li class="flex items-start gap-3 text-[var(--muted)] text-sm">
-            <CheckCircle2 class="w-5 h-5 text-moss shrink-0" />
-            <span>Gestão de <strong>1 moto ativa</strong></span>
-          </li>
-          <li class="flex items-start gap-3 text-[var(--muted)] text-sm">
-            <CheckCircle2 class="w-5 h-5 text-moss shrink-0" />
-            <span>Até 3 uploads de recibos/fotos</span>
-          </li>
-          <li class="flex items-start gap-3 text-[var(--muted)] text-sm">
-            <CheckCircle2 class="w-5 h-5 text-moss shrink-0" />
-            <span>3 lembretes ativos simultâneos</span>
-          </li>
-          <li class="flex items-start gap-3 text-[var(--muted)] text-sm">
-            <CheckCircle2 class="w-5 h-5 text-moss shrink-0" />
-            <span>3 turnos profissionais por mês</span>
-          </li>
-        </ul>
-        <a class="button-secondary w-full" href="/auth">Começar Grátis</a>
-      </div>
+  .corner-slashes,
+  .cta-slashes {
+    position: absolute;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      100deg,
+      var(--accent) 0 6px,
+      transparent 6px 16px
+    );
+  }
+  .corner-slashes {
+    top: -10px;
+    right: -30px;
+    width: 160px;
+    height: 90px;
+    opacity: 0.18;
+  }
+  .cta-slashes {
+    top: 0;
+    right: 0;
+    width: 40%;
+    height: 100%;
+    opacity: 0.07;
+  }
 
-      <!-- Pro Plan -->
-      <div class="panel p-8 flex flex-col border-signal shadow-2xl relative overflow-hidden">
-        <div class="absolute top-0 right-0 bg-signal text-ink font-bold text-xs uppercase tracking-wider px-3 py-1 rounded-bl-lg">
-          Recomendado
-        </div>
-        <h3 class="text-2xl font-black mb-2 flex items-center gap-2">Pro <span class="flex h-3 w-3"><span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-signal opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-signal"></span></span></h3>
-        <p class="text-[var(--muted)] text-sm h-10">Sem limites para quem usa a moto como ferramenta principal.</p>
-        <div class="my-6">
-          <span class="text-5xl font-black text-signal">Stripe</span>
-        </div>
-        <ul class="space-y-4 mb-8 flex-1">
-          <li class="flex items-start gap-3 text-sm font-medium">
-            <CheckCircle2 class="w-5 h-5 text-signal shrink-0" />
-            <span><strong>Motos ilimitadas</strong> na garagem</span>
-          </li>
-          <li class="flex items-start gap-3 text-sm font-medium">
-            <CheckCircle2 class="w-5 h-5 text-signal shrink-0" />
-            <span><strong>Uploads e anexos ilimitados</strong></span>
-          </li>
-          <li class="flex items-start gap-3 text-sm font-medium">
-            <CheckCircle2 class="w-5 h-5 text-signal shrink-0" />
-            <span><strong>Lembretes ilimitados</strong></span>
-          </li>
-          <li class="flex items-start gap-3 text-sm font-medium">
-            <CheckCircle2 class="w-5 h-5 text-signal shrink-0" />
-            <span><strong>Turnos ilimitados</strong> para profissionais</span>
-          </li>
-          <li class="flex items-start gap-3 text-sm font-medium">
-            <CheckCircle2 class="w-5 h-5 text-signal shrink-0" />
-            <span>Relatórios avançados de venda com selo Pro</span>
-          </li>
-        </ul>
-        <a class="button-primary w-full bg-signal text-ink hover:bg-signal/80" href="/precos">Assinar Pro</a>
-      </div>
-    </div>
-  </div>
-</section>
+  /* Neutral ticks, not green — green next to brand red reads as Christmas. */
+  .tick {
+    margin-top: 0.4rem;
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    background: var(--muted);
+    transform: skewX(-24deg);
+  }
+  .tick--accent {
+    background: var(--accent);
+  }
 
-<!-- CTA FOOTER -->
-<section class="py-24 px-6 relative bg-ink text-white overflow-hidden">
-  <div class="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-moss/20 to-transparent pointer-events-none"></div>
-  <div class="max-w-4xl mx-auto text-center relative z-10">
-    <FileText class="w-16 h-16 text-signal mx-auto mb-6 opacity-80" />
-    <h2 class="text-5xl font-black mb-6">Pronto para acelerar?</h2>
-    <p class="text-xl text-white/70 mb-10 max-w-2xl mx-auto">
-      Abandone as planilhas e o caderno. O Moto Track é o hub definitivo para a saúde, custos e histórico da sua companheira de estrada.
-    </p>
-    <a class="inline-flex items-center gap-3 bg-white text-ink px-8 py-4 rounded-md font-bold text-lg hover:-translate-y-1 hover:shadow-2xl hover:shadow-white/20 transition-all duration-300" href="/auth">
-      Criar Conta Agora
-      <ArrowRight class="w-5 h-5" />
-    </a>
-  </div>
-</section>
+  .feature {
+    transition: background-color 0.25s;
+  }
+  .feature:hover {
+    background: var(--panel);
+  }
 
-<!-- FOOTER -->
-<footer class="py-8 px-6 bg-[var(--bg)] border-t border-[var(--line)] text-center text-sm text-[var(--muted)]">
-  <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-    <div class="flex items-center gap-2">
-      <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="h-5 opacity-50 dark:hidden" />
-      <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-5 opacity-50 hidden dark:block" />
-      <span class="ml-2 border-l border-[var(--line)] pl-2">&copy; {new Date().getFullYear()}</span>
-    </div>
-    <div class="flex items-center gap-4">
-      <a href="/termos" class="hover:text-ink dark:hover:text-white transition">Termos</a>
-      <a href="/politica" class="hover:text-ink dark:hover:text-white transition">Privacidade</a>
-    </div>
-  </div>
-</footer>
+  .cluster {
+    box-shadow: 0 24px 60px -20px rgb(var(--shadow-color) / 0.25);
+  }
+
+  /* Load-in: CSS-driven so content is in the HTML for crawlers and LCP. */
+  .reveal {
+    animation: reveal 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--d, 0ms);
+  }
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .gauge-fill {
+    width: 87%;
+    animation: gauge 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
+  }
+  @keyframes gauge {
+    from {
+      width: 0%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal,
+    .gauge-fill {
+      animation: none;
+    }
+  }
+</style>

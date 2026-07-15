@@ -21,6 +21,8 @@
     "worker:deploy": "wrangler deploy -c workers/reminders/wrangler.toml"
   },
   "dependencies": {
+    "@fontsource/barlow": "^5.2.8",
+    "@fontsource/barlow-condensed": "^5.2.8",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.53.0",
     "@sveltejs/adapter-cloudflare": "^7.0.5",

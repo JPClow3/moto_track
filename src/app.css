@@ -1,38 +1,79 @@
+/* Brand typography — Barlow: a grotesk drawn from roadway signage and vehicle
+   design. The condensed cut echoes the angular speed-mark in the logo. */
+@import "@fontsource/barlow/400.css";
+@import "@fontsource/barlow/500.css";
+@import "@fontsource/barlow/600.css";
+@import "@fontsource/barlow/700.css";
+@import "@fontsource/barlow-condensed/600.css";
+@import "@fontsource/barlow-condensed/700.css";
+@import "@fontsource/barlow-condensed/800.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* The palette is taken directly from the logo, which uses exactly three
+   colours: #DC2626 (red-600), #18181B (zinc-900) and #FAFAFA (zinc-50).
+   Neutrals are cool zinc — warm creams turn the red terracotta. */
 :root {
   color-scheme: light;
-  --bg: #f8f6f0;
-  --fg: #18211f;
-  --muted: #69736f;
-  --line: #ddd8cc;
-  --panel: #fffdf8;
-  --accent: #e6b325;
+  --bg: #fafafa;
+  --fg: #18181b;
+  --muted: #71717a;
+  --line: #e4e4e7;
+  --panel: #ffffff;
+  /* --accent is red as TEXT/marks, drawn on --bg.
+     --accent-solid is red as a FILL, with white text on top. The two cannot be
+     the same value: a red light enough to read on near-black is too light to
+     carry white text (3.76:1). Keep the fill at red-600 in both themes — white
+     on red-600 is 4.83:1, which clears AA. */
+  --accent: #dc2626;
+  --accent-hover: #b91c1c;
+  --accent-solid: #dc2626;
+  --accent-solid-hover: #b91c1c;
+  --accent-contrast: #ffffff;
+  /* Red at low alpha, for tints that sit on any surface. */
+  --accent-soft: rgba(220, 38, 38, 0.08);
+  --accent-ring: rgba(220, 38, 38, 0.25);
+  --shadow-color: 24 24 27;
+  /* A surface that contrasts against --panel in BOTH themes, for the one card
+     that needs to out-weigh its neighbour. Dark-on-light here. */
+  --panel-invert: #18181b;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #151817;
-  --fg: #f4f1e8;
-  --muted: #a8b0aa;
-  --line: #333a36;
-  --panel: #1f2422;
-  --accent: #f0bf37;
+  --bg: #09090b;
+  --fg: #fafafa;
+  --muted: #a1a1aa;
+  --line: #27272a;
+  --panel: #18181b;
+  /* red-500 rather than red-600: red-600 loses contrast against near-black.
+     The fill stays at red-600 — see the note in :root. */
+  --accent: #ef4444;
+  --accent-hover: #f87171;
+  --accent-solid: #dc2626;
+  --accent-solid-hover: #b91c1c;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(239, 68, 68, 0.12);
+  --accent-ring: rgba(239, 68, 68, 0.35);
+  --shadow-color: 0 0 0;
+  /* --panel is already #18181b in dark, so the inverted card lifts *up* to
+     zinc-800 instead — otherwise it is indistinguishable from a normal panel. */
+  --panel-invert: #27272a;
 }
 
 html {
   background: var(--bg);
   color: var(--fg);
   font-family:
-    Inter,
+    Barlow,
     ui-sans-serif,
     system-ui,
     -apple-system,
-    BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
@@ -44,42 +85,108 @@ a {
   color: inherit;
 }
 
+/* Display face for headings — condensed, tight, uppercase-friendly. */
+.display {
+  font-family: "Barlow Condensed", Barlow, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+}
+
+/* Small technical label — the "instrument cluster" voice. */
+.label-tech {
+  font-family: "Barlow Condensed", Barlow, ui-sans-serif, sans-serif;
+  @apply text-xs font-semibold uppercase;
+  letter-spacing: 0.14em;
+}
+
+/* Tabular figures so metrics don't jitter as values change. */
+.numeric {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
 .focus-ring {
-  @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal;
+  @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
+  outline-color: var(--accent);
 }
 
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 14px 40px rgba(24, 33, 31, 0.08);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgb(var(--shadow-color) / 0.04);
 }
 
 .field {
-  @apply w-full rounded-md border px-3 py-2 text-sm outline-none transition;
+  @apply w-full rounded px-3 py-2 text-sm outline-none transition;
   background: var(--panel);
-  border-color: var(--line);
+  border: 1px solid var(--line);
 }
 
 .field:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(230, 179, 37, 0.18);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 .button {
-  @apply focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition;
+  @apply focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded px-4 py-2 text-sm font-semibold transition;
 }
 
+/* Primary stays graphite. Red is reserved as an accent, which is what keeps
+   a filled red button legible as "destructive" further down.
+   Colour must invert with the surface: --fg is near-white in dark mode, so a
+   hardcoded white label would vanish. */
 .button-primary {
-  @apply button bg-ink text-white hover:bg-asphalt;
+  @apply button;
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.button-primary:hover {
+  background: var(--accent-solid);
+  color: var(--accent-contrast);
 }
 
 .button-secondary {
-  @apply button border;
-  border-color: var(--line);
+  @apply button;
+  border: 1px solid var(--line);
   background: var(--panel);
 }
 
+.button-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* The one place red is a filled surface on the marketing side. */
+.button-accent {
+  @apply button;
+  background: var(--accent-solid);
+  color: var(--accent-contrast);
+}
+
+.button-accent:hover {
+  background: var(--accent-solid-hover);
+}
+
 .button-danger {
-  @apply button bg-danger text-white hover:brightness-95;
+  @apply button;
+  background: var(--accent-solid);
+  color: var(--accent-contrast);
+}
+
+.button-danger:hover {
+  background: var(--accent-solid-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
