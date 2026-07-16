@@ -1,5 +1,12 @@
 <script lang="ts">
-  import { ArrowRight, Check, CircleDashed, Compass, Wrench } from "lucide-svelte";
+  import { onMount } from "svelte";
+  import {
+    ArrowRight,
+    Check,
+    CircleDashed,
+    Compass,
+    Wrench,
+  } from "lucide-svelte";
 
   type Status = "done" | "next" | "planned" | "exploring";
 
@@ -26,11 +33,11 @@
       items: [
         {
           title: "Garagem",
-          body: "Cadastro de motos, odômetro, perfil de uso e templates de fábrica com especificações pré-preenchidas.",
+          body: "Cadastro de motos, odômetro atual e ficha básica de pneus e manual por moto.",
         },
         {
           title: "Abastecimento e consumo",
-          body: "Litros, preço, tipo de combustível, custo por km real e alerta quando o consumo foge da faixa.",
+          body: "Litros, preço, tipo de combustível e custo por km calculado a partir do histórico.",
         },
         {
           title: "OCR de comprovante",
@@ -42,39 +49,55 @@
         },
         {
           title: "Manutenção",
-          body: "Revisões, peças, planos por km ou data e fotos de antes e depois em cada serviço.",
+          body: "Revisões, peças, planos por km ou data e lembretes vinculados aos serviços.",
         },
         {
           title: "Pneus",
-          body: "Dianteiro e traseiro, desgaste percentual, calibragem e estimativa de quando trocar.",
+          body: "Histórico de instalação, desgaste informado, catálogo e registros de calibragem.",
         },
         {
           title: "Documentos",
-          body: "CRLV, seguro, manual e notas fiscais anexados, com controle de validade.",
+          body: "CRLV, seguro, manual e notas fiscais com arquivo anexado e controle de validade.",
         },
         {
-          title: "Lembretes e alertas",
-          body: "Notificações por km rodado, data ou intervalo — incluindo push no celular.",
+          title: "Despesas, IPVA e seguro",
+          body: "Taxas anuais, apólices e sinistros no mesmo lugar do resto do custo da moto.",
+        },
+        {
+          title: "Lembretes por km e data",
+          body: "Vencimento por km rodado, data ou intervalo, com aviso por e-mail quando chega a hora.",
         },
         {
           title: "Relatórios e linha do tempo",
-          body: "Resumo de custos, tendência de consumo, distribuição de gastos e histórico de eventos.",
+          body: "Linha do tempo filtrável e resumo de custos e consumo registrados.",
         },
         {
           title: "Relatório de venda compartilhável",
-          body: "Link público com o histórico completo da moto para mostrar ao comprador, com selo Pro.",
+          body: "Link público, temporário e revogável com o histórico da moto para mostrar ao comprador.",
         },
         {
           title: "Uso profissional",
-          body: "Turnos, receita e custo por dia para quem tira o sustento da moto.",
+          body: "Turnos, receita, custos e rentabilidade calculada para quem trabalha com a moto.",
+        },
+        {
+          title: "Exportação em CSV",
+          body: "Qualquer módulo — abastecimento, manutenção, pneus, despesas — sai em planilha num clique.",
         },
         {
           title: "API v1 (leitura)",
-          body: "Endpoints REST por token para abastecimentos, manutenções, pneus, lembretes, documentos e despesas.",
+          body: "Endpoints REST autenticados pela sessão para abastecimentos, manutenções, pneus, lembretes, documentos e despesas.",
         },
         {
-          title: "Instalável e offline",
-          body: "PWA instalável no celular, com as telas já visitadas disponíveis sem conexão.",
+          title: "Guias e comunidade",
+          body: "Artigos sobre manutenção e custo, com comentários e reações de quem já passou pelo problema.",
+        },
+        {
+          title: "Assinatura Pro",
+          body: "Checkout Pro, portal Stripe e atualização automática do status da assinatura.",
+        },
+        {
+          title: "Conta e pedidos de dados",
+          body: "Consulte o plano e solicite a exportação ou exclusão dos seus dados pela própria tela.",
         },
       ],
     },
@@ -86,12 +109,32 @@
       icon: Wrench,
       items: [
         {
+          title: "PWA instalável no celular",
+          body: "Registrar o service worker para instalar o Moto Track na tela inicial e abri-lo como aplicativo.",
+        },
+        {
+          title: "Telas disponíveis sem conexão",
+          body: "Guardar as páginas já visitadas no dispositivo para consultar a garagem no subsolo da oficina, sem sinal.",
+        },
+        {
           title: "Fila offline com sincronização em background",
-          body: "Registrar abastecimento e odômetro sem sinal: o service worker guarda no dispositivo e envia quando a conexão volta.",
+          body: "Registrar abastecimento e odômetro sem sinal: o app guarda no dispositivo e envia quando a conexão volta.",
+        },
+        {
+          title: "Push no celular",
+          body: "Receber o lembrete como notificação do sistema, além do e-mail que já sai hoje.",
+        },
+        {
+          title: "Conclusão dos pedidos LGPD",
+          body: "Gerar a exportação solicitada e executar a exclusão da conta com acompanhamento do pedido.",
+        },
+        {
+          title: "Tokens de API",
+          body: "Gerar e revogar tokens pessoais para consumir a API de fora do navegador, sem depender da sessão.",
         },
         {
           title: "API v1 (escrita)",
-          body: "POST e PATCH para criar e atualizar registros via token, além da leitura que já existe.",
+          body: "POST e PATCH para criar e atualizar registros, além da leitura que já existe.",
         },
       ],
     },
@@ -114,6 +157,22 @@
           title: "Alertas de anomalia no contexto",
           body: "Marcar o aviso direto na lista de abastecimentos quando consumo ou preço saírem da faixa.",
         },
+        {
+          title: "Ficha técnica pré-preenchida por modelo",
+          body: "Escolher a moto num catálogo e já vir com óleo, pneu, torque e intervalo de revisão de fábrica preenchidos.",
+        },
+        {
+          title: "Troca de pneu estimada sozinha",
+          body: "Calcular a quilometragem restante a partir do desgaste registrado e do seu ritmo, em vez de você digitar o palpite.",
+        },
+        {
+          title: "Custo total de propriedade",
+          body: "Somar compra, depreciação, combustível, manutenção e taxas para dizer quanto a moto custa por km de verdade.",
+        },
+        {
+          title: "Acesso de leitura para a oficina",
+          body: "Link temporário com o histórico de manutenção para o mecânico consultar sem precisar de conta.",
+        },
       ],
     },
     {
@@ -131,6 +190,14 @@
           title: "Integração com marketplace de peças",
           body: "Ligar a peça do plano de manutenção a onde comprar, com preço comparado.",
         },
+        {
+          title: "Odômetro por foto",
+          body: "Fotografar o painel e deixar o app ler a quilometragem, do mesmo jeito que já faz com o cupom do posto.",
+        },
+        {
+          title: "Comparação anônima por modelo",
+          body: "Saber se o seu consumo e o seu custo de manutenção estão dentro do normal para quem tem a mesma moto.",
+        },
       ],
     },
   ];
@@ -141,6 +208,84 @@
     planned: "bg-[var(--muted)]",
     exploring: "bg-[var(--line)] ring-1 ring-[var(--muted)]",
   };
+
+  const doneCount = groups.find((group) => group.status === "done")!.items
+    .length;
+  const totalCount = groups.reduce(
+    (total, group) => total + group.items.length,
+    0,
+  );
+  const targetPct = Math.round((doneCount / totalCount) * 100);
+
+  // Drives the fill width and the numeral together, so they can never disagree.
+  // Deliberately starts at 0 on the server too: resetting a server-rendered
+  // targetPct back to 0 at hydration flashed the final number for ~180ms and
+  // then snapped backwards. The honest figure is still in the static HTML —
+  // the caption spells it out and aria-valuetext carries it — so a reader
+  // without JS is told the truth in words even while the dial reads empty.
+  let shownPct = 0;
+  let gaugeEl: HTMLDivElement;
+
+  onMount(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      shownPct = targetPct;
+      return;
+    }
+
+    let frame = 0;
+    let started = false;
+
+    const run = () => {
+      if (started) return;
+      started = true;
+      let start = 0;
+      const duration = 1400;
+      const tick = (now: number) => {
+        // Seed the clock from the first frame's own timestamp. rAF reports when
+        // the frame began, which can predate a performance.now() taken here —
+        // that made t negative and briefly rendered "-2%".
+        if (!start) start = now;
+        const t = Math.min(Math.max((now - start) / duration, 0), 1);
+        const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+        shownPct = Math.round(targetPct * eased);
+        if (t < 1) frame = requestAnimationFrame(tick);
+      };
+      frame = requestAnimationFrame(tick);
+    };
+
+    // Hold at 0 until the gauge is actually on screen — the sweep is the whole
+    // point, and it is wasted if it runs before anyone is looking.
+    const observer =
+      typeof IntersectionObserver === "function"
+        ? new IntersectionObserver(
+            (entries) => {
+              if (!entries.some((entry) => entry.isIntersecting)) return;
+              observer?.disconnect();
+              run();
+            },
+            { threshold: 0.6 },
+          )
+        : null;
+    observer?.observe(gaugeEl);
+
+    // Never let a missing or misbehaving observer strand the gauge at 0% —
+    // being stuck there misreports the roadmap. If it has not fired by now and
+    // the gauge is on screen anyway, sweep regardless.
+    const fallback = setTimeout(() => {
+      if (started) return;
+      const box = gaugeEl.getBoundingClientRect();
+      if (box.top < window.innerHeight && box.bottom > 0) {
+        observer?.disconnect();
+        run();
+      }
+    }, 500);
+
+    return () => {
+      observer?.disconnect();
+      clearTimeout(fallback);
+      cancelAnimationFrame(frame);
+    };
+  });
 </script>
 
 <svelte:head>
@@ -162,11 +307,13 @@
       Transparência
     </p>
     <h1 class="display mt-5 max-w-3xl text-5xl sm:text-6xl lg:text-7xl">
-      O que está pronto,<br /><span class="text-[var(--accent)]">e o que vem depois.</span>
+      O que está pronto,<br /><span class="text-[var(--accent)]"
+        >e o que vem depois.</span
+      >
     </h1>
     <p class="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted)]">
-      Sem data prometida e sem funcionalidade fantasma. Esta página é o estado real do produto,
-      atualizada à mão pela equipe.
+      Sem data prometida e sem funcionalidade fantasma. Esta página é o estado
+      real do produto, atualizada à mão pela equipe.
     </p>
 
     <!-- Count strip — same idiom as the landing hero's spec strip. -->
@@ -176,20 +323,50 @@
       {#each groups as group (group.status)}
         <div class="cell pr-5">
           <dt class="label-tech flex items-center gap-2 text-[var(--muted)]">
-            <span class="h-1.5 w-1.5 rounded-full {dotClass[group.status]}" aria-hidden="true"></span>
+            <span
+              class="h-1.5 w-1.5 rounded-full {dotClass[group.status]}"
+              aria-hidden="true"
+            ></span>
             {group.label}
           </dt>
           <dd class="display numeric mt-1 text-4xl">{group.items.length}</dd>
         </div>
       {/each}
     </dl>
+
+    <!-- Overall completion, read as a fuel/service gauge rather than a web bar. -->
+    <div class="gauge mt-10 max-w-2xl" bind:this={gaugeEl}>
+      <div class="flex items-baseline justify-between gap-4">
+        <p class="label-tech text-[var(--muted)]">Entregue</p>
+        <p class="display numeric text-4xl tabular-nums" aria-hidden="true">
+          {shownPct}%
+        </p>
+      </div>
+      <div
+        class="track mt-3"
+        role="progressbar"
+        aria-valuenow={targetPct}
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuetext="{targetPct}% do roadmap entregue"
+        aria-label="Progresso geral do roadmap"
+      >
+        <div class="fill" style="width: {shownPct}%"></div>
+        <div class="ticks" aria-hidden="true"></div>
+      </div>
+      <p class="mt-2.5 text-sm text-[var(--muted)]">
+        {doneCount} dos {totalCount} itens deste roadmap já estão no ar.
+      </p>
+    </div>
   </div>
 </section>
 
 <!-- ── GROUPS ──────────────────────────────────────────────── -->
 {#each groups as group (group.status)}
   <section class="border-b border-[var(--line)] px-6 py-16">
-    <div class="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[18rem_1fr] lg:gap-16">
+    <div
+      class="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[18rem_1fr] lg:gap-16"
+    >
       <!-- Sticky section identity, so the status stays visible while the list scrolls. -->
       <div class="lg:sticky lg:top-24 lg:self-start">
         <p class="eyebrow">
@@ -197,7 +374,9 @@
           {group.label}
         </p>
         <h2 class="display mt-4 text-4xl">{group.heading}</h2>
-        <p class="mt-3 text-sm leading-relaxed text-[var(--muted)]">{group.blurb}</p>
+        <p class="mt-3 text-sm leading-relaxed text-[var(--muted)]">
+          {group.blurb}
+        </p>
         <p class="label-tech numeric mt-5 text-[var(--muted)]">
           {group.items.length}
           {group.items.length === 1 ? "item" : "itens"}
@@ -215,13 +394,18 @@
               {#if group.status === "done"}
                 <Check class="h-3.5 w-3.5 text-success" />
               {:else}
-                <span class="h-2 w-2 rounded-full {dotClass[group.status]}"></span>
+                <span class="h-2 w-2 rounded-full {dotClass[group.status]}"
+                ></span>
               {/if}
             </span>
-            <h3 class="display text-xl transition-colors group-hover:text-[var(--accent)]">
+            <h3
+              class="display text-xl transition-colors group-hover:text-[var(--accent)]"
+            >
               {item.title}
             </h3>
-            <p class="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">{item.body}</p>
+            <p class="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
+              {item.body}
+            </p>
           </li>
         {/each}
       </ul>
@@ -235,15 +419,18 @@
   <div class="relative mx-auto max-w-3xl text-center">
     <h2 class="display text-5xl sm:text-6xl">Faltou alguma coisa?</h2>
     <p class="mx-auto mt-5 max-w-xl text-lg text-paper/60">
-      O que entra nessa lista sai do que os motociclistas pedem. Crie sua conta e diga o que a sua
-      moto precisa.
+      O que entra nessa lista sai do que os motociclistas pedem. Crie sua conta
+      e diga o que a sua moto precisa.
     </p>
     <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
       <a class="button-accent px-7 py-3.5 text-base shadow-brand" href="/auth">
         Criar conta
         <ArrowRight class="h-4 w-4" />
       </a>
-      <a class="button-secondary border-paper/20 bg-transparent px-7 py-3.5 text-base text-paper hover:border-[var(--accent)]" href="/blog">
+      <a
+        class="button-secondary border-paper/20 bg-transparent px-7 py-3.5 text-base text-paper hover:border-[var(--accent)]"
+        href="/blog"
+      >
         Ler os guias
       </a>
     </div>
@@ -281,6 +468,31 @@
     }
   }
 
+  /* Segmented gauge. The ticks are painted in --bg *over* both the fill and the
+     empty track, so they read as physical gaps in a dial instead of stripes. */
+  .gauge .track {
+    position: relative;
+    height: 0.75rem;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .gauge .fill {
+    height: 100%;
+    background: var(--accent);
+    box-shadow: 0 0 20px -2px var(--accent-ring);
+  }
+  .gauge .ticks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(5% - 2px),
+      var(--bg) calc(5% - 2px) 5%
+    );
+  }
+
   .cta-slashes {
     position: absolute;
     top: 0;
@@ -289,7 +501,11 @@
     height: 100%;
     pointer-events: none;
     opacity: 0.07;
-    background: repeating-linear-gradient(100deg, var(--accent) 0 6px, transparent 6px 16px);
+    background: repeating-linear-gradient(
+      100deg,
+      var(--accent) 0 6px,
+      transparent 6px 16px
+    );
   }
 
   /* The rail itself: one continuous line the markers sit on. */
