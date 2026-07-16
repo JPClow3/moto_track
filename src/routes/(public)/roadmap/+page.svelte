@@ -109,32 +109,8 @@
       icon: Wrench,
       items: [
         {
-          title: "PWA instalável no celular",
-          body: "Registrar o service worker para instalar o Moto Track na tela inicial e abri-lo como aplicativo.",
-        },
-        {
-          title: "Telas disponíveis sem conexão",
-          body: "Guardar as páginas já visitadas no dispositivo para consultar a garagem no subsolo da oficina, sem sinal.",
-        },
-        {
-          title: "Fila offline com sincronização em background",
-          body: "Registrar abastecimento e odômetro sem sinal: o app guarda no dispositivo e envia quando a conexão volta.",
-        },
-        {
           title: "Push no celular",
           body: "Receber o lembrete como notificação do sistema, além do e-mail que já sai hoje.",
-        },
-        {
-          title: "Conclusão dos pedidos LGPD",
-          body: "Gerar a exportação solicitada e executar a exclusão da conta com acompanhamento do pedido.",
-        },
-        {
-          title: "Tokens de API",
-          body: "Gerar e revogar tokens pessoais para consumir a API de fora do navegador, sem depender da sessão.",
-        },
-        {
-          title: "API v1 (escrita)",
-          body: "POST e PATCH para criar e atualizar registros, além da leitura que já existe.",
         },
       ],
     },
@@ -145,34 +121,6 @@
       blurb: "Aceito no backlog, ainda sem posição definida.",
       icon: CircleDashed,
       items: [
-        {
-          title: "Geolocalização do posto",
-          body: "Capturar a posição no registro de abastecimento e sugerir os postos que você mais usa.",
-        },
-        {
-          title: "Visão multi-moto no painel",
-          body: "Estado geral, odômetro e alertas de todas as motos ativas num quadro só.",
-        },
-        {
-          title: "Alertas de anomalia no contexto",
-          body: "Marcar o aviso direto na lista de abastecimentos quando consumo ou preço saírem da faixa.",
-        },
-        {
-          title: "Ficha técnica pré-preenchida por modelo",
-          body: "Escolher a moto num catálogo e já vir com óleo, pneu, torque e intervalo de revisão de fábrica preenchidos.",
-        },
-        {
-          title: "Troca de pneu estimada sozinha",
-          body: "Calcular a quilometragem restante a partir do desgaste registrado e do seu ritmo, em vez de você digitar o palpite.",
-        },
-        {
-          title: "Custo total de propriedade",
-          body: "Somar compra, depreciação, combustível, manutenção e taxas para dizer quanto a moto custa por km de verdade.",
-        },
-        {
-          title: "Acesso de leitura para a oficina",
-          body: "Link temporário com o histórico de manutenção para o mecânico consultar sem precisar de conta.",
-        },
       ],
     },
     {
@@ -182,18 +130,6 @@
       blurb: "Interessante no papel. Ainda sem compromisso de entrega.",
       icon: Compass,
       items: [
-        {
-          title: "Previsão de manutenção",
-          body: "Usar o histórico de uso para antecipar quando cada serviço vai vencer, em vez de só contar km.",
-        },
-        {
-          title: "Integração com marketplace de peças",
-          body: "Ligar a peça do plano de manutenção a onde comprar, com preço comparado.",
-        },
-        {
-          title: "Odômetro por foto",
-          body: "Fotografar o painel e deixar o app ler a quilometragem, do mesmo jeito que já faz com o cupom do posto.",
-        },
         {
           title: "Comparação anônima por modelo",
           body: "Saber se o seu consumo e o seu custo de manutenção estão dentro do normal para quem tem a mesma moto.",

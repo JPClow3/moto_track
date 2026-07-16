@@ -24,7 +24,7 @@
       <a href="/blog" class="nav-link">Blog</a>
       <a href="/roadmap" class="nav-link">Roadmap</a>
       <a href="/termos" class="nav-link">Termos</a>
-      <a href="/politica" class="nav-link">Privacidade</a>
+      <a href="/privacidade" class="nav-link">Privacidade</a>
       <a href="/lgpd" class="nav-link">LGPD</a>
     </div>
   </div>

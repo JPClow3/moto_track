@@ -26,7 +26,8 @@ Add these as encrypted secrets:
 1. Run `npm run db:migrate` against the target project.
 2. Run `npm run supabase:types` and commit any generated type changes.
 3. Confirm RLS is enabled for every user-owned table.
-4. Configure Supabase Auth redirect URLs for the Pages preview hostname, production hostname, and `http://localhost:5173`.
+4. Configure Supabase Auth redirect URLs for the Pages preview hostname, production hostname, and `http://localhost:5173`. All flows (magic link, OAuth, password recovery) funnel through `/auth/callback`, so only that path needs to be allow-listed per hostname (e.g. `https://moto-track.net/auth/callback`).
+5. If using Supabase's OAuth 2.1 Server (Moto Track acting as an identity provider for third-party apps): under **Authentication → OAuth Server**, enable it and set **Authorization Path** to `/oauth/consent`. Register each OAuth client app under **Authentication → OAuth Apps** with its exact redirect URI(s) — no wildcards allowed there.
 
 ## Stripe and reminders
 

@@ -6,13 +6,25 @@ export interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string;
   EMAIL_FUNCTION_URL: string;
   EMAIL_FUNCTION_TOKEN: string;
+  REMINDERS_TRIGGER_TOKEN: string;
 }
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(processReminders(env));
   },
-  async fetch(_request: Request, env: Env) {
+  // Manual trigger for testing the cron path. It sends real email and writes to
+  // the database, so it stays closed unless REMINDERS_TRIGGER_TOKEN is set.
+  async fetch(request: Request, env: Env) {
+    if (!env.REMINDERS_TRIGGER_TOKEN) {
+      return new Response("Not found", { status: 404 });
+    }
+    if (
+      request.headers.get("authorization") !==
+      `Bearer ${env.REMINDERS_TRIGGER_TOKEN}`
+    ) {
+      return new Response("Unauthorized", { status: 401 });
+    }
     const result = await processReminders(env);
     return Response.json(result);
   },

@@ -19,6 +19,11 @@ additional_redirect_urls = ["https://moto-track.net/auth/callback"]
 jwt_expiry = 3600
 enable_signup = true
 
+[auth.oauth_server]
+enabled = true
+authorization_url_path = "/oauth/consent"
+allow_dynamic_registration = false
+
 [storage]
 enabled = false
 

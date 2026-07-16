@@ -11,10 +11,10 @@ type StripeSubscriptionRecord = {
   customer: string | Stripe.Customer | Stripe.DeletedCustomer;
   status: string;
   cancel_at_period_end: boolean;
-  current_period_end: number;
   items: {
     data: Array<{
       price: { recurring: { interval: string } | null };
+      current_period_end: number;
     }>;
   };
 };
@@ -127,7 +127,8 @@ export async function fetchProPricing(
 export function subscriptionProfileUpdate(
   subscription: StripeSubscriptionRecord,
 ) {
-  const interval = subscription.items.data[0]?.price.recurring?.interval;
+  const item = subscription.items.data[0];
+  const interval = item?.price.recurring?.interval;
   const customerId =
     typeof subscription.customer === "string"
       ? subscription.customer
@@ -142,9 +143,9 @@ export function subscriptionProfileUpdate(
     stripe_subscription_id: subscription.id,
     billing_interval: interval === "year" ? "yearly" : "monthly",
     cancel_at_period_end: subscription.cancel_at_period_end,
-    current_period_end: new Date(
-      subscription.current_period_end * 1000,
-    ).toISOString(),
+    current_period_end: item
+      ? new Date(item.current_period_end * 1000).toISOString()
+      : null,
   } as const;
 }
 
