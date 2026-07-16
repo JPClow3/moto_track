@@ -1,14 +1,6 @@
 import { fail } from "@sveltejs/kit";
 import { createSupabaseAdminClient } from "$server/supabase/admin";
-
-async function staffState(locals: App.Locals) {
-  const { data: profile } = await locals.supabase
-    .from("profiles")
-    .select("is_staff")
-    .eq("id", locals.user!.id)
-    .maybeSingle();
-  return Boolean(profile?.is_staff);
-}
+import { isStaffUser as staffState } from "$server/domain/staff";
 
 export async function load({ locals, platform }) {
   const isStaff = await staffState(locals);

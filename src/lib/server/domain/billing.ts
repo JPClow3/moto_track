@@ -47,13 +47,6 @@ const PRICING_TTL_MS = 5 * 60 * 1000;
 
 let pricingCache: { value: ProPricing; expiresAt: number } | null = null;
 
-function formatAmount(amountCents: number, currency: string) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(amountCents / 100);
-}
-
 async function retrievePrice(
   client: Stripe,
   priceId: string | undefined,
@@ -68,7 +61,6 @@ async function retrievePrice(
   return {
     amountCents: price.unit_amount,
     currency: price.currency,
-    formatted: formatAmount(price.unit_amount, price.currency),
     interval,
   };
 }
@@ -184,7 +176,10 @@ export async function createCheckoutSession({
     // A customer_id can go stale (e.g. left over from a Stripe mode switch, or
     // the customer was deleted in the dashboard); fall back to creating a
     // fresh customer by email instead of failing the whole checkout.
-    if (customer && (err as Stripe.errors.StripeError)?.code === "resource_missing") {
+    if (
+      customer &&
+      (err as Stripe.errors.StripeError)?.code === "resource_missing"
+    ) {
       delete session.customer;
       session.customer_email = email;
       return await client.checkout.sessions.create(session);

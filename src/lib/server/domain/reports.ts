@@ -1,6 +1,19 @@
 import { averageConsumption, costPerKm, type FuelRecord } from "./fuel";
 import { evaluateReminder, type ReminderInput } from "./reminders";
 
+/**
+ * A locale-independent key rather than a display string: the caller decides how
+ * to word it, which is what lets the dashboard translate it. Was
+ * `readable_status`, which hardcoded pt-BR inside the domain.
+ */
+export type HealthStatus = "overdue" | "attention" | "ready";
+
+function healthStatus(total: number): HealthStatus {
+  if (total < 50) return "overdue";
+  if (total < 80) return "attention";
+  return "ready";
+}
+
 export function healthScore({
   reminders,
   currentOdometerKm,
@@ -32,12 +45,7 @@ export function healthScore({
   );
   return {
     total,
-    readable_status:
-      total < 50
-        ? "Manutenção vencida"
-        : total < 80
-          ? "Atenção em breve"
-          : "Pronta para rodar",
+    status: healthStatus(total),
   };
 }
 

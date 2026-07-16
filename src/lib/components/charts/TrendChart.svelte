@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t, format } from "$lib/i18n/store";
+
   export let points: Array<{ date: string; value: number }> = [];
   export let unit = "";
   /** Decimal places for the axis + marker readouts. */
@@ -11,17 +13,12 @@
   const INNER_H = H - PAD.top - PAD.bottom;
   const BASE_Y = H - PAD.bottom;
 
-  const shortDate = (iso: string) =>
-    new Date(`${iso}T00:00:00.000Z`).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "short",
-      timeZone: "UTC",
-    });
-
   // Plain helpers rather than reactive closures: everything they depend on is
   // either a constant or passed in explicitly.
   const xFor = (index: number, count: number) =>
-    count < 2 ? PAD.left + INNER_W / 2 : PAD.left + (index * INNER_W) / (count - 1);
+    count < 2
+      ? PAD.left + INNER_W / 2
+      : PAD.left + (index * INNER_W) / (count - 1);
   const yFor = (value: number, min: number, max: number) =>
     PAD.top + (1 - (value - min) / (max - min)) * INNER_H;
 
@@ -38,7 +35,9 @@
     y: yFor(point.value, min, max),
   }));
 
-  $: linePath = coords.map((c, i) => `${i ? "L" : "M"} ${c.x} ${c.y}`).join(" ");
+  $: linePath = coords
+    .map((c, i) => `${i ? "L" : "M"} ${c.x} ${c.y}`)
+    .join(" ");
   $: areaPath = coords.length
     ? `${linePath} L ${coords[coords.length - 1].x} ${BASE_Y} L ${coords[0].x} ${BASE_Y} Z`
     : "";
@@ -54,13 +53,22 @@
   $: axisDates = points.length
     ? [
         { point: points[0], x: PAD.left, anchor: "start" },
-        { point: points[Math.floor((points.length - 1) / 2)], x: W / 2, anchor: "middle" },
+        {
+          point: points[Math.floor((points.length - 1) / 2)],
+          x: W / 2,
+          anchor: "middle",
+        },
         { point: last, x: W - PAD.right, anchor: "end" },
       ]
     : [];
 </script>
 
-<svg viewBox={`0 0 ${W} ${H}`} class="w-full" role="img" aria-label={`Tendência: ${points.length} leituras`}>
+<svg
+  viewBox={`0 0 ${W} ${H}`}
+  class="w-full"
+  role="img"
+  aria-label={$t("dashboard.trendAria", { count: points.length })}
+>
   <defs>
     <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.22" />
@@ -78,8 +86,17 @@
       stroke-width="1"
       stroke-dasharray="3 5"
     />
-    <text x={PAD.left - 10} y={gridline.y + 4} text-anchor="end" class="axis" fill="var(--muted)">
-      {gridline.value.toFixed(precision)}
+    <text
+      x={PAD.left - 10}
+      y={gridline.y + 4}
+      text-anchor="end"
+      class="axis"
+      fill="var(--muted)"
+    >
+      {$format.number(gridline.value, {
+        minimumFractionDigits: precision,
+        maximumFractionDigits: precision,
+      })}
     </text>
   {/each}
 
@@ -96,13 +113,35 @@
     />
 
     <!-- Latest reading, called out like a live instrument readout. -->
-    <circle class="marker" cx={lastCoord.x} cy={lastCoord.y} r="4.5" fill="var(--accent)" />
-    <circle class="pulse" cx={lastCoord.x} cy={lastCoord.y} r="4.5" fill="var(--accent)" />
+    <circle
+      class="marker"
+      cx={lastCoord.x}
+      cy={lastCoord.y}
+      r="4.5"
+      fill="var(--accent)"
+    />
+    <circle
+      class="pulse"
+      cx={lastCoord.x}
+      cy={lastCoord.y}
+      r="4.5"
+      fill="var(--accent)"
+    />
 
     {#each axisDates as entry, i (i)}
       {#if entry.point}
-        <text x={entry.x} y={H - 8} text-anchor={entry.anchor} class="axis" fill="var(--muted)">
-          {shortDate(entry.point.date)}
+        <text
+          x={entry.x}
+          y={H - 8}
+          text-anchor={entry.anchor}
+          class="axis"
+          fill="var(--muted)"
+        >
+          {$format.date(`${entry.point.date}T00:00:00.000Z`, {
+            day: "2-digit",
+            month: "short",
+            timeZone: "UTC",
+          })}
         </text>
       {/if}
     {/each}
@@ -110,7 +149,15 @@
 </svg>
 
 {#if last}
-  <p class="sr-only">Última leitura: {last.value.toFixed(precision)} {unit}</p>
+  <p class="sr-only">
+    {$t("dashboard.latestReading", {
+      value: $format.number(last.value, {
+        minimumFractionDigits: precision,
+        maximumFractionDigits: precision,
+      }),
+      unit,
+    })}
+  </p>
 {/if}
 
 <style>

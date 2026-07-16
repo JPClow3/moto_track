@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/store";
+
   export let score: number;
   export let status: string;
 
@@ -13,11 +15,21 @@
   $: offset = LENGTH * (1 - clamped / 100);
   // Red is the "needs action" signal everywhere else in the product, so the dial
   // only earns it once the score actually drops.
-  $: tone = clamped < 50 ? "var(--accent)" : clamped < 80 ? "var(--warning)" : "var(--fg)";
+  $: tone =
+    clamped < 50
+      ? "var(--accent)"
+      : clamped < 80
+        ? "var(--warning)"
+        : "var(--fg)";
 </script>
 
 <div class="flex flex-col items-center">
-  <svg viewBox="0 0 200 118" class="w-full max-w-[240px]" role="img" aria-label={`Saúde da moto: ${clamped} de 100. ${status}`}>
+  <svg
+    viewBox="0 0 200 118"
+    class="w-full max-w-[240px]"
+    role="img"
+    aria-label={$t("dashboard.healthAria", { score: clamped, status })}
+  >
     <!-- Track -->
     <path
       d={`M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`}
@@ -33,7 +45,14 @@
       {@const y1 = CY - Math.sin(angle) * (R - 10)}
       {@const x2 = CX + Math.cos(angle) * (R - 16)}
       {@const y2 = CY - Math.sin(angle) * (R - 16)}
-      <line {x1} {y1} {x2} {y2} stroke="var(--line)" stroke-width={i % 5 === 0 ? 2 : 1} />
+      <line
+        {x1}
+        {y1}
+        {x2}
+        {y2}
+        stroke="var(--line)"
+        stroke-width={i % 5 === 0 ? 2 : 1}
+      />
     {/each}
     <!-- Value -->
     <path
@@ -48,7 +67,9 @@
     />
   </svg>
   <div class="-mt-10 text-center">
-    <p class="display numeric text-6xl leading-none" style={`color:${tone}`}>{clamped}</p>
+    <p class="display numeric text-6xl leading-none" style={`color:${tone}`}>
+      {clamped}
+    </p>
     <p class="label-tech mt-2 text-[var(--muted)]">{status}</p>
   </div>
 </div>

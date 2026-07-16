@@ -18,7 +18,8 @@
   {:else if token.type === "del"}
     <del><svelte:self tokens={token.tokens ?? []} /></del>
   {:else if token.type === "codespan"}
-    <code class="rounded-sm bg-[var(--accent-soft)] px-1.5 py-0.5 text-[0.85em] text-[var(--accent)]"
+    <code
+      class="rounded-sm bg-[var(--accent-soft)] px-1.5 py-0.5 text-[0.85em] text-[var(--accent)]"
       >{token.text}</code
     >
   {:else if token.type === "link"}
@@ -41,7 +42,12 @@
     <br />
   {:else if token.type === "image"}
     {#if safeHref(token.href)}
-      <img class="my-2 rounded" src={safeHref(token.href)} alt={token.text ?? ""} loading="lazy" />
+      <img
+        class="my-2 rounded"
+        src={safeHref(token.href)}
+        alt={token.text ?? ""}
+        loading="lazy"
+      />
     {/if}
   {:else if token.type === "escape"}
     {token.text}

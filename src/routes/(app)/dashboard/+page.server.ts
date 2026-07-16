@@ -6,16 +6,17 @@ import {
   costBreakdown,
   spendByMonth,
 } from "$server/domain/dashboard";
+import {
+  formatDistance,
+  formatMoney,
+  formatNumber,
+  translate,
+  type MessageKey,
+} from "$lib/i18n";
 
 const DOCUMENT_HORIZON_DAYS = 30;
 
 type Row = Record<string, unknown>;
-
-const brl = (cents: number) =>
-  new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(cents / 100);
 
 const sumCents = (rows: Row[], key: string) =>
   rows.reduce((sum, row) => sum + Number(row[key] ?? 0), 0);
@@ -168,29 +169,35 @@ export async function load({ locals }) {
   const tireSpend = sumCents(tireRows, "cost_cents");
   const feeSpend = sumCents(feeRows, "amount_cents");
 
+  // Built per-request, so unlike the process-wide pricing cache this can safely
+  // read the reader's locale off locals rather than baking one in.
+  const locale = locals.locale;
+  const tr = (key: MessageKey) => translate(locale, key);
   const primary = motorcycleRows[0];
   const metrics = [
     {
-      label: "Motos ativas",
-      value: String(motorcycleRows.length),
-      detail: "Garagem",
+      label: tr("dashboard.metricBikes"),
+      value: formatNumber(locale, motorcycleRows.length),
+      detail: tr("dashboard.metricBikesDetail"),
     },
     {
-      label: "Odômetro atual",
-      value: `${Number(primary?.current_odometer_km ?? 0).toLocaleString("pt-BR")} km`,
-      detail: String(primary?.name ?? "Sem moto ativa"),
+      label: tr("dashboard.metricOdometer"),
+      value: formatDistance(locale, Number(primary?.current_odometer_km ?? 0)),
+      detail: String(primary?.name ?? tr("dashboard.noActiveBike")),
     },
     {
-      label: "Consumo médio",
+      label: tr("dashboard.metricConsumption"),
       value: summary.average_consumption_km_l
-        ? `${summary.average_consumption_km_l} km/L`
-        : "Sem dados",
-      detail: "Tanques cheios",
+        ? `${formatNumber(locale, summary.average_consumption_km_l)} km/L`
+        : tr("dashboard.noData"),
+      detail: tr("dashboard.metricConsumptionDetail"),
     },
     {
-      label: "Custo por km",
-      value: summary.cost_per_km ? brl(summary.cost_per_km * 100) : "Sem dados",
-      detail: "Somente combustível",
+      label: tr("dashboard.metricCostPerKm"),
+      value: summary.cost_per_km
+        ? formatMoney(locale, summary.cost_per_km * 100)
+        : tr("dashboard.noData"),
+      detail: tr("dashboard.metricCostPerKmDetail"),
     },
   ];
 

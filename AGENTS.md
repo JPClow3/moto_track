@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Use this file for agent-specific repo workflows. Keep broader product and frontend conventions in [`README.md`](README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
+Use this file for agent-specific repo workflows. Keep broader product and frontend conventions in [`README.md`](README.md).
 
 ## Validation Commands
 

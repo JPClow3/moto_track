@@ -17,7 +17,7 @@ describe("reports domain", () => {
 
       expect(score).toEqual({
         total: 100,
-        readable_status: "Pronta para rodar",
+        status: "ready",
       });
     });
 
@@ -45,10 +45,10 @@ describe("reports domain", () => {
       // Final score = 100 - 38 = 62
 
       expect(score.total).toBe(62);
-      expect(score.readable_status).toBe("Atenção em breve");
+      expect(score.status).toBe("attention");
     });
 
-    it("drops status to 'Manutenção vencida' if score is below 50", () => {
+    it("drops status to 'overdue' if score is below 50", () => {
       const score = healthScore({
         reminders: [
           {
@@ -71,7 +71,7 @@ describe("reports domain", () => {
       // Total penalties = 15 + 15 + 12 + 12 = 54
       // Score = 46
       expect(score.total).toBe(46);
-      expect(score.readable_status).toBe("Manutenção vencida");
+      expect(score.status).toBe("overdue");
     });
   });
 

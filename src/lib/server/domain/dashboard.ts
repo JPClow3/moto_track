@@ -4,7 +4,9 @@ export type SpendEvent = { date: string; amountCents: number };
 
 export type ConsumptionPoint = { date: string; kmPerLiter: number };
 
-export type CostSlice = { key: string; label: string; cents: number };
+/** Keyed rather than labelled: the caller supplies the wording for its locale. */
+export type CostCategory = "fuel" | "maintenance" | "tires" | "fees";
+export type CostSlice = { key: CostCategory; cents: number };
 
 export type ActivityCell = { date: string; count: number };
 
@@ -32,7 +34,8 @@ export function consumptionTrend(
   for (let i = 0; i < ordered.length; i++) {
     if (!ordered[i].tank_full) continue;
     if (previousFull >= 0) {
-      const distance = ordered[i].odometer_km - ordered[previousFull].odometer_km;
+      const distance =
+        ordered[i].odometer_km - ordered[previousFull].odometer_km;
       const liters = ordered
         .slice(previousFull + 1, i + 1)
         .reduce((sum, record) => sum + Number(record.liters || 0), 0);
@@ -84,10 +87,10 @@ export function costBreakdown(sources: {
 }): CostSlice[] {
   return (
     [
-      { key: "fuel", label: "Combustível", cents: sources.fuel },
-      { key: "maintenance", label: "Manutenção", cents: sources.maintenance },
-      { key: "tires", label: "Pneus", cents: sources.tires },
-      { key: "fees", label: "Taxas", cents: sources.fees },
+      { key: "fuel", cents: sources.fuel },
+      { key: "maintenance", cents: sources.maintenance },
+      { key: "tires", cents: sources.tires },
+      { key: "fees", cents: sources.fees },
     ] satisfies CostSlice[]
   )
     .filter((slice) => slice.cents > 0)

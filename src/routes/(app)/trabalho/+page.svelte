@@ -1,5 +1,45 @@
 <script lang="ts">
-  import FeaturePage from '$components/FeaturePage.svelte'; import {enhance} from '$app/forms'; export let data;
+  import FeaturePage from "$components/FeaturePage.svelte";
+  import { enhance } from "$app/forms";
+  export let data;
 </script>
+
 <FeaturePage {...data} />
-<section class="mt-6 grid gap-4 lg:grid-cols-2"><form class="panel grid gap-2 p-4" method="POST" action="?/saveCosts" use:enhance><h2 class="font-bold">Custos profissionais</h2><select class="field" name="motorcycle_id">{#each data.motorcycles as m}<option value={m.id}>{m.name}</option>{/each}</select><input class="field" name="maintenance_reserve" type="number" step=".01" placeholder="Reserva de manutenção por km"/><input class="field" name="depreciation" type="number" step=".01" placeholder="Depreciação por km"/><input class="field" name="fixed_daily_cost" type="number" step=".01" placeholder="Custo fixo diário"/><button class="button-secondary">Salvar custos</button></form><div class="panel p-4"><h2 class="font-bold">Rentabilidade das sessões</h2>{#each data.summaries as s}<p class="mt-2 text-sm">{s.work_date}: lucro R$ {(s.profitability.profitCents/100).toFixed(2)}</p>{/each}</div></section>
+<section class="mt-6 grid gap-4 lg:grid-cols-2">
+  <form
+    class="panel grid gap-2 p-4"
+    method="POST"
+    action="?/saveCosts"
+    use:enhance
+  >
+    <h2 class="font-bold">Custos profissionais</h2>
+    <select class="field" name="motorcycle_id"
+      >{#each data.motorcycles as m}<option value={m.id}>{m.name}</option
+        >{/each}</select
+    ><input
+      class="field"
+      name="maintenance_reserve"
+      type="number"
+      step=".01"
+      placeholder="Reserva de manutenção por km"
+    /><input
+      class="field"
+      name="depreciation"
+      type="number"
+      step=".01"
+      placeholder="Depreciação por km"
+    /><input
+      class="field"
+      name="fixed_daily_cost"
+      type="number"
+      step=".01"
+      placeholder="Custo fixo diário"
+    /><button class="button-secondary">Salvar custos</button>
+  </form>
+  <div class="panel p-4">
+    <h2 class="font-bold">Rentabilidade das sessões</h2>
+    {#each data.summaries as s}<p class="mt-2 text-sm">
+        {s.work_date}: lucro R$ {(s.profitability.profitCents / 100).toFixed(2)}
+      </p>{/each}
+  </div>
+</section>

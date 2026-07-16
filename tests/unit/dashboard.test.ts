@@ -106,9 +106,9 @@ describe("costBreakdown", () => {
     expect(
       costBreakdown({ fuel: 1000, maintenance: 5000, tires: 0, fees: 200 }),
     ).toEqual([
-      { key: "maintenance", label: "Manutenção", cents: 5000 },
-      { key: "fuel", label: "Combustível", cents: 1000 },
-      { key: "fees", label: "Taxas", cents: 200 },
+      { key: "maintenance", cents: 5000 },
+      { key: "fuel", cents: 1000 },
+      { key: "fees", cents: 200 },
     ]);
   });
 
@@ -131,10 +131,10 @@ describe("activityCalendar", () => {
   });
 
   it("counts multiple records on the same day", () => {
-    const cells = activityCalendar(
-      ["2026-07-14", "2026-07-14", "2026-07-15"],
-      { today: "2026-07-16", weeks: 2 },
-    );
+    const cells = activityCalendar(["2026-07-14", "2026-07-14", "2026-07-15"], {
+      today: "2026-07-16",
+      weeks: 2,
+    });
 
     expect(cells.find((cell) => cell.date === "2026-07-14")?.count).toBe(2);
     expect(cells.find((cell) => cell.date === "2026-07-15")?.count).toBe(1);
