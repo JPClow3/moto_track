@@ -1,19 +1,14 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { locale } from "$lib/i18n/store";
+  import { formatMoney, formatPreciseMoney } from "$lib/i18n";
   export let data;
   export let form;
 
-  const brl = (cents: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(cents / 100);
-  const price = (millicents: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      minimumFractionDigits: 3,
-    }).format(millicents / 100000);
+  // Currency stays BRL in every locale — that is what Stripe charges. Only the
+  // separators and symbol placement follow the reader. See $lib/i18n.
+  const brl = (cents: number) => formatMoney($locale, cents);
+  const price = (millicents: number) => formatPreciseMoney($locale, millicents);
   $: ocr = form?.ocr;
   $: defaults = data.preferences[0] ?? {};
 </script>

@@ -1,12 +1,10 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { locale } from "$lib/i18n/store";
+  import { formatDate, formatMoney } from "$lib/i18n";
   export let data;
   export let form;
-  const money = (c: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(c / 100);
+  const money = (c: number) => formatMoney($locale, c);
 </script>
 
 <section class="grid gap-6">
@@ -94,9 +92,11 @@
         <div>
           <p class="font-semibold">{share.token_prefix}…</p>
           <p class="text-xs text-[var(--muted)]">
-            {share.access_count} acessos · expira {new Date(
+            {share.access_count} acessos · expira {formatDate(
+              $locale,
               share.expires_at,
-            ).toLocaleDateString("pt-BR")}
+              { day: "2-digit", month: "2-digit", year: "numeric" },
+            )}
           </p>
         </div>
         {#if !share.revoked_at}<form

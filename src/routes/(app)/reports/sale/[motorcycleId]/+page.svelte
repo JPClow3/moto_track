@@ -1,10 +1,8 @@
 <script lang="ts">
+  import { locale } from "$lib/i18n/store";
+  import { formatMoney } from "$lib/i18n";
   export let data;
-  const money = (c: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(c / 100);
+  const money = (c: number) => formatMoney($locale, c);
 </script>
 
 <svelte:head

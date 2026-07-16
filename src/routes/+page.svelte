@@ -10,7 +10,15 @@
   } from "lucide-svelte";
   import PublicHeader from "$components/PublicHeader.svelte";
   import PublicFooter from "$components/PublicFooter.svelte";
-  import type { ProPricing } from "$types/billing";
+  import type { PlanPrice, ProPricing } from "$types/billing";
+  import { locale } from "$lib/i18n/store";
+  import { formatMoney } from "$lib/i18n";
+
+  // See the note in $types/billing: the price carries no pre-formatted string,
+  // because the server-side pricing cache is shared across readers.
+  function planPrice(price: PlanPrice) {
+    return formatMoney($locale, price.amountCents, price.currency);
+  }
 
   type Article = { title: string; slug: string; summary: string };
 
@@ -321,12 +329,13 @@
           <div class="my-8">
             {#if data.pricing.monthly}
               <p class="display numeric text-6xl text-[var(--accent)]">
-                {data.pricing.monthly.formatted}
+                {planPrice(data.pricing.monthly)}
               </p>
               <p class="mt-2 text-xs text-paper/50">
                 por mês
-                {#if data.pricing.yearly}&middot; ou {data.pricing.yearly
-                    .formatted} por ano{/if}
+                {#if data.pricing.yearly}&middot; ou {planPrice(
+                    data.pricing.yearly,
+                  )} por ano{/if}
               </p>
             {:else}
               <p class="display numeric text-6xl text-[var(--accent)]">

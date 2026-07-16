@@ -3,20 +3,20 @@
   import { page } from "$app/stores";
   import { ArrowLeft, ArrowRight, Clock, MessageSquare } from "lucide-svelte";
   import Markdown from "$components/Markdown.svelte";
+  import { locale } from "$lib/i18n/store";
+  import { formatDate } from "$lib/i18n";
 
   export let data;
   export let form;
 
-  const dateFormat = new Intl.DateTimeFormat("pt-BR", {
+  const reactionEmojis = ["👍", "🏍️", "💡"];
+
+  $: article = data.article;
+  $: publishedLabel = formatDate($locale, article.published_at, {
     day: "2-digit",
     month: "long",
     year: "numeric",
   });
-
-  const reactionEmojis = ["👍", "🏍️", "💡"];
-
-  $: article = data.article;
-  $: publishedLabel = dateFormat.format(new Date(article.published_at));
   // Derived as data rather than a reactive function: the counts only change
   // when data.reactions does.
   $: reactionCounts = reactionEmojis.map(
@@ -177,7 +177,11 @@
           <div>
             <p class="text-sm font-semibold">{comment.author}</p>
             <p class="label-tech text-[var(--muted)]">
-              {new Date(comment.created_at).toLocaleDateString("pt-BR")}
+              {formatDate($locale, comment.created_at, {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
             </p>
           </div>
         </div>

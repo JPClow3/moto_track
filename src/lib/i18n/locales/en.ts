@@ -9,6 +9,8 @@ export const en: Messages = {
     save: "Save",
     saveChanges: "Save changes",
     cancel: "Cancel",
+    confirm: "Confirm",
+    confirmTitle: "Are you sure?",
     delete: "Delete",
     edit: "Edit",
     close: "Close",

@@ -1,9 +1,19 @@
 <script lang="ts">
-  import type { ProPricing } from "$types/billing";
+  import type { PlanPrice, ProPricing } from "$types/billing";
   import { t, locale } from "$lib/i18n/store";
   import { formatMoney } from "$lib/i18n";
 
   export let data: { pricing: ProPricing };
+
+  // Formatted here rather than on the server: the pricing lookup is cached
+  // process-wide, so a string baked in there would pin one reader's locale for
+  // everyone. Falls back to a label rather than inventing a number when Stripe
+  // is unconfigured or unreachable.
+  function planPrice(price: PlanPrice | null) {
+    return price
+      ? formatMoney($locale, price.amountCents, price.currency)
+      : $t("pricing.priceAtCheckout");
+  }
 
   // Segments rather than {@html}, matching the landing page.
   type Segment = { t: string; b?: boolean };
@@ -111,18 +121,12 @@
             <label class="billing-choice">
               <input type="radio" name="interval" value="monthly" checked />
               <span>{$t("pricing.monthly")}</span>
-              <small
-                >{data.pricing.monthly?.formatted ??
-                  $t("pricing.priceAtCheckout")}</small
-              >
+              <small>{planPrice(data.pricing.monthly)}</small>
             </label>
             <label class="billing-choice">
               <input type="radio" name="interval" value="yearly" />
               <span>{$t("pricing.yearly")}</span>
-              <small
-                >{data.pricing.yearly?.formatted ??
-                  $t("pricing.priceAtCheckout")}</small
-              >
+              <small>{planPrice(data.pricing.yearly)}</small>
             </label>
           </fieldset>
 
@@ -130,7 +134,7 @@
           <div class="my-8">
             {#if data.pricing.monthly}
               <p class="display numeric text-6xl text-[var(--accent)]">
-                {data.pricing.monthly.formatted}
+                {planPrice(data.pricing.monthly)}
               </p>
               <p class="mt-2 text-xs text-paper/50">
                 {$t("pricing.perMonth")}

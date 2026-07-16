@@ -11,6 +11,8 @@ export const ptBR = {
     save: "Salvar",
     saveChanges: "Salvar alterações",
     cancel: "Cancelar",
+    confirm: "Confirmar",
+    confirmTitle: "Tem certeza?",
     delete: "Excluir",
     edit: "Editar",
     close: "Fechar",

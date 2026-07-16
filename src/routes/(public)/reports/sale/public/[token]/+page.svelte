@@ -1,19 +1,18 @@
 <script lang="ts">
   import { Fuel, Wrench, CircleGauge, ReceiptText } from "lucide-svelte";
   import type { PublicSaleReport } from "$types/sale-report";
+  import { locale } from "$lib/i18n/store";
+  import { formatDate, formatDistance, formatMoney } from "$lib/i18n";
 
   export let data: { report: PublicSaleReport };
 
-  const brl = (cents: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(cents / 100);
-  const km = (value: number) =>
-    `${new Intl.NumberFormat("pt-BR").format(value)} km`;
+  // This dossier is opened by a prospective buyer who has no account, so it
+  // follows *their* Accept-Language rather than the seller's.
+  const brl = (cents: number) => formatMoney($locale, cents);
+  const km = (value: number) => formatDistance($locale, value);
   const day = (iso: string) =>
     iso
-      ? new Date(iso).toLocaleDateString("pt-BR", {
+      ? formatDate($locale, iso, {
           day: "2-digit",
           month: "short",
           year: "numeric",

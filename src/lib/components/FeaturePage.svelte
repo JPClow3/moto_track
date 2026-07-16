@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { Download, Plus } from "lucide-svelte";
+  import ConfirmDialog from "./ConfirmDialog.svelte";
   import type { FeatureConfig } from "$server/domain/features";
   import { t, locale } from "$lib/i18n/store";
   import { formatMoney, formatPreciseMoney } from "$lib/i18n";
@@ -45,6 +46,9 @@
     return String(value);
   }
 
+  // One dialog for the whole table rather than one per row.
+  let confirmDialog: ConfirmDialog;
+
   const inputType = (kind: string) =>
     kind === "date"
       ? "date"
@@ -72,6 +76,12 @@
       {$t("common.exportCsv")}
     </a>
   </header>
+
+  <ConfirmDialog
+    bind:this={confirmDialog}
+    confirmLabel={$t("common.delete")}
+    destructive
+  />
 
   {#if errorMessage}
     <!-- role="alert" so a screen reader announces the failure instead of it
@@ -160,11 +170,16 @@
                         </button>
                       </form>
                     {/if}
-                    <!-- Deleting was a single unguarded click with no undo. -->
+                    <!-- Deleting was a single unguarded click with no undo.
+                         enhance awaits this callback before it fires the
+                         request, so the dialog can gate the submit. -->
                     <form
                       method="POST"
-                      use:enhance={({ cancel }) => {
-                        if (!confirm($t("feature.confirmDelete"))) cancel();
+                      use:enhance={async ({ cancel }) => {
+                        const ok = await confirmDialog.ask(
+                          $t("feature.confirmDelete"),
+                        );
+                        if (!ok) cancel();
                       }}
                     >
                       <input type="hidden" name="_intent" value="delete" />

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { ArrowRight, Clock } from "lucide-svelte";
+  import { locale } from "$lib/i18n/store";
+  import { formatDate as formatDateFor } from "$lib/i18n";
 
   type Article = {
     title: string;
@@ -11,12 +13,12 @@
 
   export let data: { articles: Article[] };
 
-  const dateFormat = new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-  const formatDate = (value: string) => dateFormat.format(new Date(value));
+  const formatDate = (value: string) =>
+    formatDateFor($locale, value, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
 
   // The newest guide gets the wide slot; the rest tile below it.
   $: [lead, ...rest] = data.articles;
