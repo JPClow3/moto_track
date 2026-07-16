@@ -3,21 +3,21 @@ import { describe, expect, it } from "vitest";
 
 const initialSchema = readFileSync(
   new URL(
-    "../../supabase/migrations/202607060001_initial_schema.sql",
+    "../../supabase/migrations/20260715001617_initial_schema.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const saleReportHardening = readFileSync(
   new URL(
-    "../../supabase/migrations/20260714193000_harden_sale_report_shares.sql",
+    "../../supabase/migrations/20260715002258_harden_sale_report_shares.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const securityHardening = readFileSync(
   new URL(
-    "../../supabase/migrations/20260715002523_secure_exposed_schema.sql",
+    "../../supabase/migrations/20260715002909_secure_exposed_schema.sql",
     import.meta.url,
   ),
   "utf8",
