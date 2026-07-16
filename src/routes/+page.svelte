@@ -1,9 +1,12 @@
 <script lang="ts">
   import { Wrench, Droplet, Bell, Briefcase, Gauge, Shield, ArrowRight } from "lucide-svelte";
   import PublicHeader from "$components/PublicHeader.svelte";
+  import PublicFooter from "$components/PublicFooter.svelte";
   import type { ProPricing } from "$types/billing";
 
-  export let data: { pricing: ProPricing };
+  type Article = { title: string; slug: string; summary: string };
+
+  export let data: { pricing: ProPricing; articles: Article[] };
 
   const features = [
     {
@@ -294,6 +297,44 @@
     </div>
   </section>
 
+  <!-- ── GUIDES ────────────────────────────────────────────── -->
+  {#if data.articles.length}
+    <section class="border-b border-[var(--line)] px-6 py-24">
+      <div class="mx-auto max-w-6xl">
+        <div class="flex flex-wrap items-end justify-between gap-6">
+          <div class="max-w-2xl">
+            <p class="eyebrow">
+              <span class="slash-rule" aria-hidden="true"></span>
+              Manual de garagem
+            </p>
+            <h2 class="display mt-5 text-5xl sm:text-6xl">Aprenda a fazer você mesmo</h2>
+            <p class="mt-5 text-lg text-[var(--muted)]">
+              Guias com torque, intervalo e peça certa — de graça, sem precisar de conta.
+            </p>
+          </div>
+          <a class="button-secondary px-6 py-3" href="/blog">Ver todos os guias</a>
+        </div>
+
+        <div class="mt-16 grid gap-px border border-[var(--line)] bg-[var(--line)] sm:grid-cols-3">
+          {#each data.articles as article (article.slug)}
+            <a class="feature group flex flex-col bg-[var(--bg)] p-7" href={`/blog/${article.slug}`}>
+              <h3 class="display text-2xl transition-colors group-hover:text-[var(--accent)]">
+                {article.title}
+              </h3>
+              <p class="mt-3 flex-1 text-sm leading-relaxed text-[var(--muted)]">
+                {article.summary}
+              </p>
+              <span class="label-tech mt-6 inline-flex items-center gap-2 text-[var(--accent)]">
+                Ler guia
+                <ArrowRight class="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </span>
+            </a>
+          {/each}
+        </div>
+      </div>
+    </section>
+  {/if}
+
   <!-- ── CTA ───────────────────────────────────────────────── -->
   <section class="relative overflow-hidden bg-ink px-6 py-28 text-paper">
     <div class="cta-slashes" aria-hidden="true"></div>
@@ -311,32 +352,7 @@
   </section>
 
   <!-- ── FOOTER ────────────────────────────────────────────── -->
-  <footer class="border-t border-[var(--line)] px-6 py-8">
-    <div
-      class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row"
-    >
-      <div class="flex items-center gap-3">
-        <img
-          src="/brand/svg/moto-track-logo-horizontal-light.svg"
-          alt="Moto Track"
-          class="h-5 opacity-40 dark:hidden"
-        />
-        <img
-          src="/brand/svg/moto-track-logo-horizontal-dark.svg"
-          alt="Moto Track"
-          class="hidden h-5 opacity-40 dark:block"
-        />
-        <span class="border-l border-[var(--line)] pl-3 text-sm text-[var(--muted)]">
-          © {new Date().getFullYear()}
-        </span>
-      </div>
-      <div class="flex items-center gap-5 text-sm text-[var(--muted)]">
-        <a href="/termos" class="nav-link">Termos</a>
-        <a href="/politica" class="nav-link">Privacidade</a>
-        <a href="/lgpd" class="nav-link">LGPD</a>
-      </div>
-    </div>
-  </footer>
+  <PublicFooter />
 </div>
 
 <style>

@@ -22,6 +22,20 @@ const securityHardening = readFileSync(
   ),
   "utf8",
 );
+const blogSeed = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260716090000_seed_blog_articles.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
+// `--` comments mention the $md$ delimiter in prose; strip them the way
+// Postgres does before counting, or the parity check reads a false failure.
+const blogSeedStatements = blogSeed
+  .split("\n")
+  .filter((line) => !line.trimStart().startsWith("--"))
+  .join("\n");
 
 describe("initial Supabase schema", () => {
   it("uses an identifier formatter for dynamically-created RLS policies", () => {
@@ -44,6 +58,45 @@ describe("sale report share hardening", () => {
     expect(saleReportHardening).toContain(
       'drop policy if exists "sale report shares owner update"',
     );
+  });
+});
+
+describe("blog article seed", () => {
+  const bodies = blogSeedStatements
+    .split("$md$")
+    .filter((_, index) => index % 2 === 1);
+
+  it("closes every dollar-quoted body", () => {
+    // An odd delimiter count means a body ran into the next column and the
+    // whole migration fails at apply time, not at review time.
+    expect(blogSeedStatements.split("$md$").length - 1).toBe(bodies.length * 2);
+    expect(bodies.length).toBeGreaterThanOrEqual(16);
+  });
+
+  it("stays re-runnable and does not clobber later admin edits", () => {
+    expect(blogSeed).toContain("on conflict (slug) do nothing");
+  });
+
+  it("pins published_at so the blog ordering is identical in every environment", () => {
+    expect(blogSeedStatements).not.toContain("now()");
+    for (const body of bodies) {
+      expect(body.trim().startsWith("## ")).toBe(true);
+    }
+  });
+
+  it("seeds the guides the previous stack shipped", () => {
+    for (const slug of [
+      "como-calcular-consumo-combustivel-honda-cb-500x",
+      "cronograma-manutencao-corrente-yamaha-mt07-xj6-tracer900",
+      "guia-troca-oleo-yamaha-fz25-fazer-250",
+      "quando-trocar-pastilhas-freio-honda-cb-300f-twister",
+      "checklist-seguranca-viajar-moto-brasil",
+      "como-ajustar-suspensao-traseira-cargas-diferentes",
+      "troca-de-oleo-honda-cg-160",
+      "troca-de-oleo-honda-cg-125",
+    ]) {
+      expect(blogSeed).toContain(`'${slug}'`);
+    }
   });
 });
 
