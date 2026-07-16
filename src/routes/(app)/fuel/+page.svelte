@@ -16,17 +16,17 @@
 <section class="grid gap-6">
   <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
     <div>
-      <p class="text-sm font-semibold uppercase tracking-wide text-signal">fuel</p>
-      <h1 class="text-3xl font-bold">Abastecimentos</h1>
+      <p class="eyebrow"><span class="slash-rule" aria-hidden="true"></span>Combustível</p>
+      <h1 class="display text-4xl">Abastecimentos</h1>
       <p class="mt-2 max-w-3xl text-sm text-[var(--muted)]">
         Registro completo com OCR de comprovante, importação CSV, postos, combustíveis, padrões e repetir último.
       </p>
     </div>
-    <a class="button-secondary" href="/fuel/export.csv">Export CSV</a>
+    <a class="button-secondary" href="/fuel/export.csv">Exportar CSV</a>
   </div>
 
   {#if data.errorMessage || form?.message}
-    <div class="rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{data.errorMessage || form?.message}</div>
+    <div class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{data.errorMessage || form?.message}</div>
   {/if}
 
   <div class="grid gap-4 md:grid-cols-4">
@@ -107,7 +107,7 @@
 
     <div class="grid gap-4">
       <form class="panel grid gap-3 p-4" method="POST" action="?/createRecord" enctype="multipart/form-data" use:enhance>
-        <h2 class="text-lg font-semibold">Novo abastecimento</h2>
+        <h2 class="display text-xl">Novo abastecimento</h2>
         <select class="field" name="motorcycle_id"><option value="">Moto</option>{#each data.motorcycles as moto}<option value={moto.id} selected={defaults.motorcycle_id === moto.id}>{moto.name}</option>{/each}</select>
         <input class="field" type="date" name="date" value={ocr?.date ?? ''} required />
         <input class="field" type="number" name="odometer_km" placeholder="Odômetro" required />
@@ -125,7 +125,7 @@
       </form>
 
       <form class="panel grid gap-3 p-4" method="POST" action="?/repeatLast" use:enhance>
-        <h2 class="text-lg font-semibold">Repetir último</h2>
+        <h2 class="display text-xl">Repetir último</h2>
         <input class="field" type="date" name="date" required />
         <input class="field" type="number" name="odometer_km" placeholder="Novo odômetro" required />
         <input class="field" type="number" step="0.001" name="liters" placeholder="Litros" required />
@@ -137,13 +137,13 @@
 
   <div class="grid gap-6 lg:grid-cols-2">
     <form class="panel grid gap-3 p-4" method="POST" action="?/ocrScan" enctype="multipart/form-data" use:enhance>
-      <h2 class="text-lg font-semibold">OCR de comprovante</h2>
+      <h2 class="display text-xl">OCR de comprovante</h2>
       <input class="field" type="file" name="receipt_file" accept="image/*,.pdf,.txt" required />
       <button class="button-secondary" type="submit">Escanear</button>
     </form>
 
     <form class="panel grid gap-3 p-4" method="POST" action="?/importPreview" enctype="multipart/form-data" use:enhance>
-      <h2 class="text-lg font-semibold">Importar CSV</h2>
+      <h2 class="display text-xl">Importar CSV</h2>
       <p class="text-sm text-[var(--muted)]">Cabeçalhos: date, odometer_km, liters, total_price, price_per_liter, station_name, fuel_type, tank_full, notes.</p>
       <input class="field" type="file" name="csv_file" accept=".csv,text/csv" required />
       <button class="button-secondary" type="submit">Pré-visualizar</button>
@@ -152,7 +152,7 @@
 
   <div class="grid gap-6 lg:grid-cols-2">
     <div class="panel p-4">
-      <h2 class="text-lg font-semibold">Postos</h2>
+      <h2 class="display text-xl">Postos</h2>
       <form class="mt-3 grid gap-3" method="POST" action="?/saveStation" use:enhance>
         <input class="field" name="name" placeholder="Nome" required />
         <input class="field" name="brand" placeholder="Bandeira" />
@@ -164,7 +164,7 @@
     </div>
 
     <div class="panel p-4">
-      <h2 class="text-lg font-semibold">Combustíveis</h2>
+      <h2 class="display text-xl">Combustíveis</h2>
       <form class="mt-3 grid gap-3" method="POST" action="?/saveGrade" use:enhance>
         <input class="field" name="name" placeholder="Nome" required />
         <input class="field" name="fuel_type" placeholder="Tipo" value="gasoline" />
@@ -178,7 +178,7 @@
 
   <div class="grid gap-6 lg:grid-cols-2">
     <form class="panel grid gap-3 p-4" method="POST" action="?/saveDefaults" use:enhance>
-      <h2 class="text-lg font-semibold">Padrões</h2>
+      <h2 class="display text-xl">Padrões</h2>
       <select class="field" name="motorcycle_id"><option value="">Moto</option>{#each data.motorcycles as moto}<option value={moto.id}>{moto.name}</option>{/each}</select>
       <select class="field" name="station_id"><option value="">Posto</option>{#each data.stations as station}<option value={station.id}>{station.name}</option>{/each}</select>
       <select class="field" name="fuel_grade_id"><option value="">Combustível</option>{#each data.grades as grade}<option value={grade.id}>{grade.name}</option>{/each}</select>
@@ -190,7 +190,7 @@
     </form>
 
     <form class="panel grid gap-3 p-4" method="POST" action="?/saveReviewSettings" use:enhance>
-      <h2 class="text-lg font-semibold">Sugestão de revisão</h2>
+      <h2 class="display text-xl">Sugestão de revisão</h2>
       <select class="field" name="motorcycle_id" required><option value="">Moto</option>{#each data.motorcycles as moto}<option value={moto.id}>{moto.name}</option>{/each}</select>
       <input class="field" type="number" min="1" name="fillups_interval" value="10" />
       <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" value="true" checked /> Ativar sugestão automática</label>

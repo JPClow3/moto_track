@@ -46,7 +46,7 @@ export async function load({ locals }) {
     {
       label: "Motos ativas",
       value: String(motorcycles?.length ?? 0),
-      detail: "Garage",
+      detail: "Garagem",
     },
     {
       label: "Odômetro atual",

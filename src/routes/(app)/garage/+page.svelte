@@ -7,15 +7,15 @@
 <svelte:head><title>Garagem · Moto Track</title></svelte:head>
 <section class="grid gap-6">
   <header class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-    <div><p class="text-sm font-semibold uppercase tracking-wide text-signal">Garagem</p><h1 class="text-3xl font-bold">Motos ativas e arquivadas</h1><p class="mt-2 text-sm text-[var(--muted)]">Arquivar preserva todo o histórico e permite restauração posterior.</p></div>
+    <div><p class="eyebrow"><span class="slash-rule" aria-hidden="true"></span>Garagem</p><h1 class="display text-4xl">Motos ativas e arquivadas</h1><p class="mt-2 text-sm text-[var(--muted)]">Arquivar preserva todo o histórico e permite restauração posterior.</p></div>
   </header>
-  {#if form?.message}<p class="rounded-md bg-danger/10 p-3 text-sm text-danger">{form.message}</p>{/if}
+  {#if form?.message}<p class="rounded bg-danger/10 p-3 text-sm text-danger">{form.message}</p>{/if}
   <div class="grid gap-6 xl:grid-cols-[1fr_340px]">
     <div class="grid gap-4 md:grid-cols-2">
       {#each data.motorcycles as motorcycle}
         <article class:opacity-70={!motorcycle.is_active} class="panel p-5">
           <div class="flex items-start justify-between gap-3"><div><h2 class="text-xl font-bold">{motorcycle.name}</h2><p class="text-sm text-[var(--muted)]">{motorcycle.brand} {motorcycle.model} · {motorcycle.year}</p></div><span class={`rounded-full px-2 py-1 text-xs ${motorcycle.is_active ? 'bg-emerald-500/15' : 'bg-black/10'}`}>{motorcycle.is_active ? 'Ativa' : 'Arquivada'}</span></div>
-          <p class="mt-4 text-3xl font-black">{motorcycle.current_odometer_km} <span class="text-base font-medium">km</span></p>
+          <p class="display numeric mt-4 text-4xl">{motorcycle.current_odometer_km} <span class="text-base font-medium">km</span></p>
           <div class="mt-4 flex flex-wrap gap-2">
             {#if motorcycle.is_active}
               <form method="POST" action="?/archive" use:enhance><input type="hidden" name="id" value={motorcycle.id} /><button class="button-danger" type="submit">Arquivar</button></form>

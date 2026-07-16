@@ -4,12 +4,12 @@
 <svelte:head><title>Conta · Moto Track</title></svelte:head>
 <section class="grid gap-6">
   <div>
-    <p class="text-sm font-semibold uppercase tracking-wide text-signal">Billing</p>
-    <h1 class="text-3xl font-bold">Conta e assinatura</h1>
+    <p class="eyebrow"><span class="slash-rule" aria-hidden="true"></span>Assinatura</p>
+    <h1 class="display text-4xl">Conta e assinatura</h1>
   </div>
   <div class="panel p-5">
     <p class="text-sm text-[var(--muted)]">Plano atual</p>
-    <p class="mt-2 text-3xl font-black">{data.profile?.plan ?? 'free'}</p>
+    <p class="display mt-2 text-4xl uppercase">{data.profile?.plan ?? 'free'}</p>
     <div class="mt-4 flex gap-3">
       <a class="button-primary" href="/billing/checkout">Assinar Pro</a>
       <a class="button-secondary" href="/billing/portal">Portal Stripe</a>

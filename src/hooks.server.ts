@@ -12,9 +12,21 @@ const protectedPrefixes = [
   "/expenses",
   "/reports",
   "/trabalho",
+  // Its load reads locals.user!.id, so an unauthenticated hit threw a 500
+  // instead of redirecting to sign-in.
+  "/onboarding",
   "/billing/conta",
   "/admin",
 ];
+
+/**
+ * Carve-outs that sit *under* a protected prefix but must stay reachable
+ * without a session. The sale dossier share link lives at
+ * /reports/sale/public/<token> — it is bearer-authenticated by the token itself
+ * and its whole purpose is to be opened by a prospective buyer who has no
+ * account. Without this, "/reports" bounced every visitor to /auth.
+ */
+const publicPrefixes = ["/reports/sale/public/"];
 
 export const handle: Handle = async ({ event, resolve }) => {
   event.locals.supabase = createSupabaseServerClient(event);
@@ -40,7 +52,12 @@ export const handle: Handle = async ({ event, resolve }) => {
   event.locals.session = session;
   event.locals.user = user;
 
+  const isPublic = publicPrefixes.some((prefix) =>
+    event.url.pathname.startsWith(prefix),
+  );
+
   if (
+    !isPublic &&
     protectedPrefixes.some((prefix) => event.url.pathname.startsWith(prefix)) &&
     !user
   ) {

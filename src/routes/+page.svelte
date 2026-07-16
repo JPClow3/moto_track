@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Wrench, Droplet, Bell, Briefcase, Gauge, Shield, ArrowRight } from "lucide-svelte";
+  import PublicHeader from "$components/PublicHeader.svelte";
   import type { ProPricing } from "$types/billing";
 
   export let data: { pricing: ProPricing };
@@ -61,42 +62,18 @@
 
 <div class="landing">
   <!-- ── NAV ───────────────────────────────────────────────── -->
-  <header class="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--bg)]/80 backdrop-blur-md">
-    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-      <a href="/" class="focus-ring rounded transition hover:opacity-70">
-        <img
-          src="/brand/svg/moto-track-logo-horizontal-light.svg"
-          alt="Moto Track"
-          class="h-7 dark:hidden"
-          width="845"
-          height="160"
-        />
-        <img
-          src="/brand/svg/moto-track-logo-horizontal-dark.svg"
-          alt="Moto Track"
-          class="hidden h-7 dark:block"
-          width="845"
-          height="160"
-        />
-      </a>
-      <div class="flex items-center gap-2 sm:gap-6">
-        <a class="nav-link label-tech hidden sm:inline-block" href="/precos">Planos</a>
-        <a class="nav-link label-tech hidden sm:inline-block" href="/roadmap">Roadmap</a>
-        <a class="button-primary" href="/auth">Entrar</a>
-      </div>
-    </nav>
-  </header>
+  <PublicHeader />
 
   <!-- ── HERO ──────────────────────────────────────────────── -->
   <section class="relative overflow-hidden border-b border-[var(--line)]">
     <div class="grid-backdrop" aria-hidden="true"></div>
-    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="accent-glow hero-glow" aria-hidden="true"></div>
 
     <div
       class="relative mx-auto grid max-w-6xl items-center gap-16 px-6 py-20 lg:grid-cols-[1.05fr_.95fr] lg:py-28"
     >
       <div>
-        <p class="reveal label-tech flex items-center gap-3 text-[var(--accent)]" style="--d:0ms">
+        <p class="reveal eyebrow" style="--d:0ms">
           <span class="slash-rule" aria-hidden="true"></span>
           Centro de comando
         </p>
@@ -204,7 +181,7 @@
   <section class="border-b border-[var(--line)] px-6 py-24">
     <div class="mx-auto max-w-6xl">
       <div class="max-w-2xl">
-        <p class="label-tech flex items-center gap-3 text-[var(--accent)]">
+        <p class="eyebrow">
           <span class="slash-rule" aria-hidden="true"></span>
           O que tem dentro
         </p>
@@ -235,7 +212,7 @@
   <section class="border-b border-[var(--line)] px-6 py-24">
     <div class="mx-auto max-w-6xl">
       <div class="max-w-2xl">
-        <p class="label-tech flex items-center gap-3 text-[var(--accent)]">
+        <p class="eyebrow">
           <span class="slash-rule" aria-hidden="true"></span>
           Planos
         </p>
@@ -363,69 +340,14 @@
 </div>
 
 <style>
-  /* Red hairline that hovers up from under a nav link. */
-  .nav-link {
-    position: relative;
-    transition: color 0.2s;
-  }
-  .nav-link::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    bottom: -4px;
-    width: 100%;
-    height: 2px;
-    background: var(--accent);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.25s ease;
-  }
-  .nav-link:hover {
-    color: var(--accent);
-  }
-  .nav-link:hover::after {
-    transform: scaleX(1);
-  }
+  /* .slash-rule, .nav-link, .grid-backdrop, .accent-glow and .tick are global
+     brand motifs — see app.css. Only page-specific pieces live here. */
 
-  /* The logo's speed-mark, rebuilt as a rule. */
-  .slash-rule {
-    display: inline-block;
-    width: 26px;
-    height: 10px;
-    background: repeating-linear-gradient(
-      100deg,
-      currentColor 0 3px,
-      transparent 3px 7px
-    );
-  }
-  .slash-rule--sm {
-    width: 16px;
-    height: 8px;
-  }
-
-  /* Blueprint grid — replaces the blurred-blob background. */
-  .grid-backdrop {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(to right, var(--line) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--line) 1px, transparent 1px);
-    background-size: 72px 72px;
-    opacity: 0.5;
-    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
-    pointer-events: none;
-  }
-
-  /* A single warm red bloom, like a tail light. */
   .hero-glow {
-    position: absolute;
     top: -30%;
     right: -10%;
     width: 55%;
     height: 90%;
-    background: radial-gradient(circle, var(--accent-soft) 0%, transparent 65%);
-    pointer-events: none;
   }
 
   .corner-slashes,
@@ -451,19 +373,6 @@
     width: 40%;
     height: 100%;
     opacity: 0.07;
-  }
-
-  /* Neutral ticks, not green — green next to brand red reads as Christmas. */
-  .tick {
-    margin-top: 0.4rem;
-    width: 7px;
-    height: 7px;
-    flex-shrink: 0;
-    background: var(--muted);
-    transform: skewX(-24deg);
-  }
-  .tick--accent {
-    background: var(--accent);
   }
 
   .feature {

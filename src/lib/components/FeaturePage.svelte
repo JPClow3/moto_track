@@ -24,28 +24,31 @@
 <section class="grid gap-6">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
     <div>
-      <p class="text-sm font-semibold uppercase tracking-wide text-signal">{feature.slug}</p>
-      <h1 class="text-3xl font-bold">{feature.title}</h1>
+      <p class="eyebrow">
+        <span class="slash-rule" aria-hidden="true"></span>
+        {feature.slug}
+      </p>
+      <h1 class="display mt-3 text-4xl">{feature.title}</h1>
       <p class="mt-2 max-w-3xl text-sm text-[var(--muted)]">{feature.subtitle}</p>
     </div>
-    <a class="button-secondary" href={`/${feature.slug}/export.csv`}>Export CSV</a>
+    <a class="button-secondary shrink-0" href={`/${feature.slug}/export.csv`}>Exportar CSV</a>
   </div>
 
   {#if errorMessage}
-    <div class="rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{errorMessage}</div>
+    <div class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{errorMessage}</div>
   {/if}
 
   <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
     <div class="panel overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full min-w-[760px] text-left text-sm">
-          <thead class="border-b border-[var(--line)] text-xs uppercase text-[var(--muted)]">
+          <thead class="border-b border-[var(--line)] text-[var(--muted)]">
             <tr>
               {#each feature.listColumns as column}
-                <th class="px-4 py-3 font-semibold">{column.replaceAll('_', ' ')}</th>
+                <th class="label-tech px-4 py-3 text-left">{column.replaceAll('_', ' ')}</th>
               {/each}
-              <th class="px-4 py-3 font-semibold">Status</th>
-              <th class="px-4 py-3 font-semibold">Ações</th>
+              <th class="label-tech px-4 py-3 text-left">Status</th>
+              <th class="label-tech px-4 py-3 text-left">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -81,7 +84,7 @@
                     </div>
                   </td>
                 </tr>
-                <tr class="border-b border-[var(--line)] bg-black/[0.015]">
+                <tr class="edit-row border-b border-[var(--line)]">
                   <td class="px-4 py-3" colspan={feature.listColumns.length + 2}>
                     <details>
                       <summary class="cursor-pointer text-sm font-semibold">Editar registro</summary>
@@ -147,12 +150,12 @@
     <form class="panel grid gap-3 p-4" method="POST" enctype="multipart/form-data" use:enhance>
       <input type="hidden" name="_intent" value="create" />
       <div>
-        <h2 class="text-lg font-semibold">Novo registro</h2>
-        <p class="text-sm text-[var(--muted)]">Validação server-side com Supabase RLS.</p>
+        <h2 class="display text-2xl">Novo registro</h2>
+        <p class="mt-1 text-sm text-[var(--muted)]">Validação server-side com Supabase RLS.</p>
       </div>
       {#each feature.fields as field}
         <label class="grid gap-1 text-sm">
-          <span class="font-medium">{field.label}</span>
+          <span class="font-semibold">{field.label}</span>
           {#if field.kind === 'textarea'}
             <textarea class="field min-h-24" name={field.key} required={field.required}></textarea>
           {:else if field.kind === 'boolean'}
@@ -191,3 +194,11 @@
     </form>
   </div>
 </section>
+
+<style>
+  /* A tint derived from --fg, so it lightens the row in dark mode instead of
+     painting black-on-black like the old bg-black/[0.015] did. */
+  .edit-row {
+    background: color-mix(in srgb, var(--fg) 3%, transparent);
+  }
+</style>

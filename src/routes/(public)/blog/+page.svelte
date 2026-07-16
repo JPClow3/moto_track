@@ -3,7 +3,7 @@
 </script>
 <svelte:head><title>Blog · Moto Track</title></svelte:head>
 <section class="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-  <h1 class="text-4xl font-black">Blog</h1>
+  <h1 class="display text-4xl">Blog</h1>
   <div class="mt-8 grid gap-4">
     {#each data.articles as article}
       <a class="panel block p-5" href={`/blog/${article.slug}`}>

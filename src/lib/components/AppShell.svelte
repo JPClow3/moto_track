@@ -34,17 +34,18 @@
     Shield
   };
 
+  // Labels are pt-BR to match the rest of the product; the hrefs are unchanged.
   const nav = [
-    { href: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-    { href: '/garage', label: 'Garage', icon: 'Bike' },
-    { href: '/fuel', label: 'Fuel', icon: 'Fuel' },
-    { href: '/maintenance', label: 'Maintenance', icon: 'Wrench' },
-    { href: '/tires', label: 'Tires', icon: 'CircleGauge' },
-    { href: '/documents', label: 'Documents', icon: 'FileText' },
-    { href: '/reminders', label: 'Reminders', icon: 'Bell' },
-    { href: '/expenses', label: 'Expenses', icon: 'ReceiptText' },
-    { href: '/reports', label: 'Reports', icon: 'ChartNoAxesCombined' },
-    { href: '/trabalho', label: 'Work', icon: 'BriefcaseBusiness' },
+    { href: '/dashboard', label: 'Painel', icon: 'LayoutDashboard' },
+    { href: '/garage', label: 'Garagem', icon: 'Bike' },
+    { href: '/fuel', label: 'Combustível', icon: 'Fuel' },
+    { href: '/maintenance', label: 'Manutenção', icon: 'Wrench' },
+    { href: '/tires', label: 'Pneus', icon: 'CircleGauge' },
+    { href: '/documents', label: 'Documentos', icon: 'FileText' },
+    { href: '/reminders', label: 'Lembretes', icon: 'Bell' },
+    { href: '/expenses', label: 'Despesas', icon: 'ReceiptText' },
+    { href: '/reports', label: 'Relatórios', icon: 'ChartNoAxesCombined' },
+    { href: '/trabalho', label: 'Trabalho', icon: 'BriefcaseBusiness' },
     { href: '/admin', label: 'Admin', icon: 'Shield' }
   ];
 </script>
@@ -52,32 +53,36 @@
 <div class="min-h-screen bg-[var(--bg)] text-[var(--fg)] relative">
   <!-- Sidebar -->
   <aside class="fixed inset-y-0 left-0 hidden w-72 border-r border-[var(--line)] bg-[var(--panel)] p-4 lg:flex flex-col">
-    <a href="/dashboard" class="focus-ring flex items-center gap-3 rounded-md px-2 py-3 transition hover:opacity-80">
+    <a href="/dashboard" class="focus-ring flex items-center gap-3 rounded px-2 py-3 transition hover:opacity-80">
       <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-6 dark:hidden" />
       <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="h-6 hidden dark:block" />
     </a>
 
-    <nav class="mt-8 space-y-1.5 flex-1 overflow-y-auto pr-2">
+    <nav class="mt-8 space-y-0.5 flex-1 overflow-y-auto pr-2">
       {#each nav as item}
         {@const Icon = icons[item.icon as keyof typeof icons]}
+        <!-- Inlined rather than a helper: Svelte only re-evaluates template
+             expressions that reference currentPath directly. -->
+        {@const active = currentPath === item.href || currentPath.startsWith(`${item.href}/`)}
         <a
-          class="focus-ring flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition"
-          class:selected={currentPath === item.href || currentPath.startsWith(`${item.href}/`)}
-          class:not-selected={currentPath !== item.href && !currentPath.startsWith(`${item.href}/`)}
+          class="nav-item focus-ring flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition"
+          class:selected={active}
+          class:not-selected={!active}
           href={item.href}
+          aria-current={active ? 'page' : undefined}
         >
-          <Icon size={18} class={currentPath === item.href || currentPath.startsWith(`${item.href}/`) ? 'text-signal' : 'text-[var(--muted)]'} />
+          <Icon size={18} class={active ? 'text-[var(--accent)]' : 'text-[var(--muted)]'} />
           <span>{item.label}</span>
         </a>
       {/each}
     </nav>
-    
+
     <div class="mt-4 pt-4 border-t border-[var(--line)]">
       <div class="flex items-center gap-3 px-2 py-2">
-         <div class="w-8 h-8 rounded-full bg-signal/20 text-signal flex items-center justify-center font-bold text-xs uppercase">
+         <div class="w-8 h-8 rounded-sm bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center font-bold text-xs uppercase">
            {user?.email?.charAt(0) ?? 'U'}
          </div>
-         <span class="text-xs font-medium text-[var(--muted)] truncate max-w-[180px]">{user?.email ?? 'Authenticated'}</span>
+         <span class="text-xs font-medium text-[var(--muted)] truncate max-w-[180px]">{user?.email ?? 'Conta autenticada'}</span>
       </div>
     </div>
   </aside>
@@ -90,11 +95,11 @@
           <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-5 dark:hidden" />
           <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="h-5 hidden dark:block" />
         </a>
-        <div class="hidden text-sm font-medium text-[var(--muted)] lg:block">
-           Workspace Overview
+        <div class="hidden label-tech text-[var(--muted)] lg:block">
+           Central da garagem
         </div>
         <div class="flex items-center gap-3">
-          <a href="/precos" class="button-secondary text-xs px-3 py-1.5 border-[var(--line)] hover:border-signal/50 hover:text-signal transition-colors">Planos</a>
+          <a href="/precos" class="button-secondary text-xs px-3 py-1.5">Planos</a>
           <form method="POST" action="/auth?/signOut">
             <button class="button-secondary text-xs px-3 py-1.5" type="submit" aria-label="Sair">
               <LogOut size={14} />
@@ -112,13 +117,32 @@
 </div>
 
 <style>
-  .selected {
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--fg);
+  /* Active route reads as a red edge marker on the rail rather than a wash of
+     colour — keeps red rare and scans quickly down the list. */
+  .nav-item {
+    position: relative;
   }
+
+  .selected {
+    background: var(--accent-soft);
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+  .selected::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--accent);
+  }
+
   .not-selected {
     color: var(--muted);
   }
+
   .not-selected:hover {
     background: color-mix(in srgb, var(--fg) 4%, transparent);
     color: var(--fg);

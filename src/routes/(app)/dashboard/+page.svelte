@@ -1,67 +1,86 @@
 <script lang="ts">
   import MetricCard from '$components/MetricCard.svelte';
-  import { Bell, Shield, FileText } from 'lucide-svelte';
+  import { Bell, CircleGauge, FileText } from 'lucide-svelte';
 
   export let data: {
     metrics: Array<{ label: string; value: string; detail: string }>;
     alerts: { activeReminders: number; activeTires: number; expiringDocuments: number };
   };
+
+  $: alerts = [
+    {
+      icon: Bell,
+      title: 'Lembretes ativos',
+      value: data.alerts.activeReminders,
+      detail: 'O worker avalia automaticamente o que está vencido ou próximo.',
+      // The only one that asks for action, so the only one in red.
+      accent: true
+    },
+    {
+      icon: CircleGauge,
+      title: 'Pneus ativos',
+      value: data.alerts.activeTires,
+      detail: 'Desgaste e troca alimentam a nota de saúde da moto.',
+      accent: false
+    },
+    {
+      icon: FileText,
+      title: 'Documentos monitorados',
+      value: data.alerts.expiringDocuments,
+      detail: 'Datas de validade viram lembretes conforme o prazo se aproxima.',
+      accent: false
+    }
+  ];
 </script>
 
-<svelte:head><title>Dashboard · Moto Track</title></svelte:head>
+<svelte:head><title>Painel · Moto Track</title></svelte:head>
 
 <section class="grid gap-8">
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-    <div>
-      <p class="text-sm font-semibold uppercase tracking-wide text-signal mb-1">Dashboard</p>
-      <h1 class="text-4xl font-black text-ink dark:text-white">Workspace Overview</h1>
-      <p class="mt-2 max-w-2xl text-[var(--muted)]">
-        Odometer, alerts, fuel cost, reminders, and setup progress across your active motorcycles.
-      </p>
-    </div>
+  <div>
+    <p class="eyebrow">
+      <span class="slash-rule" aria-hidden="true"></span>
+      Painel
+    </p>
+    <h1 class="display mt-3 text-5xl">Central da garagem</h1>
+    <p class="mt-3 max-w-2xl text-[var(--muted)]">
+      Odômetro, alertas, custo de combustível e lembretes das suas motos ativas.
+    </p>
   </div>
 
-  <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {#each data.metrics as metric}
       <MetricCard {...metric} />
     {/each}
   </div>
 
-  <div class="grid gap-6 md:grid-cols-3">
-    <article class="panel p-6 bg-[var(--bg)]/40 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 relative overflow-hidden group">
-      <div class="absolute top-0 right-0 w-32 h-32 bg-signal/10 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-500"></div>
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-xl bg-signal/15 text-signal flex items-center justify-center">
-          <Bell class="w-5 h-5" />
+  <div class="grid gap-4 md:grid-cols-3">
+    {#each alerts as alert (alert.title)}
+      <article class="panel p-6">
+        <div class="mb-5 flex items-center gap-3">
+          <div
+            class="flex h-9 w-9 items-center justify-center rounded-sm"
+            class:accent-chip={alert.accent}
+            class:muted-chip={!alert.accent}
+          >
+            <svelte:component this={alert.icon} class="h-4 w-4" />
+          </div>
+          <h2 class="label-tech text-[var(--muted)]">{alert.title}</h2>
         </div>
-        <h2 class="font-bold text-lg">Active reminders</h2>
-      </div>
-      <p class="text-5xl font-black text-ink dark:text-white">{data.alerts.activeReminders}</p>
-      <p class="mt-3 text-xs text-[var(--muted)]">Due/soon evaluation is handled automatically by the system worker.</p>
-    </article>
-    
-    <article class="panel p-6 bg-[var(--bg)]/40 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 relative overflow-hidden group">
-      <div class="absolute top-0 right-0 w-32 h-32 bg-moss/10 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-500"></div>
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-xl bg-moss/15 text-moss flex items-center justify-center">
-          <Shield class="w-5 h-5" />
-        </div>
-        <h2 class="font-bold text-lg">Active tires</h2>
-      </div>
-      <p class="text-5xl font-black text-ink dark:text-white">{data.alerts.activeTires}</p>
-      <p class="mt-3 text-xs text-[var(--muted)]">Wear and replacement indicators feed into the overall health scoring.</p>
-    </article>
-    
-    <article class="panel p-6 bg-[var(--bg)]/40 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 relative overflow-hidden group">
-      <div class="absolute top-0 right-0 w-32 h-32 bg-steel/10 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-500"></div>
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-xl bg-steel/15 text-steel flex items-center justify-center">
-          <FileText class="w-5 h-5" />
-        </div>
-        <h2 class="font-bold text-lg">Tracked documents</h2>
-      </div>
-      <p class="text-5xl font-black text-ink dark:text-white">{data.alerts.expiringDocuments}</p>
-      <p class="mt-3 text-xs text-[var(--muted)]">Expiration dates will automatically generate reminders when nearing the deadline.</p>
-    </article>
+        <p class="display numeric text-6xl">{alert.value}</p>
+        <p class="mt-3 text-xs leading-relaxed text-[var(--muted)]">{alert.detail}</p>
+      </article>
+    {/each}
   </div>
 </section>
+
+<style>
+  .accent-chip {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .muted-chip {
+    background: color-mix(in srgb, var(--fg) 6%, transparent);
+    color: var(--muted);
+  }
+</style>

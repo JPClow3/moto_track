@@ -9,13 +9,13 @@
 
 <section class="grid gap-6">
   <div>
-    <p class="text-sm font-semibold uppercase tracking-wide text-signal">Admin</p>
-    <h1 class="text-3xl font-bold">Console operacional</h1>
+    <p class="eyebrow"><span class="slash-rule" aria-hidden="true"></span>Admin</p>
+    <h1 class="display text-4xl">Console operacional</h1>
     <p class="mt-2 text-sm text-[var(--muted)]">Configurações, blog, templates, assinaturas e solicitações de dados.</p>
   </div>
 
   {#if form?.message}
-    <div class="rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{form.message}</div>
+    <div class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{form.message}</div>
   {/if}
 
   {#if !data.isStaff}
@@ -30,7 +30,7 @@
 
     <div class="grid gap-6 xl:grid-cols-2">
       <form class="panel grid gap-3 p-4" method="POST" action="?/saveSettings" use:enhance>
-        <h2 class="text-lg font-semibold">Configurações do site</h2>
+        <h2 class="display text-xl">Configurações do site</h2>
         <input class="field" name="company_name" value={data.settings?.company_name ?? 'Moto Track'} />
         <input class="field" name="support_email" value={data.settings?.support_email ?? ''} placeholder="Email suporte" />
         <div class="grid gap-3 sm:grid-cols-2">
@@ -49,7 +49,7 @@
       </form>
 
       <form class="panel grid gap-3 p-4" method="POST" action="?/createArticle" use:enhance>
-        <h2 class="text-lg font-semibold">Novo artigo</h2>
+        <h2 class="display text-xl">Novo artigo</h2>
         <input class="field" name="title" placeholder="Título" required />
         <input class="field" name="slug" placeholder="slug opcional" />
         <input class="field" name="summary" placeholder="Resumo" required />
@@ -61,7 +61,7 @@
 
     <div class="grid gap-6 xl:grid-cols-2">
       <form class="panel grid gap-3 p-4" method="POST" action="?/createTemplate" use:enhance>
-        <h2 class="text-lg font-semibold">Template de moto</h2>
+        <h2 class="display text-xl">Template de moto</h2>
         <div class="grid gap-3 sm:grid-cols-2"><input class="field" name="brand" placeholder="Marca" required /><input class="field" name="model" placeholder="Modelo" required /></div>
         <div class="grid gap-3 sm:grid-cols-4"><input class="field" name="year_from" type="number" placeholder="Ano inicial" required /><input class="field" name="year_to" type="number" placeholder="Ano final" /><input class="field" name="engine_cc" type="number" placeholder="cc" required /><input class="field" name="country_code" value="BR" /></div>
         <input class="field" name="variant" placeholder="Versão" />
@@ -69,7 +69,7 @@
       </form>
 
       <div class="panel p-4">
-        <h2 class="text-lg font-semibold">Solicitações de dados</h2>
+        <h2 class="display text-xl">Solicitações de dados</h2>
         <div class="mt-3 grid gap-2 text-sm">
           {#each data.requests as request}
             <div class="border-t border-[var(--line)] py-2">{request.request_type} · {request.status} · {request.created_at}</div>
