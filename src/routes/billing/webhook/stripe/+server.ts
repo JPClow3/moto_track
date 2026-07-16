@@ -17,40 +17,73 @@ export async function POST({ request, platform }) {
   }
   const supabase = createSupabaseAdminClient(platform);
 
-  await supabase.from("billing_events").upsert({
-    stripe_event_id: event.id,
-    event_type: event.type,
-    payload: event as never,
-    processed_at: new Date().toISOString(),
-  });
+  const { data: insertedEvents, error: eventError } = await supabase
+    .from("billing_events")
+    .upsert(
+      {
+        stripe_event_id: event.id,
+        event_type: event.type,
+        payload: event as never,
+        processed_at: new Date().toISOString(),
+      },
+      { onConflict: "stripe_event_id", ignoreDuplicates: true },
+    )
+    .select("id");
+  if (eventError) throw eventError;
+  if (!insertedEvents?.length) return json({ received: true });
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.user_id || session.client_reference_id;
     if (userId) {
-      const interval =
-        session.metadata?.interval === "yearly" ? "yearly" : "monthly";
-      await supabase.from("subscription_profiles").upsert({
-        owner_id: userId,
-        plan: "pro",
-        billing_interval: interval,
-        stripe_customer_id: String(session.customer ?? ""),
-        stripe_subscription_id: String(session.subscription ?? ""),
-        stripe_subscription_status: "active",
-      });
+      await supabase.from("subscription_profiles").upsert(
+        {
+          owner_id: userId,
+          stripe_customer_id: String(session.customer ?? ""),
+          stripe_subscription_id: String(session.subscription ?? ""),
+        },
+        { onConflict: "owner_id" },
+      );
     }
   }
 
   if (
+    event.type === "customer.subscription.created" ||
     event.type === "customer.subscription.updated" ||
-    event.type === "customer.subscription.deleted" ||
-    event.type === "customer.subscription.paused"
+    event.type === "customer.subscription.deleted"
   ) {
     const subscription = event.data.object as Stripe.Subscription;
-    await supabase
-      .from("subscription_profiles")
-      .update(subscriptionProfileUpdate(subscription.status))
-      .eq("stripe_subscription_id", subscription.id);
+    let ownerId = subscription.metadata.user_id;
+    if (!ownerId) {
+      const { data: profile } = await supabase
+        .from("subscription_profiles")
+        .select("owner_id")
+        .eq("stripe_subscription_id", subscription.id)
+        .maybeSingle();
+      ownerId = profile?.owner_id ?? "";
+    }
+    if (ownerId)
+      await supabase.from("subscription_profiles").upsert(
+        {
+          owner_id: ownerId,
+          ...subscriptionProfileUpdate(subscription),
+        },
+        { onConflict: "owner_id" },
+      );
+  }
+
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const subscriptionId =
+      typeof invoice.subscription === "string"
+        ? invoice.subscription
+        : invoice.subscription?.id;
+    if (subscriptionId) {
+      await supabase
+        .from("subscription_profiles")
+        .update({ plan: "free", stripe_subscription_status: "past_due" })
+        .eq("stripe_subscription_id", subscriptionId);
+    }
   }
 
   return json({ received: true });

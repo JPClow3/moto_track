@@ -1,4 +1,4 @@
-export async function load({ locals }) {
+export async function load({ locals, url }) {
   const { data: profile } = await locals.supabase
     .from("subscription_profiles")
     .select("*")
@@ -9,7 +9,11 @@ export async function load({ locals }) {
     .select("*")
     .eq("owner_id", locals.user!.id)
     .order("created_at", { ascending: false });
-  return { profile, requests: requests ?? [] };
+  return {
+    profile,
+    requests: requests ?? [],
+    checkout: url.searchParams.get("checkout"),
+  };
 }
 
 export const actions = {
