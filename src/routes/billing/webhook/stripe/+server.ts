@@ -53,7 +53,7 @@ export async function POST({ request, platform }) {
     event.type === "customer.subscription.deleted"
   ) {
     const subscription = event.data.object as Stripe.Subscription;
-    let ownerId = subscription.metadata.user_id;
+    let ownerId = subscription.metadata?.user_id;
     if (!ownerId) {
       const { data: profile } = await supabase
         .from("subscription_profiles")
