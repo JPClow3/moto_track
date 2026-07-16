@@ -40,9 +40,12 @@
 
   <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
     <div class="panel overflow-hidden">
+      <div class="flex items-center justify-between gap-3 border-b border-[var(--accent)]/20 bg-[var(--accent-soft)] px-4 py-2.5">
+        <span class="label-tech text-[var(--accent)]">{rows.length} {rows.length === 1 ? 'registro' : 'registros'}</span>
+      </div>
       <div class="overflow-x-auto">
         <table class="w-full min-w-[760px] text-left text-sm">
-          <thead class="border-b border-[var(--line)] text-[var(--muted)]">
+          <thead class="border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--fg)_3%,transparent)] text-[var(--muted)]">
             <tr>
               {#each feature.listColumns as column}
                 <th class="label-tech px-4 py-3 text-left">{column.replaceAll('_', ' ')}</th>
@@ -53,7 +56,7 @@
           </thead>
           <tbody>
             {#each rows as row}
-              <tr class="border-b border-[var(--line)]">
+              <tr class="row-hover border-b border-[var(--line)]">
                   {#each feature.listColumns as column}
                     <td class="px-4 py-3">{valueFor(row, column)}</td>
                   {/each}
@@ -137,8 +140,9 @@
                 </tr>
             {:else}
               <tr>
-                <td class="px-4 py-12 text-center text-[var(--muted)]" colspan={feature.listColumns.length + 2}>
-                  Sem registros ainda.
+                <td class="px-4 py-16 text-center" colspan={feature.listColumns.length + 2}>
+                  <p class="label-tech text-[var(--accent)]">Nada por aqui ainda</p>
+                  <p class="mt-2 text-sm text-[var(--muted)]">Use o formulário ao lado para criar o primeiro registro.</p>
                 </td>
               </tr>
             {/each}
@@ -147,10 +151,11 @@
       </div>
     </div>
 
-    <form class="panel grid gap-3 p-4" method="POST" enctype="multipart/form-data" use:enhance>
-      <input type="hidden" name="_intent" value="create" />
-      <div>
-        <h2 class="display text-2xl">Novo registro</h2>
+    <form class="panel relative grid gap-3 overflow-hidden p-4" method="POST" enctype="multipart/form-data" use:enhance>
+      <div class="corner-slashes" aria-hidden="true"></div>
+      <div class="relative">
+        <p class="label-tech text-[var(--accent)]">Novo</p>
+        <h2 class="display mt-1 text-2xl">Novo registro</h2>
         <p class="mt-1 text-sm text-[var(--muted)]">Validação server-side com Supabase RLS.</p>
       </div>
       {#each feature.fields as field}
@@ -200,5 +205,24 @@
      painting black-on-black like the old bg-black/[0.015] did. */
   .edit-row {
     background: color-mix(in srgb, var(--fg) 3%, transparent);
+  }
+
+  .row-hover:hover {
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
+  }
+
+  .corner-slashes {
+    position: absolute;
+    top: -10px;
+    right: -30px;
+    width: 160px;
+    height: 90px;
+    pointer-events: none;
+    opacity: 0.15;
+    background: repeating-linear-gradient(
+      100deg,
+      var(--accent) 0 6px,
+      transparent 6px 16px
+    );
   }
 </style>

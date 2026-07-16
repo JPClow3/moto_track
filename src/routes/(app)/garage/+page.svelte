@@ -14,7 +14,7 @@
     <div class="grid gap-4 md:grid-cols-2">
       {#each data.motorcycles as motorcycle}
         <article class:opacity-70={!motorcycle.is_active} class="panel p-5">
-          <div class="flex items-start justify-between gap-3"><div><h2 class="text-xl font-bold">{motorcycle.name}</h2><p class="text-sm text-[var(--muted)]">{motorcycle.brand} {motorcycle.model} · {motorcycle.year}</p></div><span class={`rounded-full px-2 py-1 text-xs ${motorcycle.is_active ? 'bg-emerald-500/15' : 'bg-black/10'}`}>{motorcycle.is_active ? 'Ativa' : 'Arquivada'}</span></div>
+          <div class="flex items-start justify-between gap-3"><div><h2 class="text-xl font-bold">{motorcycle.name}</h2><p class="text-sm text-[var(--muted)]">{motorcycle.brand} {motorcycle.model} · {motorcycle.year}</p></div><span class={`label-tech rounded-full px-2.5 py-1 text-xs ${motorcycle.is_active ? 'bg-success/15 text-success' : 'bg-[var(--muted)]/15 text-[var(--muted)]'}`}>{motorcycle.is_active ? 'Ativa' : 'Arquivada'}</span></div>
           <p class="display numeric mt-4 text-4xl">{motorcycle.current_odometer_km} <span class="text-base font-medium">km</span></p>
           <div class="mt-4 flex flex-wrap gap-2">
             {#if motorcycle.is_active}
