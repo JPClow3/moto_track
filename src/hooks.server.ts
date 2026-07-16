@@ -1,5 +1,6 @@
 import { redirect, type Handle } from "@sveltejs/kit";
 import { createSupabaseServerClient } from "$server/supabase/server";
+import { LOCALE_COOKIE, resolveLocale } from "$lib/i18n";
 
 const protectedPrefixes = [
   "/dashboard",
@@ -29,6 +30,13 @@ const protectedPrefixes = [
 const publicPrefixes = ["/reports/sale/public/"];
 
 export const handle: Handle = async ({ event, resolve }) => {
+  // Resolved before anything can redirect, so even the sign-in bounce and the
+  // error page render in the reader's language.
+  event.locals.locale = resolveLocale(
+    event.cookies.get(LOCALE_COOKIE),
+    event.request.headers.get("accept-language"),
+  );
+
   event.locals.supabase = createSupabaseServerClient(event);
   event.locals.safeGetSession = async () => {
     const {
@@ -68,6 +76,10 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   return resolve(event, {
+    // app.html ships `lang="%lang%"`; without this the document would claim to
+    // be pt-BR to screen readers and translation tools no matter the locale.
+    transformPageChunk: ({ html }) =>
+      html.replace("%lang%", event.locals.locale),
     filterSerializedResponseHeaders(name) {
       return name === "content-range" || name === "x-supabase-api-version";
     },

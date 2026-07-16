@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import MetricCard from '$components/MetricCard.svelte';
+  import { t } from '$lib/i18n/store';
   export let data;
   export let form;
 </script>
@@ -19,7 +20,14 @@
   {/if}
 
   {#if !data.isStaff}
-    <div class="panel p-5 text-danger">Seu perfil não está marcado como staff.</div>
+    <!-- The Admin nav item is now hidden for non-staff, so reaching this means
+         typing the URL directly. Says what it means to a person rather than
+         narrating our profile schema at them. -->
+    <div class="panel p-8 text-center" role="alert">
+      <p class="display text-2xl">{$t('admin.notStaffTitle')}</p>
+      <p class="mx-auto mt-2 max-w-sm text-sm text-[var(--muted)]">{$t('admin.notStaffBody')}</p>
+      <a class="button-secondary mt-6" href="/dashboard">{$t('error.backToDashboard')}</a>
+    </div>
   {:else}
     <div class="grid gap-4 md:grid-cols-4">
       <MetricCard label="Usuários" value={String(data.counts.users ?? 0)} />

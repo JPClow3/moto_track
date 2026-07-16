@@ -39,6 +39,19 @@
   /* A surface that contrasts against --panel in BOTH themes, for the one card
      that needs to out-weigh its neighbour. Dark-on-light here. */
   --panel-invert: #18181b;
+
+  /* A recessed surface, one step *back* from --panel. The UI was --panel on
+     --bg and almost nothing else, which is what made it read as a sea of white:
+     with only two near-white values there was no way to group anything
+     visually. Inputs and table headers sit on this. */
+  --panel-sunken: #f4f4f5;
+  /* A warm-neutral hairline used where --line would be too heavy. */
+  --line-soft: #efeff1;
+  /* Accent wash for section headers and active surfaces — carries a hint of
+     brand without spending a full red fill. */
+  --accent-wash: rgba(220, 38, 38, 0.04);
+  --skeleton-base: #e9e9ec;
+  --skeleton-sheen: #f4f4f5;
 }
 
 [data-theme="dark"] {
@@ -61,6 +74,14 @@
   /* --panel is already #18181b in dark, so the inverted card lifts *up* to
      zinc-800 instead — otherwise it is indistinguishable from a normal panel. */
   --panel-invert: #27272a;
+
+  /* Sunken goes *below* --bg in dark mode. Lightening it here would make it
+     read as raised, which is the opposite of what the token means. */
+  --panel-sunken: #101012;
+  --line-soft: #202023;
+  --accent-wash: rgba(239, 68, 68, 0.06);
+  --skeleton-base: #1f1f23;
+  --skeleton-sheen: #2a2a2f;
 }
 
 html {
@@ -226,14 +247,121 @@ a {
     box-shadow: 0 1px 2px rgb(var(--shadow-color) / 0.04);
   }
 
-  .field {
-    @apply w-full rounded px-3 py-2 text-sm outline-none transition;
-    background: var(--panel);
-    border: 1px solid var(--line);
+  /* ── Forms ────────────────────────────────────────────────────────────────
+   The old field was a 1px box on --panel sitting inside a --panel card: the
+   input and its container were the same colour, so every form read as a grid
+   of empty rectangles. Now the field is *sunken* against its card and carries
+   its weight on the bottom edge, so a row of inputs reads as a line of things
+   you can type into rather than a stack of boxes. */
+  .field-group {
+    @apply grid gap-1.5;
   }
 
-  .field:focus {
+  .field-label {
+    font-family: "Barlow Condensed", Barlow, ui-sans-serif, sans-serif;
+    @apply flex items-center gap-1 text-xs font-semibold uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+
+  .field-help {
+    @apply text-xs;
+    color: var(--muted);
+  }
+
+  .field {
+    @apply w-full text-sm outline-none;
+    /* min-height rather than padding alone: a 44px target is the WCAG 2.1 AA
+       floor and the old py-2 landed at ~34px. */
+    @apply min-h-11 rounded-sm px-3 py-2;
+    background: var(--panel-sunken);
+    border: 1px solid transparent;
+    border-bottom-color: var(--line);
+    color: var(--fg);
+    transition:
+      border-color 0.18s ease,
+      background 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .field::placeholder {
+    color: color-mix(in srgb, var(--muted) 70%, transparent);
+  }
+
+  .field:hover:not(:focus) {
+    border-bottom-color: var(--muted);
+  }
+
+  .field:focus,
+  .field:focus-visible {
+    background: var(--panel);
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+  }
+
+  /* :user-invalid, not :invalid — :invalid paints every required field red on
+     first paint, before anyone has typed a thing. */
+  .field:user-invalid {
+    border-color: var(--danger, #dc2626);
+  }
+
+  select.field {
+    /* Native arrow, nudged so the control doesn't look like a text input. */
+    @apply cursor-pointer appearance-none pr-9;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+      linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position:
+      calc(100% - 18px) calc(50% + 2px),
+      calc(100% - 13px) calc(50% + 2px);
+    background-size:
+      5px 5px,
+      5px 5px;
+    background-repeat: no-repeat;
+  }
+
+  input[type="file"].field {
+    @apply cursor-pointer py-2.5 text-xs;
+  }
+
+  /* A real switch, replacing the bare 16px checkbox + "Ativado" label. */
+  .switch {
+    @apply inline-flex cursor-pointer items-center gap-2.5;
+  }
+
+  .switch input {
+    @apply absolute h-0 w-0 opacity-0;
+  }
+
+  .switch-track {
+    @apply relative inline-block shrink-0 rounded-full;
+    width: 38px;
+    height: 22px;
+    background: var(--line);
+    transition: background 0.18s ease;
+  }
+
+  .switch-track::after {
+    content: "";
+    @apply absolute rounded-full;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    background: var(--panel);
+    box-shadow: 0 1px 2px rgb(var(--shadow-color) / 0.25);
+    transition: transform 0.18s ease;
+  }
+
+  .switch input:checked + .switch-track {
+    background: var(--accent-solid);
+  }
+
+  .switch input:checked + .switch-track::after {
+    transform: translateX(16px);
+  }
+
+  .switch input:focus-visible + .switch-track {
     box-shadow: 0 0 0 3px var(--accent-ring);
   }
 
@@ -286,6 +414,78 @@ a {
 
   .button-danger:hover {
     background: var(--accent-solid-hover);
+  }
+
+  /* ── Accessibility helpers ────────────────────────────────────────────────*/
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Keyboard users had to tab through the entire sidebar on every navigation
+     to reach the page content. */
+  .skip-link {
+    @apply absolute left-4 z-50 rounded px-4 py-2 text-sm font-semibold;
+    top: -100px;
+    background: var(--accent-solid);
+    color: var(--accent-contrast);
+    transition: top 0.15s ease;
+  }
+
+  .skip-link:focus {
+    top: 1rem;
+  }
+
+  /* ── Loading skeletons ────────────────────────────────────────────────────
+   Sized by the caller. The sheen is a background animation rather than an
+   opacity pulse so it doesn't fight the reduced-motion rule below — the block
+   still reads as "pending" when the sheen is switched off. */
+  .skeleton {
+    @apply rounded-sm;
+    background: linear-gradient(
+      90deg,
+      var(--skeleton-base) 25%,
+      var(--skeleton-sheen) 37%,
+      var(--skeleton-base) 63%
+    );
+    background-size: 400% 100%;
+    animation: skeleton-sheen 1.4s ease-in-out infinite;
+  }
+
+  @keyframes skeleton-sheen {
+    0% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0 50%;
+    }
+  }
+
+  /* ── Entrance motion ──────────────────────────────────────────────────────
+   The UI was entirely static: content simply existed on paint. A short rise on
+   first render gives the page a sense of assembling itself. Deliberately
+   subtle and one-shot — this is not an attention-grabber. */
+  .rise {
+    animation: rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 } /* end @layer components */
 
