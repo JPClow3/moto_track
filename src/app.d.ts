@@ -1,5 +1,6 @@
 import type { SupabaseClient, Session, User } from "@supabase/supabase-js";
 import type { Database } from "$lib/types/database";
+import type { Locale } from "$lib/i18n";
 
 declare global {
   namespace App {
@@ -33,6 +34,7 @@ declare global {
       }>;
       session: Session | null;
       user: User | null;
+      locale: Locale;
     }
   }
 }

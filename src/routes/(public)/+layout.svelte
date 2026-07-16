@@ -1,7 +1,7 @@
 <script lang="ts">
-  import PublicHeader from '$components/PublicHeader.svelte';
-  import PublicFooter from '$components/PublicFooter.svelte';
-  import type { Snippet } from 'svelte';
+  import PublicHeader from "$components/PublicHeader.svelte";
+  import PublicFooter from "$components/PublicFooter.svelte";
+  import type { Snippet } from "svelte";
 
   let { children }: { children: Snippet } = $props();
 </script>

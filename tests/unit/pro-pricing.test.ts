@@ -35,18 +35,16 @@ async function loadBilling() {
   return import("$server/domain/billing");
 }
 
-/**
- * Intl separates "R$" from the number with a non-breaking space, and the exact
- * codepoint varies by ICU version. Normalise any whitespace for assertions.
- */
-const plain = (value: string) => value.replace(/\s/g, " ");
-
 beforeEach(() => {
   retrieve.mockReset();
 });
 
 describe("fetchProPricing", () => {
-  it("formats the live Stripe prices as pt-BR currency", async () => {
+  // These used to assert a pre-formatted "R$ 19,90" string built here. That
+  // string is gone on purpose: this lookup is cached process-wide, so a locale
+  // baked in at this layer would be served to every reader. Formatting is now
+  // the renderer's job and is covered in i18n-format.test.ts.
+  it("returns the live Stripe prices as raw amounts for the caller to format", async () => {
     retrieve.mockImplementation(async (id: string) =>
       id === "price_monthly" ? monthlyPrice : yearlyPrice,
     );
@@ -54,11 +52,16 @@ describe("fetchProPricing", () => {
     const { fetchProPricing } = await loadBilling();
     const pricing = await fetchProPricing(platform);
 
-    expect(plain(pricing.monthly!.formatted)).toBe("R$ 19,90");
-    expect(pricing.monthly!.amountCents).toBe(1990);
-    expect(pricing.monthly!.interval).toBe("month");
-    expect(plain(pricing.yearly!.formatted)).toBe("R$ 199,00");
-    expect(pricing.yearly!.interval).toBe("year");
+    expect(pricing.monthly).toEqual({
+      amountCents: 1990,
+      currency: "brl",
+      interval: "month",
+    });
+    expect(pricing.yearly).toEqual({
+      amountCents: 19900,
+      currency: "brl",
+      interval: "year",
+    });
   });
 
   it("keeps the monthly price when the yearly lookup fails", async () => {
@@ -71,7 +74,7 @@ describe("fetchProPricing", () => {
     const { fetchProPricing } = await loadBilling();
     const pricing = await fetchProPricing(platform);
 
-    expect(plain(pricing.monthly!.formatted)).toBe("R$ 19,90");
+    expect(pricing.monthly!.amountCents).toBe(1990);
     expect(pricing.yearly).toBeNull();
   });
 
@@ -125,6 +128,6 @@ describe("fetchProPricing", () => {
       id === "price_monthly" ? monthlyPrice : yearlyPrice,
     );
     const recovered = await fetchProPricing(platform);
-    expect(plain(recovered.monthly!.formatted)).toBe("R$ 19,90");
+    expect(recovered.monthly!.amountCents).toBe(1990);
   });
 });

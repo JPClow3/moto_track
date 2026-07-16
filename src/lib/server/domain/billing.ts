@@ -47,13 +47,6 @@ const PRICING_TTL_MS = 5 * 60 * 1000;
 
 let pricingCache: { value: ProPricing; expiresAt: number } | null = null;
 
-function formatAmount(amountCents: number, currency: string) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(amountCents / 100);
-}
-
 async function retrievePrice(
   client: Stripe,
   priceId: string | undefined,
@@ -68,7 +61,6 @@ async function retrievePrice(
   return {
     amountCents: price.unit_amount,
     currency: price.currency,
-    formatted: formatAmount(price.unit_amount, price.currency),
     interval,
   };
 }

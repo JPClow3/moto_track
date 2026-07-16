@@ -1,4 +1,5 @@
 import { dashboardSummary } from "$server/domain/reports";
+import { formatMoney } from "$lib/i18n";
 
 export async function load({ locals }) {
   const user = locals.user;
@@ -62,10 +63,9 @@ export async function load({ locals }) {
     },
     {
       label: "Gasto combustível",
-      value: new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-      }).format(summary.fuel_spend_cents / 100),
+      // Unlike the cached pricing lookup, this is built per-request, so it can
+      // safely read the reader's locale off locals.
+      value: formatMoney(locals.locale, summary.fuel_spend_cents),
       detail: "Histórico completo",
     },
   ];

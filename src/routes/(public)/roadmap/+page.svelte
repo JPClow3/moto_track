@@ -120,8 +120,7 @@
       heading: "Na fila",
       blurb: "Aceito no backlog, ainda sem posição definida.",
       icon: CircleDashed,
-      items: [
-      ],
+      items: [],
     },
     {
       status: "exploring",

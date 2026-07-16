@@ -1,35 +1,39 @@
 <script lang="ts">
-  import MetricCard from '$components/MetricCard.svelte';
-  import { Bell, CircleGauge, FileText } from 'lucide-svelte';
+  import MetricCard from "$components/MetricCard.svelte";
+  import { Bell, CircleGauge, FileText } from "lucide-svelte";
 
   export let data: {
     metrics: Array<{ label: string; value: string; detail: string }>;
-    alerts: { activeReminders: number; activeTires: number; expiringDocuments: number };
+    alerts: {
+      activeReminders: number;
+      activeTires: number;
+      expiringDocuments: number;
+    };
   };
 
   $: alerts = [
     {
       icon: Bell,
-      title: 'Lembretes ativos',
+      title: "Lembretes ativos",
       value: data.alerts.activeReminders,
-      detail: 'O worker avalia automaticamente o que está vencido ou próximo.',
+      detail: "O worker avalia automaticamente o que está vencido ou próximo.",
       // The only one that asks for action, so the only one in red.
-      accent: true
+      accent: true,
     },
     {
       icon: CircleGauge,
-      title: 'Pneus ativos',
+      title: "Pneus ativos",
       value: data.alerts.activeTires,
-      detail: 'Desgaste e troca alimentam a nota de saúde da moto.',
-      accent: false
+      detail: "Desgaste e troca alimentam a nota de saúde da moto.",
+      accent: false,
     },
     {
       icon: FileText,
-      title: 'Documentos monitorados',
+      title: "Documentos monitorados",
       value: data.alerts.expiringDocuments,
-      detail: 'Datas de validade viram lembretes conforme o prazo se aproxima.',
-      accent: false
-    }
+      detail: "Datas de validade viram lembretes conforme o prazo se aproxima.",
+      accent: false,
+    },
   ];
 </script>
 
@@ -67,7 +71,9 @@
           <h2 class="label-tech text-[var(--muted)]">{alert.title}</h2>
         </div>
         <p class="display numeric text-6xl">{alert.value}</p>
-        <p class="mt-3 text-xs leading-relaxed text-[var(--muted)]">{alert.detail}</p>
+        <p class="mt-3 text-xs leading-relaxed text-[var(--muted)]">
+          {alert.detail}
+        </p>
       </article>
     {/each}
   </div>

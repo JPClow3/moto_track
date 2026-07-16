@@ -1,0 +1,127 @@
+/**
+ * pt-BR is the source-of-truth catalogue: it holds the copy the product
+ * shipped with, so every other locale is a translation *of this file*.
+ *
+ * The `Messages` type is inferred from this object (see ../index.ts), which is
+ * what makes a missing or misspelled key in another locale a type error rather
+ * than a silent fallback at runtime.
+ */
+export const ptBR = {
+  common: {
+    save: "Salvar",
+    saveChanges: "Salvar alterações",
+    cancel: "Cancelar",
+    confirm: "Confirmar",
+    confirmTitle: "Tem certeza?",
+    delete: "Excluir",
+    edit: "Editar",
+    close: "Fechar",
+    back: "Voltar",
+    loading: "Carregando",
+    select: "Selecione",
+    enabled: "Ativado",
+    yes: "Sim",
+    no: "Não",
+    empty: "—",
+    actions: "Ações",
+    status: "Status",
+    exportCsv: "Exportar CSV",
+    signIn: "Entrar",
+    signOut: "Sair",
+    account: "Conta autenticada",
+  },
+  nav: {
+    dashboard: "Painel",
+    garage: "Garagem",
+    fuel: "Combustível",
+    maintenance: "Manutenção",
+    tires: "Pneus",
+    documents: "Documentos",
+    reminders: "Lembretes",
+    expenses: "Despesas",
+    reports: "Relatórios",
+    work: "Trabalho",
+    admin: "Admin",
+    plans: "Planos",
+    roadmap: "Roadmap",
+    blog: "Blog",
+    openMenu: "Abrir menu",
+    closeMenu: "Fechar menu",
+    primary: "Navegação principal",
+    tagline: "Central da garagem",
+  },
+  navGroup: {
+    garage: "Minha moto",
+    records: "Registros",
+    insights: "Análises",
+    system: "Sistema",
+  },
+  feature: {
+    newRecord: "Adicionar",
+    // Was "Validação server-side com Supabase RLS." — that described our
+    // infrastructure, not anything the rider can act on.
+    newRecordHint: "Preencha os campos abaixo para incluir na sua garagem.",
+    editRecord: "Editar registro",
+    noRecords: "Nada por aqui ainda",
+    noRecordsHint: "Os registros que você adicionar aparecem nesta lista.",
+    recordsCaption: "Registros de {feature}",
+    confirmDelete: "Excluir este registro? Esta ação não pode ser desfeita.",
+  },
+  reminders: {
+    snoozeDays: "+7 dias",
+    snoozeKm: "+500 km",
+    complete: "Concluir",
+  },
+  error: {
+    title: "Algo saiu do trilho",
+    notFoundTitle: "Página não encontrada",
+    notFoundBody:
+      "O link pode estar quebrado ou a página pode ter saído do ar.",
+    serverBody:
+      "Tivemos um problema do nosso lado. Já registramos o ocorrido — tente de novo em instantes.",
+    backToDashboard: "Ir para o painel",
+    backToHome: "Ir para o início",
+    code: "Erro {status}",
+  },
+  admin: {
+    notStaffTitle: "Área restrita",
+    notStaffBody: "Você não tem acesso a esta área.",
+  },
+  pricing: {
+    eyebrow: "Moto Track Pro",
+    title: "Escolha o seu plano",
+    subtitle:
+      "Sem cartão, sem pegadinha. Comece de graça e suba de plano só quando precisar de mais.",
+    freeName: "Free",
+    freeTagline: "O essencial para acompanhar uma moto.",
+    freeForever: "Para sempre",
+    freeCta: "Começar grátis",
+    proName: "Pro",
+    proTagline: "Sem limites para quem usa a moto como ferramenta.",
+    recommended: "Recomendado",
+    billingPeriod: "Período de cobrança",
+    monthly: "Mensal",
+    yearly: "Anual",
+    priceAtCheckout: "Preço no checkout",
+    priceConfirmedAtCheckout: "Preço confirmado no checkout",
+    perMonth: "por mês",
+    annualSaves: "anual economiza {amount}",
+    proCta: "Continuar para checkout",
+    freeFeature1Prefix: "Gestão de ",
+    freeFeature1Bold: "1 moto ativa",
+    freeFeature2: "Até 3 uploads de recibos e fotos",
+    freeFeature3: "3 lembretes ativos simultâneos",
+    freeFeature4: "3 turnos profissionais por mês",
+    proFeature1Bold: "Motos ilimitadas",
+    proFeature1Suffix: " na garagem",
+    proFeature2Bold: "Uploads e anexos ilimitados",
+    proFeature3Bold: "Lembretes ilimitados",
+    proFeature4Bold: "Turnos ilimitados",
+    proFeature4Suffix: " para profissionais",
+    proFeature5: "Relatório de venda com selo Pro",
+  },
+  a11y: {
+    skipToContent: "Pular para o conteúdo",
+    loadingContent: "Carregando conteúdo",
+  },
+} as const;
