@@ -18,14 +18,25 @@
   // /precos renders in the (public) group, so a signed-in visitor used to land
   // here and see only "Entrar" — no way back to their garage. The session now
   // comes from the root layout load, so the header can offer the way back.
-  const user = $derived(($page.data as { user?: { email: string | null } | null }).user ?? null);
+  const user = $derived(
+    ($page.data as { user?: { email: string | null } | null }).user ?? null,
+  );
 
-  const isActive = (href: string, pathname: string) => pathname.startsWith(href);
+  const isActive = (href: string, pathname: string) =>
+    pathname.startsWith(href);
 </script>
 
-<header class="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--bg)]/80 backdrop-blur-md">
-  <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label={$t('nav.primary')}>
-    <a href={user ? '/dashboard' : '/'} class="focus-ring rounded transition hover:opacity-70">
+<header
+  class="bg-[var(--bg)]/80 sticky top-0 z-50 border-b border-[var(--line)] backdrop-blur-md"
+>
+  <nav
+    class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4"
+    aria-label={$t("nav.primary")}
+  >
+    <a
+      href={user ? "/dashboard" : "/"}
+      class="focus-ring rounded transition hover:opacity-70"
+    >
       <img
         src="/brand/svg/moto-track-logo-horizontal-light.svg"
         alt="Moto Track"
@@ -48,7 +59,9 @@
           class="nav-link label-tech hidden sm:inline-block"
           class:is-active={isActive(link.href, $page.url.pathname)}
           href={link.href}
-          aria-current={isActive(link.href, $page.url.pathname) ? "page" : undefined}
+          aria-current={isActive(link.href, $page.url.pathname)
+            ? "page"
+            : undefined}
         >
           {$t(link.key)}
         </a>
@@ -60,10 +73,10 @@
       {#if user}
         <a class="button-primary" href="/dashboard">
           <LayoutDashboard size={14} aria-hidden="true" />
-          {$t('nav.dashboard')}
+          {$t("nav.dashboard")}
         </a>
       {:else}
-        <a class="button-primary" href="/auth">{$t('common.signIn')}</a>
+        <a class="button-primary" href="/auth">{$t("common.signIn")}</a>
       {/if}
 
       <button
@@ -71,7 +84,7 @@
         type="button"
         aria-expanded={open}
         aria-controls="mobile-nav"
-        aria-label={open ? $t('nav.closeMenu') : $t('nav.openMenu')}
+        aria-label={open ? $t("nav.closeMenu") : $t("nav.openMenu")}
         onclick={() => (open = !open)}
       >
         {#if open}
@@ -84,13 +97,18 @@
   </nav>
 
   {#if open}
-    <div id="mobile-nav" class="border-t border-[var(--line)] bg-[var(--bg)] px-6 py-1 sm:hidden">
+    <div
+      id="mobile-nav"
+      class="border-t border-[var(--line)] bg-[var(--bg)] px-6 py-1 sm:hidden"
+    >
       {#each links as link (link.href)}
         <a
           class="label-tech block border-b border-[var(--line)] py-4"
           class:is-current={isActive(link.href, $page.url.pathname)}
           href={link.href}
-          aria-current={isActive(link.href, $page.url.pathname) ? "page" : undefined}
+          aria-current={isActive(link.href, $page.url.pathname)
+            ? "page"
+            : undefined}
           onclick={() => (open = false)}
         >
           {$t(link.key)}

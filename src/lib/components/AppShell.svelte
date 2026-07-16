@@ -13,15 +13,15 @@
     Shield,
     Wrench,
     CircleGauge,
-    X
-  } from 'lucide-svelte';
-  import type { User } from '@supabase/supabase-js';
-  import { t } from '$lib/i18n/store';
-  import type { MessageKey } from '$lib/i18n';
-  import LocaleSwitcher from './LocaleSwitcher.svelte';
+    X,
+  } from "lucide-svelte";
+  import type { User } from "@supabase/supabase-js";
+  import { t } from "$lib/i18n/store";
+  import type { MessageKey } from "$lib/i18n";
+  import LocaleSwitcher from "./LocaleSwitcher.svelte";
 
   export let user: User | null = null;
-  export let currentPath = '/dashboard';
+  export let currentPath = "/dashboard";
   /** Gates the Admin item. The page and every action re-check server-side. */
   export let isStaff = false;
 
@@ -36,7 +36,7 @@
     ReceiptText,
     ChartNoAxesCombined,
     BriefcaseBusiness,
-    Shield
+    Shield,
   };
 
   type NavItem = {
@@ -53,69 +53,105 @@
   const groups: Array<{ key: MessageKey | null; items: NavItem[] }> = [
     {
       key: null,
-      items: [{ href: '/dashboard', key: 'nav.dashboard', icon: 'LayoutDashboard', primary: true }]
-    },
-    {
-      key: 'navGroup.garage',
       items: [
-        { href: '/garage', key: 'nav.garage', icon: 'Bike', primary: true },
-        { href: '/fuel', key: 'nav.fuel', icon: 'Fuel', primary: true },
-        { href: '/maintenance', key: 'nav.maintenance', icon: 'Wrench', primary: true },
-        { href: '/tires', key: 'nav.tires', icon: 'CircleGauge' }
-      ]
+        {
+          href: "/dashboard",
+          key: "nav.dashboard",
+          icon: "LayoutDashboard",
+          primary: true,
+        },
+      ],
     },
     {
-      key: 'navGroup.records',
+      key: "navGroup.garage",
       items: [
-        { href: '/documents', key: 'nav.documents', icon: 'FileText' },
-        { href: '/reminders', key: 'nav.reminders', icon: 'Bell' },
-        { href: '/expenses', key: 'nav.expenses', icon: 'ReceiptText' }
-      ]
+        { href: "/garage", key: "nav.garage", icon: "Bike", primary: true },
+        { href: "/fuel", key: "nav.fuel", icon: "Fuel", primary: true },
+        {
+          href: "/maintenance",
+          key: "nav.maintenance",
+          icon: "Wrench",
+          primary: true,
+        },
+        { href: "/tires", key: "nav.tires", icon: "CircleGauge" },
+      ],
     },
     {
-      key: 'navGroup.insights',
+      key: "navGroup.records",
       items: [
-        { href: '/reports', key: 'nav.reports', icon: 'ChartNoAxesCombined' },
-        { href: '/trabalho', key: 'nav.work', icon: 'BriefcaseBusiness' }
-      ]
+        { href: "/documents", key: "nav.documents", icon: "FileText" },
+        { href: "/reminders", key: "nav.reminders", icon: "Bell" },
+        { href: "/expenses", key: "nav.expenses", icon: "ReceiptText" },
+      ],
     },
     {
-      key: 'navGroup.system',
-      items: [{ href: '/admin', key: 'nav.admin', icon: 'Shield', staffOnly: true }]
-    }
+      key: "navGroup.insights",
+      items: [
+        { href: "/reports", key: "nav.reports", icon: "ChartNoAxesCombined" },
+        { href: "/trabalho", key: "nav.work", icon: "BriefcaseBusiness" },
+      ],
+    },
+    {
+      key: "navGroup.system",
+      items: [
+        { href: "/admin", key: "nav.admin", icon: "Shield", staffOnly: true },
+      ],
+    },
   ];
 
   let mobileOpen = false;
 
   $: visibleGroups = groups
-    .map((group) => ({ ...group, items: group.items.filter((item) => !item.staffOnly || isStaff) }))
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.staffOnly || isStaff),
+    }))
     .filter((group) => group.items.length > 0);
 
-  const mobileItems = groups.flatMap((group) => group.items.filter((item) => item.primary));
+  const mobileItems = groups.flatMap((group) =>
+    group.items.filter((item) => item.primary),
+  );
 
-  const isActive = (href: string, path: string) => path === href || path.startsWith(`${href}/`);
+  const isActive = (href: string, path: string) =>
+    path === href || path.startsWith(`${href}/`);
 
   // Close the drawer on navigation, otherwise it stays open over the new page.
   $: if (currentPath) mobileOpen = false;
 </script>
 
 <div class="relative min-h-screen bg-[var(--bg)] text-[var(--fg)]">
-  <a href="#main-content" class="skip-link">{$t('a11y.skipToContent')}</a>
+  <a href="#main-content" class="skip-link">{$t("a11y.skipToContent")}</a>
 
   <!-- Sidebar (lg and up) -->
   <aside
     class="fixed inset-y-0 left-0 hidden w-72 flex-col border-r border-[var(--line)] bg-[var(--panel)] p-4 lg:flex"
   >
-    <a href="/dashboard" class="focus-ring flex items-center gap-3 rounded px-2 py-3 transition hover:opacity-80">
-      <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-6 dark:hidden" />
-      <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="hidden h-6 dark:block" />
+    <a
+      href="/dashboard"
+      class="focus-ring flex items-center gap-3 rounded px-2 py-3 transition hover:opacity-80"
+    >
+      <img
+        src="/brand/svg/moto-track-logo-horizontal-light.svg"
+        alt="Moto Track"
+        class="h-6 dark:hidden"
+      />
+      <img
+        src="/brand/svg/moto-track-logo-horizontal-dark.svg"
+        alt="Moto Track"
+        class="hidden h-6 dark:block"
+      />
     </a>
 
-    <nav class="mt-8 flex-1 overflow-y-auto pr-2" aria-label={$t('nav.primary')}>
-      {#each visibleGroups as group (group.key ?? 'root')}
+    <nav
+      class="mt-8 flex-1 overflow-y-auto pr-2"
+      aria-label={$t("nav.primary")}
+    >
+      {#each visibleGroups as group (group.key ?? "root")}
         <div class="mb-5">
           {#if group.key}
-            <p class="label-tech px-3 pb-2 text-[10px] text-[var(--muted)]">{$t(group.key)}</p>
+            <p class="label-tech px-3 pb-2 text-[10px] text-[var(--muted)]">
+              {$t(group.key)}
+            </p>
           {/if}
           <ul class="space-y-0.5">
             {#each group.items as item (item.href)}
@@ -127,9 +163,14 @@
                   class:selected={active}
                   class:not-selected={!active}
                   href={item.href}
-                  aria-current={active ? 'page' : undefined}
+                  aria-current={active ? "page" : undefined}
                 >
-                  <Icon size={18} class={active ? 'text-[var(--accent)]' : 'text-[var(--muted)]'} />
+                  <Icon
+                    size={18}
+                    class={active
+                      ? "text-[var(--accent)]"
+                      : "text-[var(--muted)]"}
+                  />
                   <span>{$t(item.key)}</span>
                 </a>
               </li>
@@ -145,10 +186,12 @@
           class="flex h-8 w-8 items-center justify-center rounded-sm bg-[var(--accent-soft)] text-xs font-bold uppercase text-[var(--accent)]"
           aria-hidden="true"
         >
-          {user?.email?.charAt(0) ?? 'U'}
+          {user?.email?.charAt(0) ?? "U"}
         </div>
-        <span class="max-w-[180px] truncate text-xs font-medium text-[var(--muted)]">
-          {user?.email ?? $t('common.account')}
+        <span
+          class="max-w-[180px] truncate text-xs font-medium text-[var(--muted)]"
+        >
+          {user?.email ?? $t("common.account")}
         </span>
       </div>
       <div class="px-2 pt-1">
@@ -159,33 +202,49 @@
 
   <!-- Main area -->
   <div class="flex min-h-screen flex-col lg:pl-72">
-    <header class="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--bg)]/80 backdrop-blur-md">
-      <div class="mx-auto flex w-full items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+    <header
+      class="bg-[var(--bg)]/80 sticky top-0 z-20 border-b border-[var(--line)] backdrop-blur-md"
+    >
+      <div
+        class="mx-auto flex w-full items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8"
+      >
         <button
           class="focus-ring -ml-2 grid h-10 w-10 place-items-center rounded lg:hidden"
           type="button"
           aria-expanded={mobileOpen}
           aria-controls="app-mobile-nav"
-          aria-label={mobileOpen ? $t('nav.closeMenu') : $t('nav.openMenu')}
+          aria-label={mobileOpen ? $t("nav.closeMenu") : $t("nav.openMenu")}
           on:click={() => (mobileOpen = !mobileOpen)}
         >
           {#if mobileOpen}<X size={18} />{:else}<Menu size={18} />{/if}
         </button>
 
         <a href="/dashboard" class="flex items-center font-semibold lg:hidden">
-          <img src="/brand/svg/moto-track-logo-horizontal-light.svg" alt="Moto Track" class="h-5 dark:hidden" />
-          <img src="/brand/svg/moto-track-logo-horizontal-dark.svg" alt="Moto Track" class="hidden h-5 dark:block" />
+          <img
+            src="/brand/svg/moto-track-logo-horizontal-light.svg"
+            alt="Moto Track"
+            class="h-5 dark:hidden"
+          />
+          <img
+            src="/brand/svg/moto-track-logo-horizontal-dark.svg"
+            alt="Moto Track"
+            class="hidden h-5 dark:block"
+          />
         </a>
 
-        <p class="label-tech hidden text-[var(--muted)] lg:block">{$t('nav.tagline')}</p>
+        <p class="label-tech hidden text-[var(--muted)] lg:block">
+          {$t("nav.tagline")}
+        </p>
 
         <div class="flex items-center gap-3">
-          <a href="/precos" class="button-secondary px-3 py-1.5 text-xs">{$t('nav.plans')}</a>
+          <a href="/precos" class="button-secondary px-3 py-1.5 text-xs"
+            >{$t("nav.plans")}</a
+          >
           <form method="POST" action="/auth?/signOut">
             <button class="button-secondary px-3 py-1.5 text-xs" type="submit">
               <LogOut size={14} aria-hidden="true" />
-              <span class="hidden sm:inline">{$t('common.signOut')}</span>
-              <span class="sr-only sm:hidden">{$t('common.signOut')}</span>
+              <span class="hidden sm:inline">{$t("common.signOut")}</span>
+              <span class="sr-only sm:hidden">{$t("common.signOut")}</span>
             </button>
           </form>
         </div>
@@ -197,9 +256,9 @@
         <nav
           id="app-mobile-nav"
           class="border-t border-[var(--line)] bg-[var(--panel)] px-4 py-2 lg:hidden"
-          aria-label={$t('nav.primary')}
+          aria-label={$t("nav.primary")}
         >
-          {#each visibleGroups as group (group.key ?? 'root')}
+          {#each visibleGroups as group (group.key ?? "root")}
             <ul>
               {#each group.items as item (item.href)}
                 {@const Icon = icons[item.icon]}
@@ -209,9 +268,14 @@
                     class="focus-ring flex items-center gap-3 rounded px-2 py-3 text-sm font-medium"
                     class:selected={active}
                     href={item.href}
-                    aria-current={active ? 'page' : undefined}
+                    aria-current={active ? "page" : undefined}
                   >
-                    <Icon size={18} class={active ? 'text-[var(--accent)]' : 'text-[var(--muted)]'} />
+                    <Icon
+                      size={18}
+                      class={active
+                        ? "text-[var(--accent)]"
+                        : "text-[var(--muted)]"}
+                    />
                     <span>{$t(item.key)}</span>
                   </a>
                 </li>
@@ -225,14 +289,17 @@
       {/if}
     </header>
 
-    <main id="main-content" class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-8">
+    <main
+      id="main-content"
+      class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-8"
+    >
       <slot />
     </main>
 
     <!-- Thumb-reachable bar for the most-used sections on phones. -->
     <nav
-      class="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-[var(--line)] bg-[var(--panel)]/95 backdrop-blur-md lg:hidden"
-      aria-label={$t('nav.primary')}
+      class="bg-[var(--panel)]/95 fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-[var(--line)] backdrop-blur-md lg:hidden"
+      aria-label={$t("nav.primary")}
     >
       {#each mobileItems.slice(0, 4) as item (item.href)}
         {@const Icon = icons[item.icon]}
@@ -242,7 +309,7 @@
           class:bar-active={active}
           class:bar-idle={!active}
           href={item.href}
-          aria-current={active ? 'page' : undefined}
+          aria-current={active ? "page" : undefined}
         >
           <Icon size={18} aria-hidden="true" />
           <span>{$t(item.key)}</span>
@@ -266,7 +333,7 @@
   }
 
   .nav-item.selected::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 0;
     top: 6px;

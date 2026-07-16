@@ -183,8 +183,7 @@
         <div>
           <h2 class="display text-2xl">Dúvidas sobre os termos</h2>
           <p class="mt-2 text-sm leading-relaxed text-paper/65">
-            Escreva para o mesmo canal usado para solicitações de
-            privacidade.
+            Escreva para o mesmo canal usado para solicitações de privacidade.
           </p>
           <a
             class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]"

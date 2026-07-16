@@ -7,7 +7,11 @@
   export let tokens: Tokens.Generic[] = [];
 
   const alignOf = (align: string | null) =>
-    align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
+    align === "center"
+      ? "text-center"
+      : align === "right"
+        ? "text-right"
+        : "text-left";
 </script>
 
 {#each tokens as token (token)}
@@ -33,12 +37,16 @@
   {:else if token.type === "table"}
     <!-- Spec tables are the backbone of these guides and routinely overflow on
          a phone, so each one scrolls inside its own rail. -->
-    <div class="mt-7 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+    <div class="-mx-4 mt-7 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <table class="w-full min-w-[30rem] border-collapse text-sm">
         <thead>
           <tr class="border-b border-[var(--line)]">
             {#each token.header as cell, i (i)}
-              <th class="label-tech px-3 py-3 text-[var(--muted)] {alignOf(cell.align)}">
+              <th
+                class="label-tech px-3 py-3 text-[var(--muted)] {alignOf(
+                  cell.align,
+                )}"
+              >
                 <MarkdownInline tokens={cell.tokens ?? []} />
               </th>
             {/each}
@@ -74,7 +82,11 @@
               aria-hidden="true"
             >
               {#if item.checked}
-                <svg viewBox="0 0 12 12" class="h-2.5 w-2.5 text-white" fill="none">
+                <svg
+                  viewBox="0 0 12 12"
+                  class="h-2.5 w-2.5 text-white"
+                  fill="none"
+                >
                   <path
                     d="M2 6.2 4.6 8.8 10 3.4"
                     stroke="currentColor"
@@ -86,7 +98,9 @@
               {/if}
             </span>
           {:else if token.ordered}
-            <span class="display numeric mt-px w-5 shrink-0 text-[var(--accent)]">
+            <span
+              class="display numeric mt-px w-5 shrink-0 text-[var(--accent)]"
+            >
               {(token.start ?? 1) + i}.
             </span>
           {:else}
@@ -107,7 +121,8 @@
       <svelte:self tokens={token.tokens ?? []} />
     </blockquote>
   {:else if token.type === "code"}
-    <pre class="mt-6 overflow-x-auto rounded bg-ink p-4 text-sm text-paper"><code
+    <pre
+      class="mt-6 overflow-x-auto rounded bg-ink p-4 text-sm text-paper"><code
         >{token.text}</code
       ></pre>
   {:else if token.type === "hr"}

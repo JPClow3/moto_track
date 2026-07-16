@@ -14,12 +14,19 @@
    * two elements sharing it whenever the drawer is open, which silently breaks
    * the <label for> association. Callers pass a distinct id per instance.
    */
-  export let id = 'locale-select';
+  export let id = "locale-select";
 </script>
 
 <form method="POST" action="/locale" class="locale-switcher">
-  <input type="hidden" name="redirectTo" value={$page.url.pathname + $page.url.search} />
-  <Languages class="pointer-events-none absolute left-2 h-3.5 w-3.5 text-[var(--muted)]" aria-hidden="true" />
+  <input
+    type="hidden"
+    name="redirectTo"
+    value={$page.url.pathname + $page.url.search}
+  />
+  <Languages
+    class="pointer-events-none absolute left-2 h-3.5 w-3.5 text-[var(--muted)]"
+    aria-hidden="true"
+  />
   <label class="sr-only" for={id}>{LOCALE_LABELS[$locale]}</label>
   <select
     {id}

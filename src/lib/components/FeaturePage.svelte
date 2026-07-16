@@ -1,14 +1,19 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
-  import { Download, Plus } from 'lucide-svelte';
-  import type { FeatureConfig } from '$server/domain/features';
-  import { t, locale } from '$lib/i18n/store';
-  import { formatMoney, formatPreciseMoney } from '$lib/i18n';
+  import { enhance } from "$app/forms";
+  import { Download, Plus } from "lucide-svelte";
+  import type { FeatureConfig } from "$server/domain/features";
+  import { t, locale } from "$lib/i18n/store";
+  import { formatMoney, formatPreciseMoney } from "$lib/i18n";
 
   export let feature: FeatureConfig;
   export let rows: Array<Record<string, unknown>> = [];
-  export let motorcycles: Array<{ id: string; name: string; brand: string; model: string }> = [];
-  export let errorMessage = '';
+  export let motorcycles: Array<{
+    id: string;
+    name: string;
+    brand: string;
+    model: string;
+  }> = [];
+  export let errorMessage = "";
 
   // The table used to print raw database column names ("fuel_type",
   // "odometer_km") straight into the header. The feature config already carries
@@ -21,47 +26,60 @@
   function labelForColumn(column: string) {
     return (
       feature.fields.find((field) => field.key === column)?.label ??
-      column.replaceAll('_', ' ')
+      column.replaceAll("_", " ")
     );
   }
 
   function valueFor(row: Record<string, unknown>, key: string) {
     const value = row[key];
-    if (value === null || value === undefined || value === '') return $t('common.empty');
-    if (typeof value === 'boolean') return value ? $t('common.yes') : $t('common.no');
-    if (key.endsWith('_cents') && typeof value === 'number') {
+    if (value === null || value === undefined || value === "")
+      return $t("common.empty");
+    if (typeof value === "boolean")
+      return value ? $t("common.yes") : $t("common.no");
+    if (key.endsWith("_cents") && typeof value === "number") {
       return formatMoney($locale, value);
     }
-    if (key.endsWith('_millicents') && typeof value === 'number') {
+    if (key.endsWith("_millicents") && typeof value === "number") {
       return formatPreciseMoney($locale, value);
     }
     return String(value);
   }
 
   const inputType = (kind: string) =>
-    kind === 'date' ? 'date' : kind === 'number' || kind === 'money' ? 'number' : 'text';
+    kind === "date"
+      ? "date"
+      : kind === "number" || kind === "money"
+        ? "number"
+        : "text";
 </script>
 
 <section class="grid gap-6">
-  <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+  <header
+    class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+  >
     <div>
       <p class="eyebrow">
         <span class="slash-rule" aria-hidden="true"></span>
         {feature.slug}
       </p>
       <h1 class="display mt-3 text-4xl">{feature.title}</h1>
-      <p class="mt-2 max-w-3xl text-sm text-[var(--muted)]">{feature.subtitle}</p>
+      <p class="mt-2 max-w-3xl text-sm text-[var(--muted)]">
+        {feature.subtitle}
+      </p>
     </div>
     <a class="button-secondary shrink-0" href={`/${feature.slug}/export.csv`}>
       <Download size={14} aria-hidden="true" />
-      {$t('common.exportCsv')}
+      {$t("common.exportCsv")}
     </a>
   </header>
 
   {#if errorMessage}
     <!-- role="alert" so a screen reader announces the failure instead of it
          only being a red box someone has to notice. -->
-    <div class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+    <div
+      class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
+      role="alert"
+    >
       {errorMessage}
     </div>
   {/if}
@@ -70,14 +88,22 @@
     <div class="panel overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full min-w-[760px] text-left text-sm">
-          <caption class="sr-only">{$t('feature.recordsCaption', { feature: feature.title })}</caption>
+          <caption class="sr-only"
+            >{$t("feature.recordsCaption", { feature: feature.title })}</caption
+          >
           <thead class="border-b border-[var(--line)] text-[var(--muted)]">
             <tr>
               {#each feature.listColumns as column (column)}
-                <th class="label-tech px-4 py-3 text-left" scope="col">{labelForColumn(column)}</th>
+                <th class="label-tech px-4 py-3 text-left" scope="col"
+                  >{labelForColumn(column)}</th
+                >
               {/each}
-              <th class="label-tech px-4 py-3 text-left" scope="col">{$t('common.status')}</th>
-              <th class="label-tech px-4 py-3 text-left" scope="col">{$t('common.actions')}</th>
+              <th class="label-tech px-4 py-3 text-left" scope="col"
+                >{$t("common.status")}</th
+              >
+              <th class="label-tech px-4 py-3 text-left" scope="col"
+                >{$t("common.actions")}</th
+              >
             </tr>
           </thead>
           <tbody>
@@ -86,28 +112,51 @@
                 {#each feature.listColumns as column (column)}
                   <td class="px-4 py-3">{valueFor(row, column)}</td>
                 {/each}
-                <td class="px-4 py-3 text-xs text-[var(--muted)]">{valueFor(row, 'updated_at')}</td>
+                <td class="px-4 py-3 text-xs text-[var(--muted)]"
+                  >{valueFor(row, "updated_at")}</td
+                >
                 <td class="px-4 py-3">
                   <div class="flex flex-wrap gap-2">
-                    {#if feature.slug === 'reminders'}
+                    {#if feature.slug === "reminders"}
                       <form method="POST" action="?/snoozeDays" use:enhance>
-                        <input type="hidden" name="id" value={String(row.id ?? '')} />
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={String(row.id ?? "")}
+                        />
                         <input type="hidden" name="days" value="7" />
-                        <button class="button-secondary min-h-8 px-3 py-1 text-xs" type="submit">
-                          {$t('reminders.snoozeDays')}
+                        <button
+                          class="button-secondary min-h-8 px-3 py-1 text-xs"
+                          type="submit"
+                        >
+                          {$t("reminders.snoozeDays")}
                         </button>
                       </form>
                       <form method="POST" action="?/snoozeKm" use:enhance>
-                        <input type="hidden" name="id" value={String(row.id ?? '')} />
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={String(row.id ?? "")}
+                        />
                         <input type="hidden" name="km" value="500" />
-                        <button class="button-secondary min-h-8 px-3 py-1 text-xs" type="submit">
-                          {$t('reminders.snoozeKm')}
+                        <button
+                          class="button-secondary min-h-8 px-3 py-1 text-xs"
+                          type="submit"
+                        >
+                          {$t("reminders.snoozeKm")}
                         </button>
                       </form>
                       <form method="POST" action="?/complete" use:enhance>
-                        <input type="hidden" name="id" value={String(row.id ?? '')} />
-                        <button class="button-primary min-h-8 px-3 py-1 text-xs" type="submit">
-                          {$t('reminders.complete')}
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={String(row.id ?? "")}
+                        />
+                        <button
+                          class="button-primary min-h-8 px-3 py-1 text-xs"
+                          type="submit"
+                        >
+                          {$t("reminders.complete")}
                         </button>
                       </form>
                     {/if}
@@ -115,13 +164,20 @@
                     <form
                       method="POST"
                       use:enhance={({ cancel }) => {
-                        if (!confirm($t('feature.confirmDelete'))) cancel();
+                        if (!confirm($t("feature.confirmDelete"))) cancel();
                       }}
                     >
                       <input type="hidden" name="_intent" value="delete" />
-                      <input type="hidden" name="id" value={String(row.id ?? '')} />
-                      <button class="button-danger min-h-8 px-3 py-1 text-xs" type="submit">
-                        {$t('common.delete')}
+                      <input
+                        type="hidden"
+                        name="id"
+                        value={String(row.id ?? "")}
+                      />
+                      <button
+                        class="button-danger min-h-8 px-3 py-1 text-xs"
+                        type="submit"
+                      >
+                        {$t("common.delete")}
                       </button>
                     </form>
                   </div>
@@ -130,8 +186,10 @@
               <tr class="edit-row border-b border-[var(--line)]">
                 <td class="px-4 py-3" colspan={feature.listColumns.length + 2}>
                   <details>
-                    <summary class="focus-ring cursor-pointer rounded text-sm font-semibold">
-                      {$t('feature.editRecord')}
+                    <summary
+                      class="focus-ring cursor-pointer rounded text-sm font-semibold"
+                    >
+                      {$t("feature.editRecord")}
                     </summary>
                     <form
                       class="mt-3 grid gap-4 md:grid-cols-2"
@@ -140,19 +198,27 @@
                       use:enhance
                     >
                       <input type="hidden" name="_intent" value="update" />
-                      <input type="hidden" name="id" value={String(row.id ?? '')} />
+                      <input
+                        type="hidden"
+                        name="id"
+                        value={String(row.id ?? "")}
+                      />
                       {#each feature.fields as field (field.key)}
                         <div class="field-group">
-                          <label class="field-label" for={`edit-${row.id}-${field.key}`}>
+                          <label
+                            class="field-label"
+                            for={`edit-${row.id}-${field.key}`}
+                          >
                             {field.label}
                           </label>
-                          {#if field.kind === 'textarea'}
+                          {#if field.kind === "textarea"}
                             <textarea
                               class="field min-h-20"
                               id={`edit-${row.id}-${field.key}`}
-                              name={field.key}>{String(row[field.key] ?? '')}</textarea
+                              name={field.key}
+                              >{String(row[field.key] ?? "")}</textarea
                             >
-                          {:else if field.kind === 'boolean'}
+                          {:else if field.kind === "boolean"}
                             <label class="switch">
                               <input
                                 type="checkbox"
@@ -161,34 +227,40 @@
                                 value="true"
                                 checked={row[field.key] === true}
                               />
-                              <span class="switch-track" aria-hidden="true"></span>
-                              <span class="text-sm text-[var(--muted)]">{$t('common.enabled')}</span>
+                              <span class="switch-track" aria-hidden="true"
+                              ></span>
+                              <span class="text-sm text-[var(--muted)]"
+                                >{$t("common.enabled")}</span
+                              >
                             </label>
-                          {:else if field.kind === 'file'}
+                          {:else if field.kind === "file"}
                             <input
                               class="field"
                               id={`edit-${row.id}-${field.key}`}
                               name={field.key}
                               type="file"
                             />
-                          {:else if field.kind === 'select'}
+                          {:else if field.kind === "select"}
                             <select
                               class="field"
                               id={`edit-${row.id}-${field.key}`}
                               name={field.key}
-                              value={String(row[field.key] ?? '')}
+                              value={String(row[field.key] ?? "")}
                               required={field.required}
                             >
-                              <option value="">{$t('common.select')}</option>
-                              {#if field.source === 'motorcycles'}
+                              <option value="">{$t("common.select")}</option>
+                              {#if field.source === "motorcycles"}
                                 {#each motorcycles as motorcycle (motorcycle.id)}
                                   <option value={motorcycle.id}>
-                                    {motorcycle.name} · {motorcycle.brand} {motorcycle.model}
+                                    {motorcycle.name} · {motorcycle.brand}
+                                    {motorcycle.model}
                                   </option>
                                 {/each}
                               {:else}
                                 {#each field.options ?? [] as option (option.value)}
-                                  <option value={option.value}>{option.label}</option>
+                                  <option value={option.value}
+                                    >{option.label}</option
+                                  >
                                 {/each}
                               {/if}
                             </select>
@@ -197,16 +269,18 @@
                               class="field"
                               id={`edit-${row.id}-${field.key}`}
                               name={field.key}
-                              value={String(row[field.key] ?? '')}
+                              value={String(row[field.key] ?? "")}
                               type={inputType(field.kind)}
-                              step={field.kind === 'money' ? '0.01' : 'any'}
+                              step={field.kind === "money" ? "0.01" : "any"}
                               required={field.required}
                             />
                           {/if}
                         </div>
                       {/each}
                       <div class="flex items-end">
-                        <button class="button-primary" type="submit">{$t('common.saveChanges')}</button>
+                        <button class="button-primary" type="submit"
+                          >{$t("common.saveChanges")}</button
+                        >
                       </div>
                     </form>
                   </details>
@@ -214,10 +288,13 @@
               </tr>
             {:else}
               <tr>
-                <td class="px-4 py-16 text-center" colspan={feature.listColumns.length + 2}>
-                  <p class="display text-2xl">{$t('feature.noRecords')}</p>
+                <td
+                  class="px-4 py-16 text-center"
+                  colspan={feature.listColumns.length + 2}
+                >
+                  <p class="display text-2xl">{$t("feature.noRecords")}</p>
                   <p class="mx-auto mt-2 max-w-sm text-sm text-[var(--muted)]">
-                    {$t('feature.noRecordsHint')}
+                    {$t("feature.noRecordsHint")}
                   </p>
                 </td>
               </tr>
@@ -227,38 +304,57 @@
       </div>
     </div>
 
-    <form class="panel h-fit grid gap-4 p-5" method="POST" enctype="multipart/form-data" use:enhance>
+    <form
+      class="panel grid h-fit gap-4 p-5"
+      method="POST"
+      enctype="multipart/form-data"
+      use:enhance
+    >
       <input type="hidden" name="_intent" value="create" />
       <div>
         <h2 class="display flex items-center gap-2 text-2xl">
           <Plus size={18} class="text-[var(--accent)]" aria-hidden="true" />
-          {$t('feature.newRecord')}
+          {$t("feature.newRecord")}
         </h2>
-        <p class="mt-1.5 text-sm text-[var(--muted)]">{$t('feature.newRecordHint')}</p>
+        <p class="mt-1.5 text-sm text-[var(--muted)]">
+          {$t("feature.newRecordHint")}
+        </p>
       </div>
 
       {#each feature.fields as field (field.key)}
         <div class="field-group">
           <label class="field-label" for={`new-${field.key}`}>
             {field.label}
-            {#if field.required}<span class="text-[var(--accent)]" aria-hidden="true">*</span>{/if}
+            {#if field.required}<span
+                class="text-[var(--accent)]"
+                aria-hidden="true">*</span
+              >{/if}
           </label>
 
-          {#if field.kind === 'textarea'}
+          {#if field.kind === "textarea"}
             <textarea
               class="field min-h-24"
               id={`new-${field.key}`}
               name={field.key}
               required={field.required}
-              aria-describedby={field.help ? `new-${field.key}-help` : undefined}
+              aria-describedby={field.help
+                ? `new-${field.key}-help`
+                : undefined}
             ></textarea>
-          {:else if field.kind === 'boolean'}
+          {:else if field.kind === "boolean"}
             <label class="switch">
-              <input type="checkbox" id={`new-${field.key}`} name={field.key} value="true" />
+              <input
+                type="checkbox"
+                id={`new-${field.key}`}
+                name={field.key}
+                value="true"
+              />
               <span class="switch-track" aria-hidden="true"></span>
-              <span class="text-sm text-[var(--muted)]">{$t('common.enabled')}</span>
+              <span class="text-sm text-[var(--muted)]"
+                >{$t("common.enabled")}</span
+              >
             </label>
-          {:else if field.kind === 'file'}
+          {:else if field.kind === "file"}
             <input
               class="field"
               id={`new-${field.key}`}
@@ -266,13 +362,19 @@
               type="file"
               required={field.required}
             />
-          {:else if field.kind === 'select'}
-            <select class="field" id={`new-${field.key}`} name={field.key} required={field.required}>
-              <option value="">{$t('common.select')}</option>
-              {#if field.source === 'motorcycles'}
+          {:else if field.kind === "select"}
+            <select
+              class="field"
+              id={`new-${field.key}`}
+              name={field.key}
+              required={field.required}
+            >
+              <option value="">{$t("common.select")}</option>
+              {#if field.source === "motorcycles"}
                 {#each motorcycles as motorcycle (motorcycle.id)}
                   <option value={motorcycle.id}>
-                    {motorcycle.name} · {motorcycle.brand} {motorcycle.model}
+                    {motorcycle.name} · {motorcycle.brand}
+                    {motorcycle.model}
                   </option>
                 {/each}
               {:else}
@@ -287,9 +389,11 @@
               id={`new-${field.key}`}
               name={field.key}
               type={inputType(field.kind)}
-              step={field.kind === 'money' ? '0.01' : 'any'}
+              step={field.kind === "money" ? "0.01" : "any"}
               required={field.required}
-              aria-describedby={field.help ? `new-${field.key}-help` : undefined}
+              aria-describedby={field.help
+                ? `new-${field.key}-help`
+                : undefined}
             />
           {/if}
 
@@ -299,7 +403,9 @@
         </div>
       {/each}
 
-      <button class="button-accent mt-1" type="submit">{$t('common.save')}</button>
+      <button class="button-accent mt-1" type="submit"
+        >{$t("common.save")}</button
+      >
     </form>
   </div>
 </section>

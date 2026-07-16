@@ -21,7 +21,7 @@
   <div class="panel p-5">
     {#if data.checkout === "success" && !isPro}
       <p
-        class="mb-4 rounded-md bg-[var(--accent)]/10 p-3 text-sm text-[var(--fg)]"
+        class="bg-[var(--accent)]/10 mb-4 rounded-md p-3 text-sm text-[var(--fg)]"
       >
         Pagamento recebido. Estamos confirmando sua assinatura com a Stripe —
         atualize esta página em alguns instantes.

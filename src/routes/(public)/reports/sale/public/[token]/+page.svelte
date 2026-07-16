@@ -1,37 +1,50 @@
 <script lang="ts">
-  import { Fuel, Wrench, CircleGauge, ReceiptText } from 'lucide-svelte';
-  import type { PublicSaleReport } from '$types/sale-report';
+  import { Fuel, Wrench, CircleGauge, ReceiptText } from "lucide-svelte";
+  import type { PublicSaleReport } from "$types/sale-report";
 
   export let data: { report: PublicSaleReport };
 
   const brl = (cents: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
-  const km = (value: number) => `${new Intl.NumberFormat('pt-BR').format(value)} km`;
+    new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(cents / 100);
+  const km = (value: number) =>
+    `${new Intl.NumberFormat("pt-BR").format(value)} km`;
   const day = (iso: string) =>
-    iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    iso
+      ? new Date(iso).toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : "—";
 
   $: report = data.report;
   $: moto = report.motorcycle;
 
   $: specs = [
-    { label: 'Marca', value: moto.brand },
-    { label: 'Modelo', value: moto.model },
-    { label: 'Ano', value: moto.year ? String(moto.year) : null },
-    { label: 'Odômetro', value: moto.odometerKm ? km(moto.odometerKm) : null },
-    { label: 'Donos anteriores', value: moto.previousOwners === null ? null : String(moto.previousOwners) },
-    { label: 'Perfil de uso', value: moto.ridingProfile }
+    { label: "Marca", value: moto.brand },
+    { label: "Modelo", value: moto.model },
+    { label: "Ano", value: moto.year ? String(moto.year) : null },
+    { label: "Odômetro", value: moto.odometerKm ? km(moto.odometerKm) : null },
+    {
+      label: "Donos anteriores",
+      value: moto.previousOwners === null ? null : String(moto.previousOwners),
+    },
+    { label: "Perfil de uso", value: moto.ridingProfile },
   ].filter((s) => s.value);
 
   $: costs = [
-    { icon: Fuel, label: 'Combustível', value: report.totals.fuel },
-    { icon: Wrench, label: 'Manutenção', value: report.totals.maintenance },
-    { icon: CircleGauge, label: 'Pneus', value: report.totals.tires },
-    { icon: ReceiptText, label: 'Taxas', value: report.totals.fees }
+    { icon: Fuel, label: "Combustível", value: report.totals.fuel },
+    { icon: Wrench, label: "Manutenção", value: report.totals.maintenance },
+    { icon: CircleGauge, label: "Pneus", value: report.totals.tires },
+    { icon: ReceiptText, label: "Taxas", value: report.totals.fees },
   ];
 </script>
 
 <svelte:head>
-  <title>{moto.name || 'Dossiê de venda'} · Moto Track</title>
+  <title>{moto.name || "Dossiê de venda"} · Moto Track</title>
   <!-- A private share link should never end up in a search index. -->
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
@@ -42,14 +55,18 @@
       <span class="slash-rule" aria-hidden="true"></span>
       Dossiê de venda
     </p>
-    <h1 class="display mt-3 text-5xl sm:text-6xl">{moto.name || 'Histórico da moto'}</h1>
+    <h1 class="display mt-3 text-5xl sm:text-6xl">
+      {moto.name || "Histórico da moto"}
+    </h1>
     <p class="mt-3 text-[var(--muted)]">
       Histórico registrado no Moto Track e compartilhado pelo proprietário.
     </p>
   </header>
 
   {#if specs.length}
-    <dl class="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-[var(--line)] bg-[var(--line)] sm:grid-cols-3">
+    <dl
+      class="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-[var(--line)] bg-[var(--line)] sm:grid-cols-3"
+    >
       {#each specs as spec (spec.label)}
         <div class="bg-[var(--bg)] p-5">
           <dt class="label-tech text-[var(--muted)]">{spec.label}</dt>
@@ -78,10 +95,14 @@
       {/each}
     </div>
 
-    <div class="mt-4 flex flex-col gap-4 rounded-panel bg-[var(--panel-invert)] p-6 text-paper sm:flex-row sm:items-center sm:justify-between">
+    <div
+      class="mt-4 flex flex-col gap-4 rounded-panel bg-[var(--panel-invert)] p-6 text-paper sm:flex-row sm:items-center sm:justify-between"
+    >
       <div>
         <p class="label-tech text-paper/50">Total investido</p>
-        <p class="display numeric mt-1 text-5xl text-[var(--accent)]">{brl(report.totals.all)}</p>
+        <p class="display numeric mt-1 text-5xl text-[var(--accent)]">
+          {brl(report.totals.all)}
+        </p>
       </div>
       <div class="sm:text-right">
         <p class="label-tech text-paper/50">Serviços registrados</p>
@@ -115,17 +136,26 @@
             <tbody>
               {#each report.timeline as event, i (i)}
                 <tr class="border-b border-[var(--line)] last:border-0">
-                  <td class="numeric whitespace-nowrap px-4 py-3 text-[var(--muted)]">{day(event.date)}</td>
+                  <td
+                    class="numeric whitespace-nowrap px-4 py-3 text-[var(--muted)]"
+                    >{day(event.date)}</td
+                  >
                   <td class="px-4 py-3">
-                    <p class="font-semibold">{event.type || 'Manutenção'}</p>
+                    <p class="font-semibold">{event.type || "Manutenção"}</p>
                     {#if event.description}
-                      <p class="mt-0.5 text-xs text-[var(--muted)]">{event.description}</p>
+                      <p class="mt-0.5 text-xs text-[var(--muted)]">
+                        {event.description}
+                      </p>
                     {/if}
                   </td>
-                  <td class="numeric whitespace-nowrap px-4 py-3 text-[var(--muted)]">
-                    {event.odometerKm === null ? '—' : km(event.odometerKm)}
+                  <td
+                    class="numeric whitespace-nowrap px-4 py-3 text-[var(--muted)]"
+                  >
+                    {event.odometerKm === null ? "—" : km(event.odometerKm)}
                   </td>
-                  <td class="numeric whitespace-nowrap px-4 py-3 text-right font-semibold">
+                  <td
+                    class="numeric whitespace-nowrap px-4 py-3 text-right font-semibold"
+                  >
                     {brl(event.costCents)}
                   </td>
                 </tr>
@@ -141,10 +171,15 @@
     {/if}
   </section>
 
-  <footer class="mt-14 flex flex-col gap-3 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+  <footer
+    class="mt-14 flex flex-col gap-3 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center sm:justify-between"
+  >
     <p class="text-xs text-[var(--muted)]">
-      Link válido até {day(report.expiresAt)}. O proprietário pode revogá-lo a qualquer momento.
+      Link válido até {day(report.expiresAt)}. O proprietário pode revogá-lo a
+      qualquer momento.
     </p>
-    <a class="button-secondary shrink-0" href="/">Criar meu histórico no Moto Track</a>
+    <a class="button-secondary shrink-0" href="/"
+      >Criar meu histórico no Moto Track</a
+    >
   </footer>
 </article>

@@ -53,20 +53,28 @@
       Todos os guias
     </a>
 
-    <h1 class="display mt-7 text-4xl sm:text-5xl lg:text-6xl">{article.title}</h1>
+    <h1 class="display mt-7 text-4xl sm:text-5xl lg:text-6xl">
+      {article.title}
+    </h1>
 
-    <p class="mt-6 text-lg leading-relaxed text-[var(--muted)]">{article.summary}</p>
+    <p class="mt-6 text-lg leading-relaxed text-[var(--muted)]">
+      {article.summary}
+    </p>
 
     <!-- Byline strip, in the spec-strip idiom used on the landing hero. -->
     <div
       class="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--line)] pt-5"
     >
       <span class="label-tech text-[var(--muted)]">{publishedLabel}</span>
-      <span class="label-tech inline-flex items-center gap-1.5 text-[var(--muted)]">
+      <span
+        class="label-tech inline-flex items-center gap-1.5 text-[var(--muted)]"
+      >
         <Clock class="h-3 w-3" />
         {article.reading_minutes} min de leitura
       </span>
-      <span class="label-tech inline-flex items-center gap-1.5 text-[var(--muted)]">
+      <span
+        class="label-tech inline-flex items-center gap-1.5 text-[var(--muted)]"
+      >
         <MessageSquare class="h-3 w-3" />
         {data.comments.length}
         {data.comments.length === 1 ? "comentário" : "comentários"}
@@ -82,7 +90,9 @@
 
 <!-- ── REACTIONS ───────────────────────────────────────────── -->
 <section class="mx-auto max-w-3xl px-6">
-  <div class="flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-8">
+  <div
+    class="flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-8"
+  >
     <p class="label-tech text-[var(--muted)]">Esse guia ajudou?</p>
     <div class="flex flex-wrap gap-2">
       {#each reactionEmojis as emoji, i (emoji)}
@@ -100,14 +110,16 @@
 
 <!-- ── CTA ─────────────────────────────────────────────────── -->
 <section class="mx-auto max-w-3xl px-6 pt-12">
-  <div class="relative overflow-hidden rounded-panel bg-[var(--panel-invert)] p-8 text-paper">
+  <div
+    class="relative overflow-hidden rounded-panel bg-[var(--panel-invert)] p-8 text-paper"
+  >
     <div class="corner-slashes" aria-hidden="true"></div>
     <div class="relative sm:flex sm:items-center sm:justify-between sm:gap-8">
       <div>
         <h2 class="display text-3xl">Registre essa manutenção</h2>
         <p class="mt-2.5 max-w-md text-sm text-paper/60">
-          Anote a troca no Moto Track e receba o lembrete do próximo intervalo automaticamente —
-          por km rodado ou por data.
+          Anote a troca no Moto Track e receba o lembrete do próximo intervalo
+          automaticamente — por km rodado ou por data.
         </p>
       </div>
       <a class="button-accent mt-6 shrink-0 px-6 py-3 sm:mt-0" href="/auth">
@@ -127,13 +139,22 @@
   <h2 class="display mt-4 text-3xl">Experiências da garagem</h2>
 
   {#if form?.message}
-    <p class="mt-5 rounded border border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--accent)]">
+    <p
+      class="mt-5 rounded border border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--accent)]"
+    >
       {form.message}
     </p>
   {/if}
 
-  <form method="POST" action="?/comment" use:enhance class="panel mt-6 grid gap-3 p-5">
-    <label class="label-tech text-[var(--muted)]" for="comment-body">Seu comentário</label>
+  <form
+    method="POST"
+    action="?/comment"
+    use:enhance
+    class="panel mt-6 grid gap-3 p-5"
+  >
+    <label class="label-tech text-[var(--muted)]" for="comment-body"
+      >Seu comentário</label
+    >
     <textarea
       id="comment-body"
       class="field min-h-24"
@@ -179,18 +200,31 @@
         Continue lendo
       </p>
       <h2 class="display mt-4 text-3xl">Outros guias</h2>
-      <div class="mt-8 grid gap-px border border-[var(--line)] bg-[var(--line)] sm:grid-cols-3">
+      <div
+        class="mt-8 grid gap-px border border-[var(--line)] bg-[var(--line)] sm:grid-cols-3"
+      >
         {#each data.related as item (item.slug)}
-          <a class="card group flex flex-col bg-[var(--bg)] p-6" href={`/blog/${item.slug}`}>
-            <h3 class="display text-xl transition-colors group-hover:text-[var(--accent)]">
+          <a
+            class="card group flex flex-col bg-[var(--bg)] p-6"
+            href={`/blog/${item.slug}`}
+          >
+            <h3
+              class="display text-xl transition-colors group-hover:text-[var(--accent)]"
+            >
               {item.title}
             </h3>
-            <p class="mt-2.5 line-clamp-3 flex-1 text-sm leading-relaxed text-[var(--muted)]">
+            <p
+              class="mt-2.5 line-clamp-3 flex-1 text-sm leading-relaxed text-[var(--muted)]"
+            >
               {item.summary}
             </p>
-            <span class="label-tech mt-5 inline-flex items-center gap-2 text-[var(--accent)]">
+            <span
+              class="label-tech mt-5 inline-flex items-center gap-2 text-[var(--accent)]"
+            >
               Ler
-              <ArrowRight class="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              <ArrowRight
+                class="h-3.5 w-3.5 transition-transform group-hover:translate-x-1"
+              />
             </span>
           </a>
         {/each}
@@ -215,7 +249,11 @@
     height: 90px;
     pointer-events: none;
     opacity: 0.18;
-    background: repeating-linear-gradient(100deg, var(--accent) 0 6px, transparent 6px 16px);
+    background: repeating-linear-gradient(
+      100deg,
+      var(--accent) 0 6px,
+      transparent 6px 16px
+    );
   }
 
   .card {
