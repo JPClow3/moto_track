@@ -49,5 +49,6 @@ See [`docs/deployment.md`](docs/deployment.md) for Pages bindings, server-only s
 
 ## Legacy Reference
 
-The previous Django implementation is temporarily preserved under `_legacy/django`
-for feature parity and data import work.
+The previous Django implementation has been fully replaced. See [`docs/parity-checklist.md`](docs/parity-checklist.md)
+for the feature-parity record and [`docs/api-migration.md`](docs/api-migration.md) for API field/endpoint changes.
+Legacy data import is available via `npm run import:legacy` (see [`scripts/import-legacy-data.ts`](scripts/import-legacy-data.ts)).
