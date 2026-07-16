@@ -16,7 +16,10 @@ export async function load({ locals, url }) {
   const { data, error: detailsError } =
     await locals.supabase.auth.oauth.getAuthorizationDetails(authorizationId);
   if (detailsError || !data) {
-    throw error(400, detailsError?.message ?? "Solicitação de autorização inválida.");
+    throw error(
+      400,
+      detailsError?.message ?? "Solicitação de autorização inválida.",
+    );
   }
 
   if (!("authorization_id" in data)) {
@@ -35,19 +38,23 @@ export const actions: Actions = {
   approve: async ({ request, locals }) => {
     const form = await request.formData();
     const authorizationId = String(form.get("authorization_id") ?? "");
-    if (!authorizationId) return fail(400, { message: "Solicitação inválida." });
+    if (!authorizationId)
+      return fail(400, { message: "Solicitação inválida." });
 
     const { data, error: approveError } =
       await locals.supabase.auth.oauth.approveAuthorization(authorizationId);
     if (approveError || !data)
-      return fail(400, { message: approveError?.message ?? "Falha ao autorizar." });
+      return fail(400, {
+        message: approveError?.message ?? "Falha ao autorizar.",
+      });
 
     throw redirect(303, data.redirect_url);
   },
   deny: async ({ request, locals }) => {
     const form = await request.formData();
     const authorizationId = String(form.get("authorization_id") ?? "");
-    if (!authorizationId) return fail(400, { message: "Solicitação inválida." });
+    if (!authorizationId)
+      return fail(400, { message: "Solicitação inválida." });
 
     const { data, error: denyError } =
       await locals.supabase.auth.oauth.denyAuthorization(authorizationId);

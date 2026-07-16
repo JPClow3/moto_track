@@ -9,18 +9,40 @@ afterEach(() => {
 
 describe("Web Push delivery", () => {
   it("encrypts a payload and signs a VAPID request", async () => {
-    const vapid = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
-    const client = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+    const vapid = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    );
+    const client = await crypto.subtle.generateKey(
+      { name: "ECDH", namedCurve: "P-256" },
+      true,
+      ["deriveBits"],
+    );
     const privateKey = await crypto.subtle.exportKey("jwk", vapid.privateKey);
-    const publicKey = base64Url(new Uint8Array(await crypto.subtle.exportKey("raw", vapid.publicKey)));
-    const clientPublic = base64Url(new Uint8Array(await crypto.subtle.exportKey("raw", client.publicKey)));
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 201 }));
+    const publicKey = base64Url(
+      new Uint8Array(await crypto.subtle.exportKey("raw", vapid.publicKey)),
+    );
+    const clientPublic = base64Url(
+      new Uint8Array(await crypto.subtle.exportKey("raw", client.publicKey)),
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 201 }));
     globalThis.fetch = fetchMock;
 
     await sendWebPush(
-      { endpoint: "https://push.example.test/send", p256dh: clientPublic, auth: base64Url(crypto.getRandomValues(new Uint8Array(16))) },
+      {
+        endpoint: "https://push.example.test/send",
+        p256dh: clientPublic,
+        auth: base64Url(crypto.getRandomValues(new Uint8Array(16))),
+      },
       { title: "Moto Track", body: "Teste", url: "/reminders" },
-      { publicKey, privateKey: JSON.stringify(privateKey), subject: "mailto:ops@example.test" },
+      {
+        publicKey,
+        privateKey: JSON.stringify(privateKey),
+        subject: "mailto:ops@example.test",
+      },
     );
 
     expect(fetchMock).toHaveBeenCalledOnce();

@@ -23,15 +23,20 @@ export async function searchMarketplace(
   fetchImpl: typeof fetch = fetch,
 ) {
   const normalized = query.trim().slice(0, 120);
-  if (normalized.length < 3) throw new Error("Informe ao menos três caracteres para buscar uma peça.");
+  if (normalized.length < 3)
+    throw new Error("Informe ao menos três caracteres para buscar uma peça.");
   const response = await fetchImpl(
     `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(normalized)}&limit=10`,
     { headers: { accept: "application/json" } },
   );
-  if (!response.ok) throw new Error("Não foi possível consultar ofertas agora.");
+  if (!response.ok)
+    throw new Error("Não foi possível consultar ofertas agora.");
   const data = (await response.json()) as MercadoLivreResponse;
   const offers: MarketplaceOffer[] = (data.results ?? [])
-    .filter((item) => item.id && item.title && item.permalink && Number.isFinite(item.price))
+    .filter(
+      (item) =>
+        item.id && item.title && item.permalink && Number.isFinite(item.price),
+    )
     .map((item) => ({
       id: item.id!,
       title: item.title!,

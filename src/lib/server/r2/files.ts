@@ -28,6 +28,19 @@ export function privateDownloadHeaders(filename: string, contentType: string) {
   });
 }
 
+export function privateImagePreviewHeaders(
+  filename: string,
+  contentType: string,
+) {
+  const safeFilename = filename.replace(/[\r\n"]/g, "_") || "photo";
+  return new Headers({
+    "content-type": contentType,
+    "content-disposition": `inline; filename="${safeFilename}"`,
+    "x-content-type-options": "nosniff",
+    "cache-control": "private, max-age=300",
+  });
+}
+
 export async function uploadObjectFile({
   file,
   module,

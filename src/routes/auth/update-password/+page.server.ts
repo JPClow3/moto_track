@@ -18,7 +18,9 @@ export const actions: Actions = {
     const confirmPassword = String(form.get("confirmPassword") ?? "");
 
     if (password.length < 6) {
-      return fail(400, { message: "A senha precisa ter pelo menos 6 caracteres." });
+      return fail(400, {
+        message: "A senha precisa ter pelo menos 6 caracteres.",
+      });
     }
     if (password !== confirmPassword) {
       return fail(400, { message: "As senhas não coincidem." });

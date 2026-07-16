@@ -4,16 +4,9 @@ import { ACCOUNT_EXPORT_TABLES } from "$server/domain/account-data";
 export async function GET({ locals }) {
   if (!locals.user) throw error(401, "Authentication required.");
   const ownerId = locals.user.id;
-  const db = locals.supabase as unknown as {
-    from: (table: string) => {
-      select: (columns: string) => {
-        eq: (column: string, value: string) => Promise<{ data: unknown; error: { message: string } | null }>;
-      };
-    };
-  };
   const records = await Promise.all(
     ACCOUNT_EXPORT_TABLES.map(async (table) => {
-      const { data, error: queryError } = await db
+      const { data, error: queryError } = await locals.supabase
         .from(table)
         .select("*")
         .eq("owner_id", ownerId);

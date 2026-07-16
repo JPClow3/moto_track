@@ -10,7 +10,10 @@ describe("offlineFuelValues", () => {
     form.set("total_price", "78.50");
     form.set("tank_full", "true");
 
-    expect(offlineFuelValues(form)).toMatchObject({ odometer_km: "32000", tank_full: "true" });
+    expect(offlineFuelValues(form)).toMatchObject({
+      odometer_km: "32000",
+      tank_full: "true",
+    });
   });
 
   it("rejects a non-empty receipt because the queue only persists structured data", () => {
@@ -19,7 +22,10 @@ describe("offlineFuelValues", () => {
     form.set("odometer_km", "32000");
     form.set("liters", "12.4");
     form.set("total_price", "78.50");
-    form.set("receipt_file", new File(["receipt"], "receipt.txt", { type: "text/plain" }));
+    form.set(
+      "receipt_file",
+      new File(["receipt"], "receipt.txt", { type: "text/plain" }),
+    );
 
     expect(() => offlineFuelValues(form)).toThrow("comprovante");
   });

@@ -36,12 +36,24 @@ export function summarizeReportMetrics({
   fees: DatedAmount[];
 }) {
   const distribution = [
-    { label: "Abastecimento", amountCents: sum(fuel.map((r) => r.total_price_cents)) },
-    { label: "Manutenção", amountCents: sum(maintenance.map((r) => r.cost_cents)) },
+    {
+      label: "Abastecimento",
+      amountCents: sum(fuel.map((r) => r.total_price_cents)),
+    },
+    {
+      label: "Manutenção",
+      amountCents: sum(maintenance.map((r) => r.cost_cents)),
+    },
     { label: "Pneus", amountCents: sum(tires.map((r) => r.cost_cents)) },
-    { label: "Taxas e seguro", amountCents: sum(fees.map((r) => r.amount_cents)) },
+    {
+      label: "Taxas e seguro",
+      amountCents: sum(fees.map((r) => r.amount_cents)),
+    },
   ];
-  const monthly = new Map<string, { fuelLiters: number; spendingCents: number }>();
+  const monthly = new Map<
+    string,
+    { fuelLiters: number; spendingCents: number }
+  >();
   const add = (month: string, fuelLiters: number, spendingCents: number) => {
     if (!month) return;
     const current = monthly.get(month) ?? { fuelLiters: 0, spendingCents: 0 };
@@ -49,8 +61,14 @@ export function summarizeReportMetrics({
     current.spendingCents += spendingCents;
     monthly.set(month, current);
   };
-  for (const row of fuel) add(monthFrom(row), Number(row.liters ?? 0), Number(row.total_price_cents ?? 0));
-  for (const row of maintenance) add(monthFrom(row), 0, Number(row.cost_cents ?? 0));
+  for (const row of fuel)
+    add(
+      monthFrom(row),
+      Number(row.liters ?? 0),
+      Number(row.total_price_cents ?? 0),
+    );
+  for (const row of maintenance)
+    add(monthFrom(row), 0, Number(row.cost_cents ?? 0));
   for (const row of tires) add(monthFrom(row), 0, Number(row.cost_cents ?? 0));
   for (const row of fees) add(monthFrom(row), 0, Number(row.amount_cents ?? 0));
 

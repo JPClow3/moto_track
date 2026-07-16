@@ -7,14 +7,19 @@ export function urlBase64ToUint8Array(value: string) {
 
 export async function enablePushNotifications() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    throw new Error("Notificações push não são compatíveis com este navegador.");
+    throw new Error(
+      "Notificações push não são compatíveis com este navegador.",
+    );
   }
-  const status = await fetch("/api/pwa/status").then((response) => response.json());
+  const status = await fetch("/api/pwa/status").then((response) =>
+    response.json(),
+  );
   if (!status.authenticated || !status.pushPublicKey) {
     throw new Error("As notificações push ainda não estão configuradas.");
   }
   const permission = await Notification.requestPermission();
-  if (permission !== "granted") throw new Error("Permissão para notificações não concedida.");
+  if (permission !== "granted")
+    throw new Error("Permissão para notificações não concedida.");
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,

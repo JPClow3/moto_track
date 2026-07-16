@@ -41,7 +41,9 @@ test("serves a standalone Moto Track manifest", async ({ request }) => {
   });
 });
 
-test("pre-caches an offline fallback for a previously unavailable connection", async ({ page }) => {
+test("pre-caches an offline fallback for a previously unavailable connection", async ({
+  page,
+}) => {
   await page.goto("/");
 
   await expect

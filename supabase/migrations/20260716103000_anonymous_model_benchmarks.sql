@@ -11,6 +11,12 @@ create index anonymous_model_benchmark_cohort_idx
 
 alter table public.anonymous_model_benchmark_contributions enable row level security;
 
+create policy "Anyone can contribute a benchmark sample"
+  on public.anonymous_model_benchmark_contributions
+  for insert
+  to anon, authenticated
+  with check (true);
+
 create function public.model_benchmark_summary(p_model_key text)
 returns table(sample_size integer, average_consumption_km_l numeric, average_maintenance_cents numeric)
 language sql stable security definer set search_path = public
