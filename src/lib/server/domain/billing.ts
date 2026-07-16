@@ -175,9 +175,22 @@ export async function createCheckoutSession({
     metadata: { user_id: userId, interval },
     subscription_data: { metadata: { user_id: userId, interval } },
   };
+  const client = stripeClient(platform);
   if (customer) session.customer = customer;
   else session.customer_email = email;
-  return stripeClient(platform).checkout.sessions.create(session);
+  try {
+    return await client.checkout.sessions.create(session);
+  } catch (err) {
+    // A customer_id can go stale (e.g. left over from a Stripe mode switch, or
+    // the customer was deleted in the dashboard); fall back to creating a
+    // fresh customer by email instead of failing the whole checkout.
+    if (customer && (err as Stripe.errors.StripeError)?.code === "resource_missing") {
+      delete session.customer;
+      session.customer_email = email;
+      return await client.checkout.sessions.create(session);
+    }
+    throw err;
+  }
 }
 
 export async function createPortalSession(

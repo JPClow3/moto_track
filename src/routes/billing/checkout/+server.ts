@@ -14,12 +14,18 @@ export async function GET({ locals, url, platform }) {
     .eq("owner_id", user.id)
     .maybeSingle();
   if (hasProAccess(profile)) throw redirect(303, "/billing/portal");
-  const session = await createCheckoutSession({
-    email: user.email,
-    userId: user.id,
-    customerId: profile?.stripe_customer_id,
-    interval: parseBillingInterval(url.searchParams.get("interval")),
-    platform,
-  });
+  let session;
+  try {
+    session = await createCheckoutSession({
+      email: user.email,
+      userId: user.id,
+      customerId: profile?.stripe_customer_id,
+      interval: parseBillingInterval(url.searchParams.get("interval")),
+      platform,
+    });
+  } catch (err) {
+    console.error("Failed to create Stripe checkout session", err);
+    throw redirect(303, "/precos?checkout=error");
+  }
   throw redirect(303, session.url ?? "/billing/conta");
 }

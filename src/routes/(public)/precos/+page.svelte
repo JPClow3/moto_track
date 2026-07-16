@@ -1,7 +1,10 @@
 <script lang="ts">
+  import { page } from "$app/stores";
   import type { ProPricing } from "$types/billing";
 
   export let data: { pricing: ProPricing };
+
+  $: checkoutState = $page.url.searchParams.get("checkout");
 
   // Segments rather than {@html}, matching the landing page.
   type Segment = { t: string; b?: boolean };
@@ -48,6 +51,20 @@
         Sem cartão, sem pegadinha. Comece de graça e suba de plano só quando
         precisar de mais.
       </p>
+      {#if checkoutState === "error"}
+        <p
+          class="mt-6 rounded-panel border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"
+        >
+          Não foi possível iniciar o checkout agora. Tente novamente em
+          instantes ou fale com o suporte se o problema continuar.
+        </p>
+      {:else if checkoutState === "cancelled"}
+        <p
+          class="mt-6 rounded-panel border border-[var(--line)] bg-[var(--panel)] px-4 py-3 text-sm text-[var(--muted)]"
+        >
+          Checkout cancelado. Você pode tentar novamente quando quiser.
+        </p>
+      {/if}
     </div>
 
     <div class="mt-16 grid gap-6 md:grid-cols-2">
