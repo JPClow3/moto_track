@@ -74,10 +74,11 @@ export async function POST({ request, platform }) {
 
   if (event.type === "invoice.payment_failed") {
     const invoice = event.data.object as Stripe.Invoice;
+    const subscriptionRef = invoice.parent?.subscription_details?.subscription;
     const subscriptionId =
-      typeof invoice.subscription === "string"
-        ? invoice.subscription
-        : invoice.subscription?.id;
+      typeof subscriptionRef === "string"
+        ? subscriptionRef
+        : subscriptionRef?.id;
     if (subscriptionId) {
       await supabase
         .from("subscription_profiles")
