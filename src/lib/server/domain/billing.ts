@@ -4,14 +4,38 @@ import type { PlanPrice, ProPricing } from "$types/billing";
 
 export type { PlanPrice, ProPricing };
 
+export type BillingInterval = "monthly" | "yearly";
+
+type StripeSubscriptionRecord = {
+  id: string;
+  customer: string | Stripe.Customer | Stripe.DeletedCustomer;
+  status: string;
+  cancel_at_period_end: boolean;
+  current_period_end: number;
+  items: {
+    data: Array<{
+      price: { recurring: { interval: string } | null };
+    }>;
+  };
+};
+
 export function stripeClient(platform?: App.Platform) {
   const runtime = runtimeEnv(platform);
   if (!runtime.STRIPE_SECRET_KEY)
     throw new Error("STRIPE_SECRET_KEY is not configured.");
-  return new Stripe(runtime.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+  return new Stripe(runtime.STRIPE_SECRET_KEY, {
+    apiVersion: "2026-02-25.clover" as Stripe.LatestApiVersion,
+  });
 }
 
-export function priceIdForInterval(interval: string, platform?: App.Platform) {
+export function parseBillingInterval(value: string | null): BillingInterval {
+  return value === "yearly" ? "yearly" : "monthly";
+}
+
+export function priceIdForInterval(
+  interval: BillingInterval,
+  platform?: App.Platform,
+) {
   const runtime = runtimeEnv(platform);
   return interval === "yearly"
     ? runtime.STRIPE_PRO_YEARLY_PRICE_ID
@@ -100,36 +124,59 @@ export async function fetchProPricing(
   return value;
 }
 
-export function subscriptionProfileUpdate(status: string) {
+export function subscriptionProfileUpdate(
+  subscription: StripeSubscriptionRecord,
+) {
+  const interval = subscription.items.data[0]?.price.recurring?.interval;
+  const customerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer.id;
   return {
-    stripe_subscription_status: status,
-    plan: status === "active" || status === "trialing" ? "pro" : "free",
+    stripe_subscription_status: subscription.status,
+    plan:
+      subscription.status === "active" || subscription.status === "trialing"
+        ? "pro"
+        : "free",
+    stripe_customer_id: customerId,
+    stripe_subscription_id: subscription.id,
+    billing_interval: interval === "year" ? "yearly" : "monthly",
+    cancel_at_period_end: subscription.cancel_at_period_end,
+    current_period_end: new Date(
+      subscription.current_period_end * 1000,
+    ).toISOString(),
   } as const;
 }
 
 export async function createCheckoutSession({
   email,
   userId,
+  customerId,
   interval,
   platform,
 }: {
   email: string;
   userId: string;
-  interval: string;
+  customerId?: string;
+  interval: BillingInterval;
   platform?: App.Platform;
 }) {
   const runtime = runtimeEnv(platform);
   const price = priceIdForInterval(interval, platform);
   if (!price) throw new Error("Stripe price ID is not configured.");
-  return stripeClient(platform).checkout.sessions.create({
+  const customer = customerId?.trim();
+  const session: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
-    customer_email: email,
     client_reference_id: userId,
     line_items: [{ price, quantity: 1 }],
     success_url: `${runtime.PUBLIC_SITE_URL || "http://localhost:5173"}/billing/conta?checkout=success`,
     cancel_url: `${runtime.PUBLIC_SITE_URL || "http://localhost:5173"}/precos?checkout=cancelled`,
     metadata: { user_id: userId, interval },
-  });
+    subscription_data: { metadata: { user_id: userId, interval } },
+  };
+  if (customer) session.customer = customer;
+  else session.customer_email = email;
+  return stripeClient(platform).checkout.sessions.create(session);
 }
 
 export async function createPortalSession(
