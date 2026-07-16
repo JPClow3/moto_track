@@ -19,8 +19,14 @@ describe("Stripe billing", () => {
         customer: "cus_123",
         status: "past_due",
         cancel_at_period_end: false,
-        current_period_end: 1_800_000_000,
-        items: { data: [{ price: { recurring: { interval: "month" } } }] },
+        items: {
+          data: [
+            {
+              price: { recurring: { interval: "month" } },
+              current_period_end: 1_800_000_000,
+            },
+          ],
+        },
       }),
     ).toEqual({
       stripe_subscription_status: "past_due",
@@ -40,8 +46,14 @@ describe("Stripe billing", () => {
         customer: "cus_456",
         status: "active",
         cancel_at_period_end: true,
-        current_period_end: 1_800_000_000,
-        items: { data: [{ price: { recurring: { interval: "year" } } }] },
+        items: {
+          data: [
+            {
+              price: { recurring: { interval: "year" } },
+              current_period_end: 1_800_000_000,
+            },
+          ],
+        },
       }),
     ).toEqual({
       stripe_subscription_status: "active",

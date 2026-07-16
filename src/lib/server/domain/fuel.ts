@@ -253,3 +253,97 @@ export function costPerKm(records: FuelRecord[]) {
   if (distance <= 0) return null;
   return Math.round((total / 100 / distance) * 1000) / 1000;
 }
+
+const PRICE_ANOMALY_WINDOW = 3;
+const PRICE_ANOMALY_THRESHOLD = 0.15;
+
+export function detectFuelPriceAnomalies(
+  records: {
+    id: string;
+    date: string;
+    price_per_liter_millicents: number;
+  }[],
+): Map<string, string> {
+  const anomalies = new Map<string, string>();
+  const ordered = [...records].sort((a, b) => a.date.localeCompare(b.date));
+  for (let i = 1; i < ordered.length; i++) {
+    const window = ordered.slice(Math.max(0, i - PRICE_ANOMALY_WINDOW), i);
+    const baseline =
+      window.reduce((sum, r) => sum + r.price_per_liter_millicents, 0) /
+      window.length;
+    if (baseline <= 0) continue;
+    const current = ordered[i];
+    const ratio = current.price_per_liter_millicents / baseline;
+    if (ratio >= 1 + PRICE_ANOMALY_THRESHOLD) {
+      const percent = Math.round((ratio - 1) * 100);
+      anomalies.set(
+        current.id,
+        `Preço ${percent}% acima da média recente de abastecimentos.`,
+      );
+    }
+  }
+  return anomalies;
+}
+
+const CONSUMPTION_ANOMALY_WINDOW = 3;
+const CONSUMPTION_ANOMALY_THRESHOLD = 0.3;
+
+export function detectFuelConsumptionAnomalies(
+  records: {
+    id: string;
+    motorcycle_id: string;
+    date: string;
+    odometer_km: number;
+    liters: number;
+    tank_full?: boolean | null;
+  }[],
+): Map<string, string> {
+  const anomalies = new Map<string, string>();
+  const byMotorcycle = new Map<string, typeof records>();
+  for (const record of records) {
+    if (!record.tank_full) continue;
+    const group = byMotorcycle.get(record.motorcycle_id) ?? [];
+    group.push(record);
+    byMotorcycle.set(record.motorcycle_id, group);
+  }
+
+  for (const group of byMotorcycle.values()) {
+    const ordered = [...group].sort(
+      (a, b) => a.date.localeCompare(b.date) || a.odometer_km - b.odometer_km,
+    );
+    const consumptions: number[] = [];
+    for (let i = 1; i < ordered.length; i++) {
+      const distance = ordered[i].odometer_km - ordered[i - 1].odometer_km;
+      const liters = ordered[i].liters;
+      if (distance <= 0 || liters <= 0) continue;
+      const kmPerLiter = distance / liters;
+
+      const window = consumptions.slice(-CONSUMPTION_ANOMALY_WINDOW);
+      if (window.length > 0) {
+        const baseline =
+          window.reduce((sum, value) => sum + value, 0) / window.length;
+        if (
+          baseline > 0 &&
+          kmPerLiter <= baseline * (1 - CONSUMPTION_ANOMALY_THRESHOLD)
+        ) {
+          const percent = Math.round((1 - kmPerLiter / baseline) * 100);
+          anomalies.set(
+            ordered[i].id,
+            `Consumo abaixo do esperado: ${percent}% menor que a média recente.`,
+          );
+        }
+      }
+      consumptions.push(kmPerLiter);
+    }
+  }
+
+  return anomalies;
+}
+
+export function parseOdometerText(text: string): number | null {
+  const normalized = text.toLowerCase();
+  const match = normalized.match(/(\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?\s*km\b/);
+  if (!match) return null;
+  const value = Number(match[1].replace(/\./g, ""));
+  return Number.isFinite(value) ? value : null;
+}

@@ -48,7 +48,7 @@ export const actions: Actions = {
     const form = await request.formData();
     const email = String(form.get("email") ?? "");
     const { error } = await locals.supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${url.origin}/auth/callback?next=/dashboard`,
+      redirectTo: `${url.origin}/auth/callback?next=/auth/update-password`,
     });
     if (error) return fail(400, { message: error.message, email });
     return { message: "Email de recuperação enviado." };

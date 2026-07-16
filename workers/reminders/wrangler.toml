@@ -2,6 +2,10 @@ name = "moto-track-reminders"
 main = "index.ts"
 compatibility_date = "2026-07-01"
 
+# The cron is the only intended entrypoint; the fetch handler triggers real
+# email sends, so it must not be published on a workers.dev subdomain.
+workers_dev = false
+
 [triggers]
 crons = ["0 8 * * *"] # Every day at 8:00 AM UTC
 
@@ -11,3 +15,4 @@ crons = ["0 8 * * *"] # Every day at 8:00 AM UTC
 # SUPABASE_SERVICE_ROLE_KEY
 # EMAIL_FUNCTION_URL
 # EMAIL_FUNCTION_TOKEN
+# REMINDERS_TRIGGER_TOKEN  (optional; leave unset to disable the manual trigger)
