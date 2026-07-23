@@ -24,6 +24,7 @@ export const en: Messages = {
     actions: "Actions",
     status: "Status",
     exportCsv: "Export CSV",
+    openFile: "Open file",
     signIn: "Sign in",
     signOut: "Sign out",
     account: "Signed in",

@@ -1,3 +1,4 @@
+import { redirect } from "@sveltejs/kit";
 import { dashboardSummary, healthScore } from "$server/domain/reports";
 import { evaluateReminder, type ReminderInput } from "$server/domain/reminders";
 import {
@@ -48,6 +49,14 @@ export async function load({ locals }) {
   }
 
   const ownerId = user.id;
+  const { count: motorcycleCount } = await locals.supabase
+    .from("motorcycles")
+    .select("*", { count: "exact", head: true })
+    .eq("owner_id", ownerId);
+  if (!(motorcycleCount ?? 0)) {
+    throw redirect(303, "/onboarding");
+  }
+
   const [motorcycles, fuel, reminders, tires, documents, maintenance, fees] =
     await Promise.all([
       locals.supabase
@@ -85,6 +94,10 @@ export async function load({ locals }) {
         .select("due_date, amount_cents, fee_type")
         .eq("owner_id", ownerId),
     ]);
+
+  if (!(motorcycles.data ?? []).length) {
+    throw redirect(303, "/onboarding");
+  }
 
   const motorcycleRows = (motorcycles.data ?? []) as Row[];
   const fuelRows = (fuel.data ?? []) as Row[];

@@ -6,9 +6,12 @@ import { normalizeApiFeaturePayload } from "$server/domain/api-write";
 import { requireApiUser } from "$server/domain/api-auth";
 import { createSupabaseAdminClient } from "$server/supabase/admin";
 import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
+import { syncRecordEffects } from "$server/domain/crud";
+import { syncMotorcycleOdometer } from "$server/domain/odometer";
+import { syncLinkedReminder } from "$server/domain/record-sync";
 
-const apiResources: Record<string, { table: string; featureSlug?: string }> = {
-  "fuel-records": { table: "fuel_records" },
+const apiResources: Record<string, { table: string; featureSlug: string }> = {
+  "fuel-records": { table: "fuel_records", featureSlug: "fuel" },
   "maintenance-records": {
     table: "maintenance_records",
     featureSlug: "maintenance",
@@ -53,12 +56,6 @@ export async function GET(event) {
 export async function POST(event) {
   const { user, via } = await requireApiUser(event);
   const config = await resourceOrThrow(event.params.resource);
-  if (!config.featureSlug) {
-    throw error(
-      405,
-      "Writes for this resource are not supported via API v1 yet.",
-    );
-  }
   const supabase = dbFor(event, via);
   if (config.featureSlug === "reminders") {
     const blocked = await assertCanCreateReminder(supabase, user.id);
@@ -86,18 +83,19 @@ export async function POST(event) {
     .select("*")
     .maybeSingle();
   if (dbError) throw error(400, dbError.message);
+  await syncRecordEffects({
+    supabase,
+    ownerId: user.id,
+    feature,
+    recordId: String(payload.id),
+    payload,
+  });
   return json({ result: data }, { status: 201 });
 }
 
 export async function PATCH(event) {
   const { user, via } = await requireApiUser(event);
   const config = await resourceOrThrow(event.params.resource);
-  if (!config.featureSlug) {
-    throw error(
-      405,
-      "Writes for this resource are not supported via API v1 yet.",
-    );
-  }
   const supabase = dbFor(event, via);
   const feature = getFeature(config.featureSlug);
   const body = (await event.request.json().catch(() => null)) as Record<
@@ -121,6 +119,13 @@ export async function PATCH(event) {
     .maybeSingle();
   if (dbError) throw error(400, dbError.message);
   if (!data) throw error(404, "Record not found.");
+  await syncRecordEffects({
+    supabase,
+    ownerId: user.id,
+    feature,
+    recordId: id,
+    payload: normalized.payload,
+  });
   return json({ result: data });
 }
 
@@ -128,14 +133,31 @@ export async function DELETE(event) {
   const { user, via } = await requireApiUser(event);
   const config = await resourceOrThrow(event.params.resource);
   const supabase = dbFor(event, via);
+  const feature = getFeature(config.featureSlug);
   const url = new URL(event.request.url);
   const id = url.searchParams.get("id");
   if (!id) throw error(400, "Query parameter id is required.");
+  const { data: existing, error: readError } = await supabase
+    .from(config.table)
+    .select("motorcycle_id")
+    .eq("id", id)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  if (readError) throw error(400, readError.message);
+  if (!existing) throw error(404, "Record not found.");
   const { error: dbError } = await supabase
     .from(config.table)
     .delete()
     .eq("id", id)
     .eq("owner_id", user.id);
   if (dbError) throw error(400, dbError.message);
+  await syncLinkedReminder(supabase, user.id, feature.table, id, {});
+  const motorcycleId =
+    typeof (existing as { motorcycle_id?: unknown }).motorcycle_id === "string"
+      ? (existing as { motorcycle_id: string }).motorcycle_id
+      : null;
+  if (motorcycleId) {
+    await syncMotorcycleOdometer(supabase, user.id, motorcycleId);
+  }
   return json({ ok: true });
 }

@@ -1,9 +1,15 @@
 import { fail } from "@sveltejs/kit";
 import { featureActions, loadFeature } from "$server/domain/crud";
-import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
+import {
+  assertCanCreateReminder,
+  assertCanCreateUpload,
+} from "$server/domain/entitlement-guards";
+import { validateMaintenancePhoto } from "$server/domain/maintenance-photos";
+import { uploadObjectFile } from "$server/r2/files";
 
 const base = featureActions("maintenance");
 const v = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
+
 export const actions = {
   ...base,
   savePart: async ({ request, locals }) => {
@@ -17,6 +23,15 @@ export const actions = {
       track_stock: f.get("track_stock") === "true",
       stock_quantity: Number(f.get("stock_quantity") ?? 0),
     });
+    return error ? fail(400, { message: error.message }) : { ok: true };
+  },
+  deletePart: async ({ request, locals }) => {
+    const f = await request.formData();
+    const { error } = await locals.supabase
+      .from("maintenance_parts")
+      .delete()
+      .eq("id", v(f, "id"))
+      .eq("owner_id", locals.user!.id);
     return error ? fail(400, { message: error.message }) : { ok: true };
   },
   savePlan: async ({ request, locals }) => {
@@ -42,19 +57,98 @@ export const actions = {
       .single();
     if (error || !plan)
       return fail(400, { message: error?.message ?? "Plano inválido." });
-    await locals.supabase.from("reminders").insert({
-      owner_id: locals.user!.id,
-      motorcycle_id: motorcycleId,
-      title: `Plano: ${type}`,
-      trigger_type: Number(f.get("interval_km")) ? "by_interval" : "by_date",
-      trigger_value_km: Number(f.get("interval_km")) || null,
-      trigger_value_days: Number(f.get("interval_days")) || null,
-      is_active: true,
-      linked_plan_item_id: plan.id,
-    });
+    const { error: reminderError } = await locals.supabase
+      .from("reminders")
+      .insert({
+        owner_id: locals.user!.id,
+        motorcycle_id: motorcycleId,
+        title: `Plano: ${type}`,
+        trigger_type: Number(f.get("interval_km")) ? "by_interval" : "by_date",
+        trigger_value_km: Number(f.get("interval_km")) || null,
+        trigger_value_days: Number(f.get("interval_days")) || null,
+        is_active: true,
+        linked_plan_item_id: plan.id,
+      });
+    if (reminderError) return fail(400, { message: reminderError.message });
     return { ok: true };
   },
+  deletePlan: async ({ request, locals }) => {
+    const f = await request.formData();
+    const id = v(f, "id");
+    const { error } = await locals.supabase
+      .from("maintenance_plan_items")
+      .delete()
+      .eq("id", id)
+      .eq("owner_id", locals.user!.id);
+    if (error) return fail(400, { message: error.message });
+    await locals.supabase
+      .from("reminders")
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq("owner_id", locals.user!.id)
+      .eq("linked_plan_item_id", id);
+    return { ok: true };
+  },
+  uploadPhoto: async ({ request, locals, platform }) => {
+    const f = await request.formData();
+    const recordId = v(f, "maintenance_record_id");
+    const caption = v(f, "caption");
+    const file = f.get("photo");
+    if (!recordId) return fail(400, { message: "Selecione o registro." });
+    const { data: record } = await locals.supabase
+      .from("maintenance_records")
+      .select("id")
+      .eq("id", recordId)
+      .eq("owner_id", locals.user!.id)
+      .maybeSingle();
+    if (!record) return fail(404, { message: "Registro não encontrado." });
+    const photoFile = file instanceof File ? file : null;
+    const validation = validateMaintenancePhoto(photoFile);
+    if (!validation.ok) return fail(400, { message: validation.message });
+    const blocked = await assertCanCreateUpload(
+      locals.supabase,
+      locals.user!.id,
+    );
+    if (blocked) return fail(403, { message: blocked });
+    const uploaded = await uploadObjectFile({
+      file: photoFile!,
+      module: "maintenance",
+      ownerId: locals.user!.id,
+      platform,
+    });
+    const photoId = crypto.randomUUID();
+    const { error: fileError } = await locals.supabase
+      .from("object_files")
+      .insert({
+        owner_id: locals.user!.id,
+        module: "maintenance",
+        source_table: "maintenance_photos",
+        source_id: photoId,
+        object_key: uploaded.objectKey,
+        filename: uploaded.filename,
+        content_type: uploaded.contentType,
+        byte_size: uploaded.byteSize,
+      });
+    if (fileError) return fail(400, { message: fileError.message });
+    const { error } = await locals.supabase.from("maintenance_photos").insert({
+      id: photoId,
+      owner_id: locals.user!.id,
+      maintenance_record_id: recordId,
+      image_key: uploaded.objectKey,
+      caption,
+    });
+    return error ? fail(400, { message: error.message }) : { ok: true };
+  },
+  deletePhoto: async ({ request, locals }) => {
+    const f = await request.formData();
+    const { error } = await locals.supabase
+      .from("maintenance_photos")
+      .delete()
+      .eq("id", v(f, "id"))
+      .eq("owner_id", locals.user!.id);
+    return error ? fail(400, { message: error.message }) : { ok: true };
+  },
 };
+
 export async function load({ locals }) {
   const baseData = await loadFeature(
     locals.supabase,
@@ -65,20 +159,43 @@ export async function load({ locals }) {
     locals.supabase
       .from("maintenance_parts")
       .select("*")
-      .eq("owner_id", locals.user!.id),
+      .eq("owner_id", locals.user!.id)
+      .order("name"),
     locals.supabase
       .from("maintenance_plan_items")
-      .select("*")
-      .eq("owner_id", locals.user!.id),
+      .select("*, motorcycles(name)")
+      .eq("owner_id", locals.user!.id)
+      .order("maintenance_type"),
     locals.supabase
       .from("maintenance_photos")
-      .select("*")
-      .eq("owner_id", locals.user!.id),
+      .select("*, maintenance_records(date, maintenance_type)")
+      .eq("owner_id", locals.user!.id)
+      .order("created_at", { ascending: false }),
   ]);
   return {
     ...baseData,
-    parts: parts.data ?? [],
-    plans: plans.data ?? [],
-    photos: photos.data ?? [],
+    parts: (parts.data ?? []) as Array<{
+      id: string;
+      name: string;
+      manufacturer: string;
+      price_cents: number | null;
+      track_stock: boolean;
+      stock_quantity: number;
+    }>,
+    plans: (plans.data ?? []) as Array<{
+      id: string;
+      maintenance_type: string;
+      interval_km: number | null;
+      interval_days: number | null;
+      motorcycles: { name: string } | null;
+    }>,
+    photos: (photos.data ?? []) as Array<{
+      id: string;
+      caption: string;
+      maintenance_records: {
+        date: string;
+        maintenance_type: string;
+      } | null;
+    }>,
   };
 }

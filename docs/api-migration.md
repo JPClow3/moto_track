@@ -2,7 +2,7 @@
 
 The SvelteKit API keeps the same resource intent as the former Django REST endpoints:
 
-- `/api/v1/fuel-records` — read only (writes stay on the fuel UI / offline queue)
+- `/api/v1/fuel-records`
 - `/api/v1/maintenance-records`
 - `/api/v1/tire-records`
 - `/api/v1/reminders`
@@ -37,6 +37,7 @@ Supported feature-backed resources accept:
 - `DELETE` — delete (`?id=`)
 
 Free-plan entitlement checks apply to reminder creates (and other gated resources as wired).
+Creates/updates also recompute motorcycle odometer and linked reminders the same way the app UI does.
 
 ## Tokens
 

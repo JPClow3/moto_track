@@ -72,6 +72,7 @@ export const actions = {
       .from("forum_articles")
       .select("id")
       .eq("slug", params.slug)
+      .eq("is_published", true)
       .maybeSingle();
     if (!article) return fail(404, { message: "Artigo não encontrado." });
     const { error: insertError } = await locals.supabase
@@ -89,6 +90,7 @@ export const actions = {
       .from("forum_articles")
       .select("id")
       .eq("slug", params.slug)
+      .eq("is_published", true)
       .maybeSingle();
     if (!article) return fail(404, { message: "Artigo não encontrado." });
     const { data: existing } = await locals.supabase

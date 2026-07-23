@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { evaluateReminder } from "../../src/lib/server/domain/reminders";
+import { decryptPushField } from "./push-crypto";
+import { sendWebPush, type WebPushConfig } from "./web-push";
 
 export interface Env {
   SUPABASE_URL: string;
@@ -7,14 +9,19 @@ export interface Env {
   EMAIL_FUNCTION_URL: string;
   EMAIL_FUNCTION_TOKEN: string;
   REMINDERS_TRIGGER_TOKEN: string;
+  PUBLIC_VAPID_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  PUSH_ENCRYPTION_KEY?: string;
+  VAPID_SUBJECT?: string;
 }
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(processReminders(env));
   },
-  // Manual trigger for testing the cron path. It sends real email and writes to
-  // the database, so it stays closed unless REMINDERS_TRIGGER_TOKEN is set.
+  // Manual trigger for testing the cron path. It sends real email/push and
+  // writes to the database, so it stays closed unless REMINDERS_TRIGGER_TOKEN
+  // is set.
   async fetch(request: Request, env: Env) {
     if (!env.REMINDERS_TRIGGER_TOKEN) {
       return new Response("Not found", { status: 404 });
@@ -30,7 +37,16 @@ export default {
   },
 };
 
-async function processReminders(env: Env) {
+function webPushConfig(env: Env): WebPushConfig | null {
+  if (!env.PUBLIC_VAPID_KEY || !env.VAPID_PRIVATE_KEY) return null;
+  return {
+    publicKey: env.PUBLIC_VAPID_KEY,
+    privateKey: env.VAPID_PRIVATE_KEY,
+    subject: env.VAPID_SUBJECT || "mailto:ops@mototrack.app",
+  };
+}
+
+export async function processReminders(env: Env) {
   const supabase = createClient(
     env.SUPABASE_URL,
     env.SUPABASE_SERVICE_ROLE_KEY,
@@ -54,8 +70,36 @@ async function processReminders(env: Env) {
     (profiles ?? []).map((profile) => [profile.id, profile.email]),
   );
 
+  const pushConfig = webPushConfig(env);
+  const pushSecret = env.PUSH_ENCRYPTION_KEY ?? "";
+  const { data: subscriptions, error: pushError } =
+    pushConfig && pushSecret && ownerIds.length
+      ? await supabase
+          .from("push_subscriptions")
+          .select(
+            "owner_id, endpoint_encrypted, p256dh_encrypted, auth_encrypted",
+          )
+          .in("owner_id", ownerIds)
+      : { data: [], error: null };
+  if (pushError) throw pushError;
+
+  const subscriptionsByOwner = new Map<
+    string,
+    Array<{
+      endpoint_encrypted: string;
+      p256dh_encrypted: string;
+      auth_encrypted: string;
+    }>
+  >();
+  for (const row of subscriptions ?? []) {
+    const list = subscriptionsByOwner.get(row.owner_id) ?? [];
+    list.push(row);
+    subscriptionsByOwner.set(row.owner_id, list);
+  }
+
   let due = 0;
   let emailed = 0;
+  let pushed = 0;
   for (const reminder of reminders ?? []) {
     const evaluation = evaluateReminder(reminder, {
       currentOdometerKm: Number(reminder.motorcycles?.current_odometer_km ?? 0),
@@ -64,6 +108,11 @@ async function processReminders(env: Env) {
     if (evaluation.status !== "overdue" && evaluation.status !== "due_soon")
       continue;
     due += 1;
+
+    const bikeName = reminder.motorcycles?.name ?? "Moto";
+    const body = `${bikeName}: ${reminder.title} (${evaluation.status})`;
+    const now = new Date().toISOString();
+    const updates: Record<string, string> = {};
 
     if (
       reminder.send_email &&
@@ -79,21 +128,58 @@ async function processReminders(env: Env) {
         body: JSON.stringify({
           to: emailByOwner.get(reminder.owner_id),
           subject: `Moto Track: ${reminder.title}`,
-          text: `${reminder.motorcycles?.name ?? "Moto"}: ${reminder.title}\nStatus: ${evaluation.status}`,
+          text: `${bikeName}: ${reminder.title}\nStatus: ${evaluation.status}`,
         }),
       });
       if (response.ok) {
         emailed += 1;
-        await supabase
-          .from("reminders")
-          .update({
-            last_notified_at: new Date().toISOString(),
-            last_email_notified_at: new Date().toISOString(),
-          })
-          .eq("id", reminder.id);
+        updates.last_email_notified_at = now;
+        updates.last_notified_at = now;
       }
+    }
+
+    if (
+      reminder.send_push &&
+      !reminder.last_push_notified_at &&
+      pushConfig &&
+      pushSecret
+    ) {
+      const ownerSubs = subscriptionsByOwner.get(reminder.owner_id) ?? [];
+      let delivered = false;
+      for (const sub of ownerSubs) {
+        try {
+          await sendWebPush(
+            {
+              endpoint: await decryptPushField(
+                sub.endpoint_encrypted,
+                pushSecret,
+              ),
+              p256dh: await decryptPushField(sub.p256dh_encrypted, pushSecret),
+              auth: await decryptPushField(sub.auth_encrypted, pushSecret),
+            },
+            {
+              title: "Moto Track",
+              body,
+              url: "/reminders",
+            },
+            pushConfig,
+          );
+          delivered = true;
+        } catch {
+          // Drop dead endpoints quietly; the Conta page can re-subscribe.
+        }
+      }
+      if (delivered) {
+        pushed += 1;
+        updates.last_push_notified_at = now;
+        updates.last_notified_at = updates.last_notified_at ?? now;
+      }
+    }
+
+    if (Object.keys(updates).length) {
+      await supabase.from("reminders").update(updates).eq("id", reminder.id);
     }
   }
 
-  return { due, emailed };
+  return { due, emailed, pushed };
 }

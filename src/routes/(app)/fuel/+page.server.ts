@@ -258,11 +258,19 @@ export const actions: Actions = {
     if (!(file instanceof File) || file.size === 0) {
       return fail(400, { message: "Envie um comprovante para escanear." });
     }
-    return {
-      ocr: await parseReceiptFile(file, {
-        apiKey: runtimeEnv(platform).MISTRAL_API_KEY,
-      }),
-    };
+    try {
+      return {
+        ocr: await parseReceiptFile(file, {
+          apiKey: runtimeEnv(platform).MISTRAL_API_KEY,
+        }),
+      };
+    } catch (cause) {
+      const message =
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível ler o comprovante.";
+      return fail(400, { message });
+    }
   },
   importPreview: async ({ request }) => {
     const form = await request.formData();

@@ -6,6 +6,7 @@
     queueOfflineFuelSubmission,
     requestOfflineFuelSync,
   } from "$lib/utils/offline-fuel";
+  import { privateFileUrl } from "$lib/utils/private-file-url";
   export let data;
   export let form;
 
@@ -166,7 +167,8 @@
             <tr
               ><th class="px-4 py-3">Data</th><th>Km</th><th>Litros</th><th
                 >Total</th
-              ><th>Preço/l</th><th>Posto</th><th>Ações</th></tr
+              ><th>Preço/l</th><th>Posto</th><th>Comprovante</th><th>Ações</th
+              ></tr
             >
           </thead>
           <tbody>
@@ -178,6 +180,18 @@
                 <td>{brl(row.total_price_cents)}</td>
                 <td>{price(row.price_per_liter_millicents)}</td>
                 <td>{row.station_name || "—"}</td>
+                <td>
+                  {#if row.receipt_file_key}
+                    <a
+                      class="text-[var(--accent)] underline-offset-2 hover:underline"
+                      href={privateFileUrl(row.receipt_file_key)}
+                      target="_blank"
+                      rel="noopener noreferrer">Abrir</a
+                    >
+                  {:else}
+                    —
+                  {/if}
+                </td>
                 <td>
                   <form method="POST" action="?/deleteRecord" use:enhance>
                     <input type="hidden" name="id" value={row.id} />
@@ -191,7 +205,7 @@
             {:else}
               <tr
                 ><td
-                  colspan="7"
+                  colspan="8"
                   class="px-4 py-12 text-center text-[var(--muted)]"
                   >Sem abastecimentos ainda.</td
                 ></tr

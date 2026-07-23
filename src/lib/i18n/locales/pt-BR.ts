@@ -26,6 +26,7 @@ export const ptBR = {
     actions: "Ações",
     status: "Status",
     exportCsv: "Exportar CSV",
+    openFile: "Abrir arquivo",
     signIn: "Entrar",
     signOut: "Sair",
     account: "Conta autenticada",

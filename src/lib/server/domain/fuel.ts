@@ -91,7 +91,9 @@ export async function parseReceiptFile(
     throw new Error("O comprovante excede o limite de 10 MB para OCR.");
   }
   if (!apiKey) {
-    throw new Error("MISTRAL_API_KEY must be configured for receipt OCR.");
+    throw new Error(
+      "OCR de comprovante ainda não está configurado neste ambiente.",
+    );
   }
 
   const dataUrl = `data:${file.type};base64,${toBase64(await file.arrayBuffer())}`;
@@ -113,8 +115,9 @@ export async function parseReceiptFile(
   });
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(`OCR request failed (${response.status}): ${message}`);
+    throw new Error(
+      "Não foi possível ler o comprovante agora. Tente de novo em instantes.",
+    );
   }
 
   const result = (await response.json()) as MistralOcrResponse;
@@ -123,7 +126,7 @@ export async function parseReceiptFile(
     .filter(Boolean)
     .join("\n");
   if (!text) {
-    throw new Error("OCR did not return readable receipt text.");
+    throw new Error("O OCR não encontrou texto legível no comprovante.");
   }
   return parseReceiptText(text);
 }
@@ -171,18 +174,49 @@ export function parseFuelImportRows(value: string) {
   }
 }
 
+function splitCsvLine(line: string) {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if (char === "," && !inQuotes) {
+      values.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  values.push(current.trim());
+  return values;
+}
+
+function isValidIsoDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return (
+    Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
+}
+
 export function parseFuelCsv(text: string): FuelCsvPreviewRow[] {
   const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const header =
-    lines
-      .shift()
-      ?.split(",")
-      .map((item) => item.trim()) ?? [];
+  const header = splitCsvLine(lines.shift() ?? "").map((item) => item.trim());
   return lines.map((line, index) => {
-    const values = line.split(",").map((item) => item.trim());
+    const values = splitCsvLine(line);
     const raw = Object.fromEntries(
       header.map((key, col) => [key, values[col] ?? ""]),
     );
@@ -208,6 +242,7 @@ export function parseFuelCsv(text: string): FuelCsvPreviewRow[] {
     };
     const errors = [];
     if (!data.date) errors.push("Data ausente.");
+    else if (!isValidIsoDate(data.date)) errors.push("Data inválida.");
     if (!Number.isFinite(data.odometer_km) || data.odometer_km < 0)
       errors.push("Odômetro inválido.");
     if (!Number.isFinite(data.liters) || data.liters <= 0)

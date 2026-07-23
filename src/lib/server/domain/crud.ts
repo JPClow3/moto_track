@@ -16,7 +16,7 @@ function motorcycleIdFrom(payload: Record<string, unknown>) {
   return typeof value === "string" && value ? value : null;
 }
 
-async function syncRecordEffects({
+export async function syncRecordEffects({
   supabase,
   ownerId,
   feature,

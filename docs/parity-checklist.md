@@ -23,5 +23,5 @@ The Django runtime has been removed from the final tree; do not expect Django te
 
 - Legal copy on `/privacidade` and `/lgpd` still needs a formal counsel review before launch marketing.
 - Smoke an authenticated garage → checkout → Stripe webhook loop on a preview deployment (requires live Supabase + Stripe test keys).
-- Confirm push subscriptions end-to-end after VAPID secrets are set on Pages and the reminder worker.
+- Confirm push delivery end-to-end after VAPID + `PUSH_ENCRYPTION_KEY` secrets are set on Pages and the reminder worker.
 - If migrating historical data, run `LEGACY_EXPORT_PATH=legacy-export.json npm run import:legacy` and upload media keys to R2 from the generated manifest.
