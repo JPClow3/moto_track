@@ -4,20 +4,30 @@ import { privateImagePreviewHeaders, requireR2Bucket } from "$server/r2/files";
 
 export async function GET({ params, locals, platform }) {
   if (!locals.user) throw error(401, "Authentication required.");
-  const { data: photo } = await locals.supabase
-    .from("maintenance_photos")
-    .select("image_key")
-    .eq("id", params.id)
-    .eq("owner_id", locals.user.id)
-    .maybeSingle();
+  const ownerId = locals.user.id;
+
+  let photo: { image_key: string } | undefined;
+  try {
+    [photo] = await locals.db<Array<{ image_key: string }>>`
+      select image_key from maintenance_photos
+      where id = ${params.id} and owner_id = ${ownerId}
+    `;
+  } catch {
+    throw error(404, "Photo not found.");
+  }
   if (!photo) throw error(404, "Photo not found.");
 
-  const { data: object } = await locals.supabase
-    .from("object_files")
-    .select("filename, content_type")
-    .eq("owner_id", locals.user.id)
-    .eq("object_key", photo.image_key)
-    .maybeSingle();
+  let object: { filename: string; content_type: string } | undefined;
+  try {
+    [object] = await locals.db<
+      Array<{ filename: string; content_type: string }>
+    >`
+      select filename, content_type from object_files
+      where owner_id = ${ownerId} and object_key = ${photo.image_key}
+    `;
+  } catch {
+    throw error(404, "Photo not found.");
+  }
   if (!object || !MAINTENANCE_PHOTO_CONTENT_TYPES.has(object.content_type)) {
     throw error(404, "Photo not found.");
   }

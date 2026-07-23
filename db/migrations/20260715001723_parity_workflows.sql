@@ -1,0 +1,8 @@
+-- NOTE (Neon migration): the original migration created a public-read RLS
+-- policy on `article_comments` and a `adjust_maintenance_part_stock()`
+-- helper function guarded by `owner_id = auth.uid()`. Neither translates:
+-- there is no RLS/auth.uid() on Neon, and this function was never called
+-- via `.rpc()` from the app (the brief confirms no RPC calls exist), so it
+-- was pure dead weight tied to the old auth model. Stock adjustment is
+-- reimplemented as a plain owner-scoped SQL UPDATE in the app layer
+-- (see T6 maintenance-parts domain code) instead of a stored procedure.

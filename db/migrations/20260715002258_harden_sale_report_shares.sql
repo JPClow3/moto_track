@@ -19,21 +19,9 @@ end $$;
 alter table public.sale_report_shares
   drop constraint if exists sale_report_shares_token_prefix_key;
 
-drop policy if exists "sale report shares owner insert" on public.sale_report_shares;
-drop policy if exists "sale report shares owner update" on public.sale_report_shares;
-create policy "sale report shares owner insert" on public.sale_report_shares
-  for insert with check (
-    owner_id = auth.uid()
-    and exists (
-      select 1 from public.motorcycles
-      where motorcycles.id = motorcycle_id and motorcycles.owner_id = auth.uid()
-    )
-  );
-create policy "sale report shares owner update" on public.sale_report_shares
-  for update using (owner_id = auth.uid()) with check (
-    owner_id = auth.uid()
-    and exists (
-      select 1 from public.motorcycles
-      where motorcycles.id = motorcycle_id and motorcycles.owner_id = auth.uid()
-    )
-  );
+-- NOTE (Neon migration): the original migration dropped and recreated the
+-- "sale report shares owner insert"/"owner update" RLS policies here (both
+-- keyed on `owner_id = auth.uid()`) to add an ownership check on the linked
+-- motorcycle. No RLS on Neon, so both the drop and the recreate were
+-- omitted; the app-layer query for creating/updating a share now performs
+-- this same "does this motorcycle belong to the caller" check in SQL.

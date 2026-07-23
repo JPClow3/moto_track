@@ -1,14 +1,16 @@
 # Moto Track
 
-Moto Track is now a SvelteKit + Supabase + Cloudflare application.
+Moto Track is now a SvelteKit + Neon + Cloudflare application.
 
 ## Stack
 
 - SvelteKit, TypeScript, Tailwind, lucide-svelte, Chart.js
-- Supabase Auth and Postgres with SQL migrations and RLS
+- Neon Postgres accessed via postgres.js, through Cloudflare Hyperdrive at the edge
+- Neon Auth (managed Better Auth) for authentication; authorization is app-layer
+  only (every query filters by `owner_id` — there is no RLS on Neon)
 - Cloudflare Pages and R2 for deployment and object storage
 - Stripe billing
-- Supabase Edge Functions + Resend for transactional app email
+- Resend for transactional app email (sent in-process, no Edge Function hop)
 
 ## Local Development
 
@@ -31,17 +33,15 @@ npm run build
 
 ## Database
 
-Apply Supabase migrations:
+Apply `db/migrations/*.sql` to the live Neon database:
 
 ```bash
-npm run db:migrate
+npm run db:push
 ```
 
-Generate database types:
-
-```bash
-npm run supabase:types
-```
+`src/lib/types/database.ts` is hand-maintained — update it by hand alongside
+new migrations (see the note at the top of `scripts/generate-db-types.mjs`
+for why there's no auto-generation step).
 
 ## Deployment
 

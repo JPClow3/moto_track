@@ -43,18 +43,23 @@ export async function POST({ request, locals, platform }) {
   )
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
-  const { error: upsertError } = await locals.supabase
-    .from("push_subscriptions")
-    .upsert(
-      {
+  try {
+    await locals.db`
+      insert into push_subscriptions ${locals.db({
         owner_id: locals.user.id,
         endpoint_hash: endpointHash,
         endpoint_encrypted: await encrypt(endpoint, secret),
         p256dh_encrypted: await encrypt(p256dh, secret),
         auth_encrypted: await encrypt(auth, secret),
-      },
-      { onConflict: "owner_id,endpoint_hash" },
-    );
-  if (upsertError) throw error(400, "Unable to save push subscription.");
+      })}
+      on conflict (owner_id, endpoint_hash) do update set
+        endpoint_encrypted = excluded.endpoint_encrypted,
+        p256dh_encrypted = excluded.p256dh_encrypted,
+        auth_encrypted = excluded.auth_encrypted,
+        updated_at = now()
+    `;
+  } catch {
+    throw error(400, "Unable to save push subscription.");
+  }
   return json({ status: "ok" });
 }

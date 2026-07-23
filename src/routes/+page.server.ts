@@ -12,16 +12,15 @@ type LandingArticle = { title: string; slug: string; summary: string };
  * a placeholder price rather than throwing. On failure the section just hides.
  */
 async function fetchLatestArticles(
-  supabase: App.Locals["supabase"],
+  db: App.Locals["db"],
 ): Promise<LandingArticle[]> {
   try {
-    const { data, error } = await supabase
-      .from("forum_articles")
-      .select("title, slug, summary")
-      .eq("is_published", true)
-      .order("published_at", { ascending: false })
-      .limit(3);
-    return error ? [] : (data ?? []);
+    return await db<LandingArticle[]>`
+      select title, slug, summary from forum_articles
+      where is_published = true
+      order by published_at desc
+      limit 3
+    `;
   } catch {
     return [];
   }
@@ -36,7 +35,7 @@ export async function load({ platform, locals }) {
 
   const [pricing, articles] = await Promise.all([
     fetchProPricing(platform),
-    fetchLatestArticles(locals.supabase),
+    fetchLatestArticles(locals.db),
   ]);
 
   return { pricing, articles };

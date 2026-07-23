@@ -1,3 +1,5 @@
+import type { Sql } from "postgres";
+
 export type OdometerSource = {
   odometer_km?: number | null;
   installed_odometer_km?: number | null;
@@ -35,62 +37,80 @@ export function validateOdometer(candidate: number, current: number) {
   return null;
 }
 
+// The Supabase version never checked `{ error }` on any of these calls — a
+// failed read just fell back to `data ?? []` (or, for the motorcycle lookup,
+// `!data` short-circuited the whole sync). Reproduce that exact swallow with
+// try/catch per query instead of letting postgres.js's thrown errors bubble,
+// since this is a best-effort cache refresh, not a user-facing action.
+async function rowsOrEmpty<T extends object>(
+  query: Promise<T[]>,
+): Promise<T[]> {
+  try {
+    return await query;
+  } catch {
+    return [];
+  }
+}
+
 export async function syncMotorcycleOdometer(
-  supabase: SupabaseClient<Database>,
+  db: Sql,
   ownerId: string,
   motorcycleId: string,
 ) {
-  const [
-    motorcycleResult,
-    fuelResult,
-    maintenanceResult,
-    tireResult,
-    workResult,
-  ] = await Promise.all([
-    supabase
-      .from("motorcycles")
-      .select("odometer_override_km")
-      .eq("id", motorcycleId)
-      .eq("owner_id", ownerId)
-      .maybeSingle(),
-    supabase
-      .from("fuel_records")
-      .select("odometer_km")
-      .eq("motorcycle_id", motorcycleId)
-      .eq("owner_id", ownerId),
-    supabase
-      .from("maintenance_records")
-      .select("odometer_km")
-      .eq("motorcycle_id", motorcycleId)
-      .eq("owner_id", ownerId),
-    supabase
-      .from("tire_records")
-      .select("installed_odometer_km")
-      .eq("motorcycle_id", motorcycleId)
-      .eq("owner_id", ownerId),
-    supabase
-      .from("work_sessions")
-      .select("odometer_end_km")
-      .eq("motorcycle_id", motorcycleId)
-      .eq("owner_id", ownerId),
+  let motorcycle: { odometer_override_km: number | null } | undefined;
+  try {
+    [motorcycle] = await db<{ odometer_override_km: number | null }[]>`
+      select odometer_override_km from motorcycles
+      where id = ${motorcycleId} and owner_id = ${ownerId}
+    `;
+  } catch {
+    return;
+  }
+  if (!motorcycle) return;
+
+  const [fuel, maintenance, tires, work] = await Promise.all([
+    rowsOrEmpty(
+      db<{ odometer_km: number | null }[]>`
+        select odometer_km from fuel_records
+        where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
+      `,
+    ),
+    rowsOrEmpty(
+      db<{ odometer_km: number | null }[]>`
+        select odometer_km from maintenance_records
+        where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
+      `,
+    ),
+    rowsOrEmpty(
+      db<{ installed_odometer_km: number | null }[]>`
+        select installed_odometer_km from tire_records
+        where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
+      `,
+    ),
+    rowsOrEmpty(
+      db<{ odometer_end_km: number | null }[]>`
+        select odometer_end_km from work_sessions
+        where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
+      `,
+    ),
   ]);
-  if (!motorcycleResult.data) return;
 
   const currentOdometerKm = recomputeOdometer({
-    overrideKm: motorcycleResult.data.odometer_override_km,
-    fuel: fuelResult.data ?? [],
-    maintenance: maintenanceResult.data ?? [],
-    tires: tireResult.data ?? [],
-    work: workResult.data ?? [],
+    overrideKm: motorcycle.odometer_override_km,
+    fuel,
+    maintenance,
+    tires,
+    work,
   });
-  await supabase
-    .from("motorcycles")
-    .update({
-      current_odometer_km: currentOdometerKm,
-      current_odometer_updated_at: new Date().toISOString(),
-    })
-    .eq("id", motorcycleId)
-    .eq("owner_id", ownerId);
+
+  try {
+    await db`
+      update motorcycles
+      set current_odometer_km = ${currentOdometerKm},
+        current_odometer_updated_at = ${new Date().toISOString()}
+      where id = ${motorcycleId} and owner_id = ${ownerId}
+    `;
+  } catch {
+    // Match the Supabase version, which never checked this update's error.
+  }
 }
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "$lib/types/database";

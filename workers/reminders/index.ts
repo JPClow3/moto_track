@@ -1,13 +1,28 @@
-import { createClient } from "@supabase/supabase-js";
+import postgres from "postgres";
 import { evaluateReminder } from "../../src/lib/server/domain/reminders";
 
 export interface Env {
-  SUPABASE_URL: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
-  EMAIL_FUNCTION_URL: string;
-  EMAIL_FUNCTION_TOKEN: string;
+  HYPERDRIVE: Hyperdrive;
+  RESEND_API_KEY: string;
+  DEFAULT_FROM_EMAIL: string;
   REMINDERS_TRIGGER_TOKEN: string;
 }
+
+type ReminderRow = {
+  id: string;
+  owner_id: string;
+  title: string;
+  trigger_type: "by_km" | "by_date" | "by_interval";
+  trigger_value_km: number | null;
+  trigger_value_days: number | null;
+  reference_km: number | null;
+  reference_date: string | null;
+  send_email: boolean;
+  last_email_notified_at: string | null;
+  current_odometer_km: number | null;
+  motorcycle_name: string | null;
+  owner_email: string | null;
+};
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
@@ -30,70 +45,95 @@ export default {
   },
 };
 
+// prepare:false + max:1 are required through Hyperdrive's transaction pooler,
+// same as the app's own db client (src/lib/server/db/client.ts).
 async function processReminders(env: Env) {
-  const supabase = createClient(
-    env.SUPABASE_URL,
-    env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: { persistSession: false, autoRefreshToken: false },
-    },
-  );
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: reminders, error } = await supabase
-    .from("reminders")
-    .select("*, motorcycles(current_odometer_km, name)")
-    .eq("is_active", true);
-  if (error) throw error;
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    prepare: false,
+    max: 1,
+  });
 
-  const ownerIds = [...new Set((reminders ?? []).map((row) => row.owner_id))];
-  const { data: profiles, error: profileError } = ownerIds.length
-    ? await supabase.from("profiles").select("id, email").in("id", ownerIds)
-    : { data: [], error: null };
-  if (profileError) throw profileError;
-  const emailByOwner = new Map(
-    (profiles ?? []).map((profile) => [profile.id, profile.email]),
-  );
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    // Single owner-scoped join replaces the old two-step Supabase reads
+    // (reminders + profiles embed); is_active already scopes to live reminders.
+    const rows = await sql<ReminderRow[]>`
+      select r.*, m.current_odometer_km, m.name as motorcycle_name,
+        p.email as owner_email
+      from reminders r
+      left join motorcycles m on m.id = r.motorcycle_id
+      left join profiles p on p.id = r.owner_id
+      where r.is_active = true
+    `;
 
-  let due = 0;
-  let emailed = 0;
-  for (const reminder of reminders ?? []) {
-    const evaluation = evaluateReminder(reminder, {
-      currentOdometerKm: Number(reminder.motorcycles?.current_odometer_km ?? 0),
-      today,
-    });
-    if (evaluation.status !== "overdue" && evaluation.status !== "due_soon")
-      continue;
-    due += 1;
-
-    if (
-      reminder.send_email &&
-      !reminder.last_email_notified_at &&
-      emailByOwner.get(reminder.owner_id)
-    ) {
-      const response = await fetch(env.EMAIL_FUNCTION_URL, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${env.EMAIL_FUNCTION_TOKEN}`,
-          "content-type": "application/json",
+    let due = 0;
+    let emailed = 0;
+    for (const reminder of rows) {
+      // evaluateReminder's INPUT CONTRACT expects a `motorcycles` embed shape;
+      // rebuild it from the joined columns instead of changing that function.
+      // (Assigned to a plain variable, not passed as an inline literal, so
+      // the extra `motorcycles` key doesn't trip TS excess-property checks
+      // against evaluateReminder's ReminderInput param type.)
+      const reminderForEvaluation = {
+        ...reminder,
+        motorcycles: {
+          current_odometer_km: reminder.current_odometer_km,
+          name: reminder.motorcycle_name,
         },
-        body: JSON.stringify({
-          to: emailByOwner.get(reminder.owner_id),
-          subject: `Moto Track: ${reminder.title}`,
-          text: `${reminder.motorcycles?.name ?? "Moto"}: ${reminder.title}\nStatus: ${evaluation.status}`,
-        }),
+      };
+      const evaluation = evaluateReminder(reminderForEvaluation, {
+        currentOdometerKm: Number(reminder.current_odometer_km ?? 0),
+        today,
       });
-      if (response.ok) {
-        emailed += 1;
-        await supabase
-          .from("reminders")
-          .update({
-            last_notified_at: new Date().toISOString(),
-            last_email_notified_at: new Date().toISOString(),
-          })
-          .eq("id", reminder.id);
+      if (evaluation.status !== "overdue" && evaluation.status !== "due_soon")
+        continue;
+      due += 1;
+
+      if (
+        reminder.send_email &&
+        !reminder.last_email_notified_at &&
+        reminder.owner_email
+      ) {
+        const sent = await sendReminderEmail(env, {
+          to: reminder.owner_email,
+          subject: `Moto Track: ${reminder.title}`,
+          text: `${reminder.motorcycle_name ?? "Moto"}: ${reminder.title}\nStatus: ${evaluation.status}`,
+        });
+        if (sent) {
+          emailed += 1;
+          await sql`
+            update reminders
+            set last_notified_at = now(), last_email_notified_at = now()
+            where id = ${reminder.id}
+          `;
+        }
       }
     }
-  }
 
-  return { due, emailed };
+    return { due, emailed };
+  } finally {
+    await sql.end();
+  }
+}
+
+// Ported from supabase/functions/send-email/index.ts, now called in-process
+// instead of via a Supabase Edge Function hop.
+async function sendReminderEmail(
+  env: Env,
+  payload: { to: string; subject: string; text: string },
+) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from: env.DEFAULT_FROM_EMAIL,
+      to: [payload.to],
+      subject: payload.subject,
+      text: payload.text,
+    }),
+  });
+  return response.ok;
 }

@@ -15,12 +15,15 @@
     CircleGauge,
     X,
   } from "lucide-svelte";
-  import type { User } from "@supabase/supabase-js";
   import { t } from "$lib/i18n/store";
   import type { MessageKey } from "$lib/i18n";
   import LocaleSwitcher from "./LocaleSwitcher.svelte";
 
-  export let user: User | null = null;
+  // Shape of `locals.user` (see src/app.d.ts) — only the fields this component
+  // actually reads, so it never needs to import server-only auth types.
+  type ShellUser = { id: string; email?: string | null };
+
+  export let user: ShellUser | null = null;
   export let currentPath = "/dashboard";
   /** Gates the Admin item. The page and every action re-check server-side. */
   export let isStaff = false;

@@ -2,9 +2,9 @@ import { env as privateEnv } from "$env/dynamic/private";
 import { env as publicEnv } from "$env/dynamic/public";
 
 export type RuntimeEnv = {
-  PUBLIC_SUPABASE_URL?: string;
-  PUBLIC_SUPABASE_ANON_KEY?: string;
-  SUPABASE_SERVICE_ROLE_KEY?: string;
+  DATABASE_URL?: string;
+  PUBLIC_NEON_AUTH_URL?: string;
+  NEON_AUTH_JWKS_URL?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_PRO_MONTHLY_PRICE_ID?: string;
@@ -28,9 +28,9 @@ export function resolveRuntimeEnv(
   fallback?: RuntimeSource,
 ): RuntimeEnv {
   const keys: Array<keyof RuntimeEnv> = [
-    "PUBLIC_SUPABASE_URL",
-    "PUBLIC_SUPABASE_ANON_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
+    "DATABASE_URL",
+    "PUBLIC_NEON_AUTH_URL",
+    "NEON_AUTH_JWKS_URL",
     "STRIPE_SECRET_KEY",
     "STRIPE_WEBHOOK_SECRET",
     "STRIPE_PRO_MONTHLY_PRICE_ID",

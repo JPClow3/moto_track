@@ -1,63 +1,90 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+// These migrations live in db/migrations/ now (applied to Neon via
+// `npm run db:push`), not supabase/migrations/ — the old Supabase project
+// and its CLI-driven migration flow are gone.
 const initialSchema = readFileSync(
   new URL(
-    "../../supabase/migrations/20260715001617_initial_schema.sql",
+    "../../db/migrations/20260715001617_initial_schema.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const saleReportHardening = readFileSync(
   new URL(
-    "../../supabase/migrations/20260715002258_harden_sale_report_shares.sql",
+    "../../db/migrations/20260715002258_harden_sale_report_shares.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const securityHardening = readFileSync(
   new URL(
-    "../../supabase/migrations/20260715002909_secure_exposed_schema.sql",
+    "../../db/migrations/20260715002909_secure_exposed_schema.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const blogSeed = readFileSync(
   new URL(
-    "../../supabase/migrations/20260716090000_seed_blog_articles.sql",
+    "../../db/migrations/20260716090000_seed_blog_articles.sql",
     import.meta.url,
   ),
   "utf8",
 );
 
-// `--` comments mention the $md$ delimiter in prose; strip them the way
-// Postgres does before counting, or the parity check reads a false failure.
-const blogSeedStatements = blogSeed
-  .split("\n")
-  .filter((line) => !line.trimStart().startsWith("--"))
-  .join("\n");
+// `--` comments mention things like the $md$ delimiter and dropped RLS
+// syntax in prose (documenting what used to be here for Neon migration
+// readers); strip them the way Postgres does before asserting on actual
+// statements, or these checks trip on the prose itself.
+function stripLineComments(sql: string) {
+  return sql
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("--"))
+    .join("\n");
+}
 
-describe("initial Supabase schema", () => {
-  it("uses an identifier formatter for dynamically-created RLS policies", () => {
-    expect(initialSchema).not.toContain("create policy %L");
-    expect(initialSchema).toContain("create policy %I");
+const blogSeedStatements = stripLineComments(blogSeed);
+const initialSchemaCode = stripLineComments(initialSchema);
+const saleReportHardeningCode = stripLineComments(saleReportHardening);
+const securityHardeningCode = stripLineComments(securityHardening);
+
+describe("initial Neon schema", () => {
+  // Authorization on Neon is app-layer only (every query filters by
+  // owner_id) — there is no auth.uid() and no RLS safety net. These
+  // migrations must never reintroduce RLS/policies, or they'd error against
+  // Neon (no anon/authenticated roles) and give a false sense of DB-level
+  // enforcement that the app layer isn't actually backed by.
+  it("does not enable row level security or define policies", () => {
+    expect(initialSchemaCode).not.toContain("row level security");
+    expect(initialSchemaCode).not.toContain("create policy");
+  });
+
+  it('owner-scoped tables reference neon_auth."user" with cascade delete', () => {
+    expect(initialSchemaCode).toContain(
+      'references neon_auth."user"(id) on delete cascade',
+    );
+    expect(initialSchemaCode).not.toContain("auth.users");
+  });
+
+  it("keeps set_updated_at() and its per-table triggers", () => {
+    expect(initialSchemaCode).toContain(
+      "create or replace function public.set_updated_at()",
+    );
+    expect(initialSchemaCode).toContain("public.set_updated_at()");
   });
 });
 
 describe("sale report share hardening", () => {
   it("does not recreate the token-hash constraint already supplied by the initial schema", () => {
-    expect(saleReportHardening).toContain(
+    expect(saleReportHardeningCode).toContain(
       "if not exists (select 1 from pg_constraint",
     );
   });
 
-  it("drops the exact policy names created by the initial schema", () => {
-    expect(saleReportHardening).toContain(
-      'drop policy if exists "sale report shares owner insert"',
-    );
-    expect(saleReportHardening).toContain(
-      'drop policy if exists "sale report shares owner update"',
-    );
+  it("does not reintroduce RLS policies (ownership is enforced in the app query layer)", () => {
+    expect(saleReportHardeningCode).not.toContain("create policy");
+    expect(saleReportHardeningCode).not.toContain("drop policy");
   });
 });
 
@@ -101,27 +128,20 @@ describe("blog article seed", () => {
 });
 
 describe("exposed-schema hardening", () => {
-  it("enables RLS on internal tables and preserves authenticated template reads", () => {
-    expect(securityHardening).toContain(
-      "alter table public.billing_events enable row level security;",
-    );
-    expect(securityHardening).toContain(
-      'create policy "motorcycle templates authenticated read"',
-    );
-    expect(securityHardening).toContain(
-      "for select to authenticated using (true);",
+  it("does not reintroduce RLS or authenticated-role grants (no RLS on Neon)", () => {
+    expect(securityHardeningCode).not.toContain("enable row level security");
+    expect(securityHardeningCode).not.toContain("create policy");
+    expect(securityHardeningCode).not.toContain("to anon");
+    expect(securityHardeningCode).not.toContain("to authenticated");
+  });
+
+  it("keeps the search_path pin on set_updated_at()", () => {
+    expect(securityHardeningCode).toContain(
+      "alter function public.set_updated_at() set search_path = public;",
     );
   });
 
-  it("locks down the auth trigger function and fixed function search paths", () => {
-    expect(securityHardening).toContain(
-      "revoke all on function public.handle_new_user() from public;",
-    );
-    expect(securityHardening).toContain(
-      "revoke all on function public.handle_new_user() from anon, authenticated;",
-    );
-    expect(securityHardening).toContain(
-      "alter function public.set_updated_at() set search_path = public;",
-    );
+  it("does not reference the dropped handle_new_user() auth trigger function as executable SQL", () => {
+    expect(securityHardeningCode).not.toContain("handle_new_user()");
   });
 });

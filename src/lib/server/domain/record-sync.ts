@@ -1,3 +1,5 @@
+import type { Sql } from "postgres";
+
 export type LinkedReminder = {
   title: string;
   trigger_type: "by_km" | "by_date" | "by_interval";
@@ -73,8 +75,12 @@ export function reminderForRecord(
   };
 }
 
+// postgres.js throws on query failure, so the explicit `if (error) throw`
+// checks the Supabase version needed are no longer necessary here — an
+// awaited query that fails simply propagates as a normal exception, which is
+// the same "let it bubble to the caller" behavior the old code had.
 export async function syncLinkedReminder(
-  supabase: SupabaseClient<Database>,
+  db: Sql,
   ownerId: string,
   table: string,
   recordId: string,
@@ -82,22 +88,17 @@ export async function syncLinkedReminder(
 ) {
   const marker = `auto:${table}:${recordId}`;
   const reminder = reminderForRecord(table, recordId, payload);
-  const { data: existing, error: readError } = await supabase
-    .from("reminders")
-    .select("id")
-    .eq("owner_id", ownerId)
-    .eq("notes", marker)
-    .maybeSingle();
-  if (readError) throw readError;
+  const [existing] = await db<{ id: string }[]>`
+    select id from reminders
+    where owner_id = ${ownerId} and notes = ${marker}
+  `;
 
   if (!reminder) {
     if (existing) {
-      const { error } = await supabase
-        .from("reminders")
-        .delete()
-        .eq("id", existing.id)
-        .eq("owner_id", ownerId);
-      if (error) throw error;
+      await db`
+        delete from reminders
+        where id = ${existing.id} and owner_id = ${ownerId}
+      `;
     }
     return;
   }
@@ -111,14 +112,16 @@ export async function syncLinkedReminder(
     is_active: true,
     notes: marker,
   };
-  const { error } = existing
-    ? await supabase
-        .from("reminders")
-        .update(values)
-        .eq("id", existing.id)
-        .eq("owner_id", ownerId)
-    : await supabase.from("reminders").insert(values);
-  if (error) throw error;
+
+  if (existing) {
+    await db`
+      update reminders
+      set ${db(values)}
+      where id = ${existing.id} and owner_id = ${ownerId}
+    `;
+  } else {
+    await db`
+      insert into reminders ${db(values)}
+    `;
+  }
 }
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "$lib/types/database";

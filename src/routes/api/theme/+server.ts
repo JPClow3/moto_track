@@ -6,10 +6,12 @@ export async function POST({ request, locals }) {
   const body = await request.json().catch(() => null);
   const theme = normalizeTheme(body?.theme);
   if (!theme) throw error(400, "Invalid theme.");
-  const { error: updateError } = await locals.supabase
-    .from("profiles")
-    .update({ theme })
-    .eq("id", locals.user.id);
-  if (updateError) throw error(400, "Unable to save theme.");
+  try {
+    await locals.db`
+      update profiles set theme = ${theme} where id = ${locals.user.id}
+    `;
+  } catch {
+    throw error(400, "Unable to save theme.");
+  }
   return json({ theme });
 }

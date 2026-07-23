@@ -3,111 +3,140 @@ import { shareTokenHash } from "$server/domain/sale-report-share";
 import { siteUrl } from "$server/env";
 import { buildTimeline, type TimelineEvent } from "$server/domain/parity";
 
+function messageFrom(err: unknown) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+type Row = Record<string, unknown>;
+
+type MotorcycleOption = {
+  id: string;
+  name: string;
+  brand: string;
+  model: string;
+  year: number;
+};
+
+type ShareRow = {
+  id: string;
+  token_prefix: string;
+  expires_at: string;
+  revoked_at: string | null;
+  access_count: number;
+  motorcycle_id: string;
+};
+
 export const actions = {
   createShare: async ({ request, locals, platform }) => {
     const form = await request.formData();
     const motorcycleId = String(form.get("motorcycle_id") ?? "");
     const days = Math.max(Number(form.get("days") ?? 14), 1);
-    const { data: motorcycle } = await locals.supabase
-      .from("motorcycles")
-      .select("id")
-      .eq("id", motorcycleId)
-      .eq("owner_id", locals.user!.id)
-      .eq("is_active", true)
-      .maybeSingle();
+    const [motorcycle] = await locals.db<Row[]>`
+      select id from motorcycles
+      where id = ${motorcycleId} and owner_id = ${locals.user!.id} and is_active = true
+    `;
     if (!motorcycle) return fail(404, { message: "Moto não encontrada." });
     const token = `${crypto.randomUUID().replaceAll("-", "")}${crypto.randomUUID().replaceAll("-", "")}`;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + days);
-    const { error } = await locals.supabase.from("sale_report_shares").insert({
-      owner_id: locals.user!.id,
-      motorcycle_id: motorcycleId,
-      token_prefix: token.slice(0, 12),
-      token_hash: await shareTokenHash(token),
-      expires_at: expiresAt.toISOString(),
-    });
-    return error
-      ? fail(400, { message: error.message })
-      : { publicUrl: `${siteUrl(platform)}/reports/sale/public/${token}` };
+    try {
+      await locals.db`
+        insert into sale_report_shares ${locals.db({
+          owner_id: locals.user!.id,
+          motorcycle_id: motorcycleId,
+          token_prefix: token.slice(0, 12),
+          token_hash: await shareTokenHash(token),
+          expires_at: expiresAt.toISOString(),
+        })}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+    return { publicUrl: `${siteUrl(platform)}/reports/sale/public/${token}` };
   },
   revokeShare: async ({ request, locals }) => {
     const form = await request.formData();
-    const { error } = await locals.supabase
-      .from("sale_report_shares")
-      .update({ revoked_at: new Date().toISOString() })
-      .eq("id", String(form.get("id") ?? ""))
-      .eq("owner_id", locals.user!.id);
-    return error ? fail(400, { message: error.message }) : { ok: true };
+    try {
+      await locals.db`
+        update sale_report_shares
+        set revoked_at = ${new Date().toISOString()}
+        where id = ${String(form.get("id") ?? "")} and owner_id = ${locals.user!.id}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+    return { ok: true };
   },
 };
 
 export async function load({ locals, url }) {
   const ownerId = locals.user!.id;
+  // Every read here failed open on Supabase too (an errored query resolved to
+  // `data: null`, treated as empty) — `.catch` keeps one failing source from
+  // blanking the whole timeline.
   const [fuel, maintenance, tires, fees, work, motorcycles, shares] =
     await Promise.all([
-      locals.supabase
-        .from("fuel_records")
-        .select("date, total_price_cents, station_name")
-        .eq("owner_id", ownerId),
-      locals.supabase
-        .from("maintenance_records")
-        .select("date, cost_cents, maintenance_type")
-        .eq("owner_id", ownerId),
-      locals.supabase
-        .from("tire_records")
-        .select("installed_at, cost_cents, brand_model")
-        .eq("owner_id", ownerId),
-      locals.supabase
-        .from("annual_fees")
-        .select("due_date, amount_cents, fee_type")
-        .eq("owner_id", ownerId),
-      locals.supabase
-        .from("work_sessions")
-        .select("work_date, gross_income_cents, platform_source")
-        .eq("owner_id", ownerId),
-      locals.supabase
-        .from("motorcycles")
-        .select("id, name, brand, model, year")
-        .eq("owner_id", ownerId)
-        .eq("is_active", true)
-        .order("name"),
-      locals.supabase
-        .from("sale_report_shares")
-        .select(
-          "id, token_prefix, expires_at, revoked_at, access_count, motorcycle_id",
-        )
-        .eq("owner_id", ownerId)
-        .order("created_at", { ascending: false }),
+      locals.db<Row[]>`
+        select date, total_price_cents, station_name from fuel_records
+        where owner_id = ${ownerId}
+      `.catch(() => [] as Row[]),
+      locals.db<Row[]>`
+        select date, cost_cents, maintenance_type from maintenance_records
+        where owner_id = ${ownerId}
+      `.catch(() => [] as Row[]),
+      locals.db<Row[]>`
+        select installed_at, cost_cents, brand_model from tire_records
+        where owner_id = ${ownerId}
+      `.catch(() => [] as Row[]),
+      locals.db<Row[]>`
+        select due_date, amount_cents, fee_type from annual_fees
+        where owner_id = ${ownerId}
+      `.catch(() => [] as Row[]),
+      locals.db<Row[]>`
+        select work_date, gross_income_cents, platform_source from work_sessions
+        where owner_id = ${ownerId}
+      `.catch(() => [] as Row[]),
+      locals.db<MotorcycleOption[]>`
+        select id, name, brand, model, year from motorcycles
+        where owner_id = ${ownerId} and is_active = true
+        order by name
+      `.catch(() => [] as MotorcycleOption[]),
+      locals.db<ShareRow[]>`
+        select id, token_prefix, expires_at, revoked_at, access_count, motorcycle_id
+        from sale_report_shares
+        where owner_id = ${ownerId}
+        order by created_at desc
+      `.catch(() => [] as ShareRow[]),
     ]);
   const events: TimelineEvent[] = [
-    ...(fuel.data ?? []).map((row) => ({
+    ...fuel.map((row) => ({
       source: "fuel",
-      date: row.date,
-      label: row.station_name || "Abastecimento",
+      date: String(row.date),
+      label: String(row.station_name || "Abastecimento"),
       amountCents: Number(row.total_price_cents),
     })),
-    ...(maintenance.data ?? []).map((row) => ({
+    ...maintenance.map((row) => ({
       source: "maintenance",
-      date: row.date,
-      label: row.maintenance_type,
+      date: String(row.date),
+      label: String(row.maintenance_type),
       amountCents: Number(row.cost_cents),
     })),
-    ...(tires.data ?? []).map((row) => ({
+    ...tires.map((row) => ({
       source: "tires",
-      date: row.installed_at,
-      label: row.brand_model,
+      date: String(row.installed_at),
+      label: String(row.brand_model),
       amountCents: Number(row.cost_cents),
     })),
-    ...(fees.data ?? []).map((row) => ({
+    ...fees.map((row) => ({
       source: "expenses",
-      date: row.due_date,
-      label: row.fee_type,
+      date: String(row.due_date),
+      label: String(row.fee_type),
       amountCents: Number(row.amount_cents),
     })),
-    ...(work.data ?? []).map((row) => ({
+    ...work.map((row) => ({
       source: "work",
-      date: row.work_date,
-      label: row.platform_source,
+      date: String(row.work_date),
+      label: String(row.platform_source),
       amountCents: -Number(row.gross_income_cents),
     })),
   ];
@@ -117,8 +146,8 @@ export async function load({ locals, url }) {
     end: url.searchParams.get("end") || undefined,
   });
   return {
-    motorcycles: motorcycles.data ?? [],
-    shares: shares.data ?? [],
+    motorcycles,
+    shares,
     timeline: timeline.slice(0, 100),
     filters: {
       source: url.searchParams.get("source") ?? "",

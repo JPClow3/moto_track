@@ -23,7 +23,7 @@ create table public.legacy_id_map (
 );
 
 create table public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
+  id uuid primary key references neon_auth."user"(id) on delete cascade,
   email text not null,
   full_name text default '',
   theme text not null default 'system',
@@ -92,7 +92,7 @@ create table public.motorcycle_template_specs (
 
 create table public.motorcycles (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   name text not null,
   brand text not null,
   model text not null,
@@ -142,7 +142,7 @@ create table public.motorcycle_specs (
 
 create table public.fuel_stations (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   name text not null,
   brand text not null default '',
   city text not null default '',
@@ -155,7 +155,7 @@ create table public.fuel_stations (
 
 create table public.fuel_grades (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   name text not null,
   fuel_type text not null default 'gasoline',
   octane_rating integer,
@@ -170,7 +170,7 @@ create table public.fuel_grades (
 
 create table public.fuel_records (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid references public.motorcycles(id) on delete cascade,
   station_id uuid references public.fuel_stations(id) on delete set null,
   fuel_grade_id uuid references public.fuel_grades(id) on delete set null,
@@ -194,7 +194,7 @@ create index fuel_records_motorcycle_date_idx on public.fuel_records(motorcycle_
 
 create table public.fuel_preferences (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid references public.motorcycles(id) on delete cascade,
   station_id uuid references public.fuel_stations(id) on delete set null,
   fuel_grade_id uuid references public.fuel_grades(id) on delete set null,
@@ -212,7 +212,7 @@ create table public.fuel_preferences (
 create table public.fuel_review_preferences (
   id uuid primary key default gen_random_uuid(),
   motorcycle_id uuid not null references public.motorcycles(id) on delete cascade unique,
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   fillups_interval integer not null default 10 check (fillups_interval > 0),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -221,7 +221,7 @@ create table public.fuel_review_preferences (
 
 create table public.maintenance_parts (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   name text not null,
   manufacturer text not null default '',
   part_type text not null default 'other',
@@ -239,7 +239,7 @@ create table public.maintenance_parts (
 
 create table public.maintenance_records (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid references public.motorcycles(id) on delete cascade,
   maintenance_type text not null default 'other',
   date date not null,
@@ -257,7 +257,7 @@ create table public.maintenance_records (
 
 create table public.maintenance_record_parts (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   maintenance_record_id uuid not null references public.maintenance_records(id) on delete cascade,
   part_id uuid not null references public.maintenance_parts(id) on delete restrict,
   quantity integer not null default 1 check (quantity > 0),
@@ -270,7 +270,7 @@ create table public.maintenance_record_parts (
 
 create table public.maintenance_plan_items (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid not null references public.motorcycles(id) on delete cascade,
   maintenance_type text not null default 'other',
   interval_km integer,
@@ -288,7 +288,7 @@ create table public.maintenance_plan_items (
 
 create table public.maintenance_photos (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   maintenance_record_id uuid not null references public.maintenance_records(id) on delete cascade,
   image_key text not null,
   caption text not null default '',
@@ -299,7 +299,7 @@ create table public.maintenance_photos (
 
 create table public.tire_products (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   manufacturer text not null,
   model_name text not null,
   image_key text,
@@ -319,7 +319,7 @@ create table public.tire_products (
 
 create table public.tire_records (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid references public.motorcycles(id) on delete cascade,
   tire_product_id uuid references public.tire_products(id) on delete set null,
   position text not null check (position in ('front', 'rear')),
@@ -339,7 +339,7 @@ create table public.tire_records (
 
 create table public.tire_pressure_records (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid references public.motorcycles(id) on delete cascade,
   date date not null,
   psi_front integer not null,
@@ -351,7 +351,7 @@ create table public.tire_pressure_records (
 
 create table public.motorcycle_documents (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid references public.motorcycles(id) on delete cascade,
   name text not null,
   document_type text not null default 'other',
@@ -365,7 +365,7 @@ create table public.motorcycle_documents (
 
 create table public.reminders (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid references public.motorcycles(id) on delete cascade,
   title text not null,
   description text not null default '',
@@ -391,7 +391,7 @@ create index reminders_owner_active_idx on public.reminders(owner_id, is_active)
 
 create table public.annual_fees (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid references public.motorcycles(id) on delete cascade,
   fee_type text not null default 'ipva',
   year integer not null,
@@ -408,7 +408,7 @@ create table public.annual_fees (
 
 create table public.insurance_policies (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid references public.motorcycles(id) on delete cascade,
   provider text not null,
   policy_number text not null default '',
@@ -425,7 +425,7 @@ create table public.insurance_policies (
 
 create table public.insurance_claims (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   policy_id uuid references public.insurance_policies(id) on delete cascade,
   claim_date date not null,
   description text not null,
@@ -438,7 +438,7 @@ create table public.insurance_claims (
 
 create table public.professional_cost_settings (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid not null references public.motorcycles(id) on delete cascade,
   maintenance_reserve_per_km_millicents integer not null default 12000,
   depreciation_per_km_millicents integer not null default 0,
@@ -451,7 +451,7 @@ create table public.professional_cost_settings (
 
 create table public.work_sessions (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid references public.motorcycles(id) on delete cascade,
   work_date date not null,
   started_at timestamptz,
@@ -473,7 +473,7 @@ create table public.work_sessions (
 
 create table public.subscription_profiles (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade unique,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade unique,
   plan billing_plan not null default 'free',
   billing_interval billing_interval,
   stripe_customer_id text not null default '',
@@ -506,7 +506,7 @@ create table public.billing_events (
 
 create table public.account_data_requests (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   request_type text not null check (request_type in ('export', 'deletion')),
   status text not null default 'open',
   notes text not null default '',
@@ -517,7 +517,7 @@ create table public.account_data_requests (
 
 create table public.sale_report_shares (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   motorcycle_id uuid not null references public.motorcycles(id) on delete cascade,
   token_prefix text not null,
   token_hash text not null unique,
@@ -558,7 +558,7 @@ create table public.forum_article_categories (
 
 create table public.article_comments (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   article_id uuid references public.forum_articles(id) on delete cascade,
   body text not null,
   created_at timestamptz not null default now(),
@@ -567,7 +567,7 @@ create table public.article_comments (
 
 create table public.article_reactions (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   article_id uuid references public.forum_articles(id) on delete cascade,
   emoji text not null,
   created_at timestamptz not null default now(),
@@ -576,7 +576,7 @@ create table public.article_reactions (
 
 create table public.api_tokens (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   name text not null,
   key_hash text not null unique,
   key_prefix text not null default '',
@@ -589,7 +589,7 @@ create table public.api_tokens (
 
 create table public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   endpoint_encrypted text not null,
   endpoint_hash text not null,
   p256dh_encrypted text not null,
@@ -601,7 +601,7 @@ create table public.push_subscriptions (
 
 create table public.client_submissions (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   token text not null,
   action text not null,
   result_model text not null default '',
@@ -613,7 +613,7 @@ create table public.client_submissions (
 
 create table public.object_files (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null references neon_auth."user"(id) on delete cascade,
   module text not null,
   source_table text not null,
   source_id uuid,
@@ -641,146 +641,21 @@ begin
   end loop;
 end $$;
 
-alter table public.profiles enable row level security;
-alter table public.motorcycles enable row level security;
-alter table public.motorcycle_specs enable row level security;
-alter table public.fuel_stations enable row level security;
-alter table public.fuel_grades enable row level security;
-alter table public.fuel_records enable row level security;
-alter table public.fuel_preferences enable row level security;
-alter table public.fuel_review_preferences enable row level security;
-alter table public.maintenance_parts enable row level security;
-alter table public.maintenance_records enable row level security;
-alter table public.maintenance_record_parts enable row level security;
-alter table public.maintenance_plan_items enable row level security;
-alter table public.maintenance_photos enable row level security;
-alter table public.tire_products enable row level security;
-alter table public.tire_records enable row level security;
-alter table public.tire_pressure_records enable row level security;
-alter table public.motorcycle_documents enable row level security;
-alter table public.reminders enable row level security;
-alter table public.annual_fees enable row level security;
-alter table public.insurance_policies enable row level security;
-alter table public.insurance_claims enable row level security;
-alter table public.professional_cost_settings enable row level security;
-alter table public.work_sessions enable row level security;
-alter table public.subscription_profiles enable row level security;
-alter table public.account_data_requests enable row level security;
-alter table public.sale_report_shares enable row level security;
-alter table public.article_comments enable row level security;
-alter table public.article_reactions enable row level security;
-alter table public.api_tokens enable row level security;
-alter table public.push_subscriptions enable row level security;
-alter table public.client_submissions enable row level security;
-alter table public.object_files enable row level security;
-alter table public.forum_articles enable row level security;
-alter table public.forum_categories enable row level security;
-alter table public.forum_article_categories enable row level security;
-
-create policy "profiles self read" on public.profiles for select using (id = auth.uid());
-create policy "profiles self update" on public.profiles for update using (id = auth.uid()) with check (id = auth.uid());
-
-do $$
-declare
-  table_name text;
-begin
-  foreach table_name in array array[
-    'motorcycles','fuel_stations','fuel_grades','fuel_records','fuel_preferences','fuel_review_preferences',
-    'maintenance_parts','maintenance_records','maintenance_record_parts','maintenance_plan_items','maintenance_photos',
-    'tire_products','tire_records','tire_pressure_records','motorcycle_documents','reminders','annual_fees',
-    'insurance_policies','insurance_claims','professional_cost_settings','work_sessions','subscription_profiles',
-    'account_data_requests','article_comments','article_reactions','api_tokens','push_subscriptions','client_submissions',
-    'object_files'
-  ] loop
-    execute format('create policy %I on public.%I for select using (owner_id = auth.uid())', table_name || ' owner select', table_name);
-    execute format('create policy %I on public.%I for insert with check (owner_id = auth.uid())', table_name || ' owner insert', table_name);
-    execute format('create policy %I on public.%I for update using (owner_id = auth.uid()) with check (owner_id = auth.uid())', table_name || ' owner update', table_name);
-    execute format('create policy %I on public.%I for delete using (owner_id = auth.uid())', table_name || ' owner delete', table_name);
-  end loop;
-end $$;
-
-create policy "sale report shares owner select" on public.sale_report_shares
-  for select using (owner_id = auth.uid());
-create policy "sale report shares owner insert" on public.sale_report_shares
-  for insert with check (
-    owner_id = auth.uid()
-    and exists (
-      select 1 from public.motorcycles
-      where motorcycles.id = motorcycle_id and motorcycles.owner_id = auth.uid()
-    )
-  );
-create policy "sale report shares owner update" on public.sale_report_shares
-  for update using (owner_id = auth.uid()) with check (
-    owner_id = auth.uid()
-    and exists (
-      select 1 from public.motorcycles
-      where motorcycles.id = motorcycle_id and motorcycles.owner_id = auth.uid()
-    )
-  );
-create policy "sale report shares owner delete" on public.sale_report_shares
-  for delete using (owner_id = auth.uid());
-
-create policy "motorcycle specs via owner" on public.motorcycle_specs
-  for all using (exists (select 1 from public.motorcycles m where m.id = motorcycle_id and m.owner_id = auth.uid()))
-  with check (exists (select 1 from public.motorcycles m where m.id = motorcycle_id and m.owner_id = auth.uid()));
-
-create policy "public articles read" on public.forum_articles for select using (is_published = true);
-create policy "public categories read" on public.forum_categories for select using (true);
-create policy "public article categories read" on public.forum_article_categories for select using (true);
-create policy "public sale shares read" on public.sale_report_shares
-  for select using (revoked_at is null and expires_at >= now());
-
-grant usage on schema public to anon, authenticated;
-grant select on public.forum_articles, public.forum_categories, public.forum_article_categories to anon;
-grant select on public.motorcycle_templates, public.motorcycle_template_specs to authenticated;
-grant select, insert, update, delete on
-  public.profiles,
-  public.motorcycles,
-  public.motorcycle_specs,
-  public.fuel_stations,
-  public.fuel_grades,
-  public.fuel_records,
-  public.fuel_preferences,
-  public.fuel_review_preferences,
-  public.maintenance_parts,
-  public.maintenance_records,
-  public.maintenance_record_parts,
-  public.maintenance_plan_items,
-  public.maintenance_photos,
-  public.tire_products,
-  public.tire_records,
-  public.tire_pressure_records,
-  public.motorcycle_documents,
-  public.reminders,
-  public.annual_fees,
-  public.insurance_policies,
-  public.insurance_claims,
-  public.professional_cost_settings,
-  public.work_sessions,
-  public.subscription_profiles,
-  public.account_data_requests,
-  public.sale_report_shares,
-  public.article_comments,
-  public.article_reactions,
-  public.api_tokens,
-  public.push_subscriptions,
-  public.client_submissions,
-  public.object_files
-to authenticated;
-
-create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  insert into public.profiles (id, email, full_name)
-  values (new.id, coalesce(new.email, ''), coalesce(new.raw_user_meta_data ->> 'full_name', ''))
-  on conflict (id) do nothing;
-  insert into public.subscription_profiles (owner_id, plan)
-  values (new.id, 'free')
-  on conflict (owner_id) do nothing;
-  return new;
-end;
-$$;
-
-create trigger on_auth_user_created
-after insert on auth.users
-for each row execute function public.handle_new_user();
+-- NOTE (Neon migration): the original Supabase migration enabled row-level
+-- security and defined owner/select policies on every app table here, plus
+-- schema/table grants to the `anon` and `authenticated` roles. Neon has no
+-- `auth.uid()` and no anon/authenticated roles, and the app now enforces
+-- ownership entirely in the SQL query layer (every query filters by
+-- `owner_id = <current user id>`; see the migration brief). All RLS enable
+-- statements, CREATE POLICY statements, and anon/authenticated grants were
+-- intentionally dropped rather than translated.
+--
+-- The original migration also created `handle_new_user()` (a trigger
+-- function on `auth.users` that seeded `profiles` + `subscription_profiles`
+-- on signup) and the `on_auth_user_created` trigger that called it. Neon
+-- Auth (Better Auth) does not fire triggers on `auth.users` the way Supabase
+-- did, so that trigger/function pair was dropped too. User bootstrap is now
+-- an app-layer `ensureAccount()` helper called after session resolution
+-- (see T3), which upserts `profiles` and `subscription_profiles` the same
+-- way `handle_new_user()` used to. The `profiles` and `subscription_profiles`
+-- tables themselves are unchanged.

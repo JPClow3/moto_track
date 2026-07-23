@@ -1,11 +1,10 @@
 import { error } from "@sveltejs/kit";
-import { createSupabaseAdminClient } from "$server/supabase/admin";
 import { shareTokenHash } from "$server/domain/sale-report-share";
 import type { PublicSaleReport } from "$types/sale-report";
 
 /**
- * This route is unauthenticated and uses the admin client, so every column it
- * reads is a deliberate choice. Never `select("*")` here.
+ * This route is unauthenticated (bearer-token access via the share link), so
+ * every column it reads is a deliberate choice. Never `select *` here.
  *
  * Deliberately NOT exposed from `motorcycles`:
  *   owner_id             — the owner's identity
@@ -15,101 +14,109 @@ import type { PublicSaleReport } from "$types/sale-report";
  *   photo_key            — storage key
  * And from `sale_report_shares`: token_hash, owner_id.
  */
-const MOTORCYCLE_COLUMNS =
-  "name, brand, model, year, current_odometer_km, previous_owners, riding_profile, deleted_at";
-
 const TIMELINE_LIMIT = 60;
 
 type Row = Record<string, unknown>;
 
-const sum = (rows: Row[] | null, key: string) =>
-  (rows ?? []).reduce((total, row) => total + Number(row[key] ?? 0), 0);
+const sum = (rows: Row[], key: string) =>
+  rows.reduce((total, row) => total + Number(row[key] ?? 0), 0);
 
-export async function load({ params, platform }) {
-  const supabase = createSupabaseAdminClient(platform);
+export async function load({ params, locals }) {
   const tokenHash = await shareTokenHash(params.token);
 
-  const { data: share } = await supabase
-    .from("sale_report_shares")
-    .select(
-      `id, owner_id, motorcycle_id, expires_at, access_count, motorcycles(${MOTORCYCLE_COLUMNS})`,
-    )
-    .eq("token_hash", tokenHash)
-    .is("revoked_at", null)
-    .gte("expires_at", new Date().toISOString())
-    .maybeSingle();
+  // The WHERE clause below is the *only* gate on this route — there is no
+  // session and no RLS backstop. A row only comes back for a token whose hash
+  // matches, that hasn't been revoked, and whose expiry hasn't passed.
+  const [share] = await locals.db<Row[]>`
+    select id, owner_id, motorcycle_id, expires_at, access_count
+    from sale_report_shares
+    where token_hash = ${tokenHash}
+      and revoked_at is null
+      and expires_at >= now()
+  `;
 
   if (!share) throw error(404, "Relatório não encontrado ou expirado.");
 
-  const row = share as unknown as Row;
-  const motorcycle = (
-    Array.isArray(row.motorcycles) ? row.motorcycles[0] : row.motorcycles
-  ) as Row | null;
+  const ownerId = String(share.owner_id);
+  const motorcycleId = String(share.motorcycle_id);
 
+  // Every downstream query is scoped to *this share's* owner_id/motorcycle_id
+  // (taken from the row we just validated above), never to a session user —
+  // there isn't one. A stale or tampered motorcycle_id on the share can never
+  // pull another owner's records because both columns are re-checked here.
+  const [motorcycle, fuel, maintenance, tires, fees, timeline] =
+    await Promise.all([
+      locals.db<Row[]>`
+        select name, brand, model, year, current_odometer_km, previous_owners,
+               riding_profile, deleted_at
+        from motorcycles
+        where id = ${motorcycleId} and owner_id = ${ownerId}
+      `,
+      locals.db<Row[]>`
+        select total_price_cents from fuel_records
+        where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
+      `,
+      locals.db<Row[]>`
+        select cost_cents from maintenance_records
+        where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
+      `,
+      locals.db<Row[]>`
+        select cost_cents from tire_records
+        where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
+      `,
+      locals.db<Row[]>`
+        select amount_cents from annual_fees
+        where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
+      `,
+      locals.db<Row[]>`
+        select date, maintenance_type, odometer_km, description, cost_cents
+        from maintenance_records
+        where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
+        order by date desc
+        limit ${TIMELINE_LIMIT}
+      `,
+    ]);
+
+  const motorcycleRow = motorcycle[0];
   // A share can outlive the motorcycle it points at.
-  if (!motorcycle || motorcycle.deleted_at) {
+  if (!motorcycleRow || motorcycleRow.deleted_at) {
     throw error(404, "Relatório não encontrado ou expirado.");
   }
 
-  // Scope every query to the shared motorcycle AND the share's owner, so a
-  // stale or tampered motorcycle_id can never pull another owner's records.
-  const ownerId = String(row.owner_id);
-  const motorcycleId = String(row.motorcycle_id);
-  const scoped = (table: string, columns: string) =>
-    supabase
-      .from(table)
-      .select(columns)
-      .eq("motorcycle_id", motorcycleId)
-      .eq("owner_id", ownerId);
-
-  const [fuel, maintenance, tires, fees, timeline] = await Promise.all([
-    scoped("fuel_records", "total_price_cents"),
-    scoped("maintenance_records", "cost_cents"),
-    scoped("tire_records", "cost_cents"),
-    scoped("annual_fees", "amount_cents"),
-    scoped(
-      "maintenance_records",
-      "date, maintenance_type, odometer_km, description, cost_cents",
-    )
-      .order("date", { ascending: false })
-      .limit(TIMELINE_LIMIT),
-  ]);
-
-  await supabase
-    .from("sale_report_shares")
-    .update({
-      access_count: Number(row.access_count ?? 0) + 1,
-      last_accessed_at: new Date().toISOString(),
-    })
-    .eq("id", String(row.id));
+  await locals.db`
+    update sale_report_shares
+    set access_count = ${Number(share.access_count ?? 0) + 1},
+        last_accessed_at = ${new Date().toISOString()}
+    where id = ${String(share.id)}
+  `;
 
   const totals = {
-    fuel: sum(fuel.data as Row[] | null, "total_price_cents"),
-    maintenance: sum(maintenance.data as Row[] | null, "cost_cents"),
-    tires: sum(tires.data as Row[] | null, "cost_cents"),
-    fees: sum(fees.data as Row[] | null, "amount_cents"),
+    fuel: sum(fuel, "total_price_cents"),
+    maintenance: sum(maintenance, "cost_cents"),
+    tires: sum(tires, "cost_cents"),
+    fees: sum(fees, "amount_cents"),
   };
 
   const report: PublicSaleReport = {
     motorcycle: {
-      name: String(motorcycle.name ?? ""),
-      brand: String(motorcycle.brand ?? ""),
-      model: String(motorcycle.model ?? ""),
-      year: Number(motorcycle.year ?? 0),
-      odometerKm: Number(motorcycle.current_odometer_km ?? 0),
+      name: String(motorcycleRow.name ?? ""),
+      brand: String(motorcycleRow.brand ?? ""),
+      model: String(motorcycleRow.model ?? ""),
+      year: Number(motorcycleRow.year ?? 0),
+      odometerKm: Number(motorcycleRow.current_odometer_km ?? 0),
       previousOwners:
-        motorcycle.previous_owners === null ||
-        motorcycle.previous_owners === undefined
+        motorcycleRow.previous_owners === null ||
+        motorcycleRow.previous_owners === undefined
           ? null
-          : Number(motorcycle.previous_owners),
-      ridingProfile: String(motorcycle.riding_profile ?? "") || null,
+          : Number(motorcycleRow.previous_owners),
+      ridingProfile: String(motorcycleRow.riding_profile ?? "") || null,
     },
     totals: {
       ...totals,
       all: totals.fuel + totals.maintenance + totals.tires + totals.fees,
     },
-    serviceCount: (maintenance.data ?? []).length,
-    timeline: ((timeline.data ?? []) as unknown as Row[]).map((event) => ({
+    serviceCount: maintenance.length,
+    timeline: timeline.map((event) => ({
       date: String(event.date ?? ""),
       type: String(event.maintenance_type ?? "") || null,
       odometerKm:
@@ -119,7 +126,7 @@ export async function load({ params, platform }) {
       description: String(event.description ?? "") || null,
       costCents: Number(event.cost_cents ?? 0),
     })),
-    expiresAt: String(row.expires_at ?? ""),
+    expiresAt: String(share.expires_at ?? ""),
   };
 
   // Return only the mapped projection — anything on `report` is public.

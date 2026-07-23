@@ -11,10 +11,14 @@
  */
 export async function isStaffUser(locals: App.Locals): Promise<boolean> {
   if (!locals.user) return false;
-  const { data } = await locals.supabase
-    .from("profiles")
-    .select("is_staff")
-    .eq("id", locals.user.id)
-    .maybeSingle();
-  return Boolean(data?.is_staff);
+  try {
+    const [row] = await locals.db<Array<{ is_staff: boolean }>>`
+      select is_staff from profiles where id = ${locals.user.id}
+    `;
+    return Boolean(row?.is_staff);
+  } catch {
+    // Matches the old Supabase-error path: a failed lookup reads as "not staff"
+    // rather than surfacing a 500 on every page just to show/hide a nav item.
+    return false;
+  }
 }

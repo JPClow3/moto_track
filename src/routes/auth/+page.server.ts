@@ -1,8 +1,16 @@
 import { fail, redirect, type Actions } from "@sveltejs/kit";
 import { safeInternalRedirect } from "$server/auth-redirect";
+import {
+  signInEmail,
+  signUpEmail,
+  signOut,
+  socialSignInUrl,
+  requestPasswordReset,
+} from "$server/auth/session";
 
 export const actions: Actions = {
-  signIn: async ({ request, locals, url }) => {
+  signIn: async (event) => {
+    const { request, url } = event;
     const form = await request.formData();
     const email = String(form.get("email") ?? "");
     const password = String(form.get("password") ?? "");
@@ -13,48 +21,59 @@ export const actions: Actions = {
           "/dashboard",
       ),
     );
-    const { error } = await locals.supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) return fail(400, { message: error.message, email });
+    const result = await signInEmail(event, email, password);
+    if (!result.ok) return fail(400, { message: result.message, email });
     throw redirect(303, redirectTo);
   },
-  signUp: async ({ request, locals, url }) => {
+  signUp: async (event) => {
+    const { request, url } = event;
     const form = await request.formData();
     const email = String(form.get("email") ?? "");
     const password = String(form.get("password") ?? "");
-    const redirectTo = `${url.origin}/auth/callback`;
-    const { error } = await locals.supabase.auth.signUp({
+    const redirectTo = safeInternalRedirect(
+      String(
+        form.get("redirectTo") ??
+          url.searchParams.get("redirectTo") ??
+          "/dashboard",
+      ),
+    );
+    // Neon Auth issues a session on sign-up (email verification is not required
+    // for this project), so we can send the user straight into the app.
+    const result = await signUpEmail(
+      event,
       email,
       password,
-      options: { emailRedirectTo: redirectTo },
-    });
-    if (error) return fail(400, { message: error.message, email });
-    return { message: "Confira seu email para confirmar a conta." };
+      email.split("@")[0],
+    );
+    if (!result.ok) return fail(400, { message: result.message, email });
+    throw redirect(303, redirectTo);
   },
-  google: async ({ locals, url }) => {
-    const { data, error } = await locals.supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${url.origin}/auth/callback` },
-    });
-    if (error || !data.url)
-      return fail(400, {
-        message: error?.message ?? "Google OAuth unavailable.",
-      });
-    throw redirect(303, data.url);
+  google: async (event) => {
+    const { url } = event;
+    const callbackURL = `${url.origin}/auth/callback`;
+    const { url: providerUrl, message } = await socialSignInUrl(
+      event,
+      "google",
+      callbackURL,
+    );
+    if (!providerUrl)
+      return fail(400, { message: message ?? "Google OAuth unavailable." });
+    throw redirect(303, providerUrl);
   },
-  resetPassword: async ({ request, locals, url }) => {
+  resetPassword: async (event) => {
+    const { request, url } = event;
     const form = await request.formData();
     const email = String(form.get("email") ?? "");
-    const { error } = await locals.supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${url.origin}/auth/callback?next=/auth/update-password`,
-    });
-    if (error) return fail(400, { message: error.message, email });
+    const result = await requestPasswordReset(
+      event,
+      email,
+      `${url.origin}/auth/update-password`,
+    );
+    if (!result.ok) return fail(400, { message: result.message, email });
     return { message: "Email de recuperação enviado." };
   },
-  signOut: async ({ locals }) => {
-    await locals.supabase.auth.signOut();
+  signOut: async (event) => {
+    await signOut(event);
     throw redirect(303, "/");
   },
 };

@@ -1,8 +1,13 @@
 import { fail } from "@sveltejs/kit";
-import { createSupabaseAdminClient } from "$server/supabase/admin";
 import { isStaffUser as staffState } from "$server/domain/staff";
 
-export async function load({ locals, platform }) {
+function messageFrom(err: unknown) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+type Row = Record<string, unknown>;
+
+export async function load({ locals }) {
   const isStaff = await staffState(locals);
   if (!isStaff) {
     return {
@@ -15,48 +20,47 @@ export async function load({ locals, platform }) {
     };
   }
 
-  const supabase = createSupabaseAdminClient(platform);
+  const db = locals.db;
   const [
-    { count: users },
-    { count: articlesCount },
-    { count: events },
-    { count: requestsCount },
-    { data: settings },
-    { data: articles },
-    { data: templates },
-    { data: requests },
+    [{ count: users }],
+    [{ count: articlesCount }],
+    [{ count: events }],
+    [{ count: requestsCount }],
+    settingsRows,
+    articles,
+    templates,
+    requests,
   ] = await Promise.all([
-    supabase.from("profiles").select("*", { count: "exact", head: true }),
-    supabase.from("forum_articles").select("*", { count: "exact", head: true }),
-    supabase.from("billing_events").select("*", { count: "exact", head: true }),
-    supabase
-      .from("account_data_requests")
-      .select("*", { count: "exact", head: true }),
-    supabase.from("site_settings").select("*").eq("id", 1).maybeSingle(),
-    supabase
-      .from("forum_articles")
-      .select("id, title, slug, is_published, published_at")
-      .order("published_at", { ascending: false })
-      .limit(10),
-    supabase
-      .from("motorcycle_templates")
-      .select("*")
-      .order("brand")
-      .order("model")
-      .limit(20),
-    supabase
-      .from("account_data_requests")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20),
+    db<Array<{ count: number }>>`select count(*)::int from profiles`,
+    db<Array<{ count: number }>>`select count(*)::int from forum_articles`,
+    db<Array<{ count: number }>>`select count(*)::int from billing_events`,
+    db<
+      Array<{ count: number }>
+    >`select count(*)::int from account_data_requests`,
+    db<Row[]>`select * from site_settings where id = 1`,
+    db<Row[]>`
+      select id, title, slug, is_published, published_at from forum_articles
+      order by published_at desc
+      limit 10
+    `,
+    db<Row[]>`
+      select * from motorcycle_templates
+      order by brand, model
+      limit 20
+    `,
+    db<Row[]>`
+      select * from account_data_requests
+      order by created_at desc
+      limit 20
+    `,
   ]);
 
   return {
     isStaff,
-    settings,
-    articles: articles ?? [],
-    templates: templates ?? [],
-    requests: requests ?? [],
+    settings: settingsRows[0] ?? null,
+    articles,
+    templates,
+    requests,
     counts: {
       users,
       articles: articlesCount,
@@ -67,35 +71,55 @@ export async function load({ locals, platform }) {
 }
 
 export const actions = {
-  fulfillDataRequest: async ({ request, locals, platform }) => {
+  fulfillDataRequest: async ({ request, locals }) => {
     if (!(await staffState(locals)))
       return fail(403, { message: "Staff only." });
     const form = await request.formData();
-    const { error } = await createSupabaseAdminClient(platform)
-      .from("account_data_requests")
-      .update({ status: "fulfilled", fulfilled_at: new Date().toISOString() })
-      .eq("id", String(form.get("id") ?? ""));
-    return error ? fail(400, { message: error.message }) : { ok: true };
+    try {
+      await locals.db`
+        update account_data_requests
+        set status = 'fulfilled', fulfilled_at = ${new Date().toISOString()}
+        where id = ${String(form.get("id") ?? "")}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+    return { ok: true };
   },
-  saveSettings: async ({ request, locals, platform }) => {
+  saveSettings: async ({ request, locals }) => {
     if (!(await staffState(locals)))
       return fail(403, { message: "Staff only." });
     const form = await request.formData();
-    const supabase = createSupabaseAdminClient(platform);
-    const { error } = await supabase.from("site_settings").upsert({
-      id: 1,
-      company_name: String(form.get("company_name") ?? "Moto Track"),
-      support_email: String(form.get("support_email") ?? ""),
-      support_phone: String(form.get("support_phone") ?? ""),
-      support_whatsapp: String(form.get("support_whatsapp") ?? ""),
-      address_city: String(form.get("address_city") ?? ""),
-      address_state: String(form.get("address_state") ?? ""),
-      dpo_name: String(form.get("dpo_name") ?? ""),
-      dpo_email: String(form.get("dpo_email") ?? ""),
-    });
-    return error ? fail(400, { message: error.message }) : { ok: true };
+    try {
+      await locals.db`
+        insert into site_settings ${locals.db({
+          id: 1,
+          company_name: String(form.get("company_name") ?? "Moto Track"),
+          support_email: String(form.get("support_email") ?? ""),
+          support_phone: String(form.get("support_phone") ?? ""),
+          support_whatsapp: String(form.get("support_whatsapp") ?? ""),
+          address_city: String(form.get("address_city") ?? ""),
+          address_state: String(form.get("address_state") ?? ""),
+          dpo_name: String(form.get("dpo_name") ?? ""),
+          dpo_email: String(form.get("dpo_email") ?? ""),
+        })}
+        on conflict (id) do update set
+          company_name = excluded.company_name,
+          support_email = excluded.support_email,
+          support_phone = excluded.support_phone,
+          support_whatsapp = excluded.support_whatsapp,
+          address_city = excluded.address_city,
+          address_state = excluded.address_state,
+          dpo_name = excluded.dpo_name,
+          dpo_email = excluded.dpo_email,
+          updated_at = now()
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+    return { ok: true };
   },
-  createArticle: async ({ request, locals, platform }) => {
+  createArticle: async ({ request, locals }) => {
     if (!(await staffState(locals)))
       return fail(403, { message: "Staff only." });
     const form = await request.formData();
@@ -106,30 +130,40 @@ export const actions = {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "");
-    const supabase = createSupabaseAdminClient(platform);
-    const { error } = await supabase.from("forum_articles").insert({
-      title,
-      slug,
-      summary: String(form.get("summary") ?? ""),
-      body: String(form.get("body") ?? ""),
-      is_published: form.get("is_published") === "true",
-    });
-    return error ? fail(400, { message: error.message }) : { ok: true };
+    try {
+      await locals.db`
+        insert into forum_articles ${locals.db({
+          title,
+          slug,
+          summary: String(form.get("summary") ?? ""),
+          body: String(form.get("body") ?? ""),
+          is_published: form.get("is_published") === "true",
+        })}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+    return { ok: true };
   },
-  createTemplate: async ({ request, locals, platform }) => {
+  createTemplate: async ({ request, locals }) => {
     if (!(await staffState(locals)))
       return fail(403, { message: "Staff only." });
     const form = await request.formData();
-    const supabase = createSupabaseAdminClient(platform);
-    const { error } = await supabase.from("motorcycle_templates").insert({
-      brand: String(form.get("brand") ?? ""),
-      model: String(form.get("model") ?? ""),
-      year_from: Number(form.get("year_from") ?? 2000),
-      year_to: form.get("year_to") ? Number(form.get("year_to")) : null,
-      variant: String(form.get("variant") ?? ""),
-      engine_cc: Number(form.get("engine_cc") ?? 1),
-      country_code: String(form.get("country_code") ?? "BR"),
-    });
-    return error ? fail(400, { message: error.message }) : { ok: true };
+    try {
+      await locals.db`
+        insert into motorcycle_templates ${locals.db({
+          brand: String(form.get("brand") ?? ""),
+          model: String(form.get("model") ?? ""),
+          year_from: Number(form.get("year_from") ?? 2000),
+          year_to: form.get("year_to") ? Number(form.get("year_to")) : null,
+          variant: String(form.get("variant") ?? ""),
+          engine_cc: Number(form.get("engine_cc") ?? 1),
+          country_code: String(form.get("country_code") ?? "BR"),
+        })}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+    return { ok: true };
   },
 };
