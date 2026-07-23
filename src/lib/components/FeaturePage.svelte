@@ -36,9 +36,7 @@
     const field = feature.fields.find((item) => item.key === key);
     const value = row[key];
     if (typeof value !== "string" || !value) return null;
-    if (field?.kind === "file" || key === "file_key" || key.endsWith("_key")) {
-      return privateFileUrl(value);
-    }
+    if (field?.kind === "file") return privateFileUrl(value);
     return null;
   }
 
@@ -145,11 +143,12 @@
             {#each rows as row (row.id ?? JSON.stringify(row))}
               <tr class="row-hover border-b border-[var(--line)]">
                 {#each feature.listColumns as column (column)}
+                  {@const href = fileHref(row, column)}
                   <td class="px-4 py-3">
-                    {#if fileHref(row, column)}
+                    {#if href}
                       <a
                         class="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                        href={fileHref(row, column) ?? undefined}
+                        {href}
                         target="_blank"
                         rel="noopener noreferrer"
                       >

@@ -1,10 +1,12 @@
 import { fail } from "@sveltejs/kit";
-import { featureActions, loadFeature } from "$server/domain/crud";
 import {
-  assertCanCreateReminder,
-  assertCanCreateUpload,
-} from "$server/domain/entitlement-guards";
+  deleteOwnedRow,
+  featureActions,
+  loadFeature,
+} from "$server/domain/crud";
+import { assertCanCreateUpload } from "$server/domain/entitlement-guards";
 import { validateMaintenancePhoto } from "$server/domain/maintenance-photos";
+import { syncPlanReminder } from "$server/domain/record-sync";
 import { uploadObjectFile } from "$server/r2/files";
 
 const base = featureActions("maintenance");
@@ -27,59 +29,65 @@ export const actions = {
   },
   deletePart: async ({ request, locals }) => {
     const f = await request.formData();
-    const { error } = await locals.supabase
-      .from("maintenance_parts")
-      .delete()
-      .eq("id", v(f, "id"))
-      .eq("owner_id", locals.user!.id);
+    const error = await deleteOwnedRow(
+      locals.supabase,
+      "maintenance_parts",
+      v(f, "id"),
+      locals.user!.id,
+    );
     return error ? fail(400, { message: error.message }) : { ok: true };
   },
   savePlan: async ({ request, locals }) => {
     const f = await request.formData();
     const motorcycleId = v(f, "motorcycle_id");
     const type = v(f, "maintenance_type");
-    const blocked = await assertCanCreateReminder(
-      locals.supabase,
-      locals.user!.id,
-    );
-    if (blocked) return fail(403, { message: blocked });
+    const intervalKm = Number(f.get("interval_km")) || null;
+    const intervalDays = Number(f.get("interval_days")) || null;
     const { data: plan, error } = await locals.supabase
       .from("maintenance_plan_items")
-      .upsert({
-        owner_id: locals.user!.id,
-        motorcycle_id: motorcycleId,
-        maintenance_type: type,
-        interval_km: Number(f.get("interval_km")) || null,
-        interval_days: Number(f.get("interval_days")) || null,
-        is_active: true,
-      })
+      .upsert(
+        {
+          owner_id: locals.user!.id,
+          motorcycle_id: motorcycleId,
+          maintenance_type: type,
+          interval_km: intervalKm,
+          interval_days: intervalDays,
+          is_severe_duty_override: false,
+          is_active: true,
+        },
+        {
+          onConflict: "motorcycle_id,maintenance_type,is_severe_duty_override",
+        },
+      )
       .select()
       .single();
     if (error || !plan)
       return fail(400, { message: error?.message ?? "Plano inválido." });
-    const { error: reminderError } = await locals.supabase
-      .from("reminders")
-      .insert({
-        owner_id: locals.user!.id,
+    const reminderResult = await syncPlanReminder(
+      locals.supabase,
+      locals.user!.id,
+      {
+        id: plan.id,
         motorcycle_id: motorcycleId,
-        title: `Plano: ${type}`,
-        trigger_type: Number(f.get("interval_km")) ? "by_interval" : "by_date",
-        trigger_value_km: Number(f.get("interval_km")) || null,
-        trigger_value_days: Number(f.get("interval_days")) || null,
-        is_active: true,
-        linked_plan_item_id: plan.id,
-      });
-    if (reminderError) return fail(400, { message: reminderError.message });
+        maintenance_type: type,
+        interval_km: intervalKm,
+        interval_days: intervalDays,
+      },
+    );
+    if (!reminderResult.ok) {
+      return fail(403, { message: reminderResult.message });
+    }
     return { ok: true };
   },
   deletePlan: async ({ request, locals }) => {
     const f = await request.formData();
     const id = v(f, "id");
-    const { error } = await locals.supabase
-      .from("maintenance_plan_items")
-      .delete()
-      .eq("id", id)
-      .eq("owner_id", locals.user!.id);
+    const error = await deleteOwnedRow(
+      locals.supabase,
+      "maintenance_plan_items",
+      id,
+      locals.user!.id,
+    );
     if (error) return fail(400, { message: error.message });
     await locals.supabase
       .from("reminders")
@@ -101,8 +109,9 @@ export const actions = {
       .eq("owner_id", locals.user!.id)
       .maybeSingle();
     if (!record) return fail(404, { message: "Registro não encontrado." });
-    const photoFile = file instanceof File ? file : null;
-    const validation = validateMaintenancePhoto(photoFile);
+    const validation = validateMaintenancePhoto(
+      file instanceof File ? file : null,
+    );
     if (!validation.ok) return fail(400, { message: validation.message });
     const blocked = await assertCanCreateUpload(
       locals.supabase,
@@ -110,7 +119,7 @@ export const actions = {
     );
     if (blocked) return fail(403, { message: blocked });
     const uploaded = await uploadObjectFile({
-      file: photoFile!,
+      file: validation.file,
       module: "maintenance",
       ownerId: locals.user!.id,
       platform,
@@ -140,11 +149,12 @@ export const actions = {
   },
   deletePhoto: async ({ request, locals }) => {
     const f = await request.formData();
-    const { error } = await locals.supabase
-      .from("maintenance_photos")
-      .delete()
-      .eq("id", v(f, "id"))
-      .eq("owner_id", locals.user!.id);
+    const error = await deleteOwnedRow(
+      locals.supabase,
+      "maintenance_photos",
+      v(f, "id"),
+      locals.user!.id,
+    );
     return error ? fail(400, { message: error.message }) : { ok: true };
   },
 };

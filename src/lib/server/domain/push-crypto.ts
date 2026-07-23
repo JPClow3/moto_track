@@ -29,7 +29,6 @@ async function aesKey(secret: string) {
   ]);
 }
 
-/** Matches `/api/push/subscribe` so the worker can decrypt stored endpoints. */
 export async function encryptPushField(value: string, secret: string) {
   const key = await aesKey(secret);
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -51,4 +50,33 @@ export async function decryptPushField(value: string, secret: string) {
     fromBase64Url(dataPart),
   );
   return decoder.decode(plain);
+}
+
+/** Known browser push providers only — blocks SSRF via Conta subscribe. */
+const ALLOWED_PUSH_HOST_SUFFIXES = [
+  ".googleapis.com",
+  ".mozilla.com",
+  ".mozilla.org",
+  ".apple.com",
+  ".windows.com",
+  ".microsoft.com",
+  ".push.apple.com",
+] as const;
+
+export function isAllowedPushEndpoint(endpoint: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:") return false;
+  if (url.username || url.password) return false;
+  const host = url.hostname.toLowerCase();
+  if (!host || host === "localhost" || host.endsWith(".local")) return false;
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return false;
+  if (host.includes(":")) return false;
+  return ALLOWED_PUSH_HOST_SUFFIXES.some(
+    (suffix) => host === suffix.slice(1) || host.endsWith(suffix),
+  );
 }

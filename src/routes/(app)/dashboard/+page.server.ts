@@ -53,6 +53,8 @@ export async function load({ locals }) {
     .from("motorcycles")
     .select("*", { count: "exact", head: true })
     .eq("owner_id", ownerId);
+  // Same emptiness rule as /onboarding: any motorcycle counts, including
+  // archived ones, so inactive-only garages never bounce between routes.
   if (!(motorcycleCount ?? 0)) {
     throw redirect(303, "/onboarding");
   }
@@ -94,10 +96,6 @@ export async function load({ locals }) {
         .select("due_date, amount_cents, fee_type")
         .eq("owner_id", ownerId),
     ]);
-
-  if (!(motorcycles.data ?? []).length) {
-    throw redirect(303, "/onboarding");
-  }
 
   const motorcycleRows = (motorcycles.data ?? []) as Row[];
   const fuelRows = (fuel.data ?? []) as Row[];

@@ -1,6 +1,13 @@
 import { fail } from "@sveltejs/kit";
-import { featureActions, loadFeature } from "$server/domain/crud";
-import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
+import {
+  deleteOwnedRow,
+  featureActions,
+  loadFeature,
+} from "$server/domain/crud";
+import {
+  clearInsuranceReminder,
+  syncInsuranceReminder,
+} from "$server/domain/record-sync";
 
 const base = featureActions("expenses");
 const v = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
@@ -27,51 +34,20 @@ export const actions = {
       .upsert(payload);
     if (error) return fail(400, { message: error.message });
 
-    const noteTag = `insurance:${id}`;
-    const { data: existingReminder } = await locals.supabase
-      .from("reminders")
-      .select("id")
-      .eq("owner_id", locals.user!.id)
-      .eq("notes", noteTag)
-      .maybeSingle();
-
-    if (!existingReminder) {
-      const blocked = await assertCanCreateReminder(
-        locals.supabase,
-        locals.user!.id,
-      );
-      if (blocked) {
-        return fail(403, {
-          message: `Seguro salvo, mas o lembrete não foi criado: ${blocked}`,
-        });
-      }
-    }
-
-    const reminder = {
-      owner_id: locals.user!.id,
-      motorcycle_id: payload.motorcycle_id,
-      title: `Seguro: ${payload.provider}`,
-      trigger_type: "by_date" as const,
-      trigger_value_days: payload.notify_before_days,
-      reference_date: payload.coverage_end,
-      is_active: true,
-      send_email: true,
-      send_push: true,
-      notes: noteTag,
-      updated_at: new Date().toISOString(),
-    };
-
-    const reminderResult = existingReminder
-      ? await locals.supabase
-          .from("reminders")
-          .update(reminder)
-          .eq("id", existingReminder.id)
-          .eq("owner_id", locals.user!.id)
-      : await locals.supabase.from("reminders").insert(reminder);
-
-    if (reminderResult.error) {
-      return fail(400, {
-        message: `Seguro salvo, mas o lembrete falhou: ${reminderResult.error.message}`,
+    const reminderResult = await syncInsuranceReminder(
+      locals.supabase,
+      locals.user!.id,
+      {
+        id,
+        motorcycle_id: payload.motorcycle_id,
+        provider: payload.provider,
+        coverage_end: payload.coverage_end,
+        notify_before_days: payload.notify_before_days,
+      },
+    );
+    if (!reminderResult.ok) {
+      return fail(403, {
+        message: `Seguro salvo, mas o lembrete não foi criado: ${reminderResult.message}`,
       });
     }
     return { ok: true };
@@ -99,26 +75,24 @@ export const actions = {
   deletePolicy: async ({ request, locals }) => {
     const f = await request.formData();
     const id = v(f, "id");
-    const { error } = await locals.supabase
-      .from("insurance_policies")
-      .delete()
-      .eq("id", id)
-      .eq("owner_id", locals.user!.id);
+    const error = await deleteOwnedRow(
+      locals.supabase,
+      "insurance_policies",
+      id,
+      locals.user!.id,
+    );
     if (error) return fail(400, { message: error.message });
-    await locals.supabase
-      .from("reminders")
-      .delete()
-      .eq("owner_id", locals.user!.id)
-      .eq("notes", `insurance:${id}`);
+    await clearInsuranceReminder(locals.supabase, locals.user!.id, id);
     return { ok: true };
   },
   deleteClaim: async ({ request, locals }) => {
     const f = await request.formData();
-    const { error } = await locals.supabase
-      .from("insurance_claims")
-      .delete()
-      .eq("id", v(f, "id"))
-      .eq("owner_id", locals.user!.id);
+    const error = await deleteOwnedRow(
+      locals.supabase,
+      "insurance_claims",
+      v(f, "id"),
+      locals.user!.id,
+    );
     return error ? fail(400, { message: error.message }) : { ok: true };
   },
 };

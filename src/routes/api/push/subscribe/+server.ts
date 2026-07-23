@@ -1,31 +1,9 @@
 import { error, json } from "@sveltejs/kit";
 import { runtimeEnv } from "$server/runtime";
-
-function base64url(bytes: Uint8Array) {
-  let text = "";
-  for (const byte of bytes) text += String.fromCharCode(byte);
-  return btoa(text)
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replaceAll("=", "");
-}
-
-async function encrypt(value: string, secret: string) {
-  const keyBytes = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(secret),
-  );
-  const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, [
-    "encrypt",
-  ]);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    new TextEncoder().encode(value),
-  );
-  return `${base64url(iv)}.${base64url(new Uint8Array(encrypted))}`;
-}
+import {
+  encryptPushField,
+  isAllowedPushEndpoint,
+} from "$server/domain/push-crypto";
 
 export async function POST({ request, locals, platform }) {
   if (!locals.user) throw error(401, "Authentication required.");
@@ -36,6 +14,9 @@ export async function POST({ request, locals, platform }) {
   const secret = runtimeEnv(platform).PUSH_ENCRYPTION_KEY;
   if (!endpoint || !p256dh || !auth || !secret)
     throw error(400, "Invalid subscription data.");
+  if (!isAllowedPushEndpoint(endpoint)) {
+    throw error(400, "Unsupported push endpoint.");
+  }
   const endpointHash = Array.from(
     new Uint8Array(
       await crypto.subtle.digest("SHA-256", new TextEncoder().encode(endpoint)),
@@ -49,9 +30,9 @@ export async function POST({ request, locals, platform }) {
       {
         owner_id: locals.user.id,
         endpoint_hash: endpointHash,
-        endpoint_encrypted: await encrypt(endpoint, secret),
-        p256dh_encrypted: await encrypt(p256dh, secret),
-        auth_encrypted: await encrypt(auth, secret),
+        endpoint_encrypted: await encryptPushField(endpoint, secret),
+        p256dh_encrypted: await encryptPushField(p256dh, secret),
+        auth_encrypted: await encryptPushField(auth, secret),
       },
       { onConflict: "owner_id,endpoint_hash" },
     );

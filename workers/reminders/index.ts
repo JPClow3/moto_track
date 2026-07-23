@@ -1,6 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { evaluateReminder } from "../../src/lib/server/domain/reminders";
-import { decryptPushField } from "./push-crypto";
+import {
+  decryptPushField,
+  isAllowedPushEndpoint,
+} from "../../src/lib/server/domain/push-crypto";
 import { sendWebPush, type WebPushConfig } from "./web-push";
 
 export interface Env {
@@ -77,7 +80,7 @@ export async function processReminders(env: Env) {
       ? await supabase
           .from("push_subscriptions")
           .select(
-            "owner_id, endpoint_encrypted, p256dh_encrypted, auth_encrypted",
+            "id, owner_id, endpoint_encrypted, p256dh_encrypted, auth_encrypted",
           )
           .in("owner_id", ownerIds)
       : { data: [], error: null };
@@ -86,6 +89,7 @@ export async function processReminders(env: Env) {
   const subscriptionsByOwner = new Map<
     string,
     Array<{
+      id: string;
       endpoint_encrypted: string;
       p256dh_encrypted: string;
       auth_encrypted: string;
@@ -148,12 +152,17 @@ export async function processReminders(env: Env) {
       let delivered = false;
       for (const sub of ownerSubs) {
         try {
+          const endpoint = await decryptPushField(
+            sub.endpoint_encrypted,
+            pushSecret,
+          );
+          if (!isAllowedPushEndpoint(endpoint)) {
+            await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+            continue;
+          }
           await sendWebPush(
             {
-              endpoint: await decryptPushField(
-                sub.endpoint_encrypted,
-                pushSecret,
-              ),
+              endpoint,
               p256dh: await decryptPushField(sub.p256dh_encrypted, pushSecret),
               auth: await decryptPushField(sub.auth_encrypted, pushSecret),
             },
@@ -165,8 +174,13 @@ export async function processReminders(env: Env) {
             pushConfig,
           );
           delivered = true;
-        } catch {
-          // Drop dead endpoints quietly; the Conta page can re-subscribe.
+        } catch (cause) {
+          const status =
+            cause instanceof Error && /\((\d{3})\)/.exec(cause.message)?.[1];
+          // Gone / Not Found subscriptions should be dropped so Conta can renew.
+          if (status === "404" || status === "410") {
+            await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+          }
         }
       }
       if (delivered) {

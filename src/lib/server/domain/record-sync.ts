@@ -77,6 +77,57 @@ export function reminderForRecord(
   };
 }
 
+async function upsertMarkedReminder(
+  supabase: SupabaseClient<Database>,
+  ownerId: string,
+  marker: string,
+  values: {
+    owner_id: string;
+    motorcycle_id: string;
+    title: string;
+    trigger_type: "by_km" | "by_date" | "by_interval";
+    trigger_value_km?: number | null;
+    trigger_value_days?: number | null;
+    reference_km?: number | null;
+    reference_date?: string | null;
+    is_recurring?: boolean;
+    send_email: boolean;
+    send_push: boolean;
+    is_active: boolean;
+    notes: string;
+    updated_at?: string;
+  },
+  { failOnCap = false }: { failOnCap?: boolean } = {},
+) {
+  const { data: existing, error: readError } = await supabase
+    .from("reminders")
+    .select("id")
+    .eq("owner_id", ownerId)
+    .eq("notes", marker)
+    .maybeSingle();
+  if (readError) throw readError;
+
+  if (existing) {
+    const { error } = await supabase
+      .from("reminders")
+      .update(values)
+      .eq("id", existing.id)
+      .eq("owner_id", ownerId);
+    if (error) throw error;
+    return { ok: true as const, created: false };
+  }
+
+  const blocked = await assertCanCreateReminder(supabase, ownerId);
+  if (blocked) {
+    if (failOnCap) return { ok: false as const, message: blocked };
+    return { ok: true as const, created: false, skipped: true as const };
+  }
+
+  const { error } = await supabase.from("reminders").insert(values);
+  if (error) throw error;
+  return { ok: true as const, created: true };
+}
+
 export async function syncLinkedReminder(
   supabase: SupabaseClient<Database>,
   ownerId: string,
@@ -115,6 +166,88 @@ export async function syncLinkedReminder(
     is_active: true,
     notes: marker,
   };
+  await upsertMarkedReminder(supabase, ownerId, marker, values);
+}
+
+export type InsurancePolicyReminderInput = {
+  id: string;
+  motorcycle_id: string;
+  provider: string;
+  coverage_end: string;
+  notify_before_days: number;
+};
+
+export async function syncInsuranceReminder(
+  supabase: SupabaseClient<Database>,
+  ownerId: string,
+  policy: InsurancePolicyReminderInput,
+) {
+  const marker = `insurance:${policy.id}`;
+  const values = {
+    owner_id: ownerId,
+    motorcycle_id: policy.motorcycle_id,
+    title: `Seguro: ${policy.provider}`,
+    trigger_type: "by_date" as const,
+    trigger_value_days: policy.notify_before_days,
+    reference_date: policy.coverage_end,
+    is_active: true,
+    send_email: true,
+    send_push: true,
+    notes: marker,
+    updated_at: new Date().toISOString(),
+  };
+  return upsertMarkedReminder(supabase, ownerId, marker, values, {
+    failOnCap: true,
+  });
+}
+
+export async function clearInsuranceReminder(
+  supabase: SupabaseClient<Database>,
+  ownerId: string,
+  policyId: string,
+) {
+  const { error } = await supabase
+    .from("reminders")
+    .delete()
+    .eq("owner_id", ownerId)
+    .eq("notes", `insurance:${policyId}`);
+  if (error) throw error;
+}
+
+export async function syncPlanReminder(
+  supabase: SupabaseClient<Database>,
+  ownerId: string,
+  plan: {
+    id: string;
+    motorcycle_id: string;
+    maintenance_type: string;
+    interval_km: number | null;
+    interval_days: number | null;
+  },
+) {
+  const { data: existing, error: readError } = await supabase
+    .from("reminders")
+    .select("id")
+    .eq("owner_id", ownerId)
+    .eq("linked_plan_item_id", plan.id)
+    .maybeSingle();
+  if (readError) throw readError;
+
+  const values = {
+    owner_id: ownerId,
+    motorcycle_id: plan.motorcycle_id,
+    title: `Plano: ${plan.maintenance_type}`,
+    trigger_type: (plan.interval_km ? "by_interval" : "by_date") as
+      "by_interval" | "by_date",
+    trigger_value_km: plan.interval_km,
+    trigger_value_days: plan.interval_days,
+    is_active: true,
+    send_email: true,
+    send_push: true,
+    linked_plan_item_id: plan.id,
+    updated_at: new Date().toISOString(),
+  };
+
   if (existing) {
     const { error } = await supabase
       .from("reminders")
@@ -122,14 +255,13 @@ export async function syncLinkedReminder(
       .eq("id", existing.id)
       .eq("owner_id", ownerId);
     if (error) throw error;
-    return;
+    return { ok: true as const };
   }
 
-  // Auto-linked creates should not blow past Free caps; skip rather than fail
-  // the parent record save.
   const blocked = await assertCanCreateReminder(supabase, ownerId);
-  if (blocked) return;
+  if (blocked) return { ok: false as const, message: blocked };
 
   const { error } = await supabase.from("reminders").insert(values);
   if (error) throw error;
+  return { ok: true as const };
 }

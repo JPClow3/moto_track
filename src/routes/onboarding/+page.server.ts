@@ -22,14 +22,14 @@ async function applyTemplateSpecs(
   motorcycleId: string,
   templateId: string | null,
 ) {
-  if (!templateId) return;
+  if (!templateId) return null;
   const { data: specs } = await supabase
     .from("motorcycle_template_specs")
     .select("*")
     .eq("template_id", templateId)
     .maybeSingle();
-  if (!specs) return;
-  await supabase.from("motorcycle_specs").upsert({
+  if (!specs) return null;
+  const { error } = await supabase.from("motorcycle_specs").upsert({
     motorcycle_id: motorcycleId,
     fuel_tank_capacity_l: specs.fuel_tank_capacity_l,
     fuel_type_recommendation: specs.fuel_type_recommendation,
@@ -48,6 +48,7 @@ async function applyTemplateSpecs(
     consumption_avg_km_l: specs.consumption_avg_km_l,
     updated_at: new Date().toISOString(),
   });
+  return error?.message ?? null;
 }
 
 export const actions = {
@@ -71,7 +72,12 @@ export const actions = {
       source_template_id: templateId,
     });
     if (error) return fail(400, { message: error.message });
-    await applyTemplateSpecs(locals.supabase, motorcycleId, templateId);
+    const specsError = await applyTemplateSpecs(
+      locals.supabase,
+      motorcycleId,
+      templateId,
+    );
+    if (specsError) return fail(400, { message: specsError });
     throw redirect(303, "/dashboard");
   },
   demo: async ({ locals }) => {

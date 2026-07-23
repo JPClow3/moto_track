@@ -1,5 +1,9 @@
 import { fail } from "@sveltejs/kit";
-import { featureActions, loadFeature } from "$server/domain/crud";
+import {
+  deleteOwnedRow,
+  featureActions,
+  loadFeature,
+} from "$server/domain/crud";
 
 const base = featureActions("tires");
 const v = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
@@ -19,11 +23,12 @@ export const actions = {
   },
   deleteProduct: async ({ request, locals }) => {
     const f = await request.formData();
-    const { error } = await locals.supabase
-      .from("tire_products")
-      .delete()
-      .eq("id", v(f, "id"))
-      .eq("owner_id", locals.user!.id);
+    const error = await deleteOwnedRow(
+      locals.supabase,
+      "tire_products",
+      v(f, "id"),
+      locals.user!.id,
+    );
     return error ? fail(400, { message: error.message }) : { ok: true };
   },
   savePressure: async ({ request, locals }) => {
@@ -42,11 +47,12 @@ export const actions = {
   },
   deletePressure: async ({ request, locals }) => {
     const f = await request.formData();
-    const { error } = await locals.supabase
-      .from("tire_pressure_records")
-      .delete()
-      .eq("id", v(f, "id"))
-      .eq("owner_id", locals.user!.id);
+    const error = await deleteOwnedRow(
+      locals.supabase,
+      "tire_pressure_records",
+      v(f, "id"),
+      locals.user!.id,
+    );
     return error ? fail(400, { message: error.message }) : { ok: true };
   },
 };

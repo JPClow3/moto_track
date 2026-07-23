@@ -11,9 +11,17 @@ import {
   assertCanCreateWorkSession,
 } from "$server/domain/entitlement-guards";
 
+type DbClient = SupabaseClient<Database>;
+
 function motorcycleIdFrom(payload: Record<string, unknown>) {
   const value = payload.motorcycle_id;
   return typeof value === "string" && value ? value : null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 export async function syncRecordEffects({
@@ -23,7 +31,7 @@ export async function syncRecordEffects({
   recordId,
   payload,
 }: {
-  supabase: SupabaseClient<Database>;
+  supabase: DbClient;
   ownerId: string;
   feature: FeatureConfig;
   recordId: string;
@@ -34,6 +42,43 @@ export async function syncRecordEffects({
     await syncMotorcycleOdometer(supabase, ownerId, motorcycleId);
   }
   await syncLinkedReminder(supabase, ownerId, feature.table, recordId, payload);
+}
+
+export async function syncRecordDeleteEffects({
+  supabase,
+  ownerId,
+  feature,
+  recordId,
+  existing,
+}: {
+  supabase: DbClient;
+  ownerId: string;
+  feature: FeatureConfig;
+  recordId: string;
+  existing: Record<string, unknown>;
+}) {
+  await syncLinkedReminder(supabase, ownerId, feature.table, recordId, {});
+  const motorcycleId = motorcycleIdFrom(existing);
+  if (motorcycleId) {
+    await syncMotorcycleOdometer(supabase, ownerId, motorcycleId);
+  }
+}
+
+export async function deleteOwnedRow(
+  supabase: DbClient,
+  table: string,
+  id: string,
+  ownerId: string,
+) {
+  const db = supabase as unknown as {
+    from: (name: string) => ReturnType<DbClient["from"]>;
+  };
+  const { error } = await db
+    .from(table)
+    .delete()
+    .eq("id", id)
+    .eq("owner_id", ownerId);
+  return error;
 }
 
 export function normalizeFeaturePayload(
@@ -81,14 +126,14 @@ export function normalizeFeaturePayload(
 }
 
 export async function loadFeature(
-  supabase: SupabaseClient<Database>,
+  supabase: DbClient,
   slug: string,
   user: User,
 ) {
   const feature = getFeature(slug);
   const [column, direction = "asc"] = feature.orderBy.split(".");
   const db = supabase as unknown as {
-    from: (table: string) => ReturnType<SupabaseClient<Database>["from"]>;
+    from: (table: string) => ReturnType<DbClient["from"]>;
   };
   let query = db
     .from(feature.table)
@@ -131,7 +176,7 @@ export function featureActions(slug: string): Actions {
       if (intent === "delete") {
         if (!id) return fail(400, { message: "Missing record id." });
         const db = locals.supabase as unknown as {
-          from: (table: string) => ReturnType<SupabaseClient<Database>["from"]>;
+          from: (table: string) => ReturnType<DbClient["from"]>;
         };
         const { data: existing, error: readError } = await db
           .from(feature.table)
@@ -146,23 +191,13 @@ export function featureActions(slug: string): Actions {
           .eq("id", id)
           .eq("owner_id", locals.user.id);
         if (error) return fail(400, { message: error.message });
-        await syncLinkedReminder(
-          locals.supabase,
-          locals.user.id,
-          feature.table,
-          id,
-          {},
-        );
-        const motorcycleId = motorcycleIdFrom(
-          (existing ?? {}) as Record<string, unknown>,
-        );
-        if (motorcycleId) {
-          await syncMotorcycleOdometer(
-            locals.supabase,
-            locals.user.id,
-            motorcycleId,
-          );
-        }
+        await syncRecordDeleteEffects({
+          supabase: locals.supabase,
+          ownerId: locals.user.id,
+          feature,
+          recordId: id,
+          existing: asRecord(existing),
+        });
         return { ok: true };
       }
 
@@ -233,29 +268,24 @@ export function featureActions(slug: string): Actions {
         if (fileError) return fail(400, { message: fileError.message });
       }
 
+      const db = locals.supabase as unknown as {
+        from: (table: string) => ReturnType<DbClient["from"]>;
+      };
       const query =
         intent === "update" && id
-          ? (
-              locals.supabase as unknown as {
-                from: (
-                  table: string,
-                ) => ReturnType<SupabaseClient<Database>["from"]>;
-              }
-            )
+          ? db
               .from(feature.table)
               .update(payload as never)
               .eq("id", id)
               .eq("owner_id", locals.user.id)
-          : (
-              locals.supabase as unknown as {
-                from: (
-                  table: string,
-                ) => ReturnType<SupabaseClient<Database>["from"]>;
-              }
-            )
+              .select("*")
+              .maybeSingle()
+          : db
               .from(feature.table)
-              .insert(payload as never);
-      const { error } = await query;
+              .insert(payload as never)
+              .select("*")
+              .maybeSingle();
+      const { data, error } = await query;
       if (error) {
         return fail(400, { message: error.message });
       }
@@ -264,7 +294,7 @@ export function featureActions(slug: string): Actions {
         ownerId: locals.user.id,
         feature,
         recordId,
-        payload,
+        payload: asRecord(data ?? payload),
       });
       return { ok: true };
     },

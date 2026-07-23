@@ -6,9 +6,10 @@ import { normalizeApiFeaturePayload } from "$server/domain/api-write";
 import { requireApiUser } from "$server/domain/api-auth";
 import { createSupabaseAdminClient } from "$server/supabase/admin";
 import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
-import { syncRecordEffects } from "$server/domain/crud";
-import { syncMotorcycleOdometer } from "$server/domain/odometer";
-import { syncLinkedReminder } from "$server/domain/record-sync";
+import {
+  syncRecordDeleteEffects,
+  syncRecordEffects,
+} from "$server/domain/crud";
 
 const apiResources: Record<string, { table: string; featureSlug: string }> = {
   "fuel-records": { table: "fuel_records", featureSlug: "fuel" },
@@ -32,6 +33,12 @@ function dbFor(
   return via === "token"
     ? createSupabaseAdminClient(event.platform)
     : event.locals.supabase;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 async function resourceOrThrow(resource: string) {
@@ -83,12 +90,14 @@ export async function POST(event) {
     .select("*")
     .maybeSingle();
   if (dbError) throw error(400, dbError.message);
+  if (!data) throw error(500, "Insert did not return a row.");
+  const record = asRecord(data);
   await syncRecordEffects({
     supabase,
     ownerId: user.id,
     feature,
-    recordId: String(payload.id),
-    payload,
+    recordId: String(record.id ?? payload.id),
+    payload: record,
   });
   return json({ result: data }, { status: 201 });
 }
@@ -119,12 +128,13 @@ export async function PATCH(event) {
     .maybeSingle();
   if (dbError) throw error(400, dbError.message);
   if (!data) throw error(404, "Record not found.");
+  const record = asRecord(data);
   await syncRecordEffects({
     supabase,
     ownerId: user.id,
     feature,
     recordId: id,
-    payload: normalized.payload,
+    payload: record,
   });
   return json({ result: data });
 }
@@ -151,13 +161,12 @@ export async function DELETE(event) {
     .eq("id", id)
     .eq("owner_id", user.id);
   if (dbError) throw error(400, dbError.message);
-  await syncLinkedReminder(supabase, user.id, feature.table, id, {});
-  const motorcycleId =
-    typeof (existing as { motorcycle_id?: unknown }).motorcycle_id === "string"
-      ? (existing as { motorcycle_id: string }).motorcycle_id
-      : null;
-  if (motorcycleId) {
-    await syncMotorcycleOdometer(supabase, user.id, motorcycleId);
-  }
+  await syncRecordDeleteEffects({
+    supabase,
+    ownerId: user.id,
+    feature,
+    recordId: id,
+    existing: asRecord(existing),
+  });
   return json({ ok: true });
 }
