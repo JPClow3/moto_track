@@ -1,3 +1,7 @@
+import { fail } from "@sveltejs/kit";
+import { hasProAccess } from "$server/domain/entitlements";
+import { isDeletionConfirmation } from "$server/domain/account-data";
+
 export async function load({ locals, url }) {
   const { data: profile } = await locals.supabase
     .from("subscription_profiles")
@@ -9,8 +13,15 @@ export async function load({ locals, url }) {
     .select("*")
     .eq("owner_id", locals.user!.id)
     .order("created_at", { ascending: false });
+  const { data: userProfile } = await locals.supabase
+    .from("profiles")
+    .select("theme")
+    .eq("id", locals.user!.id)
+    .maybeSingle();
   return {
     profile,
+    hasProAccess: hasProAccess(profile),
+    theme: userProfile?.theme ?? "system",
     requests: requests ?? [],
     checkout: url.searchParams.get("checkout"),
   };
@@ -23,14 +34,21 @@ export const actions = {
       request_type: "export",
       status: "open",
     });
-    return { ok: true };
+    return { ok: true, message: "Solicitação de exportação registrada." };
   },
-  requestDeletion: async ({ locals }) => {
+  requestDeletion: async ({ request, locals }) => {
+    const form = await request.formData();
+    const confirmation = String(form.get("confirmation") ?? "");
+    if (!isDeletionConfirmation(confirmation)) {
+      return fail(400, {
+        message: "Digite EXCLUIR para confirmar a exclusão da conta.",
+      });
+    }
     await locals.supabase.from("account_data_requests").insert({
       owner_id: locals.user!.id,
       request_type: "deletion",
       status: "open",
     });
-    return { ok: true };
+    return { ok: true, message: "Solicitação de exclusão registrada." };
   },
 };

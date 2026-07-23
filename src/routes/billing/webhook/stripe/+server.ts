@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { createSupabaseAdminClient } from "$server/supabase/admin";
 import {
   constructStripeEvent,
+  graceUntilFrom,
   subscriptionProfileUpdate,
 } from "$server/domain/billing";
 
@@ -80,9 +81,14 @@ export async function POST({ request, platform }) {
         ? subscriptionRef
         : subscriptionRef?.id;
     if (subscriptionId) {
+      // Keep plan=pro and open a short grace window; Conta/garage use hasProAccess.
       await supabase
         .from("subscription_profiles")
-        .update({ plan: "free", stripe_subscription_status: "past_due" })
+        .update({
+          plan: "pro",
+          stripe_subscription_status: "past_due",
+          grace_until: graceUntilFrom(),
+        })
         .eq("stripe_subscription_id", subscriptionId);
     }
   }

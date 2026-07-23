@@ -9,6 +9,7 @@ import {
 import { uploadObjectFile } from "$server/r2/files";
 import { runtimeEnv } from "$server/runtime";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
+import { assertCanCreateUpload } from "$server/domain/entitlement-guards";
 
 function cents(value: FormDataEntryValue | null) {
   const parsed = Number(String(value ?? "0").replace(",", "."));
@@ -39,6 +40,8 @@ async function createFuelRecord({
   const receipt = form.get("receipt_file");
   let receiptFileKey = "";
   if (receipt instanceof File && receipt.size > 0) {
+    const blocked = await assertCanCreateUpload(locals.supabase, user.id);
+    if (blocked) return fail(403, { message: blocked });
     const uploaded = await uploadObjectFile({
       file: receipt,
       module: "fuel",

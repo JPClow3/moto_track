@@ -125,3 +125,24 @@ describe("exposed-schema hardening", () => {
     );
   });
 });
+
+describe("privileged column lockdown", () => {
+  const migration = readFileSync(
+    new URL(
+      "../../supabase/migrations/20260723090000_lock_privileged_columns.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  it("blocks client elevation of is_staff and owner writes to billing rows", () => {
+    expect(migration).toContain("protect_profile_privileges");
+    expect(migration).toContain("is_staff can only be changed by service role");
+    expect(migration).toContain(
+      'drop policy if exists "subscription_profiles owner insert"',
+    );
+    expect(migration).toContain(
+      "revoke insert, update, delete on public.subscription_profiles from authenticated",
+    );
+  });
+});

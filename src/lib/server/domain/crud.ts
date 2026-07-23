@@ -5,6 +5,11 @@ import type { Database } from "$lib/types/database";
 import { uploadObjectFile } from "$server/r2/files";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
 import { syncLinkedReminder } from "$server/domain/record-sync";
+import {
+  assertCanCreateReminder,
+  assertCanCreateUpload,
+  assertCanCreateWorkSession,
+} from "$server/domain/entitlement-guards";
 
 function motorcycleIdFrom(payload: Record<string, unknown>) {
   const value = payload.motorcycle_id;
@@ -180,11 +185,32 @@ export function featureActions(slug: string): Actions {
           : String(payload.id ?? crypto.randomUUID());
       payload.id = recordId;
 
+      const creating = !(intent === "update" && id);
+      if (creating && feature.slug === "reminders") {
+        const blocked = await assertCanCreateReminder(
+          locals.supabase,
+          locals.user.id,
+        );
+        if (blocked) return fail(403, { message: blocked });
+      }
+      if (creating && feature.slug === "trabalho") {
+        const blocked = await assertCanCreateWorkSession(
+          locals.supabase,
+          locals.user.id,
+        );
+        if (blocked) return fail(403, { message: blocked });
+      }
+
       for (const field of feature.fields.filter(
         (item) => item.kind === "file",
       )) {
         const file = formData.get(field.key);
         if (!(file instanceof File) || file.size === 0) continue;
+        const blocked = await assertCanCreateUpload(
+          locals.supabase,
+          locals.user.id,
+        );
+        if (blocked) return fail(403, { message: blocked });
         const uploaded = await uploadObjectFile({
           file,
           module: feature.slug,

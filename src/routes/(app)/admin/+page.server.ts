@@ -1,6 +1,7 @@
 import { fail } from "@sveltejs/kit";
 import { createSupabaseAdminClient } from "$server/supabase/admin";
 import { isStaffUser as staffState } from "$server/domain/staff";
+import { ACCOUNT_EXPORT_TABLES } from "$server/domain/account-data";
 
 export async function load({ locals, platform }) {
   const isStaff = await staffState(locals);
@@ -71,10 +72,45 @@ export const actions = {
     if (!(await staffState(locals)))
       return fail(403, { message: "Staff only." });
     const form = await request.formData();
-    const { error } = await createSupabaseAdminClient(platform)
+    const id = String(form.get("id") ?? "");
+    const supabase = createSupabaseAdminClient(platform);
+    const { data: existing, error: readError } = await supabase
+      .from("account_data_requests")
+      .select("id, owner_id, request_type, status")
+      .eq("id", id)
+      .maybeSingle();
+    if (readError) return fail(400, { message: readError.message });
+    if (!existing) return fail(404, { message: "Solicitação não encontrada." });
+    if (existing.status !== "open") {
+      return fail(400, { message: "Solicitação já processada." });
+    }
+
+    if (existing.request_type === "deletion") {
+      for (const table of ACCOUNT_EXPORT_TABLES) {
+        // Keep the request row until auth cascade removes it; avoids updating a wiped id.
+        if (table === "account_data_requests") continue;
+        const { error: wipeError } = await supabase
+          .from(table)
+          .delete()
+          .eq("owner_id", existing.owner_id);
+        if (wipeError) return fail(400, { message: wipeError.message });
+      }
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", existing.owner_id);
+      if (profileError) return fail(400, { message: profileError.message });
+      const { error: authError } = await supabase.auth.admin.deleteUser(
+        existing.owner_id,
+      );
+      if (authError) return fail(400, { message: authError.message });
+      return { ok: true };
+    }
+
+    const { error } = await supabase
       .from("account_data_requests")
       .update({ status: "fulfilled", fulfilled_at: new Date().toISOString() })
-      .eq("id", String(form.get("id") ?? ""));
+      .eq("id", id);
     return error ? fail(400, { message: error.message }) : { ok: true };
   },
   saveSettings: async ({ request, locals, platform }) => {

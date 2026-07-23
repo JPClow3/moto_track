@@ -72,9 +72,9 @@ const motorcycle = (required = true): FeatureField => ({
 export const featureConfigs: Record<string, FeatureConfig> = {
   garage: {
     slug: "garage",
-    title: "Garage",
+    title: "Garagem",
     subtitle:
-      "Motorcycle profiles, specs, odometer, soft delete, and template-derived setup.",
+      "Perfis de moto, fichas técnicas, odômetro, exclusão suave e setup por template.",
     table: "motorcycles",
     ownerScoped: true,
     orderBy: "name",
@@ -96,9 +96,9 @@ export const featureConfigs: Record<string, FeatureConfig> = {
   },
   fuel: {
     slug: "fuel",
-    title: "Fuel",
+    title: "Combustível",
     subtitle:
-      "Fill-up history, stations, grades, receipts, defaults, repeats, imports, and review cadence.",
+      "Histórico de abastecimentos, postos, combustíveis, comprovantes, padrões, repetir e importação.",
     table: "fuel_records",
     ownerScoped: true,
     orderBy: "date.desc",
@@ -124,9 +124,9 @@ export const featureConfigs: Record<string, FeatureConfig> = {
   },
   maintenance: {
     slug: "maintenance",
-    title: "Maintenance",
+    title: "Manutenção",
     subtitle:
-      "Maintenance records, parts, plan intervals, stock, quick create, photos, and recurring reminders.",
+      "Registros, peças, intervalos, estoque, fotos e lembretes recorrentes.",
     table: "maintenance_records",
     ownerScoped: true,
     orderBy: "date.desc",
@@ -152,9 +152,9 @@ export const featureConfigs: Record<string, FeatureConfig> = {
   },
   tires: {
     slug: "tires",
-    title: "Tires",
+    title: "Pneus",
     subtitle:
-      "Tire catalog, installation history, wear monitoring, pressure logs, and exports.",
+      "Catálogo, histórico de instalação, desgaste, pressão e exportações.",
     table: "tire_records",
     ownerScoped: true,
     orderBy: "installed_at.desc",
@@ -180,9 +180,9 @@ export const featureConfigs: Record<string, FeatureConfig> = {
   },
   documents: {
     slug: "documents",
-    title: "Documents",
+    title: "Documentos",
     subtitle:
-      "Document vault with R2-backed files, metadata, expiry tracking, reminders, and exports.",
+      "Cofre de documentos com arquivos no R2, validade, lembretes e exportações.",
     table: "motorcycle_documents",
     ownerScoped: true,
     orderBy: "name",
@@ -200,9 +200,9 @@ export const featureConfigs: Record<string, FeatureConfig> = {
   },
   reminders: {
     slug: "reminders",
-    title: "Reminders",
+    title: "Lembretes",
     subtitle:
-      "Date, km, and interval reminders with snooze, complete, email, and push notification state.",
+      "Lembretes por data, km e intervalo com adiar, concluir, email e push.",
     table: "reminders",
     ownerScoped: true,
     orderBy: "is_active.desc",
@@ -230,9 +230,9 @@ export const featureConfigs: Record<string, FeatureConfig> = {
   },
   expenses: {
     slug: "expenses",
-    title: "Expenses",
+    title: "Despesas",
     subtitle:
-      "Annual fees, insurance policies, claims, automatic reminders, and CSV export.",
+      "Taxas anuais, seguros, sinistros, lembretes automáticos e exportação CSV.",
     table: "annual_fees",
     ownerScoped: true,
     orderBy: "due_date.desc",
@@ -251,9 +251,9 @@ export const featureConfigs: Record<string, FeatureConfig> = {
   },
   reports: {
     slug: "reports",
-    title: "Reports",
+    title: "Relatórios",
     subtitle:
-      "Cost summaries, timeline, detailed CSV, HTML/PDF sale reports, and public share links.",
+      "Resumos de custo, linha do tempo, CSV e dossiê de venda com link público.",
     table: "sale_report_shares",
     ownerScoped: true,
     orderBy: "created_at.desc",
@@ -268,9 +268,9 @@ export const featureConfigs: Record<string, FeatureConfig> = {
   },
   trabalho: {
     slug: "trabalho",
-    title: "Work",
+    title: "Trabalho",
     subtitle:
-      "Professional delivery sessions, daily costs, income, distance, and profitability.",
+      "Turnos profissionais, custos diários, faturamento, distância e lucratividade.",
     table: "work_sessions",
     ownerScoped: true,
     orderBy: "work_date.desc",

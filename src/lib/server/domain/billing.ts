@@ -116,8 +116,18 @@ export async function fetchProPricing(
   return value;
 }
 
+/** Days of Pro access kept after a failed payment before hard revoke. */
+export const PAYMENT_FAILURE_GRACE_DAYS = 3;
+
+export function graceUntilFrom(now = new Date()) {
+  return new Date(
+    now.getTime() + PAYMENT_FAILURE_GRACE_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+}
+
 export function subscriptionProfileUpdate(
   subscription: StripeSubscriptionRecord,
+  now = new Date(),
 ) {
   const item = subscription.items.data[0];
   const interval = item?.price.recurring?.interval;
@@ -125,12 +135,14 @@ export function subscriptionProfileUpdate(
     typeof subscription.customer === "string"
       ? subscription.customer
       : subscription.customer.id;
+  const status = subscription.status;
+  const entitled = status === "active" || status === "trialing";
+  const pastDue = status === "past_due";
   return {
-    stripe_subscription_status: subscription.status,
-    plan:
-      subscription.status === "active" || subscription.status === "trialing"
-        ? "pro"
-        : "free",
+    stripe_subscription_status: status,
+    // past_due keeps plan=pro so hasProAccess can honour grace_until.
+    plan: entitled || pastDue ? "pro" : "free",
+    grace_until: pastDue ? graceUntilFrom(now) : null,
     stripe_customer_id: customerId,
     stripe_subscription_id: subscription.id,
     billing_interval: interval === "year" ? "yearly" : "monthly",

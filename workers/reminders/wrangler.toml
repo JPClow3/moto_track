@@ -16,3 +16,4 @@ crons = ["0 8 * * *"] # Every day at 8:00 AM UTC
 # EMAIL_FUNCTION_URL
 # EMAIL_FUNCTION_TOKEN
 # REMINDERS_TRIGGER_TOKEN  (optional; leave unset to disable the manual trigger)
+# PUBLIC_VAPID_KEY / VAPID_PRIVATE_KEY / PUSH_ENCRYPTION_KEY (required for web push)

@@ -2,6 +2,10 @@
   import { enhance } from "$app/forms";
   import { locale } from "$lib/i18n/store";
   import { formatMoney, formatPreciseMoney } from "$lib/i18n";
+  import {
+    queueOfflineFuelSubmission,
+    requestOfflineFuelSync,
+  } from "$lib/utils/offline-fuel";
   export let data;
   export let form;
 
@@ -11,6 +15,34 @@
   const price = (millicents: number) => formatPreciseMoney($locale, millicents);
   $: ocr = form?.ocr;
   $: defaults = data.preferences[0] ?? {};
+
+  let offlineMessage = "";
+
+  function handleCreateRecord({
+    formData,
+    cancel,
+  }: {
+    formData: FormData;
+    cancel: () => void;
+  }) {
+    offlineMessage = "";
+    if (navigator.onLine) {
+      void requestOfflineFuelSync();
+      return;
+    }
+    cancel();
+    void queueOfflineFuelSubmission(formData)
+      .then(() => {
+        offlineMessage =
+          "Sem conexão: abastecimento guardado na fila offline e será enviado ao reconectar.";
+      })
+      .catch((error) => {
+        offlineMessage =
+          error instanceof Error
+            ? error.message
+            : "Não foi possível guardar o abastecimento offline.";
+      });
+  }
 </script>
 
 <section class="grid gap-6">
@@ -28,11 +60,11 @@
     <a class="button-secondary" href="/fuel/export.csv">Exportar CSV</a>
   </div>
 
-  {#if data.errorMessage || form?.message}
+  {#if data.errorMessage || form?.message || offlineMessage}
     <div
       class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
     >
-      {data.errorMessage || form?.message}
+      {data.errorMessage || form?.message || offlineMessage}
     </div>
   {/if}
 
@@ -176,7 +208,8 @@
         method="POST"
         action="?/createRecord"
         enctype="multipart/form-data"
-        use:enhance
+        use:enhance={({ formData, cancel }) =>
+          handleCreateRecord({ formData, cancel })}
       >
         <h2 class="display text-xl">Novo abastecimento</h2>
         <select class="field" name="motorcycle_id"

@@ -1,7 +1,3 @@
-<section class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-  <h1 class="display text-4xl">Política de Privacidade</h1>
-  <p class="mt-4 text-[var(--muted)]">
-    Documento legal migrado para SvelteKit. Conteúdo definitivo deve ser
-    revisado antes do lançamento.
-  </p>
-</section>
+<script lang="ts">
+  // Redirect-only route; load in +page.server.ts sends 308 → /privacidade.
+</script>

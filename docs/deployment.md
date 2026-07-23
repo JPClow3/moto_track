@@ -9,6 +9,7 @@ Configure the `R2_BUCKET` binding to the `moto-track-media` R2 bucket. Add these
 - `PUBLIC_SUPABASE_URL`
 - `PUBLIC_SUPABASE_ANON_KEY`
 - `PUBLIC_SITE_URL`
+- `PUBLIC_VAPID_KEY`
 
 Add these as encrypted secrets:
 
@@ -18,22 +19,29 @@ Add these as encrypted secrets:
 - `STRIPE_PRO_MONTHLY_PRICE_ID`
 - `STRIPE_PRO_YEARLY_PRICE_ID`
 - `MISTRAL_API_KEY`
+- `RESEND_API_KEY`
+- `DEFAULT_FROM_EMAIL`
+- `VAPID_PRIVATE_KEY`
+- `PUSH_ENCRYPTION_KEY`
 
 `MISTRAL_API_KEY` is server-only. Receipt image and PDF OCR fails clearly when it is absent; it never returns fabricated fuel values.
+
+`PUBLIC_VAPID_KEY` / `VAPID_PRIVATE_KEY` / `PUSH_ENCRYPTION_KEY` power browser push subscriptions and the reminder worker send path. `RESEND_API_KEY` is required by the Supabase Edge Function that sends transactional email.
 
 ## Supabase
 
 1. Run `npm run db:migrate` against the target project.
 2. Run `npm run supabase:types` and commit any generated type changes.
 3. Confirm RLS is enabled for every user-owned table.
-4. Configure Supabase Auth redirect URLs for the Pages preview hostname, production hostname, and `http://localhost:5173`. All flows (magic link, OAuth, password recovery) funnel through `/auth/callback`, so only that path needs to be allow-listed per hostname (e.g. `https://moto-track.net/auth/callback`).
-5. If using Supabase's OAuth 2.1 Server (Moto Track acting as an identity provider for third-party apps): under **Authentication → OAuth Server**, enable it and set **Authorization Path** to `/oauth/consent`. Register each OAuth client app under **Authentication → OAuth Apps** with its exact redirect URI(s) — no wildcards allowed there.
+4. Confirm privileged columns stay locked: `profiles.is_staff` (trigger) and `subscription_profiles` billing fields (owner select-only).
+5. Configure Supabase Auth redirect URLs for the Pages preview hostname, production hostname, and `http://localhost:5173`. All flows (magic link, OAuth, password recovery) funnel through `/auth/callback`, so only that path needs to be allow-listed per hostname (e.g. `https://moto-track.net/auth/callback`).
+6. If using Supabase's OAuth 2.1 Server (Moto Track acting as an identity provider for third-party apps): under **Authentication → OAuth Server**, enable it and set **Authorization Path** to `/oauth/consent`. Register each OAuth client app under **Authentication → OAuth Apps** with its exact redirect URI(s) — no wildcards allowed there.
 
 ## Stripe and reminders
 
 1. Create the monthly and yearly Pro prices and set their IDs as Pages secrets.
 2. Point the Stripe webhook to `/billing/webhook/stripe` and use the endpoint signing secret.
-3. Deploy the reminder worker with `npm run worker:deploy` after setting its four Worker secrets shown in `workers/reminders/wrangler.toml`.
+3. Deploy the reminder worker with `npm run worker:deploy` after setting its Worker secrets in `workers/reminders/wrangler.toml` (email + VAPID keys when push is enabled).
 
 ## Preview acceptance test
 
@@ -44,3 +52,5 @@ On a Pages preview deployment with Stripe test keys, create a user and motorcycl
 3. A maintenance interval, document expiry, and annual fee each create one linked reminder and updating the source updates that reminder.
 4. An uploaded receipt/document downloads only for its owner.
 5. Checkout, portal access, and a signed Stripe webhook update the subscription profile.
+6. Free-plan caps block a second active bike, a 4th upload, a 4th active reminder, and a 4th work session in the same month.
+7. Conta export download and deletion confirmation (`EXCLUIR`) create LGPD requests; staff can fulfill them in Admin.
