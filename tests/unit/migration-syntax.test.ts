@@ -146,3 +146,21 @@ describe("privileged column lockdown", () => {
     );
   });
 });
+
+describe("free entitlement cap triggers", () => {
+  const migration = readFileSync(
+    new URL(
+      "../../supabase/migrations/20260723093000_enforce_free_entitlement_caps.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  it("adds database triggers that mirror marketed Free limits", () => {
+    expect(migration).toContain("owner_has_pro_access");
+    expect(migration).toContain("enforce_free_reminder_limit");
+    expect(migration).toContain("enforce_free_work_session_limit");
+    expect(migration).toContain("enforce_free_upload_limit");
+    expect(migration).toContain("enforce_free_active_motorcycle_limit");
+  });
+});

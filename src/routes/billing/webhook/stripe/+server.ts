@@ -82,6 +82,7 @@ export async function POST({ request, platform }) {
         : subscriptionRef?.id;
     if (subscriptionId) {
       // Keep plan=pro and open a short grace window; Conta/garage use hasProAccess.
+      // Do not revive canceled/unpaid subscriptions if a late payment_failed arrives.
       await supabase
         .from("subscription_profiles")
         .update({
@@ -89,7 +90,8 @@ export async function POST({ request, platform }) {
           stripe_subscription_status: "past_due",
           grace_until: graceUntilFrom(),
         })
-        .eq("stripe_subscription_id", subscriptionId);
+        .eq("stripe_subscription_id", subscriptionId)
+        .in("stripe_subscription_status", ["active", "trialing", "past_due"]);
     }
   }
 

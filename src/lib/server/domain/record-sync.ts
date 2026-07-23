@@ -1,3 +1,7 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "$lib/types/database";
+import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
+
 export type LinkedReminder = {
   title: string;
   trigger_type: "by_km" | "by_date" | "by_interval";
@@ -111,14 +115,21 @@ export async function syncLinkedReminder(
     is_active: true,
     notes: marker,
   };
-  const { error } = existing
-    ? await supabase
-        .from("reminders")
-        .update(values)
-        .eq("id", existing.id)
-        .eq("owner_id", ownerId)
-    : await supabase.from("reminders").insert(values);
+  if (existing) {
+    const { error } = await supabase
+      .from("reminders")
+      .update(values)
+      .eq("id", existing.id)
+      .eq("owner_id", ownerId);
+    if (error) throw error;
+    return;
+  }
+
+  // Auto-linked creates should not blow past Free caps; skip rather than fail
+  // the parent record save.
+  const blocked = await assertCanCreateReminder(supabase, ownerId);
+  if (blocked) return;
+
+  const { error } = await supabase.from("reminders").insert(values);
   if (error) throw error;
 }
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "$lib/types/database";

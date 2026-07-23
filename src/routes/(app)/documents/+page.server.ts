@@ -1,11 +1,18 @@
 import { fail } from "@sveltejs/kit";
 import { featureActions, loadFeature } from "$server/domain/crud";
+import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
+
 const base = featureActions("documents");
 export const actions = {
   ...base,
   createReminder: async ({ request, locals }) => {
     const f = await request.formData();
     const id = String(f.get("id") ?? "");
+    const blocked = await assertCanCreateReminder(
+      locals.supabase,
+      locals.user!.id,
+    );
+    if (blocked) return fail(403, { message: blocked });
     const { data: doc } = await locals.supabase
       .from("motorcycle_documents")
       .select("*")

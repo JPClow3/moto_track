@@ -134,7 +134,7 @@
     {/if}
     <p class="text-sm text-[var(--muted)]">{$t("conta.currentPlan")}</p>
     <p class="display mt-2 text-4xl uppercase">
-      {isPro ? "pro" : (data.profile?.plan ?? "free")}
+      {isPro ? "pro" : "free"}
     </p>
     {#if isPro}
       <p class="mt-2 text-sm text-[var(--muted)]">
