@@ -14,9 +14,11 @@ crons = ["0 8 * * *"] # Every day at 8:00 AM UTC
 DEFAULT_FROM_EMAIL = "Moto Track <no-reply@moto-track.net>"
 
 # Hyperdrive config "moto-track-neon" pointing at the Neon database.
+# Required by wrangler for local emulation; production uses the binding id.
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "173c6f16dc3445cdb982cd84dbcb9b23"
+localConnectionString = "postgresql://user:pass@127.0.0.1:1/postgres"
 
 # You must manually set these secrets using `wrangler secret put` or via the Cloudflare Dashboard:
 # RESEND_API_KEY
