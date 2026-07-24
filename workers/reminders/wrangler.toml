@@ -21,3 +21,7 @@ id = "173c6f16dc3445cdb982cd84dbcb9b23"
 # You must manually set these secrets using `wrangler secret put` or via the Cloudflare Dashboard:
 # RESEND_API_KEY
 # REMINDERS_TRIGGER_TOKEN  (optional; leave unset to disable the manual trigger)
+# PUBLIC_VAPID_KEY         (optional; push delivery is skipped until this and VAPID_PRIVATE_KEY are set)
+# VAPID_PRIVATE_KEY        (optional; see above)
+# PUSH_ENCRYPTION_KEY      (optional; must match the app's PUSH_ENCRYPTION_KEY to decrypt subscriptions)
+# VAPID_SUBJECT            (optional; defaults to mailto:ops@mototrack.app)

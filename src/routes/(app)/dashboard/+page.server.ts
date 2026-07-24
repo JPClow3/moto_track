@@ -1,3 +1,4 @@
+import { redirect } from "@sveltejs/kit";
 import { dashboardSummary, healthScore } from "$server/domain/reports";
 import { evaluateReminder, type ReminderInput } from "$server/domain/reminders";
 import {
@@ -56,6 +57,15 @@ export async function load({ locals }) {
   }
 
   const ownerId = user.id;
+  const [motorcycleCountRow] = await locals.db<Array<{ count: number }>>`
+    select count(*)::int from motorcycles where owner_id = ${ownerId}
+  `.catch(() => [{ count: 0 }]);
+  // Same emptiness rule as /onboarding: any motorcycle counts, including
+  // archived ones, so inactive-only garages never bounce between routes.
+  if (!motorcycleCountRow?.count) {
+    throw redirect(303, "/onboarding");
+  }
+
   const [
     motorcycleRows,
     fuelRows,

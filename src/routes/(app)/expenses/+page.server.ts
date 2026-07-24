@@ -1,7 +1,13 @@
 import { fail } from "@sveltejs/kit";
-import { featureActions, loadFeature } from "$server/domain/crud";
-
-type Row = Record<string, unknown>;
+import {
+  deleteOwnedRow,
+  featureActions,
+  loadFeature,
+} from "$server/domain/crud";
+import {
+  clearInsuranceReminder,
+  syncInsuranceReminder,
+} from "$server/domain/record-sync";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -53,32 +59,17 @@ export const actions = {
       return fail(400, { message: messageFrom(err) });
     }
 
-    // Best-effort linked reminder, matching the Supabase version, which never
-    // checked this upsert's error. There is no unique constraint on
-    // reminders(owner_id, title) in the schema, so `on conflict` here always
-    // throws 42P10 — the exact same dead-on-arrival call the old code
-    // silently swallowed via an unchecked `{ error }`.
-    try {
-      await locals.db`
-        insert into reminders ${locals.db({
-          owner_id: ownerId,
-          motorcycle_id: payload.motorcycle_id,
-          title: `Seguro: ${payload.provider}`,
-          trigger_type: "by_date",
-          trigger_value_days: payload.notify_before_days,
-          reference_date: payload.coverage_end,
-          is_active: true,
-          send_email: true,
-          send_push: true,
-          notes: `insurance:${id}`,
-        })}
-        on conflict (owner_id, title) do update set
-          trigger_value_days = excluded.trigger_value_days,
-          reference_date = excluded.reference_date,
-          notes = excluded.notes
-      `;
-    } catch {
-      // Ignored — see comment above.
+    const reminderResult = await syncInsuranceReminder(locals.db, ownerId, {
+      id,
+      motorcycle_id: payload.motorcycle_id,
+      provider: payload.provider,
+      coverage_end: payload.coverage_end,
+      notify_before_days: payload.notify_before_days,
+    });
+    if (!reminderResult.ok) {
+      return fail(403, {
+        message: `Seguro salvo, mas o lembrete não foi criado: ${reminderResult.message}`,
+      });
     }
     return { ok: true };
   },
@@ -115,36 +106,78 @@ export const actions = {
   },
   deletePolicy: async ({ request, locals }) => {
     const f = await request.formData();
-    try {
-      await locals.db`
-        delete from insurance_policies
-        where id = ${v(f, "id")} and owner_id = ${locals.user!.id}
-      `;
-    } catch (err) {
-      return fail(400, { message: messageFrom(err) });
-    }
+    const id = v(f, "id");
+    const ownerId = locals.user!.id;
+    const error = await deleteOwnedRow(
+      locals.db,
+      "insurance_policies",
+      id,
+      ownerId,
+    );
+    if (error) return fail(400, { message: error });
+    await clearInsuranceReminder(locals.db, ownerId, id);
     return { ok: true };
   },
+  deleteClaim: async ({ request, locals }) => {
+    const f = await request.formData();
+    const error = await deleteOwnedRow(
+      locals.db,
+      "insurance_claims",
+      v(f, "id"),
+      locals.user!.id,
+    );
+    return error ? fail(400, { message: error }) : { ok: true };
+  },
+};
+
+type PolicyRow = {
+  id: string;
+  provider: string;
+  policy_number: string | null;
+  coverage_end: string;
+  premium_cents: number | null;
+};
+
+type ClaimRow = {
+  id: string;
+  claim_date: string;
+  description: string;
+  amount_cents: number | null;
+  status: string;
+  policy_provider: string | null;
+  policy_number: string | null;
 };
 
 export async function load({ locals }) {
   const ownerId = locals.user!.id;
   const baseData = await loadFeature(locals.db, "expenses", locals.user!);
   const [policies, claims] = await Promise.all([
-    locals.db<Row[]>`
-      select * from insurance_policies
+    locals.db<PolicyRow[]>`
+      select id, provider, policy_number, coverage_end, premium_cents
+      from insurance_policies
       where owner_id = ${ownerId}
       order by coverage_end
-    `.catch(() => [] as Row[]),
-    locals.db<Row[]>`
-      select * from insurance_claims
-      where owner_id = ${ownerId}
-      order by claim_date desc
-    `.catch(() => [] as Row[]),
+    `.catch(() => [] as PolicyRow[]),
+    locals.db<ClaimRow[]>`
+      select c.id, c.claim_date, c.description, c.amount_cents, c.status,
+        p.provider as policy_provider, p.policy_number
+      from insurance_claims c
+      left join insurance_policies p on p.id = c.policy_id
+      where c.owner_id = ${ownerId}
+      order by c.claim_date desc
+    `.catch(() => [] as ClaimRow[]),
   ]);
   return {
     ...baseData,
     policies,
-    claims,
+    claims: claims.map((claim) => ({
+      ...claim,
+      insurance_policies: claim.policy_provider
+        ? {
+            provider: claim.policy_provider,
+            policy_number: claim.policy_number,
+          }
+        : null,
+    })),
   };
 }

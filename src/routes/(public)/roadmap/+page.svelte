@@ -84,8 +84,8 @@
           body: "Qualquer módulo — abastecimento, manutenção, pneus, despesas — sai em planilha num clique.",
         },
         {
-          title: "API v1 (leitura)",
-          body: "Endpoints REST autenticados pela sessão para abastecimentos, manutenções, pneus, lembretes, documentos e despesas.",
+          title: "API v1",
+          body: "Endpoints REST autenticados por sessão ou token pessoal, com leitura e escrita para abastecimentos, manutenções, pneus, lembretes, documentos e despesas.",
         },
         {
           title: "Guias e comunidade",
@@ -99,6 +99,10 @@
           title: "Conta e pedidos de dados",
           body: "Consulte o plano e solicite a exportação ou exclusão dos seus dados pela própria tela.",
         },
+        {
+          title: "Push no celular",
+          body: "Lembretes também chegam como notificação do sistema quando o push está ativado na Conta.",
+        },
       ],
     },
     {
@@ -107,12 +111,7 @@
       heading: "O que vem agora",
       blurb: "Definido e priorizado — é para onde vai o próximo esforço.",
       icon: Wrench,
-      items: [
-        {
-          title: "Push no celular",
-          body: "Receber o lembrete como notificação do sistema, além do e-mail que já sai hoje.",
-        },
-      ],
+      items: [],
     },
     {
       status: "planned",

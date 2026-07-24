@@ -4,7 +4,8 @@ Moto Track is now a SvelteKit + Neon + Cloudflare application.
 
 ## Stack
 
-- SvelteKit, TypeScript, Tailwind, lucide-svelte, Chart.js
+- SvelteKit, TypeScript, Tailwind, lucide-svelte
+- Custom SVG charts (no Chart.js)
 - Neon Postgres accessed via postgres.js, through Cloudflare Hyperdrive at the edge
 - Neon Auth (managed Better Auth) for authentication; authorization is app-layer
   only (every query filters by `owner_id` — there is no RLS on Neon)

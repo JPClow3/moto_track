@@ -28,11 +28,8 @@ export default {
         success: "#15803d",
         warning: "#b45309",
 
-        // Legacy aliases. `signal` was amber and `moss` was green; both are
-        // still referenced by pages not yet migrated, so they point at the
-        // new brand values to keep those pages coherent in the meantime.
-        signal: "#dc2626",
-        moss: "#15803d",
+        // Legacy aliases removed: pages use brand/success tokens directly.
+        // (signal/moss previously pointed here as temporary redirects.)
       },
       fontFamily: {
         sans: ["Barlow", "ui-sans-serif", "system-ui", "sans-serif"],

@@ -1,4 +1,9 @@
 import { fail, type Actions } from "@sveltejs/kit";
+import {
+  hasProAccess,
+  type SubscriptionProfile,
+} from "$server/domain/entitlements";
+import { isDeletionConfirmation } from "$server/domain/account-data";
 
 type Row = Record<string, unknown>;
 
@@ -11,7 +16,7 @@ export async function load({ locals, url }) {
   // Reads are best-effort, matching the old unchecked `.maybeSingle()` /
   // `.select()` calls: a failure yields an empty profile/list instead of
   // failing the whole page load.
-  const [[profile], requests] = await Promise.all([
+  const [[profile], requests, [userProfile]] = await Promise.all([
     locals.db<Row[]>`
       select * from subscription_profiles
       where owner_id = ${ownerId}
@@ -21,9 +26,14 @@ export async function load({ locals, url }) {
       where owner_id = ${ownerId}
       order by created_at desc
     `.catch(() => [] as Row[]),
+    locals.db<Array<{ theme: string }>>`
+      select theme from profiles where id = ${ownerId}
+    `.catch(() => [] as Array<{ theme: string }>),
   ]);
   return {
     profile: profile ?? null,
+    hasProAccess: hasProAccess(profile as SubscriptionProfile | null),
+    theme: userProfile?.theme ?? "system",
     requests,
     checkout: url.searchParams.get("checkout"),
   };
@@ -42,9 +52,16 @@ export const actions: Actions = {
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
-    return { ok: true };
+    return { ok: true, message: "Solicitação de exportação registrada." };
   },
-  requestDeletion: async ({ locals }) => {
+  requestDeletion: async ({ request, locals }) => {
+    const form = await request.formData();
+    const confirmation = String(form.get("confirmation") ?? "");
+    if (!isDeletionConfirmation(confirmation)) {
+      return fail(400, {
+        message: "Digite EXCLUIR para confirmar a exclusão da conta.",
+      });
+    }
     try {
       await locals.db`
         insert into account_data_requests ${locals.db({
@@ -56,6 +73,6 @@ export const actions: Actions = {
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
-    return { ok: true };
+    return { ok: true, message: "Solicitação de exclusão registrada." };
   },
 };

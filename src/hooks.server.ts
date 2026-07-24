@@ -19,6 +19,8 @@ const protectedPrefixes = [
   // instead of redirecting to sign-in.
   "/onboarding",
   "/billing/conta",
+  "/billing/portal",
+  "/billing/checkout",
   "/admin",
 ];
 

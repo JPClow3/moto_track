@@ -12,25 +12,30 @@ describe("Stripe billing", () => {
     expect(parseBillingInterval(null)).toBe("monthly");
   });
 
-  it("revokes Pro access when Stripe reports a non-entitled subscription status", () => {
+  it("keeps Pro during past_due and opens a grace window", () => {
+    const now = new Date("2026-07-23T12:00:00.000Z");
     expect(
-      subscriptionProfileUpdate({
-        id: "sub_past_due",
-        customer: "cus_123",
-        status: "past_due",
-        cancel_at_period_end: false,
-        items: {
-          data: [
-            {
-              price: { recurring: { interval: "month" } },
-              current_period_end: 1_800_000_000,
-            },
-          ],
+      subscriptionProfileUpdate(
+        {
+          id: "sub_past_due",
+          customer: "cus_123",
+          status: "past_due",
+          cancel_at_period_end: false,
+          items: {
+            data: [
+              {
+                price: { recurring: { interval: "month" } },
+                current_period_end: 1_800_000_000,
+              },
+            ],
+          },
         },
-      }),
+        now,
+      ),
     ).toEqual({
       stripe_subscription_status: "past_due",
-      plan: "free",
+      plan: "pro",
+      grace_until: "2026-07-26T12:00:00.000Z",
       stripe_customer_id: "cus_123",
       stripe_subscription_id: "sub_past_due",
       billing_interval: "monthly",
@@ -58,6 +63,7 @@ describe("Stripe billing", () => {
     ).toEqual({
       stripe_subscription_status: "active",
       plan: "pro",
+      grace_until: null,
       stripe_customer_id: "cus_456",
       stripe_subscription_id: "sub_active",
       billing_interval: "yearly",

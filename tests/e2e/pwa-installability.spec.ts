@@ -41,11 +41,7 @@ test("serves a standalone Moto Track manifest", async ({ request }) => {
   });
 });
 
-// TODO: implement in a follow-up — the PWA installability plan
-// (docs/superpowers/plans/2026-07-16-pwa-installability.md) scoped this task
-// to service-worker registration only, "without adding offline data caching
-// yet." sw.js has no fetch/cache handling, so this asserts unbuilt behavior.
-test.skip("pre-caches an offline fallback for a previously unavailable connection", async ({
+test("pre-caches an offline fallback for a previously unavailable connection", async ({
   page,
 }) => {
   await page.goto("/");

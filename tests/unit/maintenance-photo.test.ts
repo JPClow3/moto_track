@@ -8,7 +8,7 @@ describe("maintenance photo validation", () => {
   it("accepts a non-empty image within the upload limit", () => {
     const file = new File(["photo"], "before.jpg", { type: "image/jpeg" });
 
-    expect(validateMaintenancePhoto(file)).toEqual({ ok: true });
+    expect(validateMaintenancePhoto(file)).toEqual({ ok: true, file });
   });
 
   it("rejects an empty, non-image, or active-image upload", () => {

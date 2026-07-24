@@ -1,11 +1,21 @@
 <script lang="ts">
   import FeaturePage from "$components/FeaturePage.svelte";
   import { enhance } from "$app/forms";
+  import { locale } from "$lib/i18n/store";
+  import { formatMoney } from "$lib/i18n";
   export let data;
+  export let form;
+
+  const brl = (cents: number) => formatMoney($locale, cents);
+  const policyLabel = (policy: {
+    provider: string;
+    policy_number: string | null;
+  }) =>
+    `${policy.provider}${policy.policy_number ? ` · ${policy.policy_number}` : ""}`;
 </script>
 
 <section class="grid gap-6">
-  <FeaturePage {...data} />
+  <FeaturePage {...data} errorMessage={form?.message || data.errorMessage} />
   <div class="grid gap-6 lg:grid-cols-2">
     <form
       class="panel grid gap-2 p-5"
@@ -50,7 +60,7 @@
       <h2 class="font-bold">Sinistro</h2>
       <select class="field" name="policy_id" required
         ><option value="">Seguro</option>{#each data.policies as p}<option
-            value={p.id}>{p.provider} · {p.policy_number}</option
+            value={p.id}>{policyLabel(p)}</option
           >{/each}</select
       ><input class="field" name="claim_date" type="date" required /><input
         class="field"
@@ -71,13 +81,50 @@
     </form>
   </div>
   <div class="grid gap-2">
-    {#each data.policies as p}<article class="panel flex justify-between p-4">
-        <span>{p.provider} · vence {p.coverage_end}</span>
+    <h2 class="display text-2xl">Apólices</h2>
+    {#each data.policies as p}
+      <article class="panel flex justify-between gap-3 p-4">
+        <span
+          >{policyLabel(p)} · vence {p.coverage_end} · {brl(
+            p.premium_cents ?? 0,
+          )}</span
+        >
         <form method="POST" action="?/deletePolicy" use:enhance>
           <input type="hidden" name="id" value={p.id} /><button
             class="button-danger">Excluir</button
           >
         </form>
-      </article>{/each}
+      </article>
+    {:else}
+      <p class="text-sm text-[var(--muted)]">Nenhuma apólice cadastrada.</p>
+    {/each}
+  </div>
+  <div class="grid gap-2">
+    <h2 class="display text-2xl">Sinistros</h2>
+    {#each data.claims as claim}
+      <article class="panel flex justify-between gap-3 p-4">
+        <div>
+          <p class="font-medium">
+            {claim.insurance_policies
+              ? policyLabel(claim.insurance_policies)
+              : "Seguro"}
+            · {claim.claim_date}
+          </p>
+          <p class="mt-1 text-sm text-[var(--muted)]">
+            {claim.description} · {brl(claim.amount_cents ?? 0)} · {claim.status ===
+            "settled"
+              ? "Resolvido"
+              : "Aberto"}
+          </p>
+        </div>
+        <form method="POST" action="?/deleteClaim" use:enhance>
+          <input type="hidden" name="id" value={claim.id} /><button
+            class="button-danger">Excluir</button
+          >
+        </form>
+      </article>
+    {:else}
+      <p class="text-sm text-[var(--muted)]">Nenhum sinistro registrado.</p>
+    {/each}
   </div>
 </section>

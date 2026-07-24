@@ -1,4 +1,5 @@
 import type { Sql } from "postgres";
+import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
 
 export type LinkedReminder = {
   title: string;
@@ -75,10 +76,47 @@ export function reminderForRecord(
   };
 }
 
-// postgres.js throws on query failure, so the explicit `if (error) throw`
-// checks the Supabase version needed are no longer necessary here — an
-// awaited query that fails simply propagates as a normal exception, which is
-// the same "let it bubble to the caller" behavior the old code had.
+// Shared owner+marker upsert for every auto-linked reminder (record-linked,
+// insurance-linked, maintenance-plan-linked). postgres.js throws on query
+// failure, so callers just let the exception bubble rather than checking an
+// explicit `{ error }`, matching how this file always worked.
+async function upsertMarkedReminder(
+  db: Sql,
+  ownerId: string,
+  marker: string,
+  values: Record<string, unknown>,
+  { failOnCap = false }: { failOnCap?: boolean } = {},
+) {
+  const [existing] = await db<{ id: string }[]>`
+    select id from reminders
+    where owner_id = ${ownerId} and notes = ${marker}
+  `;
+
+  if (existing) {
+    await db`
+      update reminders
+      set ${db(values)}
+      where id = ${existing.id} and owner_id = ${ownerId}
+    `;
+    return { ok: true as const, created: false };
+  }
+
+  // Auto-linked creates should not blow past Free caps; by default skip
+  // rather than fail the parent record save. Explicit user actions (saving
+  // an insurance policy or a maintenance plan) opt into `failOnCap` so the
+  // cap is surfaced instead of silently dropped.
+  const blocked = await assertCanCreateReminder(db, ownerId);
+  if (blocked) {
+    if (failOnCap) return { ok: false as const, message: blocked };
+    return { ok: true as const, created: false, skipped: true as const };
+  }
+
+  await db`
+    insert into reminders ${db(values)}
+  `;
+  return { ok: true as const, created: true };
+}
+
 export async function syncLinkedReminder(
   db: Sql,
   ownerId: string,
@@ -88,12 +126,12 @@ export async function syncLinkedReminder(
 ) {
   const marker = `auto:${table}:${recordId}`;
   const reminder = reminderForRecord(table, recordId, payload);
-  const [existing] = await db<{ id: string }[]>`
-    select id from reminders
-    where owner_id = ${ownerId} and notes = ${marker}
-  `;
 
   if (!reminder) {
+    const [existing] = await db<{ id: string }[]>`
+      select id from reminders
+      where owner_id = ${ownerId} and notes = ${marker}
+    `;
     if (existing) {
       await db`
         delete from reminders
@@ -113,15 +151,97 @@ export async function syncLinkedReminder(
     notes: marker,
   };
 
+  await upsertMarkedReminder(db, ownerId, marker, values);
+}
+
+export type InsurancePolicyReminderInput = {
+  id: string;
+  motorcycle_id: string;
+  provider: string;
+  coverage_end: string;
+  notify_before_days: number;
+};
+
+export async function syncInsuranceReminder(
+  db: Sql,
+  ownerId: string,
+  policy: InsurancePolicyReminderInput,
+) {
+  const marker = `insurance:${policy.id}`;
+  const values = {
+    owner_id: ownerId,
+    motorcycle_id: policy.motorcycle_id,
+    title: `Seguro: ${policy.provider}`,
+    trigger_type: "by_date" as const,
+    trigger_value_days: policy.notify_before_days,
+    reference_date: policy.coverage_end,
+    is_active: true,
+    send_email: true,
+    send_push: true,
+    notes: marker,
+    updated_at: new Date().toISOString(),
+  };
+  return upsertMarkedReminder(db, ownerId, marker, values, {
+    failOnCap: true,
+  });
+}
+
+export async function clearInsuranceReminder(
+  db: Sql,
+  ownerId: string,
+  policyId: string,
+) {
+  await db`
+    delete from reminders
+    where owner_id = ${ownerId} and notes = ${`insurance:${policyId}`}
+  `;
+}
+
+export async function syncPlanReminder(
+  db: Sql,
+  ownerId: string,
+  plan: {
+    id: string;
+    motorcycle_id: string;
+    maintenance_type: string;
+    interval_km: number | null;
+    interval_days: number | null;
+  },
+) {
+  const [existing] = await db<{ id: string }[]>`
+    select id from reminders
+    where owner_id = ${ownerId} and linked_plan_item_id = ${plan.id}
+  `;
+
+  const values = {
+    owner_id: ownerId,
+    motorcycle_id: plan.motorcycle_id,
+    title: `Plano: ${plan.maintenance_type}`,
+    trigger_type: (plan.interval_km ? "by_interval" : "by_date") as
+      "by_interval" | "by_date",
+    trigger_value_km: plan.interval_km,
+    trigger_value_days: plan.interval_days,
+    is_active: true,
+    send_email: true,
+    send_push: true,
+    linked_plan_item_id: plan.id,
+    updated_at: new Date().toISOString(),
+  };
+
   if (existing) {
     await db`
       update reminders
       set ${db(values)}
       where id = ${existing.id} and owner_id = ${ownerId}
     `;
-  } else {
-    await db`
-      insert into reminders ${db(values)}
-    `;
+    return { ok: true as const };
   }
+
+  const blocked = await assertCanCreateReminder(db, ownerId);
+  if (blocked) return { ok: false as const, message: blocked };
+
+  await db`
+    insert into reminders ${db(values)}
+  `;
+  return { ok: true as const };
 }

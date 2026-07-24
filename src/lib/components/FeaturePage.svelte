@@ -5,6 +5,7 @@
   import type { FeatureConfig } from "$server/domain/features";
   import { t, locale } from "$lib/i18n/store";
   import { formatMoney, formatPreciseMoney } from "$lib/i18n";
+  import { privateFileUrl } from "$lib/utils/private-file-url";
 
   export let feature: FeatureConfig;
   export let rows: Array<Record<string, unknown>> = [];
@@ -29,6 +30,14 @@
       feature.fields.find((field) => field.key === column)?.label ??
       column.replaceAll("_", " ")
     );
+  }
+
+  function fileHref(row: Record<string, unknown>, key: string) {
+    const field = feature.fields.find((item) => item.key === key);
+    const value = row[key];
+    if (typeof value !== "string" || !value) return null;
+    if (field?.kind === "file") return privateFileUrl(value);
+    return null;
   }
 
   function valueFor(row: Record<string, unknown>, key: string) {
@@ -134,7 +143,21 @@
             {#each rows as row (row.id ?? JSON.stringify(row))}
               <tr class="row-hover border-b border-[var(--line)]">
                 {#each feature.listColumns as column (column)}
-                  <td class="px-4 py-3">{valueFor(row, column)}</td>
+                  {@const href = fileHref(row, column)}
+                  <td class="px-4 py-3">
+                    {#if href}
+                      <a
+                        class="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+                        {href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {$t("common.openFile")}
+                      </a>
+                    {:else}
+                      {valueFor(row, column)}
+                    {/if}
+                  </td>
                 {/each}
                 <td class="px-4 py-3 text-xs text-[var(--muted)]"
                   >{valueFor(row, "updated_at")}</td

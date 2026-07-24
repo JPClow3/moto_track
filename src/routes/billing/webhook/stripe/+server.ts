@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { getDb } from "$server/db/client";
 import {
   constructStripeEvent,
+  graceUntilFrom,
   subscriptionProfileUpdate,
 } from "$server/domain/billing";
 
@@ -102,6 +103,7 @@ export async function POST({ request, platform }) {
           on conflict (owner_id) do update set
             stripe_subscription_status = excluded.stripe_subscription_status,
             plan = excluded.plan,
+            grace_until = excluded.grace_until,
             stripe_customer_id = excluded.stripe_customer_id,
             stripe_subscription_id = excluded.stripe_subscription_id,
             billing_interval = excluded.billing_interval,
@@ -126,10 +128,17 @@ export async function POST({ request, platform }) {
       try {
         // Scoped by stripe_subscription_id, so this can only ever update the
         // one customer's row whose subscription actually failed to invoice.
+        // Keep plan=pro and open a short grace window; Conta/garage use
+        // hasProAccess. Do not revive canceled/unpaid subscriptions if a late
+        // payment_failed arrives after the subscription already lapsed.
         await db`
           update subscription_profiles
-          set plan = 'free', stripe_subscription_status = 'past_due'
+          set
+            plan = 'pro',
+            stripe_subscription_status = 'past_due',
+            grace_until = ${graceUntilFrom()}
           where stripe_subscription_id = ${subscriptionId}
+            and stripe_subscription_status in ('active', 'trialing', 'past_due')
         `;
       } catch (err) {
         // Swallowed — matches the previous unchecked Supabase update.

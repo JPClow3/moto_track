@@ -1,5 +1,6 @@
 import { fail } from "@sveltejs/kit";
 import { featureActions, loadFeature } from "$server/domain/crud";
+import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -13,6 +14,9 @@ export const actions = {
     const f = await request.formData();
     const id = String(f.get("id") ?? "");
     const ownerId = locals.user!.id;
+
+    const blocked = await assertCanCreateReminder(locals.db, ownerId);
+    if (blocked) return fail(403, { message: blocked });
 
     let doc:
       | {

@@ -105,7 +105,8 @@ export const actions = {
     const body = String(f.get("body") ?? "").trim();
     if (!body) return fail(400, { message: "Escreva um comentário." });
     const [article] = await locals.db<Array<{ id: string }>>`
-      select id from forum_articles where slug = ${params.slug}
+      select id from forum_articles
+      where slug = ${params.slug} and is_published = true
     `;
     if (!article) return fail(404, { message: "Artigo não encontrado." });
     try {
@@ -127,7 +128,8 @@ export const actions = {
     const emoji = String(f.get("emoji") ?? "👍");
     const ownerId = locals.user.id;
     const [article] = await locals.db<Array<{ id: string }>>`
-      select id from forum_articles where slug = ${params.slug}
+      select id from forum_articles
+      where slug = ${params.slug} and is_published = true
     `;
     if (!article) return fail(404, { message: "Artigo não encontrado." });
     const [existing] = await locals.db<Array<{ article_id: string }>>`

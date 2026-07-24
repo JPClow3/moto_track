@@ -9,6 +9,7 @@ import {
 import { uploadObjectFile } from "$server/r2/files";
 import { runtimeEnv } from "$server/runtime";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
+import { assertCanCreateUpload } from "$server/domain/entitlement-guards";
 
 type Row = Record<string, unknown>;
 
@@ -45,6 +46,8 @@ async function createFuelRecord({
   const receipt = form.get("receipt_file");
   let receiptFileKey = "";
   if (receipt instanceof File && receipt.size > 0) {
+    const blocked = await assertCanCreateUpload(locals.db, user.id);
+    if (blocked) return fail(403, { message: blocked });
     const uploaded = await uploadObjectFile({
       file: receipt,
       module: "fuel",
@@ -281,11 +284,19 @@ export const actions: Actions = {
     if (!(file instanceof File) || file.size === 0) {
       return fail(400, { message: "Envie um comprovante para escanear." });
     }
-    return {
-      ocr: await parseReceiptFile(file, {
-        apiKey: runtimeEnv(platform).MISTRAL_API_KEY,
-      }),
-    };
+    try {
+      return {
+        ocr: await parseReceiptFile(file, {
+          apiKey: runtimeEnv(platform).MISTRAL_API_KEY,
+        }),
+      };
+    } catch (cause) {
+      const message =
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível ler o comprovante.";
+      return fail(400, { message });
+    }
   },
   importPreview: async ({ request }) => {
     const form = await request.formData();

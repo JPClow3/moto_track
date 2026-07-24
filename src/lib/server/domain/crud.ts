@@ -4,6 +4,11 @@ import { getFeature, schemaForFeature, type FeatureConfig } from "./features";
 import { uploadObjectFile } from "$server/r2/files";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
 import { syncLinkedReminder } from "$server/domain/record-sync";
+import {
+  assertCanCreateReminder,
+  assertCanCreateUpload,
+  assertCanCreateWorkSession,
+} from "$server/domain/entitlement-guards";
 
 // Only `.id` from the session user is ever needed here. `locals.user` (see
 // src/app.d.ts) satisfies this structurally, so callers can pass it directly.
@@ -18,7 +23,7 @@ function motorcycleIdFrom(payload: Record<string, unknown>) {
   return typeof value === "string" && value ? value : null;
 }
 
-async function syncRecordEffects({
+export async function syncRecordEffects({
   db,
   ownerId,
   feature,
@@ -36,6 +41,45 @@ async function syncRecordEffects({
     await syncMotorcycleOdometer(db, ownerId, motorcycleId);
   }
   await syncLinkedReminder(db, ownerId, feature.table, recordId, payload);
+}
+
+export async function syncRecordDeleteEffects({
+  db,
+  ownerId,
+  feature,
+  recordId,
+  existing,
+}: {
+  db: Sql;
+  ownerId: string;
+  feature: FeatureConfig;
+  recordId: string;
+  existing: Record<string, unknown>;
+}) {
+  await syncLinkedReminder(db, ownerId, feature.table, recordId, {});
+  const motorcycleId = motorcycleIdFrom(existing);
+  if (motorcycleId) {
+    await syncMotorcycleOdometer(db, ownerId, motorcycleId);
+  }
+}
+
+// Shared by every quick-action delete button (expenses/maintenance/tires
+// side-tables) so each route doesn't hand-roll the same owner-scoped delete.
+export async function deleteOwnedRow(
+  db: Sql,
+  table: string,
+  id: string,
+  ownerId: string,
+): Promise<string | null> {
+  try {
+    await db`
+      delete from ${db(table)}
+      where id = ${id} and owner_id = ${ownerId}
+    `;
+    return null;
+  } catch (err) {
+    return messageFrom(err);
+  }
 }
 
 export function normalizeFeaturePayload(
@@ -168,13 +212,13 @@ export function featureActions(slug: string): Actions {
           return fail(400, { message: messageFrom(err) });
         }
 
-        await syncLinkedReminder(locals.db, ownerId, feature.table, id, {});
-        const motorcycleId = motorcycleIdFrom(
-          (existing ?? {}) as Record<string, unknown>,
-        );
-        if (motorcycleId) {
-          await syncMotorcycleOdometer(locals.db, ownerId, motorcycleId);
-        }
+        await syncRecordDeleteEffects({
+          db: locals.db,
+          ownerId,
+          feature,
+          recordId: id,
+          existing: (existing ?? {}) as Record<string, unknown>,
+        });
         return { ok: true };
       }
 
@@ -197,11 +241,23 @@ export function featureActions(slug: string): Actions {
           : String(payload.id ?? crypto.randomUUID());
       payload.id = recordId;
 
+      const creating = !(intent === "update" && id);
+      if (creating && feature.slug === "reminders") {
+        const blocked = await assertCanCreateReminder(locals.db, ownerId);
+        if (blocked) return fail(403, { message: blocked });
+      }
+      if (creating && feature.slug === "trabalho") {
+        const blocked = await assertCanCreateWorkSession(locals.db, ownerId);
+        if (blocked) return fail(403, { message: blocked });
+      }
+
       for (const field of feature.fields.filter(
         (item) => item.kind === "file",
       )) {
         const file = formData.get(field.key);
         if (!(file instanceof File) || file.size === 0) continue;
+        const blocked = await assertCanCreateUpload(locals.db, ownerId);
+        if (blocked) return fail(403, { message: blocked });
         const uploaded = await uploadObjectFile({
           file,
           module: feature.slug,

@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // These migrations live in db/migrations/ now (applied to Neon via
@@ -143,5 +144,73 @@ describe("exposed-schema hardening", () => {
 
   it("does not reference the dropped handle_new_user() auth trigger function as executable SQL", () => {
     expect(securityHardeningCode).not.toContain("handle_new_user()");
+  });
+});
+
+describe("free entitlement cap triggers", () => {
+  const migration = readFileSync(
+    new URL(
+      "../../db/migrations/20260723093000_enforce_free_entitlement_caps.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  it("adds database triggers that mirror marketed Free limits", () => {
+    expect(migration).toContain("owner_has_pro_access");
+    expect(migration).toContain("enforce_free_reminder_limit");
+    expect(migration).toContain("enforce_free_work_session_limit");
+    expect(migration).toContain("enforce_free_upload_limit");
+    expect(migration).toContain("enforce_free_active_motorcycle_limit");
+  });
+
+  it("does not reintroduce RLS/role grants (no authenticated/service_role on Neon)", () => {
+    expect(migration).not.toContain("enable row level security");
+    expect(migration).not.toContain("create policy");
+    expect(migration).not.toContain("to authenticated");
+    expect(migration).not.toContain("to service_role");
+  });
+});
+
+describe("privileged column lockdown (app-layer, no auth.role() on Neon)", () => {
+  // The old Supabase migration used a trigger gated on
+  // `auth.role() = 'service_role'` to let only service-role writes change
+  // `is_staff`. Neon has no such role — every query, including staff/admin
+  // ones, runs through the same app DB connection — so a SQL trigger here
+  // couldn't tell "the app" from a trusted operator's console session and
+  // would end up blocking the only legitimate way to grant staff access.
+  // The invariant is enforced by never adding a write path in app code
+  // instead (see the comment on `isStaffUser` in staff.ts); these tests are
+  // the regression guard for that choice.
+  const staffModule = readFileSync(
+    new URL("../../src/lib/server/domain/staff.ts", import.meta.url),
+    "utf8",
+  );
+
+  it("documents the app-layer invariant instead of a ported auth.role() trigger", () => {
+    expect(staffModule).toContain("no user-facing write path");
+    expect(staffModule).toContain("Neon has no such role");
+  });
+
+  it("never writes is_staff from a user-facing route or domain module", () => {
+    const roots = ["src/routes", "src/lib/server/domain"];
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!/\.(ts|svelte)$/.test(entry.name)) continue;
+        const text = readFileSync(full, "utf8");
+        if (/is_staff\s*[:=]/.test(text) && !full.endsWith("staff.ts")) {
+          offenders.push(full);
+        }
+      }
+    };
+    walk(resolve(process.cwd(), roots[0]));
+    walk(resolve(process.cwd(), roots[1]));
+    expect(offenders).toEqual([]);
   });
 });

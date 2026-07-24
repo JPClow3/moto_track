@@ -75,11 +75,46 @@ export const actions = {
     if (!(await staffState(locals)))
       return fail(403, { message: "Staff only." });
     const form = await request.formData();
+    const id = String(form.get("id") ?? "");
+
+    let existing:
+      { owner_id: string; request_type: string; status: string } | undefined;
+    try {
+      [existing] = await locals.db<
+        Array<{ owner_id: string; request_type: string; status: string }>
+      >`
+        select owner_id, request_type, status from account_data_requests
+        where id = ${id}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+    if (!existing) return fail(404, { message: "Solicitação não encontrada." });
+    if (existing.status !== "open") {
+      return fail(400, { message: "Solicitação já processada." });
+    }
+
+    if (existing.request_type === "deletion") {
+      // Every owner-scoped table (including profiles, subscription_profiles,
+      // and this request row itself) references neon_auth."user"(id) with
+      // `on delete cascade`, so removing the auth user row alone wipes the
+      // account in one atomic statement — no per-table loop or separate
+      // auth-admin call needed, unlike the old Supabase version.
+      try {
+        await locals.db`
+          delete from neon_auth."user" where id = ${existing.owner_id}
+        `;
+      } catch (err) {
+        return fail(400, { message: messageFrom(err) });
+      }
+      return { ok: true };
+    }
+
     try {
       await locals.db`
         update account_data_requests
         set status = 'fulfilled', fulfilled_at = ${new Date().toISOString()}
-        where id = ${String(form.get("id") ?? "")}
+        where id = ${id}
       `;
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
