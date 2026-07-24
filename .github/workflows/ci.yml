@@ -46,9 +46,10 @@ jobs:
       - name: E2E Tests
         run: npm run test:e2e
         env:
-          # Any required environment variables for CI E2E tests should be added here
-          # Note: If Playwright expects Supabase to be running, additional setup steps
-          # using supabase-cli might be required in the future.
+          # Runtime needs DATABASE_URL (Neon Postgres) + PUBLIC_NEON_AUTH_URL/
+          # NEON_AUTH_JWKS_URL (Neon Auth) to be set for routes that touch the
+          # DB or auth; add them as repo/environment secrets here if/when the
+          # e2e suite starts exercising those paths.
           CI: true
 
       - name: Production Build

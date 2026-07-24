@@ -9,13 +9,12 @@ create table public.anonymous_model_benchmark_contributions (
 create index anonymous_model_benchmark_cohort_idx
   on public.anonymous_model_benchmark_contributions (model_key, created_at desc);
 
-alter table public.anonymous_model_benchmark_contributions enable row level security;
-
-create policy "Anyone can contribute a benchmark sample"
-  on public.anonymous_model_benchmark_contributions
-  for insert
-  to anon, authenticated
-  with check (true);
+-- NOTE (Neon migration): the original migration enabled RLS here and added
+-- an "Anyone can contribute a benchmark sample" insert policy open to
+-- anon/authenticated. No RLS/anon/authenticated on Neon, so both were
+-- dropped; any authenticated app request can insert a contribution row via
+-- app-layer SQL instead (this table has no owner_id — contributions are
+-- intentionally anonymous, matching the original policy's intent).
 
 create function public.model_benchmark_summary(p_model_key text)
 returns table(sample_size integer, average_consumption_km_l numeric, average_maintenance_cents numeric)
@@ -27,5 +26,9 @@ as $$
   having count(*) >= 5
 $$;
 
+-- `security definer` + the pure-SQL body have no auth.uid()/auth.users
+-- dependency (it's a plain aggregate with a k-anonymity floor), so the
+-- function itself is kept as-is. The `grant execute ... to authenticated`
+-- below was dropped (role doesn't exist on Neon); the app's DB role already
+-- has EXECUTE by default ownership, so no replacement grant is needed.
 revoke all on function public.model_benchmark_summary(text) from public;
-grant execute on function public.model_benchmark_summary(text) to authenticated;

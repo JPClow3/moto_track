@@ -44,7 +44,7 @@ describe("receipt OCR", () => {
     });
 
     await expect(parseReceiptFile(receipt, { apiKey: "" })).rejects.toThrow(
-      "MISTRAL_API_KEY",
+      "OCR de comprovante ainda não está configurado",
     );
   });
 });

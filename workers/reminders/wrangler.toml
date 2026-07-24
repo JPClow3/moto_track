@@ -1,6 +1,7 @@
 name = "moto-track-reminders"
 main = "index.ts"
 compatibility_date = "2026-07-01"
+compatibility_flags = ["nodejs_compat"]
 
 # The cron is the only intended entrypoint; the fetch handler triggers real
 # email sends, so it must not be published on a workers.dev subdomain.
@@ -9,10 +10,18 @@ workers_dev = false
 [triggers]
 crons = ["0 8 * * *"] # Every day at 8:00 AM UTC
 
-# [vars]
+[vars]
+DEFAULT_FROM_EMAIL = "Moto Track <no-reply@moto-track.net>"
+
+# Hyperdrive config "moto-track-neon" pointing at the Neon database.
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "173c6f16dc3445cdb982cd84dbcb9b23"
+
 # You must manually set these secrets using `wrangler secret put` or via the Cloudflare Dashboard:
-# SUPABASE_URL
-# SUPABASE_SERVICE_ROLE_KEY
-# EMAIL_FUNCTION_URL
-# EMAIL_FUNCTION_TOKEN
+# RESEND_API_KEY
 # REMINDERS_TRIGGER_TOKEN  (optional; leave unset to disable the manual trigger)
+# PUBLIC_VAPID_KEY         (optional; push delivery is skipped until this and VAPID_PRIVATE_KEY are set)
+# VAPID_PRIVATE_KEY        (optional; see above)
+# PUSH_ENCRYPTION_KEY      (optional; must match the app's PUSH_ENCRYPTION_KEY to decrypt subscriptions)
+# VAPID_SUBJECT            (optional; defaults to mailto:ops@mototrack.app)

@@ -2,6 +2,11 @@
   import { enhance } from "$app/forms";
   import { locale } from "$lib/i18n/store";
   import { formatMoney, formatPreciseMoney } from "$lib/i18n";
+  import {
+    queueOfflineFuelSubmission,
+    requestOfflineFuelSync,
+  } from "$lib/utils/offline-fuel";
+  import { privateFileUrl } from "$lib/utils/private-file-url";
   export let data;
   export let form;
 
@@ -11,6 +16,34 @@
   const price = (millicents: number) => formatPreciseMoney($locale, millicents);
   $: ocr = form?.ocr;
   $: defaults = data.preferences[0] ?? {};
+
+  let offlineMessage = "";
+
+  function handleCreateRecord({
+    formData,
+    cancel,
+  }: {
+    formData: FormData;
+    cancel: () => void;
+  }) {
+    offlineMessage = "";
+    if (navigator.onLine) {
+      void requestOfflineFuelSync();
+      return;
+    }
+    cancel();
+    void queueOfflineFuelSubmission(formData)
+      .then(() => {
+        offlineMessage =
+          "Sem conexão: abastecimento guardado na fila offline e será enviado ao reconectar.";
+      })
+      .catch((error) => {
+        offlineMessage =
+          error instanceof Error
+            ? error.message
+            : "Não foi possível guardar o abastecimento offline.";
+      });
+  }
 </script>
 
 <section class="grid gap-6">
@@ -28,11 +61,11 @@
     <a class="button-secondary" href="/fuel/export.csv">Exportar CSV</a>
   </div>
 
-  {#if data.errorMessage || form?.message}
+  {#if data.errorMessage || form?.message || offlineMessage}
     <div
       class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
     >
-      {data.errorMessage || form?.message}
+      {data.errorMessage || form?.message || offlineMessage}
     </div>
   {/if}
 
@@ -134,7 +167,8 @@
             <tr
               ><th class="px-4 py-3">Data</th><th>Km</th><th>Litros</th><th
                 >Total</th
-              ><th>Preço/l</th><th>Posto</th><th>Ações</th></tr
+              ><th>Preço/l</th><th>Posto</th><th>Comprovante</th><th>Ações</th
+              ></tr
             >
           </thead>
           <tbody>
@@ -146,6 +180,18 @@
                 <td>{brl(row.total_price_cents)}</td>
                 <td>{price(row.price_per_liter_millicents)}</td>
                 <td>{row.station_name || "—"}</td>
+                <td>
+                  {#if row.receipt_file_key}
+                    <a
+                      class="text-[var(--accent)] underline-offset-2 hover:underline"
+                      href={privateFileUrl(String(row.receipt_file_key))}
+                      target="_blank"
+                      rel="noopener noreferrer">Abrir</a
+                    >
+                  {:else}
+                    —
+                  {/if}
+                </td>
                 <td>
                   <form method="POST" action="?/deleteRecord" use:enhance>
                     <input type="hidden" name="id" value={row.id} />
@@ -159,7 +205,7 @@
             {:else}
               <tr
                 ><td
-                  colspan="7"
+                  colspan="8"
                   class="px-4 py-12 text-center text-[var(--muted)]"
                   >Sem abastecimentos ainda.</td
                 ></tr
@@ -176,7 +222,8 @@
         method="POST"
         action="?/createRecord"
         enctype="multipart/form-data"
-        use:enhance
+        use:enhance={({ formData, cancel }) =>
+          handleCreateRecord({ formData, cancel })}
       >
         <h2 class="display text-xl">Novo abastecimento</h2>
         <select class="field" name="motorcycle_id"

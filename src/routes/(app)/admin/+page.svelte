@@ -182,8 +182,21 @@
         <h2 class="display text-xl">Solicitações de dados</h2>
         <div class="mt-3 grid gap-2 text-sm">
           {#each data.requests as request}
-            <div class="border-t border-[var(--line)] py-2">
-              {request.request_type} · {request.status} · {request.created_at}
+            <div
+              class="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] py-2"
+            >
+              <span>
+                {request.request_type} · {request.status} · {request.created_at}
+              </span>
+              {#if request.status === "open"}
+                <form method="POST" action="?/fulfillDataRequest" use:enhance>
+                  <input type="hidden" name="id" value={request.id} />
+                  <button
+                    class="button-secondary px-3 py-1.5 text-xs"
+                    type="submit">Marcar cumprida</button
+                  >
+                </form>
+              {/if}
             </div>
           {:else}
             <p class="text-[var(--muted)]">Sem solicitações abertas.</p>

@@ -13,6 +13,10 @@ export default defineConfig({
   webServer: {
     command: "npm run dev -- --port 5187",
     url: "http://127.0.0.1:5187",
-    reuseExistingServer: false,
+    // Reuse a locally-running dev server; always start fresh in CI. The app's
+    // cold start (svelte-kit sync + Vite dep optimization + Hyperdrive emulation)
+    // routinely exceeds Playwright's 60s default, so give it real headroom.
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
   },
 });

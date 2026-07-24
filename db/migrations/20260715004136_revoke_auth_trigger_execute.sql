@@ -1,0 +1,8 @@
+-- NOTE (Neon migration): the original migration revoked EXECUTE on
+-- `handle_new_user()` from anon/authenticated. That function (and the
+-- `on_auth_user_created` trigger on `auth.users` that called it) was
+-- dropped in 20260715001617_initial_schema.sql's translation, since Neon
+-- Auth (Better Auth) doesn't fire triggers on user creation the way
+-- Supabase did and user bootstrap is now an app-layer concern (see T3).
+-- This migration file is kept as an intentional no-op only to preserve the
+-- original ordering/filenames of the migration set.

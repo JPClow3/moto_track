@@ -11,15 +11,23 @@ const readingMinutes = (body: string) =>
     ),
   );
 
+type ArticleRow = {
+  title: string;
+  slug: string;
+  summary: string;
+  published_at: string;
+  body: string;
+};
+
 export async function load({ locals }) {
-  const { data } = await locals.supabase
-    .from("forum_articles")
-    .select("title, slug, summary, published_at, body")
-    .eq("is_published", true)
-    .order("published_at", { ascending: false });
+  const data = await locals.db<ArticleRow[]>`
+    select title, slug, summary, published_at, body from forum_articles
+    where is_published = true
+    order by published_at desc
+  `;
 
   return {
-    articles: (data ?? []).map(({ body, ...article }) => ({
+    articles: data.map(({ body, ...article }) => ({
       ...article,
       reading_minutes: readingMinutes(body),
     })),

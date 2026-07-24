@@ -7,7 +7,8 @@ export const MAINTENANCE_PHOTO_CONTENT_TYPES = new Set([
   "image/webp",
 ]);
 
-type PhotoValidation = { ok: true } | { ok: false; message: string };
+type PhotoValidation =
+  { ok: true; file: File } | { ok: false; message: string };
 
 export function validateMaintenancePhoto(file: File | null): PhotoValidation {
   if (!file || file.size === 0) {
@@ -28,5 +29,5 @@ export function validateMaintenancePhoto(file: File | null): PhotoValidation {
     };
   }
 
-  return { ok: true };
+  return { ok: true, file };
 }

@@ -8,6 +8,13 @@ vi.mock("stripe", () => ({
   },
 }));
 
+// Keep these tests hermetic: fetchProPricing resolves secrets via runtimeEnv,
+// which otherwise falls back to the ambient $env (a developer's local .env).
+// Blanking the fallback makes the `platform.env` passed in each test the only
+// source of Stripe config, so the "secret key absent" case is genuinely absent.
+vi.mock("$env/dynamic/private", () => ({ env: {} }));
+vi.mock("$env/dynamic/public", () => ({ env: {} }));
+
 const platform = {
   env: {
     STRIPE_SECRET_KEY: "sk_test_x",

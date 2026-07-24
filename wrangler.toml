@@ -7,5 +7,11 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 binding = "R2_BUCKET"
 bucket_name = "moto-track-media"
 
+# Hyperdrive config "moto-track-neon" pointing at the Neon database.
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "173c6f16dc3445cdb982cd84dbcb9b23"
+
 [vars]
 PUBLIC_SITE_URL = "https://moto-track.net"
+PUBLIC_NEON_AUTH_URL = "https://ep-damp-bar-acu29m6g.neonauth.sa-east-1.aws.neon.tech/neondb/auth"

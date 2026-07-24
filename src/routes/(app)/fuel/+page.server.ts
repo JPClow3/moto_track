@@ -9,6 +9,9 @@ import {
 import { uploadObjectFile } from "$server/r2/files";
 import { runtimeEnv } from "$server/runtime";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
+import { assertCanCreateUpload } from "$server/domain/entitlement-guards";
+
+type Row = Record<string, unknown>;
 
 function cents(value: FormDataEntryValue | null) {
   const parsed = Number(String(value ?? "0").replace(",", "."));
@@ -25,6 +28,10 @@ function numberValue(value: FormDataEntryValue | null) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function messageFrom(err: unknown) {
+  return err instanceof Error ? err.message : String(err);
+}
+
 async function createFuelRecord({
   form,
   locals,
@@ -39,6 +46,8 @@ async function createFuelRecord({
   const receipt = form.get("receipt_file");
   let receiptFileKey = "";
   if (receipt instanceof File && receipt.size > 0) {
+    const blocked = await assertCanCreateUpload(locals.db, user.id);
+    if (blocked) return fail(403, { message: blocked });
     const uploaded = await uploadObjectFile({
       file: receipt,
       module: "fuel",
@@ -46,19 +55,22 @@ async function createFuelRecord({
       platform,
     });
     receiptFileKey = uploaded.objectKey;
-    const { error: fileError } = await locals.supabase
-      .from("object_files")
-      .insert({
-        owner_id: user.id,
-        module: "fuel",
-        source_table: "fuel_records",
-        source_id: id,
-        object_key: uploaded.objectKey,
-        filename: uploaded.filename,
-        content_type: uploaded.contentType,
-        byte_size: uploaded.byteSize,
-      });
-    if (fileError) return fail(400, { message: fileError.message });
+    try {
+      await locals.db`
+        insert into object_files ${locals.db({
+          owner_id: user.id,
+          module: "fuel",
+          source_table: "fuel_records",
+          source_id: id,
+          object_key: uploaded.objectKey,
+          filename: uploaded.filename,
+          content_type: uploaded.contentType,
+          byte_size: uploaded.byteSize,
+        })}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
   }
 
   const totalCents = cents(form.get("total_price"));
@@ -85,33 +97,42 @@ async function createFuelRecord({
     receipt_file_key: receiptFileKey || null,
   };
 
-  const { error } = await locals.supabase.from("fuel_records").insert(payload);
-  if (error) return fail(400, { message: error.message });
+  try {
+    await locals.db`
+      insert into fuel_records ${locals.db(payload)}
+    `;
+  } catch (err) {
+    return fail(400, { message: messageFrom(err) });
+  }
 
-  await locals.supabase.from("fuel_preferences").upsert(
-    {
-      owner_id: user.id,
-      motorcycle_id: payload.motorcycle_id,
-      station_id: payload.station_id,
-      fuel_grade_id: payload.fuel_grade_id,
-      fuel_type: payload.fuel_type,
-      station_name: payload.station_name,
-      price_per_liter_millicents: payload.price_per_liter_millicents,
-      tank_full: payload.tank_full,
-      last_used_at: new Date().toISOString(),
-    },
-    {
-      onConflict:
-        "owner_id,motorcycle_id,station_id,fuel_grade_id,fuel_type,station_name",
-    },
-  );
+  // Best-effort cache of the last-used fuel preferences for this combo. The
+  // Supabase version never checked this upsert's result either, so failures
+  // here are swallowed instead of failing the whole fill-up submission.
+  try {
+    await locals.db`
+      insert into fuel_preferences ${locals.db({
+        owner_id: user.id,
+        motorcycle_id: payload.motorcycle_id,
+        station_id: payload.station_id,
+        fuel_grade_id: payload.fuel_grade_id,
+        fuel_type: payload.fuel_type,
+        station_name: payload.station_name,
+        price_per_liter_millicents: payload.price_per_liter_millicents,
+        tank_full: payload.tank_full,
+        last_used_at: new Date().toISOString(),
+      })}
+      on conflict (owner_id, motorcycle_id, station_id, fuel_grade_id, fuel_type, station_name)
+      do update set
+        price_per_liter_millicents = excluded.price_per_liter_millicents,
+        tank_full = excluded.tank_full,
+        last_used_at = excluded.last_used_at
+    `;
+  } catch {
+    // Ignored — see comment above.
+  }
 
   if (payload.motorcycle_id) {
-    await syncMotorcycleOdometer(
-      locals.supabase,
-      user.id,
-      payload.motorcycle_id,
-    );
+    await syncMotorcycleOdometer(locals.db, user.id, payload.motorcycle_id);
   }
 
   return { ok: true };
@@ -120,47 +141,52 @@ async function createFuelRecord({
 export async function load({ locals }) {
   const user = locals.user!;
   const [
-    { data: rows, error },
-    { data: motorcycles },
-    { data: stations },
-    { data: grades },
-    { data: preferences },
-    { data: reviewPreferences },
+    fuelResult,
+    motorcycles,
+    stations,
+    grades,
+    preferences,
+    reviewPreferences,
   ] = await Promise.all([
-    locals.supabase
-      .from("fuel_records")
-      .select("*")
-      .eq("owner_id", user.id)
-      .order("date", { ascending: false })
-      .order("odometer_km", { ascending: false }),
-    locals.supabase
-      .from("motorcycles")
-      .select("id, name, current_odometer_km")
-      .eq("owner_id", user.id)
-      .eq("is_active", true)
-      .order("name"),
-    locals.supabase
-      .from("fuel_stations")
-      .select("*")
-      .eq("owner_id", user.id)
-      .order("name"),
-    locals.supabase
-      .from("fuel_grades")
-      .select("*")
-      .eq("owner_id", user.id)
-      .order("name"),
-    locals.supabase
-      .from("fuel_preferences")
-      .select("*")
-      .eq("owner_id", user.id)
-      .order("last_used_at", { ascending: false }),
-    locals.supabase
-      .from("fuel_review_preferences")
-      .select("*")
-      .eq("owner_id", user.id),
+    locals.db<Row[]>`
+      select * from fuel_records
+      where owner_id = ${user.id}
+      order by date desc, odometer_km desc
+    `.then(
+      (rows) => ({ rows, error: null as string | null }),
+      (err: unknown) => ({ rows: [] as Row[], error: messageFrom(err) }),
+    ),
+    locals.db<Row[]>`
+      select id, name, current_odometer_km from motorcycles
+      where owner_id = ${user.id} and is_active = true
+      order by name
+    `.catch(() => [] as Row[]),
+    locals.db<Row[]>`
+      select * from fuel_stations
+      where owner_id = ${user.id}
+      order by name
+    `.catch(() => [] as Row[]),
+    locals.db<Row[]>`
+      select * from fuel_grades
+      where owner_id = ${user.id}
+      order by name
+    `.catch(() => [] as Row[]),
+    locals.db<Row[]>`
+      select * from fuel_preferences
+      where owner_id = ${user.id}
+      order by last_used_at desc
+    `.catch(() => [] as Row[]),
+    locals.db<Row[]>`
+      select * from fuel_review_preferences
+      where owner_id = ${user.id}
+    `.catch(() => [] as Row[]),
   ]);
 
-  const fuelRows = (rows ?? []).map((row) => ({
+  // Explicit generic on `.map` (rather than letting it infer): spreading a
+  // `Record<string, unknown>` alongside a literal property otherwise makes TS
+  // drop the index signature from the result, rejecting every other
+  // `row.<column>` access below.
+  const fuelRows = fuelResult.rows.map<Row & { liters: number }>((row) => ({
     ...row,
     liters: Number(row.liters),
   }));
@@ -170,21 +196,21 @@ export async function load({ locals }) {
   );
 
   return {
-    errorMessage: error?.message ?? "",
+    errorMessage: fuelResult.error ?? "",
     rows: fuelRows,
-    motorcycles: motorcycles ?? [],
-    stations: stations ?? [],
-    grades: grades ?? [],
-    preferences: preferences ?? [],
-    reviewPreferences: reviewPreferences ?? [],
+    motorcycles,
+    stations,
+    grades,
+    preferences,
+    reviewPreferences,
     summary: {
       totalSpend,
       totalLiters: fuelRows.reduce(
         (sum, row) => sum + Number(row.liters ?? 0),
         0,
       ),
-      averageConsumption: averageConsumption(fuelRows),
-      costPerKm: costPerKm(fuelRows),
+      averageConsumption: averageConsumption(fuelRows as never),
+      costPerKm: costPerKm(fuelRows as never),
       lastRecord: fuelRows[0] ?? null,
     },
   };
@@ -201,42 +227,45 @@ export const actions: Actions = {
   deleteRecord: async ({ request, locals }) => {
     const form = await request.formData();
     const id = String(form.get("id") ?? "");
-    const { data: existing, error: readError } = await locals.supabase
-      .from("fuel_records")
-      .select("motorcycle_id")
-      .eq("owner_id", locals.user!.id)
-      .eq("id", id)
-      .maybeSingle();
-    if (readError) return fail(400, { message: readError.message });
-    const { error } = await locals.supabase
-      .from("fuel_records")
-      .delete()
-      .eq("owner_id", locals.user!.id)
-      .eq("id", id);
-    if (error) return fail(400, { message: error.message });
+    const ownerId = locals.user!.id;
+    let existing: { motorcycle_id: string | null } | undefined;
+    try {
+      [existing] = await locals.db<Array<{ motorcycle_id: string | null }>>`
+        select motorcycle_id from fuel_records
+        where owner_id = ${ownerId} and id = ${id}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+    try {
+      await locals.db`
+        delete from fuel_records
+        where owner_id = ${ownerId} and id = ${id}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     if (existing?.motorcycle_id) {
-      await syncMotorcycleOdometer(
-        locals.supabase,
-        locals.user!.id,
-        existing.motorcycle_id,
-      );
+      await syncMotorcycleOdometer(locals.db, ownerId, existing.motorcycle_id);
     }
     return { ok: true };
   },
   repeatLast: async ({ request, locals, platform }) => {
     const form = await request.formData();
-    const { data: last, error } = await locals.supabase
-      .from("fuel_records")
-      .select("*")
-      .eq("owner_id", locals.user!.id)
-      .order("date", { ascending: false })
-      .order("odometer_km", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error || !last)
-      return fail(400, {
-        message: error?.message ?? "Sem abastecimento anterior.",
-      });
+    let last: Row | undefined;
+    try {
+      [last] = await locals.db<Row[]>`
+        select * from fuel_records
+        where owner_id = ${locals.user!.id}
+        order by date desc, odometer_km desc
+        limit 1
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+    if (!last) {
+      return fail(400, { message: "Sem abastecimento anterior." });
+    }
     form.set("motorcycle_id", String(last.motorcycle_id ?? ""));
     form.set("station_id", String(last.station_id ?? ""));
     form.set("fuel_grade_id", String(last.fuel_grade_id ?? ""));
@@ -255,11 +284,19 @@ export const actions: Actions = {
     if (!(file instanceof File) || file.size === 0) {
       return fail(400, { message: "Envie um comprovante para escanear." });
     }
-    return {
-      ocr: await parseReceiptFile(file, {
-        apiKey: runtimeEnv(platform).MISTRAL_API_KEY,
-      }),
-    };
+    try {
+      return {
+        ocr: await parseReceiptFile(file, {
+          apiKey: runtimeEnv(platform).MISTRAL_API_KEY,
+        }),
+      };
+    } catch (cause) {
+      const message =
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível ler o comprovante.";
+      return fail(400, { message });
+    }
   },
   importPreview: async ({ request }) => {
     const form = await request.formData();
@@ -280,62 +317,74 @@ export const actions: Actions = {
     const parsedRows = parseFuelImportRows(String(form.get("rows_json") ?? ""));
     if (!parsedRows.ok) return fail(400, { message: parsedRows.message });
     const rows = parsedRows.rows;
-    const { error } = await locals.supabase.from("fuel_records").insert(
-      rows.map((row) => ({
-        ...row,
-        id: crypto.randomUUID(),
-        owner_id: locals.user!.id,
-        motorcycle_id: String(form.get("motorcycle_id") || "") || null,
-      })) as never,
-    );
-    if (error) return fail(400, { message: error.message });
+    const ownerId = locals.user!.id;
     const motorcycleId = String(form.get("motorcycle_id") || "");
+    try {
+      await locals.db`
+        insert into fuel_records ${locals.db(
+          rows.map((row) => ({
+            ...row,
+            id: crypto.randomUUID(),
+            owner_id: ownerId,
+            motorcycle_id: motorcycleId || null,
+          })),
+        )}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     if (motorcycleId) {
-      await syncMotorcycleOdometer(
-        locals.supabase,
-        locals.user!.id,
-        motorcycleId,
-      );
+      await syncMotorcycleOdometer(locals.db, ownerId, motorcycleId);
     }
     return { ok: true, imported: rows.length };
   },
   saveStation: async ({ request, locals }) => {
     const form = await request.formData();
     const id = String(form.get("id") ?? "");
+    const ownerId = locals.user!.id;
     const payload = {
-      owner_id: locals.user!.id,
+      owner_id: ownerId,
       name: String(form.get("name") ?? ""),
       brand: String(form.get("brand") ?? ""),
       city: String(form.get("city") ?? ""),
       state: String(form.get("state") ?? ""),
       notes: String(form.get("notes") ?? ""),
     };
-    const query = id
-      ? locals.supabase
-          .from("fuel_stations")
-          .update(payload)
-          .eq("id", id)
-          .eq("owner_id", locals.user!.id)
-      : locals.supabase.from("fuel_stations").insert(payload);
-    const { error } = await query;
-    if (error) return fail(400, { message: error.message });
+    try {
+      if (id) {
+        await locals.db`
+          update fuel_stations
+          set ${locals.db(payload)}
+          where id = ${id} and owner_id = ${ownerId}
+        `;
+      } else {
+        await locals.db`
+          insert into fuel_stations ${locals.db(payload)}
+        `;
+      }
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     return { ok: true };
   },
   deleteStation: async ({ request, locals }) => {
     const form = await request.formData();
-    const { error } = await locals.supabase
-      .from("fuel_stations")
-      .delete()
-      .eq("id", String(form.get("id") ?? ""))
-      .eq("owner_id", locals.user!.id);
-    if (error) return fail(400, { message: error.message });
+    try {
+      await locals.db`
+        delete from fuel_stations
+        where id = ${String(form.get("id") ?? "")} and owner_id = ${locals.user!.id}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     return { ok: true };
   },
   saveGrade: async ({ request, locals }) => {
     const form = await request.formData();
     const id = String(form.get("id") ?? "");
+    const ownerId = locals.user!.id;
     const payload = {
-      owner_id: locals.user!.id,
+      owner_id: ownerId,
       name: String(form.get("name") ?? ""),
       fuel_type: String(form.get("fuel_type") ?? "gasoline"),
       octane_rating: Math.round(numberValue(form.get("octane_rating"))),
@@ -345,63 +394,87 @@ export const actions: Actions = {
       ),
       notes: String(form.get("notes") ?? ""),
     };
-    const query = id
-      ? locals.supabase
-          .from("fuel_grades")
-          .update(payload)
-          .eq("id", id)
-          .eq("owner_id", locals.user!.id)
-      : locals.supabase.from("fuel_grades").insert(payload);
-    const { error } = await query;
-    if (error) return fail(400, { message: error.message });
+    try {
+      if (id) {
+        await locals.db`
+          update fuel_grades
+          set ${locals.db(payload)}
+          where id = ${id} and owner_id = ${ownerId}
+        `;
+      } else {
+        await locals.db`
+          insert into fuel_grades ${locals.db(payload)}
+        `;
+      }
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     return { ok: true };
   },
   deleteGrade: async ({ request, locals }) => {
     const form = await request.formData();
-    const { error } = await locals.supabase
-      .from("fuel_grades")
-      .delete()
-      .eq("id", String(form.get("id") ?? ""))
-      .eq("owner_id", locals.user!.id);
-    if (error) return fail(400, { message: error.message });
+    try {
+      await locals.db`
+        delete from fuel_grades
+        where id = ${String(form.get("id") ?? "")} and owner_id = ${locals.user!.id}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     return { ok: true };
   },
   saveDefaults: async ({ request, locals }) => {
     const form = await request.formData();
-    const { error } = await locals.supabase.from("fuel_preferences").upsert(
-      {
-        owner_id: locals.user!.id,
-        motorcycle_id: String(form.get("motorcycle_id") || "") || null,
-        station_id: String(form.get("station_id") || "") || null,
-        fuel_grade_id: String(form.get("fuel_grade_id") || "") || null,
-        fuel_type: String(form.get("fuel_type") || "gasoline"),
-        station_name: String(form.get("station_name") || ""),
-        price_per_liter_millicents: millicents(form.get("price_per_liter")),
-        tank_full: form.get("tank_full") === "true",
-        last_used_at: new Date().toISOString(),
-      },
-      {
-        onConflict:
-          "owner_id,motorcycle_id,station_id,fuel_grade_id,fuel_type,station_name",
-      },
-    );
-    if (error) return fail(400, { message: error.message });
+    const ownerId = locals.user!.id;
+    try {
+      await locals.db`
+        insert into fuel_preferences ${locals.db({
+          owner_id: ownerId,
+          motorcycle_id: String(form.get("motorcycle_id") || "") || null,
+          station_id: String(form.get("station_id") || "") || null,
+          fuel_grade_id: String(form.get("fuel_grade_id") || "") || null,
+          fuel_type: String(form.get("fuel_type") || "gasoline"),
+          station_name: String(form.get("station_name") || ""),
+          price_per_liter_millicents: millicents(form.get("price_per_liter")),
+          tank_full: form.get("tank_full") === "true",
+          last_used_at: new Date().toISOString(),
+        })}
+        on conflict (owner_id, motorcycle_id, station_id, fuel_grade_id, fuel_type, station_name)
+        do update set
+          price_per_liter_millicents = excluded.price_per_liter_millicents,
+          tank_full = excluded.tank_full,
+          last_used_at = excluded.last_used_at
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     return { ok: true };
   },
   saveReviewSettings: async ({ request, locals }) => {
     const form = await request.formData();
-    const { error } = await locals.supabase
-      .from("fuel_review_preferences")
-      .upsert({
-        owner_id: locals.user!.id,
-        motorcycle_id: String(form.get("motorcycle_id") || ""),
-        fillups_interval: Math.max(
-          Math.round(numberValue(form.get("fillups_interval")) || 10),
-          1,
-        ),
-        is_active: form.get("is_active") === "true",
-      });
-    if (error) return fail(400, { message: error.message });
+    const ownerId = locals.user!.id;
+    try {
+      // `fuel_review_preferences` is unique on `motorcycle_id` alone, so the
+      // `where` on the update guards against overwriting another owner's row
+      // (there's no RLS backstop to fall back on anymore).
+      await locals.db`
+        insert into fuel_review_preferences ${locals.db({
+          owner_id: ownerId,
+          motorcycle_id: String(form.get("motorcycle_id") || ""),
+          fillups_interval: Math.max(
+            Math.round(numberValue(form.get("fillups_interval")) || 10),
+            1,
+          ),
+          is_active: form.get("is_active") === "true",
+        })}
+        on conflict (motorcycle_id) do update set
+          fillups_interval = excluded.fillups_interval,
+          is_active = excluded.is_active
+        where fuel_review_preferences.owner_id = ${ownerId}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     return { ok: true };
   },
 };

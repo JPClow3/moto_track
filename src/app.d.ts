@@ -1,15 +1,26 @@
-import type { SupabaseClient, Session, User } from "@supabase/supabase-js";
-import type { Database } from "$lib/types/database";
 import type { Locale } from "$lib/i18n";
+
+// TODO(auth): finalized in T3 — placeholder shapes until Neon Auth (Better
+// Auth) session/user types land.
+interface AuthSession {
+  [key: string]: unknown;
+}
+
+interface AuthUser {
+  id: string;
+  email?: string | null;
+  [key: string]: unknown;
+}
 
 declare global {
   namespace App {
     interface Platform {
       env?: {
         R2_BUCKET?: R2Bucket;
-        SUPABASE_URL?: string;
-        SUPABASE_ANON_KEY?: string;
-        SUPABASE_SERVICE_ROLE_KEY?: string;
+        HYPERDRIVE?: Hyperdrive;
+        DATABASE_URL?: string;
+        PUBLIC_NEON_AUTH_URL?: string;
+        NEON_AUTH_JWKS_URL?: string;
         STRIPE_SECRET_KEY?: string;
         STRIPE_WEBHOOK_SECRET?: string;
         STRIPE_PRO_MONTHLY_PRICE_ID?: string;
@@ -27,13 +38,14 @@ declare global {
     }
 
     interface Locals {
-      supabase: SupabaseClient<Database>;
+      db: import("postgres").Sql;
+      // TODO(auth): finalized in T3
       safeGetSession: () => Promise<{
-        session: Session | null;
-        user: User | null;
+        session: AuthSession | null;
+        user: AuthUser | null;
       }>;
-      session: Session | null;
-      user: User | null;
+      session: AuthSession | null;
+      user: AuthUser | null;
       locale: Locale;
     }
   }

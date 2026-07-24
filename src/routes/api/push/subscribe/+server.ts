@@ -1,31 +1,9 @@
 import { error, json } from "@sveltejs/kit";
 import { runtimeEnv } from "$server/runtime";
-
-function base64url(bytes: Uint8Array) {
-  let text = "";
-  for (const byte of bytes) text += String.fromCharCode(byte);
-  return btoa(text)
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replaceAll("=", "");
-}
-
-async function encrypt(value: string, secret: string) {
-  const keyBytes = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(secret),
-  );
-  const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, [
-    "encrypt",
-  ]);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    new TextEncoder().encode(value),
-  );
-  return `${base64url(iv)}.${base64url(new Uint8Array(encrypted))}`;
-}
+import {
+  encryptPushField,
+  isAllowedPushEndpoint,
+} from "$server/domain/push-crypto";
 
 export async function POST({ request, locals, platform }) {
   if (!locals.user) throw error(401, "Authentication required.");
@@ -36,6 +14,9 @@ export async function POST({ request, locals, platform }) {
   const secret = runtimeEnv(platform).PUSH_ENCRYPTION_KEY;
   if (!endpoint || !p256dh || !auth || !secret)
     throw error(400, "Invalid subscription data.");
+  if (!isAllowedPushEndpoint(endpoint)) {
+    throw error(400, "Unsupported push endpoint.");
+  }
   const endpointHash = Array.from(
     new Uint8Array(
       await crypto.subtle.digest("SHA-256", new TextEncoder().encode(endpoint)),
@@ -43,18 +24,23 @@ export async function POST({ request, locals, platform }) {
   )
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
-  const { error: upsertError } = await locals.supabase
-    .from("push_subscriptions")
-    .upsert(
-      {
+  try {
+    await locals.db`
+      insert into push_subscriptions ${locals.db({
         owner_id: locals.user.id,
         endpoint_hash: endpointHash,
-        endpoint_encrypted: await encrypt(endpoint, secret),
-        p256dh_encrypted: await encrypt(p256dh, secret),
-        auth_encrypted: await encrypt(auth, secret),
-      },
-      { onConflict: "owner_id,endpoint_hash" },
-    );
-  if (upsertError) throw error(400, "Unable to save push subscription.");
+        endpoint_encrypted: await encryptPushField(endpoint, secret),
+        p256dh_encrypted: await encryptPushField(p256dh, secret),
+        auth_encrypted: await encryptPushField(auth, secret),
+      })}
+      on conflict (owner_id, endpoint_hash) do update set
+        endpoint_encrypted = excluded.endpoint_encrypted,
+        p256dh_encrypted = excluded.p256dh_encrypted,
+        auth_encrypted = excluded.auth_encrypted,
+        updated_at = now()
+    `;
+  } catch {
+    throw error(400, "Unable to save push subscription.");
+  }
   return json({ status: "ok" });
 }

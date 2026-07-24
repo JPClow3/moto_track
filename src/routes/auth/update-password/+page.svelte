@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ShieldAlert, KeyRound } from "lucide-svelte";
   export let form: { message?: string } | undefined;
+  export let data: { token: string };
 </script>
 
 <svelte:head><title>Nova senha · Moto Track</title></svelte:head>
@@ -45,6 +46,7 @@
       {/if}
 
       <form class="grid gap-5" method="POST">
+        <input type="hidden" name="token" value={data.token} />
         <div class="grid gap-1.5">
           <label for="password" class="label-tech text-[var(--muted)]"
             >Nova senha</label

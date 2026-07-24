@@ -1,5 +1,7 @@
 import { redirect, type Handle } from "@sveltejs/kit";
-import { createSupabaseServerClient } from "$server/supabase/server";
+import { getDb } from "$server/db/client";
+import { resolveSession } from "$server/auth/session";
+import { ensureAccount } from "$server/auth/bootstrap";
 import { LOCALE_COOKIE, resolveLocale } from "$lib/i18n";
 
 const protectedPrefixes = [
@@ -17,6 +19,8 @@ const protectedPrefixes = [
   // instead of redirecting to sign-in.
   "/onboarding",
   "/billing/conta",
+  "/billing/portal",
+  "/billing/checkout",
   "/admin",
 ];
 
@@ -37,28 +41,18 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.request.headers.get("accept-language"),
   );
 
-  event.locals.supabase = createSupabaseServerClient(event);
-  event.locals.safeGetSession = async () => {
-    const {
-      data: { session },
-    } = await event.locals.supabase.auth.getSession();
-    if (!session) {
-      return { session: null, user: null };
-    }
+  event.locals.db = getDb(event.platform);
 
-    const {
-      data: { user },
-      error,
-    } = await event.locals.supabase.auth.getUser();
-    if (error) {
-      return { session: null, user: null };
-    }
-    return { session, user };
-  };
-
-  const { session, user } = await event.locals.safeGetSession();
+  const { session, user } = await resolveSession(event);
   event.locals.session = session;
   event.locals.user = user;
+  event.locals.safeGetSession = async () => ({ session, user });
+
+  // Provision the app-side profile/subscription rows that Supabase used to
+  // seed from an auth.users trigger.
+  if (user) {
+    await ensureAccount(event.locals.db, user.id, user.email);
+  }
 
   const isPublic = publicPrefixes.some((prefix) =>
     event.url.pathname.startsWith(prefix),
@@ -80,8 +74,5 @@ export const handle: Handle = async ({ event, resolve }) => {
     // be pt-BR to screen readers and translation tools no matter the locale.
     transformPageChunk: ({ html }) =>
       html.replace("%lang%", event.locals.locale),
-    filterSerializedResponseHeaders(name) {
-      return name === "content-range" || name === "x-supabase-api-version";
-    },
   });
 };

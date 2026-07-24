@@ -1,8 +1,11 @@
-import { createReadStream, existsSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync } from "node:fs";
 import { readFile, readdir, stat } from "node:fs/promises";
-import { join, relative } from "node:path";
-import { createClient } from "@supabase/supabase-js";
+import { dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import postgres from "postgres";
 import { v5 as uuidv5 } from "uuid";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const LEGACY_NAMESPACE = "a87ff679-a2f3-5d3b-9b74-82d2b8b7621a";
 const legacyRoot =
@@ -10,17 +13,40 @@ const legacyRoot =
 const exportPath =
   process.env.LEGACY_EXPORT_PATH ?? join(process.cwd(), "legacy-export.json");
 
-const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
-const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!supabaseUrl || !serviceRole) {
+// Minimal .env loader (no dotenv dependency), matching db/apply.mjs — only
+// fills in vars that aren't already set, so a real env var always wins.
+function loadDotEnv(path: string) {
+  if (!existsSync(path)) return;
+  const contents = readFileSync(path, "utf8");
+  for (const rawLine of contents.split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq === -1) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadDotEnv(join(__dirname, "..", ".env"));
+
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
   throw new Error(
-    "PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.",
+    "DATABASE_URL is required (set it in the environment or in .env).",
   );
 }
 
-const supabase = createClient(supabaseUrl, serviceRole, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+const sql = postgres(databaseUrl, { prepare: false, ssl: "require" });
 
 function mapId(table: string, id: string | number) {
   return uuidv5(`${table}:${id}`, LEGACY_NAMESPACE);
@@ -42,8 +68,13 @@ async function importJsonExport() {
       ...row,
       id: row.id ? mapId(table, row.id as string | number) : row.id,
     }));
-    const { error } = await supabase.from(table).upsert(mapped);
-    if (error) throw new Error(`Failed importing ${table}: ${error.message}`);
+    if (mapped.length === 0) continue;
+    // Greenfield target DB (no rows to preserve on conflict), so a re-run of
+    // this importer simply skips rows it already inserted.
+    await sql`
+      insert into ${sql(table)} ${sql(mapped)}
+      on conflict (id) do nothing
+    `;
     console.log(`Imported ${mapped.length} rows into ${table}`);
   }
 }
@@ -76,5 +107,9 @@ async function importMediaManifest() {
   }
 }
 
-await importJsonExport();
-await importMediaManifest();
+try {
+  await importJsonExport();
+  await importMediaManifest();
+} finally {
+  await sql.end({ timeout: 5 });
+}

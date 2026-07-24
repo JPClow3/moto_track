@@ -1,3 +1,4 @@
+import { redirect } from "@sveltejs/kit";
 import { dashboardSummary, healthScore } from "$server/domain/reports";
 import { evaluateReminder, type ReminderInput } from "$server/domain/reminders";
 import {
@@ -28,6 +29,14 @@ function daysUntil(date: string, today: string) {
   return Math.round((target - now) / 86_400_000);
 }
 
+// The Supabase version never checked `{ error }` on any of these reads — a
+// failed query just fell back to an empty array. Reproduce that swallow
+// instead of letting postgres.js's thrown errors turn the dashboard into a
+// 500.
+function rowsOrEmpty<T>(promise: Promise<T[]>): Promise<T[]> {
+  return promise.catch(() => [] as T[]);
+}
+
 export async function load({ locals }) {
   const user = locals.user;
   const today = new Date().toISOString().slice(0, 10);
@@ -48,51 +57,76 @@ export async function load({ locals }) {
   }
 
   const ownerId = user.id;
-  const [motorcycles, fuel, reminders, tires, documents, maintenance, fees] =
-    await Promise.all([
-      locals.supabase
-        .from("motorcycles")
-        .select("id, name, brand, model, year, current_odometer_km")
-        .eq("owner_id", ownerId)
-        .eq("is_active", true)
-        .order("name"),
-      locals.supabase
-        .from("fuel_records")
-        .select("date, odometer_km, liters, total_price_cents, tank_full")
-        .eq("owner_id", ownerId),
-      locals.supabase
-        .from("reminders")
-        .select(
-          "id, title, motorcycle_id, trigger_type, trigger_value_km, trigger_value_days, reference_km, reference_date",
-        )
-        .eq("owner_id", ownerId)
-        .eq("is_active", true),
-      locals.supabase
-        .from("tire_records")
-        .select("motorcycle_id, installed_at, cost_cents, wear_percent")
-        .eq("owner_id", ownerId)
-        .eq("is_active", true),
-      locals.supabase
-        .from("motorcycle_documents")
-        .select("name, motorcycle_id, valid_until")
-        .eq("owner_id", ownerId),
-      locals.supabase
-        .from("maintenance_records")
-        .select("date, cost_cents, maintenance_type")
-        .eq("owner_id", ownerId),
-      locals.supabase
-        .from("annual_fees")
-        .select("due_date, amount_cents, fee_type")
-        .eq("owner_id", ownerId),
-    ]);
+  const [motorcycleCountRow] = await locals.db<Array<{ count: number }>>`
+    select count(*)::int from motorcycles where owner_id = ${ownerId}
+  `.catch(() => [{ count: 0 }]);
+  // Same emptiness rule as /onboarding: any motorcycle counts, including
+  // archived ones, so inactive-only garages never bounce between routes.
+  if (!motorcycleCountRow?.count) {
+    throw redirect(303, "/onboarding");
+  }
 
-  const motorcycleRows = (motorcycles.data ?? []) as Row[];
-  const fuelRows = (fuel.data ?? []) as Row[];
-  const reminderRows = (reminders.data ?? []) as Row[];
-  const tireRows = (tires.data ?? []) as Row[];
-  const documentRows = (documents.data ?? []) as Row[];
-  const maintenanceRows = (maintenance.data ?? []) as Row[];
-  const feeRows = (fees.data ?? []) as Row[];
+  const [
+    motorcycleRows,
+    fuelRows,
+    reminderRows,
+    tireRows,
+    documentRows,
+    maintenanceRows,
+    feeRows,
+  ] = await Promise.all([
+    rowsOrEmpty(
+      locals.db<Row[]>`
+        select id, name, brand, model, year, current_odometer_km
+        from motorcycles
+        where owner_id = ${ownerId} and is_active = true
+        order by name
+      `,
+    ),
+    rowsOrEmpty(
+      locals.db<Row[]>`
+        select date, odometer_km, liters, total_price_cents, tank_full
+        from fuel_records
+        where owner_id = ${ownerId}
+      `,
+    ),
+    rowsOrEmpty(
+      locals.db<Row[]>`
+        select id, title, motorcycle_id, trigger_type, trigger_value_km,
+          trigger_value_days, reference_km, reference_date
+        from reminders
+        where owner_id = ${ownerId} and is_active = true
+      `,
+    ),
+    rowsOrEmpty(
+      locals.db<Row[]>`
+        select motorcycle_id, installed_at, cost_cents, wear_percent
+        from tire_records
+        where owner_id = ${ownerId} and is_active = true
+      `,
+    ),
+    rowsOrEmpty(
+      locals.db<Row[]>`
+        select name, motorcycle_id, valid_until
+        from motorcycle_documents
+        where owner_id = ${ownerId}
+      `,
+    ),
+    rowsOrEmpty(
+      locals.db<Row[]>`
+        select date, cost_cents, maintenance_type
+        from maintenance_records
+        where owner_id = ${ownerId}
+      `,
+    ),
+    rowsOrEmpty(
+      locals.db<Row[]>`
+        select due_date, amount_cents, fee_type
+        from annual_fees
+        where owner_id = ${ownerId}
+      `,
+    ),
+  ]);
 
   const summary = dashboardSummary(fuelRows as never);
   const odometerFor = new Map(

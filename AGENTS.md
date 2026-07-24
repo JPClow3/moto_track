@@ -21,9 +21,10 @@ Use this file for agent-specific repo workflows. Keep broader product and fronte
   - `npm run dev`
 - **Cloudflare Worker Development**:
   - `npm run worker:dev`
-- **Database / Supabase**:
-  - Push schema changes: `npm run db:migrate`
-  - Regenerate TypeScript types from database: `npm run supabase:types`
+- **Database (Neon Postgres)**:
+  - Apply `db/migrations/*.sql` to the live Neon database: `npm run db:push`
+  - `src/lib/types/database.ts` is hand-maintained — update it alongside new migrations
+  - Auth is Neon Auth (managed Better Auth); `DATABASE_URL`/`PUBLIC_NEON_AUTH_URL`/`NEON_AUTH_JWKS_URL` are required at runtime
 - **CI Pipeline**:
   - GitHub Actions runs check, lint, format:check, unit tests, and e2e tests on push to `main` and all Pull Requests.
 

@@ -36,6 +36,15 @@ describe("fuel parsing", () => {
     expect(rows[0].data.tank_full).toBe(true);
   });
 
+  it("keeps quoted station names with commas and rejects bad dates", () => {
+    const rows = parseFuelCsv(
+      'date,odometer_km,liters,total_price,station_name\n2026-07-10,12000,10,65,"Posto Centro, SP"\n10/07/2026,12100,9,60,X',
+    );
+    expect(rows[0].errors).toEqual([]);
+    expect(rows[0].data.station_name).toBe("Posto Centro, SP");
+    expect(rows[1].errors).toContain("Data inválida.");
+  });
+
   it("rejects malformed and invalid browser-submitted import rows", () => {
     expect(parseFuelImportRows("not json")).toEqual({
       ok: false,
