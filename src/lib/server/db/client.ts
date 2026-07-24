@@ -8,6 +8,10 @@ import { runtimeEnv } from "$server/runtime";
 const POOLED_OPTIONS = {
   prepare: false,
   max: 1,
+  // Keep cold-fail fast when the Hyperdrive local placeholder (or a down
+  // Postgres) is unreachable — public pages catch query errors and still
+  // render, but a long TCP hang would trip Playwright's webServer timeout.
+  connect_timeout: 5,
 } satisfies postgres.Options<Record<string, never>>;
 
 // One Sql instance per resolved connection string, reused across requests
@@ -16,14 +20,18 @@ const POOLED_OPTIONS = {
 const clients = new Map<string, postgres.Sql>();
 
 function resolveConnectionString(platform?: App.Platform): string {
-  const hyperdriveUrl = platform?.env?.HYPERDRIVE?.connectionString;
-  if (hyperdriveUrl) {
-    return hyperdriveUrl;
-  }
-
+  // Prefer DATABASE_URL whenever it is set. In local/CI, wrangler always
+  // exposes a Hyperdrive binding (and requires localConnectionString), which
+  // would otherwise shadow a real Neon URL from .env. Production Workers
+  // typically only have the Hyperdrive binding, so this still selects it.
   const directUrl = runtimeEnv(platform).DATABASE_URL;
   if (directUrl) {
     return directUrl;
+  }
+
+  const hyperdriveUrl = platform?.env?.HYPERDRIVE?.connectionString;
+  if (hyperdriveUrl) {
+    return hyperdriveUrl;
   }
 
   throw new Error(

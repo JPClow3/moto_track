@@ -8,9 +8,13 @@ binding = "R2_BUCKET"
 bucket_name = "moto-track-media"
 
 # Hyperdrive config "moto-track-neon" pointing at the Neon database.
+# localConnectionString is required by wrangler for local/CI emulation; the app
+# prefers DATABASE_URL when set (see src/lib/server/db/client.ts), so this
+# placeholder only matters for offline public-page e2e without a real DB.
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "173c6f16dc3445cdb982cd84dbcb9b23"
+localConnectionString = "postgresql://user:pass@127.0.0.1:1/postgres"
 
 [vars]
 PUBLIC_SITE_URL = "https://moto-track.net"
