@@ -1,16 +1,15 @@
-import { redirect } from "@sveltejs/kit";
+import { redirect, type RequestHandler } from "@sveltejs/kit";
 import { safeInternalRedirect } from "$server/auth-redirect";
+import { completeSocialSignIn } from "$server/auth/session";
 
-// Return target for Neon Auth social sign-in and email flows. Email/password
-// auth establishes the session inline (see $server/auth/session), so this
-// endpoint only needs to bounce the browser onward.
-//
-// NOTE(oauth): Neon Auth is hosted on a separate domain, so a social-login
-// session cookie is set on the neonauth host, not this app's origin. Completing
-// Google sign-in as a first-party session requires either the Neon Auth
-// client-side SDK on the browser or a cross-domain/subdomain cookie setup in
-// the Neon Auth project. Until that is configured, this callback cannot read
-// the upstream session. Email/password sign-in is unaffected.
-export async function GET({ url }) {
+export const GET: RequestHandler = async (event) => {
+  const { url } = event;
+  const verifier = url.searchParams.get("neon_auth_session_verifier");
+  if (verifier) {
+    const result = await completeSocialSignIn(event, verifier);
+    if (!result.ok) {
+      throw redirect(303, "/auth?redirectTo=/dashboard");
+    }
+  }
   throw redirect(303, safeInternalRedirect(url.searchParams.get("next")));
-}
+};
