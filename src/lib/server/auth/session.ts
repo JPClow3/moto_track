@@ -8,9 +8,12 @@ import { runtimeEnv } from "$server/runtime";
 // calls the Better Auth REST endpoints server-side, captures the upstream
 // signed session-token value, and stores it in its OWN first-party cookie.
 const APP_SESSION_COOKIE = "mt_session";
+const APP_OAUTH_CHALLENGE_COOKIE = "mt_oauth_challenge";
 // The cookie name Better Auth expects back on its endpoints.
 const UPSTREAM_COOKIE = "__Secure-neon-auth.session_token";
+const UPSTREAM_OAUTH_CHALLENGE_COOKIE = "__Secure-neon-auth.session_challange";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days, matching the upstream Max-Age.
+const OAUTH_CHALLENGE_MAX_AGE_SECONDS = 10 * 60;
 
 export type AuthUser = { id: string; email: string | null };
 export type AuthSession = { userId: string; expiresAt?: string };
@@ -43,11 +46,15 @@ function setCookieValues(res: Response): string[] {
 
 // Pull the signed session-token value out of the upstream Set-Cookie list.
 function extractUpstreamToken(res: Response): string | null {
+  return extractUpstreamCookie(res, UPSTREAM_COOKIE);
+}
+
+function extractUpstreamCookie(res: Response, name: string): string | null {
   for (const cookie of setCookieValues(res)) {
     const [pair] = cookie.split(";");
     const eq = pair.indexOf("=");
     if (eq === -1) continue;
-    if (pair.slice(0, eq).trim() === UPSTREAM_COOKIE) {
+    if (pair.slice(0, eq).trim() === name) {
       return decodeURIComponent(pair.slice(eq + 1).trim());
     }
   }
@@ -64,6 +71,16 @@ function storeSession(event: RequestEvent, token: string) {
   });
 }
 
+function storeOAuthChallenge(event: RequestEvent, challenge: string) {
+  event.cookies.set(APP_OAUTH_CHALLENGE_COOKIE, challenge, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: event.url.protocol === "https:",
+    maxAge: OAUTH_CHALLENGE_MAX_AGE_SECONDS,
+  });
+}
+
 export function clearSession(event: RequestEvent) {
   event.cookies.delete(APP_SESSION_COOKIE, { path: "/" });
 }
@@ -71,11 +88,21 @@ export function clearSession(event: RequestEvent) {
 async function call(
   event: RequestEvent,
   path: string,
-  init: { method?: string; body?: unknown; token?: string | null } = {},
+  init: {
+    method?: string;
+    body?: unknown;
+    token?: string | null;
+    oauthChallenge?: string | null;
+  } = {},
 ) {
   const headers: Record<string, string> = { origin: appOrigin(event) };
   if (init.body !== undefined) headers["content-type"] = "application/json";
-  if (init.token) headers["cookie"] = `${UPSTREAM_COOKIE}=${init.token}`;
+  if (init.oauthChallenge) {
+    headers["cookie"] =
+      `${UPSTREAM_OAUTH_CHALLENGE_COOKIE}=${init.oauthChallenge}`;
+  } else if (init.token) {
+    headers["cookie"] = `${UPSTREAM_COOKIE}=${init.token}`;
+  }
   const res = await fetch(`${authBase(event.platform)}${path}`, {
     method: init.method ?? "GET",
     headers,
@@ -154,6 +181,29 @@ export function signUpEmail(
   return authenticate(event, "/sign-up/email", { email, password, name });
 }
 
+export async function completeSocialSignIn(
+  event: RequestEvent,
+  verifier: string,
+): Promise<Result> {
+  const challenge = event.cookies.get(APP_OAUTH_CHALLENGE_COOKIE);
+  if (!challenge) return { ok: false, message: "OAuth session expired." };
+
+  const res = await call(
+    event,
+    `/get-session?neon_auth_session_verifier=${encodeURIComponent(verifier)}`,
+    { oauthChallenge: challenge },
+  );
+  if (!res.ok)
+    return { ok: false, message: "OAuth session verification failed." };
+
+  const token = extractUpstreamToken(res);
+  if (!token) return { ok: false, message: "No session issued." };
+
+  storeSession(event, token);
+  event.cookies.delete(APP_OAUTH_CHALLENGE_COOKIE, { path: "/" });
+  return { ok: true };
+}
+
 export async function signOut(event: RequestEvent) {
   const token = event.cookies.get(APP_SESSION_COOKIE);
   if (token) {
@@ -181,6 +231,11 @@ export async function socialSignInUrl(
     const data = await readJson(res);
     return { url: null, message: (data.message as string) ?? "OAuth failed." };
   }
+  const challenge = extractUpstreamCookie(res, UPSTREAM_OAUTH_CHALLENGE_COOKIE);
+  if (!challenge) {
+    return { url: null, message: "No OAuth challenge was issued." };
+  }
+  storeOAuthChallenge(event, challenge);
   const data = await readJson(res);
   return { url: (data.url as string) ?? null };
 }
