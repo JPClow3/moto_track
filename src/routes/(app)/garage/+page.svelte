@@ -17,6 +17,14 @@
   function selectBrand() {
     selectedTemplateId = "";
   }
+
+  function templateLabel(template: (typeof data.templates)[number]) {
+    const year =
+      template.year_to && template.year_to !== template.year_from
+        ? `${template.year_from}–${template.year_to}`
+        : template.year_from;
+    return `${template.model} ${template.variant} · ${year}`;
+  }
 </script>
 
 <svelte:head><title>Garagem · Moto Track</title></svelte:head>
@@ -137,6 +145,25 @@
               </form>
             </details>
           {/if}
+          {#if motorcycle.manual_source}
+            <div class="mt-4 border-t border-[var(--line)] pt-4">
+              <p class="label-tech text-[var(--accent)]">Fonte da agenda</p>
+              <a
+                class="mt-1 block text-sm font-semibold text-brand underline-offset-4 hover:underline"
+                href={motorcycle.manual_source.official_url}
+                target="_blank"
+                rel="noreferrer"
+                >{motorcycle.manual_source.document_version} ↗</a
+              >
+              <p class="mt-1 text-xs text-[var(--muted)]">
+                {motorcycle.manual_source.page_reference} · verificado em
+                {motorcycle.manual_source.last_verified_date}
+              </p>
+              <p class="mt-1 text-xs text-[var(--muted)]">
+                {motorcycle.manual_source.coverage_notes}
+              </p>
+            </div>
+          {/if}
           {#if motorcycle.template_documents.length}
             <div class="mt-4 border-t border-[var(--line)] pt-3">
               <p class="label-tech text-xs text-[var(--muted)]">
@@ -195,21 +222,25 @@
           >
             <option value="" disabled>Selecione</option>
             {#each models as template}
-              <option value={template.id}>{template.model}</option>
+              <option value={template.id}>{templateLabel(template)}</option>
             {/each}
           </select>
         </label>
         {#if selectedTemplate}
           <p class="text-xs text-[var(--muted)]">
-            {selectedTemplate.year_from}–{selectedTemplate.year_to ?? "atual"}:
-            {selectedTemplate.maintenance_count} lembretes de revisão serão incluídos.
+            {selectedTemplate.model}
+            {selectedTemplate.variant} · {selectedTemplate.generation}
+            · {selectedTemplate.year_from}. {selectedTemplate.maintenance_count} itens
+            com fonte oficial.
           </p>
           {#if selectedTemplate.manual_url}
             <a
               class="text-xs font-semibold text-brand underline-offset-4 hover:underline"
               href={selectedTemplate.manual_url}
               target="_blank"
-              rel="noreferrer">Abrir catálogo oficial de PDFs ↗</a
+              rel="noreferrer"
+              >{selectedTemplate.document_version} · {selectedTemplate.page_reference}
+              ↗</a
             >
           {/if}
         {/if}

@@ -14,6 +14,10 @@ import {
   translate,
   type MessageKey,
 } from "$lib/i18n";
+import {
+  dueStateForPlan,
+  initialHistoryStatus,
+} from "$server/domain/motorcycle-catalog";
 
 const DOCUMENT_HORIZON_DAYS = 30;
 
@@ -52,6 +56,7 @@ export async function load({ locals }) {
       costs: [],
       activity: [],
       upcoming: [],
+      dueNow: [],
       counts: { reminders: 0, tires: 0, documents: 0 },
     };
   }
@@ -74,6 +79,7 @@ export async function load({ locals }) {
     documentRows,
     maintenanceRows,
     feeRows,
+    planRows,
   ] = await Promise.all([
     rowsOrEmpty(
       locals.db<Row[]>`
@@ -126,6 +132,18 @@ export async function load({ locals }) {
         where owner_id = ${ownerId}
       `,
     ),
+    rowsOrEmpty(
+      locals.db<Row[]>`
+        select p.id, p.motorcycle_id, p.maintenance_type, p.interval_km,
+          p.last_done_km, p.initial_history_status, p.estimated_cost_cents,
+          m.name as motorcycle_name, ms.official_url, ms.document_version,
+          ms.page_reference
+        from maintenance_plan_items p
+        join motorcycles m on m.id = p.motorcycle_id
+        left join motorcycle_manual_sources ms on ms.id = p.manual_source_id
+        where p.owner_id = ${ownerId} and p.is_active = true and m.is_active = true
+      `,
+    ),
   ]);
 
   const summary = dashboardSummary(fuelRows as never);
@@ -135,6 +153,36 @@ export async function load({ locals }) {
       Number(row.current_odometer_km ?? 0),
     ]),
   );
+
+  const dueNow = planRows
+    .map((plan) => {
+      const status = dueStateForPlan({
+        historyStatus: initialHistoryStatus(
+          String(plan.initial_history_status ?? "unknown"),
+        ),
+        lastDoneKm:
+          plan.last_done_km == null ? null : Number(plan.last_done_km),
+        intervalKm: plan.interval_km == null ? null : Number(plan.interval_km),
+        currentKm: odometerFor.get(String(plan.motorcycle_id)) ?? 0,
+      });
+      return {
+        id: String(plan.id),
+        motorcycleName: String(plan.motorcycle_name ?? "Moto"),
+        maintenanceType: String(plan.maintenance_type ?? "Manutenção"),
+        urgency: status.urgency,
+        dueKm: status.dueKm,
+        estimatedCostCents: Number(plan.estimated_cost_cents ?? 0),
+        officialUrl: String(plan.official_url ?? ""),
+        documentVersion: String(plan.document_version ?? ""),
+        pageReference: String(plan.page_reference ?? ""),
+      };
+    })
+    .filter((plan) => plan.urgency !== "scheduled")
+    .sort((a, b) => {
+      const rank = { overdue: 0, due_now: 1, scheduled: 2 } as const;
+      return rank[a.urgency] - rank[b.urgency];
+    })
+    .slice(0, 5);
 
   // Only documents actually inside the renewal window count against health —
   // a CRLV valid for another two years is not a problem to solve today.
@@ -282,6 +330,7 @@ export async function load({ locals }) {
       { today },
     ),
     upcoming,
+    dueNow,
     counts: {
       reminders: reminderRows.length,
       tires: tireRows.length,

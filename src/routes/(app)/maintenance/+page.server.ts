@@ -199,6 +199,8 @@ export async function load({ locals }) {
     `.catch(() => [] as Row[]),
     locals.db<Row[]>`
       select p.*, m.name as motorcycle_name, m.current_odometer_km,
+        ms.official_url, ms.document_version, ms.page_reference,
+        ms.last_verified_date, ms.coverage_notes,
         case
           when p.interval_km is not null and p.last_done_km is not null
             then p.last_done_km + p.interval_km
@@ -206,6 +208,7 @@ export async function load({ locals }) {
         end as next_due_km
       from maintenance_plan_items p
       left join motorcycles m on m.id = p.motorcycle_id
+      left join motorcycle_manual_sources ms on ms.id = p.manual_source_id
       where p.owner_id = ${ownerId}
       order by p.maintenance_type
     `.catch(() => [] as Row[]),

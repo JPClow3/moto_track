@@ -93,7 +93,7 @@
     <h2 class="display text-2xl">Planos</h2>
     {#each data.plans as plan}
       <article class="panel flex justify-between gap-3 p-4">
-        <span
+        <span class="min-w-0"
           >{plan.motorcycles?.name ?? "Moto"} · {plan.maintenance_type}
           {plan.interval_km ? `· ${plan.interval_km} km` : ""}
           {plan.interval_days ? `· ${plan.interval_days} dias` : ""}
@@ -101,6 +101,29 @@
             ? `· próxima aos ${Number(plan.next_due_km).toLocaleString("pt-BR")} km`
             : ""}</span
         >
+        <div class="text-sm text-[var(--muted)]">
+          {#if plan.initial_history_status === "not_done"}
+            <p class="text-danger">
+              Histórico inicial: não realizado (atrasado)
+            </p>
+          {:else if plan.initial_history_status === "unknown"}
+            <p>Histórico inicial: não confirmado (inspecionar agora)</p>
+          {:else}
+            <p>Histórico inicial: confirmado</p>
+          {/if}
+          {#if Number(plan.estimated_cost_cents ?? 0) > 0}
+            <p>Estimativa: {brl(Number(plan.estimated_cost_cents))}</p>
+          {/if}
+          {#if plan.official_url}
+            <a
+              class="inline-block font-semibold text-brand underline-offset-4 hover:underline"
+              href={String(plan.official_url)}
+              target="_blank"
+              rel="noreferrer"
+              >{String(plan.document_version)} · {String(plan.page_reference)} ↗</a
+            >
+          {/if}
+        </div>
         <form method="POST" action="?/deletePlan" use:enhance>
           <input type="hidden" name="id" value={plan.id} /><button
             class="button-danger">Excluir</button

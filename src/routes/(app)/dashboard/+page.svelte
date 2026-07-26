@@ -86,6 +86,64 @@
     {/each}
   </div>
 
+  <article class="panel p-6">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p class="eyebrow">
+          <span class="slash-rule" aria-hidden="true"></span>Manutenção
+        </p>
+        <h2 class="display mt-2 text-2xl">O que vence agora</h2>
+        <p class="mt-1 text-sm text-[var(--muted)]">
+          Urgência baseada no histórico que você informou — nunca em uma revisão
+          presumida.
+        </p>
+      </div>
+      <a class="button-secondary" href="/maintenance">Abrir manutenção</a>
+    </div>
+    <div class="mt-5 grid gap-3 lg:grid-cols-2">
+      {#each data.dueNow as item (item.id)}
+        <article class="rounded border border-[var(--line)] p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="font-semibold">{item.maintenanceType}</p>
+              <p class="text-sm text-[var(--muted)]">{item.motorcycleName}</p>
+            </div>
+            <span
+              class="label-tech rounded px-2 py-1 text-xs {item.urgency ===
+              'overdue'
+                ? 'bg-danger/10 text-danger'
+                : 'bg-warning/10 text-warning'}"
+            >
+              {item.urgency === "overdue" ? "ATRASADO" : "FAZER AGORA"}
+            </span>
+          </div>
+          <p class="mt-3 text-sm">
+            Estimativa: <strong>{$format.money(item.estimatedCostCents)}</strong
+            >
+            {#if item.dueKm !== null}
+              · marco: {$format.distance(item.dueKm)}{/if}
+          </p>
+          {#if item.officialUrl}
+            <a
+              class="mt-3 inline-block text-sm font-semibold text-brand underline-offset-4 hover:underline"
+              href={item.officialUrl}
+              target="_blank"
+              rel="noreferrer"
+              >Manual oficial: {item.documentVersion} · {item.pageReference} ↗</a
+            >
+          {/if}
+        </article>
+      {:else}
+        <p
+          class="rounded border border-dashed border-[var(--line)] p-5 text-sm text-[var(--muted)]"
+        >
+          Nenhum item exige ação agora. Quando você adicionar uma agenda com
+          fonte oficial, ela aparecerá aqui.
+        </p>
+      {/each}
+    </div>
+  </article>
+
   <!-- Telemetry + health -->
   <div class="grid gap-4 xl:grid-cols-[2fr_1fr]">
     <article class="panel p-6">

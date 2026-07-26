@@ -2,8 +2,8 @@ import { fail, redirect } from "@sveltejs/kit";
 import {
   applyMotorcycleTemplate,
   getTemplateForYear,
+  initialHistoryStatus,
   type MotorcycleCatalogPreview,
-  type MotorcycleTemplate,
 } from "$server/domain/motorcycle-catalog";
 
 function messageFrom(err: unknown) {
@@ -21,16 +21,40 @@ export async function load({ locals }) {
     `,
     locals.db<MotorcycleCatalogPreview[]>`
       select t.id, t.brand, t.model, t.year_from, t.year_to, t.variant,
-        coalesce(s.manual_url, '') as manual_url,
+        t.generation, ms.official_url as manual_url, ms.document_version,
+        ms.page_reference, ms.last_verified_date::text, ms.coverage_notes,
         (select count(*)::int from motorcycle_template_maintenance_items mi where mi.template_id = t.id) as maintenance_count
       from motorcycle_templates t
-      left join motorcycle_template_specs s on s.template_id = t.id
+      join motorcycle_manual_sources ms on ms.template_id = t.id
+      where t.is_exact_schedule = true
       order by t.brand, t.model
       limit 100
     `,
   ]);
   if (motorcycles.length) throw redirect(303, "/dashboard");
-  return { templates };
+  const templateIds = templates.map((template) => template.id);
+  const items = templateIds.length
+    ? await locals.db<
+        Array<{
+          template_id: string;
+          maintenance_type: string;
+          interval_km: number | null;
+        }>
+      >`
+        select template_id, maintenance_type, interval_km
+        from motorcycle_template_maintenance_items
+        where template_id in ${locals.db(templateIds)}
+        order by maintenance_type
+      `
+    : [];
+  return {
+    templates: templates.map((template) => ({
+      ...template,
+      maintenance_items: items.filter(
+        (item) => item.template_id === template.id,
+      ),
+    })),
+  };
 }
 
 export const actions = {
@@ -72,6 +96,19 @@ export const actions = {
           })}
         `;
         if (templateId) {
+          const templateItems = await tx<Array<{ maintenance_type: string }>>`
+            select maintenance_type
+            from motorcycle_template_maintenance_items
+            where template_id = ${templateId}
+          `;
+          const history = Object.fromEntries(
+            templateItems.map((item) => [
+              item.maintenance_type,
+              initialHistoryStatus(
+                String(form.get(`history_${item.maintenance_type}`) ?? ""),
+              ),
+            ]),
+          );
           await applyMotorcycleTemplate(
             // `postgres`' transaction client has the same tagged-query API
             // used by the catalogue helper, but its type deliberately omits
@@ -81,6 +118,7 @@ export const actions = {
             motorcycleId,
             templateId,
             currentOdometerKm,
+            history,
           );
         }
       });

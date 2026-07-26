@@ -131,6 +131,8 @@ export type Database = {
           year_from: number;
           year_to: number | null;
           variant: string;
+          generation: string;
+          is_exact_schedule: boolean;
           engine_cc: number;
           country_code: string;
           created_at: string;
@@ -143,6 +145,8 @@ export type Database = {
           year_from: number;
           year_to?: number | null;
           variant?: string;
+          generation?: string;
+          is_exact_schedule?: boolean;
           engine_cc: number;
           country_code?: string;
           created_at?: string;
@@ -155,6 +159,8 @@ export type Database = {
           year_from?: number;
           year_to?: number | null;
           variant?: string;
+          generation?: string;
+          is_exact_schedule?: boolean;
           engine_cc?: number;
           country_code?: string;
           created_at?: string;
@@ -264,6 +270,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      motorcycle_manual_sources: {
+        Row: {
+          id: string;
+          template_id: string;
+          official_url: string;
+          document_version: string;
+          page_reference: string;
+          last_verified_date: string;
+          coverage_notes: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          official_url: string;
+          document_version: string;
+          page_reference: string;
+          last_verified_date: string;
+          coverage_notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          official_url?: string;
+          document_version?: string;
+          page_reference?: string;
+          last_verified_date?: string;
+          coverage_notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       motorcycle_template_maintenance_items: {
         Row: {
           id: string;
@@ -273,6 +315,8 @@ export type Database = {
           interval_days: number | null;
           notes: string;
           source_url: string;
+          manual_source_id: string | null;
+          estimated_cost_cents: number;
           created_at: string;
           updated_at: string;
         };
@@ -284,6 +328,8 @@ export type Database = {
           interval_days?: number | null;
           notes?: string;
           source_url: string;
+          manual_source_id?: string | null;
+          estimated_cost_cents?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -295,6 +341,8 @@ export type Database = {
           interval_days?: number | null;
           notes?: string;
           source_url?: string;
+          manual_source_id?: string | null;
+          estimated_cost_cents?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -817,6 +865,9 @@ export type Database = {
           interval_days: number | null;
           last_done_km: number | null;
           last_done_date: string | null;
+          manual_source_id: string | null;
+          estimated_cost_cents: number;
+          initial_history_status: "confirmed_done" | "not_done" | "unknown";
           is_severe_duty_override: boolean;
           notes: string;
           is_active: boolean;
@@ -832,6 +883,9 @@ export type Database = {
           interval_days?: number | null;
           last_done_km?: number | null;
           last_done_date?: string | null;
+          manual_source_id?: string | null;
+          estimated_cost_cents?: number;
+          initial_history_status?: "confirmed_done" | "not_done" | "unknown";
           is_severe_duty_override?: boolean;
           notes?: string;
           is_active?: boolean;
@@ -847,6 +901,9 @@ export type Database = {
           interval_days?: number | null;
           last_done_km?: number | null;
           last_done_date?: string | null;
+          manual_source_id?: string | null;
+          estimated_cost_cents?: number;
+          initial_history_status?: "confirmed_done" | "not_done" | "unknown";
           is_severe_duty_override?: boolean;
           notes?: string;
           is_active?: boolean;

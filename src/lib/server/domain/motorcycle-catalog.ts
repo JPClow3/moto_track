@@ -8,28 +8,50 @@ export type MotorcycleTemplate = {
   year_from: number;
   year_to: number | null;
   variant: string;
+  generation: string;
 };
 
 export type MotorcycleCatalogPreview = MotorcycleTemplate & {
   manual_url: string;
+  document_version: string;
+  page_reference: string;
+  last_verified_date: string;
+  coverage_notes: string;
   maintenance_count: number;
+  maintenance_items?: Array<{
+    maintenance_type: string;
+    interval_km: number | null;
+  }>;
 };
 
-export function manualScheduleAnchor(
-  currentOdometerKm: number,
-  intervalKm: number,
-) {
-  const currentKm = Math.max(0, Math.trunc(currentOdometerKm));
-  const interval = Math.max(1, Math.trunc(intervalKm));
-  // A model's table is a sequence of odometer milestones, not a promise that
-  // a second-hand motorcycle was serviced at the last one.  Pick the first
-  // milestone at or after the entered odometer, so 50,000 km with a 6,000 km
-  // interval points to 54,000 km rather than blindly adding 6,000 to 50,000.
-  const nextDueKm = Math.max(
-    interval,
-    Math.ceil(currentKm / interval) * interval,
-  );
-  return { referenceKm: nextDueKm - interval, nextDueKm };
+export type InitialHistoryStatus = "confirmed_done" | "not_done" | "unknown";
+
+export function initialHistoryStatus(
+  value: string | null | undefined,
+): InitialHistoryStatus {
+  if (value === "confirmed_done" || value === "not_done") return value;
+  return "unknown";
+}
+
+export function dueStateForPlan({
+  historyStatus,
+  lastDoneKm,
+  intervalKm,
+  currentKm,
+}: {
+  historyStatus: InitialHistoryStatus;
+  lastDoneKm: number | null;
+  intervalKm: number | null;
+  currentKm: number;
+}) {
+  if (historyStatus === "not_done")
+    return { urgency: "overdue" as const, dueKm: null };
+  if (historyStatus === "unknown" || lastDoneKm === null)
+    return { urgency: "due_now" as const, dueKm: null };
+  const dueKm = intervalKm === null ? null : lastDoneKm + intervalKm;
+  if (dueKm !== null && currentKm >= dueKm)
+    return { urgency: "overdue" as const, dueKm };
+  return { urgency: "scheduled" as const, dueKm };
 }
 
 export async function getTemplateForYear(
@@ -38,9 +60,10 @@ export async function getTemplateForYear(
   year: number,
 ) {
   const [template] = await db<MotorcycleTemplate[]>`
-    select id, brand, model, year_from, year_to, variant
+    select id, brand, model, year_from, year_to, variant, generation
     from motorcycle_templates
     where id = ${templateId}
+      and is_exact_schedule = true
       and ${year} >= year_from
       and (${year} <= year_to or year_to is null)
   `;
@@ -53,6 +76,7 @@ export async function applyMotorcycleTemplate(
   motorcycleId: string,
   templateId: string,
   currentOdometerKm: number,
+  initialHistory: Record<string, InitialHistoryStatus> = {},
 ) {
   const [specs] = await db<Array<Record<string, string | number | null>>>`
     select * from motorcycle_template_specs where template_id = ${templateId}
@@ -103,16 +127,20 @@ export async function applyMotorcycleTemplate(
       interval_km: number | null;
       interval_days: number | null;
       notes: string;
+      manual_source_id: string | null;
+      estimated_cost_cents: number;
     }>
   >`
-    select maintenance_type, interval_km, interval_days, notes
+    select maintenance_type, interval_km, interval_days, notes,
+      manual_source_id, estimated_cost_cents
     from motorcycle_template_maintenance_items
     where template_id = ${templateId}
   `;
   for (const item of items) {
-    const anchor = item.interval_km
-      ? manualScheduleAnchor(currentOdometerKm, item.interval_km)
-      : null;
+    const historyStatus = initialHistoryStatus(
+      initialHistory[item.maintenance_type],
+    );
+    const confirmedNow = historyStatus === "confirmed_done";
     const [plan] = await db<Array<{ id: string }>>`
       insert into maintenance_plan_items ${db({
         owner_id: ownerId,
@@ -120,10 +148,16 @@ export async function applyMotorcycleTemplate(
         maintenance_type: item.maintenance_type,
         interval_km: item.interval_km,
         interval_days: item.interval_days,
-        last_done_km: anchor?.referenceKm ?? null,
-        notes: anchor
-          ? `${item.notes} Marco do manual para odômetro inicial de ${Math.max(0, Math.trunc(currentOdometerKm)).toLocaleString("pt-BR")} km; próxima recomendação em ${anchor.nextDueKm.toLocaleString("pt-BR")} km. Confirme o histórico de serviços.`
-          : item.notes,
+        last_done_km: confirmedNow
+          ? Math.max(0, Math.trunc(currentOdometerKm))
+          : null,
+        last_done_date: confirmedNow
+          ? new Date().toISOString().slice(0, 10)
+          : null,
+        initial_history_status: historyStatus,
+        manual_source_id: item.manual_source_id,
+        estimated_cost_cents: item.estimated_cost_cents,
+        notes: `${item.notes} Histórico inicial: ${historyStatus === "confirmed_done" ? "serviço confirmado no odômetro informado" : historyStatus === "not_done" ? "serviço informado como não realizado" : "histórico não confirmado; inspeção necessária antes de assumir um marco"}.`,
       })}
       on conflict (motorcycle_id, maintenance_type, is_severe_duty_override)
       do nothing
@@ -138,7 +172,7 @@ export async function applyMotorcycleTemplate(
         maintenance_type: item.maintenance_type,
         interval_km: item.interval_km,
         interval_days: item.interval_days,
-        reference_km: anchor?.referenceKm ?? null,
+        reference_km: confirmedNow ? currentOdometerKm : null,
       });
     }
   }

@@ -11,7 +11,6 @@ import {
   applyMotorcycleTemplate,
   getTemplateForYear,
   type MotorcycleCatalogPreview,
-  type MotorcycleTemplate,
 } from "$server/domain/motorcycle-catalog";
 
 type Row = Record<string, unknown>;
@@ -21,6 +20,14 @@ type TemplateDocument = {
   document_type: string;
   external_url: string;
   notes: string;
+};
+type ManualSource = {
+  template_id: string;
+  official_url: string;
+  document_version: string;
+  page_reference: string;
+  last_verified_date: string;
+  coverage_notes: string;
 };
 
 function value(form: FormData, key: string) {
@@ -88,10 +95,12 @@ export async function load({ locals }) {
     rowsOrEmpty(
       locals.db<MotorcycleCatalogPreview[]>`
         select t.id, t.brand, t.model, t.year_from, t.year_to, t.variant,
-          coalesce(s.manual_url, '') as manual_url,
+          t.generation, ms.official_url as manual_url, ms.document_version,
+          ms.page_reference, ms.last_verified_date::text, ms.coverage_notes,
           (select count(*)::int from motorcycle_template_maintenance_items mi where mi.template_id = t.id) as maintenance_count
         from motorcycle_templates t
-        left join motorcycle_template_specs s on s.template_id = t.id
+        join motorcycle_manual_sources ms on ms.template_id = t.id
+        where t.is_exact_schedule = true
         order by t.brand, t.model
         limit 100
       `,
@@ -127,16 +136,22 @@ export async function load({ locals }) {
   const templateIds = motorcyclesWithSpecs
     .map((motorcycle) => String(motorcycle.source_template_id ?? ""))
     .filter(Boolean);
-  const documents = templateIds.length
-    ? await rowsOrEmpty(
-        locals.db<TemplateDocument[]>`
+  const [documents, manualSources] = templateIds.length
+    ? await Promise.all([
+        rowsOrEmpty(locals.db<TemplateDocument[]>`
           select template_id, title, document_type, external_url, notes
           from motorcycle_template_documents
           where template_id in ${locals.db(templateIds)}
           order by title
-        `,
-      )
-    : [];
+        `),
+        rowsOrEmpty(locals.db<ManualSource[]>`
+          select template_id, official_url, document_version, page_reference,
+            last_verified_date::text, coverage_notes
+          from motorcycle_manual_sources
+          where template_id in ${locals.db(templateIds)}
+        `),
+      ])
+    : [[], []];
   const documentsByTemplate = new Map<string, TemplateDocument[]>();
   for (const document of documents) {
     const templateId = String(document.template_id);
@@ -145,15 +160,25 @@ export async function load({ locals }) {
       document,
     ]);
   }
+  const sourceByTemplate = new Map(
+    manualSources.map((source) => [source.template_id, source]),
+  );
 
   return {
     motorcycles: motorcyclesWithSpecs.map<
-      Row & { motorcycle_specs: Row[]; template_documents: TemplateDocument[] }
+      Row & {
+        motorcycle_specs: Row[];
+        template_documents: TemplateDocument[];
+        manual_source: ManualSource | null;
+      }
     >((motorcycle) => ({
       ...motorcycle,
       template_documents:
         documentsByTemplate.get(String(motorcycle.source_template_id ?? "")) ??
         [],
+      manual_source:
+        sourceByTemplate.get(String(motorcycle.source_template_id ?? "")) ??
+        null,
     })),
     templates,
     canAddActive:
