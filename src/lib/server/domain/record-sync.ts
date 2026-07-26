@@ -206,6 +206,7 @@ export async function syncPlanReminder(
     maintenance_type: string;
     interval_km: number | null;
     interval_days: number | null;
+    reference_km?: number | null;
   },
 ) {
   const [existing] = await db<{ id: string }[]>`
@@ -221,6 +222,7 @@ export async function syncPlanReminder(
       "by_interval" | "by_date",
     trigger_value_km: plan.interval_km,
     trigger_value_days: plan.interval_days,
+    reference_km: plan.reference_km ?? null,
     is_active: true,
     send_email: true,
     send_push: true,

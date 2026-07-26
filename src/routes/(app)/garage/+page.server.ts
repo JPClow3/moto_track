@@ -7,8 +7,21 @@ import {
 } from "$server/domain/entitlements";
 import { archiveMotorcycle, restoreMotorcycle } from "$server/domain/parity";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
+import {
+  applyMotorcycleTemplate,
+  getTemplateForYear,
+  type MotorcycleCatalogPreview,
+  type MotorcycleTemplate,
+} from "$server/domain/motorcycle-catalog";
 
 type Row = Record<string, unknown>;
+type TemplateDocument = {
+  template_id: string;
+  title: string;
+  document_type: string;
+  external_url: string;
+  notes: string;
+};
 
 function value(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim();
@@ -57,7 +70,7 @@ async function canAddActiveMotorcycle(db: Sql, ownerId: string) {
 
 export async function load({ locals }) {
   const ownerId = locals.user!.id;
-  const [motorcycles, profileRows] = await Promise.all([
+  const [motorcycles, profileRows, templates] = await Promise.all([
     rowsOrEmpty(
       locals.db<Row[]>`
         select * from motorcycles
@@ -70,6 +83,17 @@ export async function load({ locals }) {
         select plan, stripe_subscription_status, grace_until
         from subscription_profiles
         where owner_id = ${ownerId}
+      `,
+    ),
+    rowsOrEmpty(
+      locals.db<MotorcycleCatalogPreview[]>`
+        select t.id, t.brand, t.model, t.year_from, t.year_to, t.variant,
+          coalesce(s.manual_url, '') as manual_url,
+          (select count(*)::int from motorcycle_template_maintenance_items mi where mi.template_id = t.id) as maintenance_count
+        from motorcycle_templates t
+        left join motorcycle_template_specs s on s.template_id = t.id
+        order by t.brand, t.model
+        limit 100
       `,
     ),
   ]);
@@ -100,8 +124,38 @@ export async function load({ locals }) {
     ),
   }));
 
+  const templateIds = motorcyclesWithSpecs
+    .map((motorcycle) => String(motorcycle.source_template_id ?? ""))
+    .filter(Boolean);
+  const documents = templateIds.length
+    ? await rowsOrEmpty(
+        locals.db<TemplateDocument[]>`
+          select template_id, title, document_type, external_url, notes
+          from motorcycle_template_documents
+          where template_id in ${locals.db(templateIds)}
+          order by title
+        `,
+      )
+    : [];
+  const documentsByTemplate = new Map<string, TemplateDocument[]>();
+  for (const document of documents) {
+    const templateId = String(document.template_id);
+    documentsByTemplate.set(templateId, [
+      ...(documentsByTemplate.get(templateId) ?? []),
+      document,
+    ]);
+  }
+
   return {
-    motorcycles: motorcyclesWithSpecs,
+    motorcycles: motorcyclesWithSpecs.map<
+      Row & { motorcycle_specs: Row[]; template_documents: TemplateDocument[] }
+    >((motorcycle) => ({
+      ...motorcycle,
+      template_documents:
+        documentsByTemplate.get(String(motorcycle.source_template_id ?? "")) ??
+        [],
+    })),
+    templates,
     canAddActive:
       hasProAccess(profile) ||
       motorcyclesWithSpecs.filter((motorcycle) => motorcycle.is_active).length <
@@ -117,29 +171,57 @@ export const actions = {
       return fail(403, { message: "O plano Free permite uma moto ativa." });
     }
     const name = value(form, "name");
-    const brand = value(form, "brand");
-    const model = value(form, "model");
+    let brand = value(form, "brand");
+    let model = value(form, "model");
     const year = Number(form.get("year"));
     if (!name || !brand || !model || !Number.isInteger(year)) {
       return fail(400, {
         message: "Informe nome, marca, modelo e ano válidos.",
       });
     }
+    const enteredOdometer = Number(form.get("current_odometer_km") ?? 0);
+    if (!Number.isFinite(enteredOdometer) || enteredOdometer < 0) {
+      return fail(400, { message: "Odômetro inválido." });
+    }
+    const currentOdometerKm = Math.trunc(enteredOdometer);
+    const templateId = value(form, "template_id") || null;
+    if (templateId) {
+      const template = await getTemplateForYear(locals.db, templateId, year);
+      if (!template)
+        return fail(400, {
+          message: "Escolha um ano disponível para o modelo.",
+        });
+      brand = template.brand;
+      model = template.model;
+    }
+    const motorcycleId = crypto.randomUUID();
     try {
-      await locals.db`
-        insert into motorcycles ${locals.db({
-          owner_id: ownerId,
-          name,
-          brand,
-          model,
-          year,
-          current_odometer_km: Math.max(
-            0,
-            Number(form.get("current_odometer_km") ?? 0),
-          ),
-          is_active: true,
-        })}
-      `;
+      await locals.db.begin(async (tx) => {
+        await tx`
+          insert into motorcycles ${tx({
+            id: motorcycleId,
+            owner_id: ownerId,
+            name,
+            brand,
+            model,
+            year,
+            source_template_id: templateId,
+            current_odometer_km: currentOdometerKm,
+            is_active: true,
+          })}
+        `;
+        if (templateId) {
+          await applyMotorcycleTemplate(
+            // See the onboarding equivalent: the helper only uses the shared
+            // tagged-query surface, which transactions provide at runtime.
+            tx as unknown as typeof locals.db,
+            ownerId,
+            motorcycleId,
+            templateId,
+            currentOdometerKm,
+          );
+        }
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }

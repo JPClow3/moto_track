@@ -198,7 +198,12 @@ export async function load({ locals }) {
       order by name
     `.catch(() => [] as Row[]),
     locals.db<Row[]>`
-      select p.*, m.name as motorcycle_name
+      select p.*, m.name as motorcycle_name, m.current_odometer_km,
+        case
+          when p.interval_km is not null and p.last_done_km is not null
+            then p.last_done_km + p.interval_km
+          else null
+        end as next_due_km
       from maintenance_plan_items p
       left join motorcycles m on m.id = p.motorcycle_id
       where p.owner_id = ${ownerId}
@@ -216,8 +221,14 @@ export async function load({ locals }) {
     ...baseData,
     parts,
     plans: plans.map(
-      (plan): Row & { motorcycles: { name: unknown } | null } => ({
+      (
+        plan,
+      ): Row & {
+        motorcycles: { name: unknown } | null;
+        next_due_km: number | null;
+      } => ({
         ...plan,
+        next_due_km: plan.next_due_km == null ? null : Number(plan.next_due_km),
         motorcycles: plan.motorcycle_name
           ? { name: plan.motorcycle_name }
           : null,

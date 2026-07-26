@@ -228,6 +228,78 @@ export type Database = {
         };
         Relationships: [];
       };
+      motorcycle_template_documents: {
+        Row: {
+          id: string;
+          template_id: string;
+          title: string;
+          document_type: string;
+          external_url: string;
+          source_url: string;
+          notes: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          title: string;
+          document_type?: string;
+          external_url: string;
+          source_url: string;
+          notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          title?: string;
+          document_type?: string;
+          external_url?: string;
+          source_url?: string;
+          notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      motorcycle_template_maintenance_items: {
+        Row: {
+          id: string;
+          template_id: string;
+          maintenance_type: string;
+          interval_km: number | null;
+          interval_days: number | null;
+          notes: string;
+          source_url: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          maintenance_type: string;
+          interval_km?: number | null;
+          interval_days?: number | null;
+          notes?: string;
+          source_url: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          maintenance_type?: string;
+          interval_km?: number | null;
+          interval_days?: number | null;
+          notes?: string;
+          source_url?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       motorcycles: {
         Row: {
           id: string;

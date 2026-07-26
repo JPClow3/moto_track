@@ -96,7 +96,10 @@
         <span
           >{plan.motorcycles?.name ?? "Moto"} · {plan.maintenance_type}
           {plan.interval_km ? `· ${plan.interval_km} km` : ""}
-          {plan.interval_days ? `· ${plan.interval_days} dias` : ""}</span
+          {plan.interval_days ? `· ${plan.interval_days} dias` : ""}
+          {plan.next_due_km != null
+            ? `· próxima aos ${Number(plan.next_due_km).toLocaleString("pt-BR")} km`
+            : ""}</span
         >
         <form method="POST" action="?/deletePlan" use:enhance>
           <input type="hidden" name="id" value={plan.id} /><button

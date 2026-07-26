@@ -2,6 +2,21 @@
   import { enhance } from "$app/forms";
   export let data;
   export let form;
+
+  let selectedTemplateId = "";
+  let selectedBrand = "";
+  let custom = false;
+  $: brands = [...new Set(data.templates.map((template) => template.brand))];
+  $: models = data.templates.filter(
+    (template) => template.brand === selectedBrand,
+  );
+  $: selectedTemplate = data.templates.find(
+    (template) => template.id === selectedTemplateId,
+  );
+
+  function selectBrand() {
+    selectedTemplateId = "";
+  }
 </script>
 
 <svelte:head><title>Garagem · Moto Track</title></svelte:head>
@@ -122,6 +137,22 @@
               </form>
             </details>
           {/if}
+          {#if motorcycle.template_documents.length}
+            <div class="mt-4 border-t border-[var(--line)] pt-3">
+              <p class="label-tech text-xs text-[var(--muted)]">
+                Documentação oficial
+              </p>
+              {#each motorcycle.template_documents as document}
+                <a
+                  class="mt-1 block text-sm font-semibold text-brand underline-offset-4 hover:underline"
+                  href={document.external_url}
+                  target="_blank"
+                  rel="noreferrer">{document.title} ↗</a
+                >
+                <p class="mt-1 text-xs text-[var(--muted)]">{document.notes}</p>
+              {/each}
+            </div>
+          {/if}
         </article>
       {:else}<p class="panel p-6 text-[var(--muted)]">
           Sua garagem está vazia. Cadastre a primeira moto.
@@ -134,21 +165,84 @@
       use:enhance
     >
       <h2 class="text-lg font-bold">Nova moto</h2>
-      <label class="text-sm"
-        >Nome<input class="field" name="name" required /></label
-      ><label class="text-sm"
-        >Marca<input class="field" name="brand" required /></label
-      ><label class="text-sm"
-        >Modelo<input class="field" name="model" required /></label
-      ><label class="text-sm"
-        >Ano<input
+      <label class="text-sm">
+        Nome<input class="field" name="name" required />
+      </label>
+      <label class="flex items-center gap-2 text-sm font-semibold">
+        <input bind:checked={custom} type="checkbox" /> Cadastro personalizado
+      </label>
+      {#if !custom}
+        <label class="text-sm">
+          Marca<select
+            class="field"
+            bind:value={selectedBrand}
+            on:change={selectBrand}
+            required
+          >
+            <option value="" disabled>Selecione</option>
+            {#each brands as brand}
+              <option value={brand}>{brand}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="text-sm">
+          Modelo<select
+            class="field"
+            name="template_id"
+            bind:value={selectedTemplateId}
+            required
+            disabled={!selectedBrand}
+          >
+            <option value="" disabled>Selecione</option>
+            {#each models as template}
+              <option value={template.id}>{template.model}</option>
+            {/each}
+          </select>
+        </label>
+        {#if selectedTemplate}
+          <p class="text-xs text-[var(--muted)]">
+            {selectedTemplate.year_from}–{selectedTemplate.year_to ?? "atual"}:
+            {selectedTemplate.maintenance_count} lembretes de revisão serão incluídos.
+          </p>
+          {#if selectedTemplate.manual_url}
+            <a
+              class="text-xs font-semibold text-brand underline-offset-4 hover:underline"
+              href={selectedTemplate.manual_url}
+              target="_blank"
+              rel="noreferrer">Abrir catálogo oficial de PDFs ↗</a
+            >
+          {/if}
+        {/if}
+        <input
+          type="hidden"
+          name="brand"
+          value={selectedTemplate?.brand ?? ""}
+        />
+        <input
+          type="hidden"
+          name="model"
+          value={selectedTemplate?.model ?? ""}
+        />
+      {:else}
+        <input type="hidden" name="template_id" value="" />
+        <label class="text-sm">
+          Marca<input class="field" name="brand" required={custom} />
+        </label>
+        <label class="text-sm">
+          Modelo<input class="field" name="model" required={custom} />
+        </label>
+      {/if}
+      <label class="text-sm">
+        Ano<input
           class="field"
           name="year"
           type="number"
-          min="1901"
+          min={selectedTemplate?.year_from ?? 1901}
+          max={selectedTemplate?.year_to ?? new Date().getFullYear()}
           required
-        /></label
-      ><label class="text-sm"
+        />
+      </label>
+      <label class="text-sm"
         >Odômetro<input
           class="field"
           name="current_odometer_km"
