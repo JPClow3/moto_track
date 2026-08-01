@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import type { SubmitFunction } from "@sveltejs/kit";
   import { Download, Plus } from "lucide-svelte";
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import type { FeatureConfig } from "$server/domain/features";
@@ -16,6 +17,10 @@
     model: string;
   }> = [];
   export let errorMessage = "";
+
+  let formBusy = false;
+  let statusMessage = "";
+  let statusRole: "status" | "alert" = "status";
 
   // The table used to print raw database column names ("fuel_type",
   // "odometer_km") straight into the header. The feature config already carries
@@ -58,6 +63,53 @@
   // One dialog for the whole table rather than one per row.
   let confirmDialog: ConfirmDialog;
 
+  const enhanceWithStatus: SubmitFunction = () => {
+    formBusy = true;
+    statusMessage = "";
+    return async ({ result, update }) => {
+      formBusy = false;
+      if (result.type === "success") {
+        statusRole = "status";
+        statusMessage = "Operação concluída.";
+      } else if (result.type === "failure") {
+        statusRole = "alert";
+        statusMessage = String(
+          result.data?.message ?? "Não foi possível concluir.",
+        );
+      } else if (result.type === "error") {
+        statusRole = "alert";
+        statusMessage = "Não foi possível concluir.";
+      }
+      await update();
+    };
+  };
+
+  const enhanceDelete: SubmitFunction = async ({ cancel }) => {
+    const ok = await confirmDialog.ask($t("feature.confirmDelete"));
+    if (!ok) {
+      cancel();
+      return;
+    }
+    formBusy = true;
+    statusMessage = "";
+    return async ({ result, update }) => {
+      formBusy = false;
+      if (result.type === "success") {
+        statusRole = "status";
+        statusMessage = "Registro excluído.";
+      } else if (result.type === "failure") {
+        statusRole = "alert";
+        statusMessage = String(
+          result.data?.message ?? "Não foi possível excluir o registro.",
+        );
+      } else {
+        statusRole = "alert";
+        statusMessage = "Não foi possível excluir o registro.";
+      }
+      await update();
+    };
+  };
+
   const inputType = (kind: string) =>
     kind === "date"
       ? "date"
@@ -66,7 +118,7 @@
         : "text";
 </script>
 
-<section class="grid gap-6">
+<section class="grid gap-6" aria-busy={formBusy}>
   <header
     class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
   >
@@ -103,6 +155,18 @@
     </div>
   {/if}
 
+  {#if statusMessage}
+    <p
+      class={statusRole === "alert"
+        ? "rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
+        : "rounded border border-[var(--line)] bg-[var(--panel)] p-3 text-sm"}
+      role={statusRole}
+      aria-live={statusRole === "alert" ? "assertive" : "polite"}
+    >
+      {statusMessage}
+    </p>
+  {/if}
+
   <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
     <div class="panel overflow-hidden">
       <div
@@ -117,8 +181,8 @@
           )}</span
         >
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[760px] text-left text-sm">
+      <div class="feature-table-scroll overflow-x-auto">
+        <table class="feature-table w-full text-left text-sm">
           <caption class="sr-only"
             >{$t("feature.recordsCaption", { feature: feature.title })}</caption
           >
@@ -144,7 +208,7 @@
               <tr class="row-hover border-b border-[var(--line)]">
                 {#each feature.listColumns as column (column)}
                   {@const href = fileHref(row, column)}
-                  <td class="px-4 py-3">
+                  <td class="px-4 py-3" data-label={labelForColumn(column)}>
                     {#if href}
                       <a
                         class="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
@@ -159,13 +223,22 @@
                     {/if}
                   </td>
                 {/each}
-                <td class="px-4 py-3 text-xs text-[var(--muted)]"
+                <td
+                  class="px-4 py-3 text-xs text-[var(--muted)]"
+                  data-label={$t("common.status")}
                   >{valueFor(row, "updated_at")}</td
                 >
-                <td class="px-4 py-3">
+                <td
+                  class="feature-actions px-4 py-3"
+                  data-label={$t("common.actions")}
+                >
                   <div class="flex flex-wrap gap-2">
                     {#if feature.slug === "reminders"}
-                      <form method="POST" action="?/snoozeDays" use:enhance>
+                      <form
+                        method="POST"
+                        action="?/snoozeDays"
+                        use:enhance={enhanceWithStatus}
+                      >
                         <input
                           type="hidden"
                           name="id"
@@ -173,13 +246,18 @@
                         />
                         <input type="hidden" name="days" value="7" />
                         <button
-                          class="button-secondary min-h-8 px-3 py-1 text-xs"
+                          class="button-secondary min-h-11 px-3 py-1 text-xs"
                           type="submit"
+                          disabled={formBusy}
                         >
                           {$t("reminders.snoozeDays")}
                         </button>
                       </form>
-                      <form method="POST" action="?/snoozeKm" use:enhance>
+                      <form
+                        method="POST"
+                        action="?/snoozeKm"
+                        use:enhance={enhanceWithStatus}
+                      >
                         <input
                           type="hidden"
                           name="id"
@@ -187,21 +265,27 @@
                         />
                         <input type="hidden" name="km" value="500" />
                         <button
-                          class="button-secondary min-h-8 px-3 py-1 text-xs"
+                          class="button-secondary min-h-11 px-3 py-1 text-xs"
                           type="submit"
+                          disabled={formBusy}
                         >
                           {$t("reminders.snoozeKm")}
                         </button>
                       </form>
-                      <form method="POST" action="?/complete" use:enhance>
+                      <form
+                        method="POST"
+                        action="?/complete"
+                        use:enhance={enhanceWithStatus}
+                      >
                         <input
                           type="hidden"
                           name="id"
                           value={String(row.id ?? "")}
                         />
                         <button
-                          class="button-primary min-h-8 px-3 py-1 text-xs"
+                          class="button-primary min-h-11 px-3 py-1 text-xs"
                           type="submit"
+                          disabled={formBusy}
                         >
                           {$t("reminders.complete")}
                         </button>
@@ -210,15 +294,7 @@
                     <!-- Deleting was a single unguarded click with no undo.
                          enhance awaits this callback before it fires the
                          request, so the dialog can gate the submit. -->
-                    <form
-                      method="POST"
-                      use:enhance={async ({ cancel }) => {
-                        const ok = await confirmDialog.ask(
-                          $t("feature.confirmDelete"),
-                        );
-                        if (!ok) cancel();
-                      }}
-                    >
+                    <form method="POST" use:enhance={enhanceDelete}>
                       <input type="hidden" name="_intent" value="delete" />
                       <input
                         type="hidden"
@@ -226,8 +302,9 @@
                         value={String(row.id ?? "")}
                       />
                       <button
-                        class="button-danger min-h-8 px-3 py-1 text-xs"
+                        class="button-danger min-h-11 px-3 py-1 text-xs"
                         type="submit"
+                        disabled={formBusy}
                       >
                         {$t("common.delete")}
                       </button>
@@ -236,7 +313,10 @@
                 </td>
               </tr>
               <tr class="edit-row border-b border-[var(--line)]">
-                <td class="px-4 py-3" colspan={feature.listColumns.length + 2}>
+                <td
+                  class="feature-edit-cell px-4 py-3"
+                  colspan={feature.listColumns.length + 2}
+                >
                   <details>
                     <summary
                       class="focus-ring cursor-pointer rounded text-sm font-semibold"
@@ -247,7 +327,7 @@
                       class="mt-3 grid gap-4 md:grid-cols-2"
                       method="POST"
                       enctype="multipart/form-data"
-                      use:enhance
+                      use:enhance={enhanceWithStatus}
                     >
                       <input type="hidden" name="_intent" value="update" />
                       <input
@@ -330,8 +410,10 @@
                         </div>
                       {/each}
                       <div class="flex items-end">
-                        <button class="button-primary" type="submit"
-                          >{$t("common.saveChanges")}</button
+                        <button
+                          class="button-primary"
+                          type="submit"
+                          disabled={formBusy}>{$t("common.saveChanges")}</button
                         >
                       </div>
                     </form>
@@ -360,7 +442,7 @@
       class="panel relative grid h-fit gap-4 overflow-hidden p-5"
       method="POST"
       enctype="multipart/form-data"
-      use:enhance
+      use:enhance={enhanceWithStatus}
     >
       <div class="corner-slashes" aria-hidden="true"></div>
       <input type="hidden" name="_intent" value="create" />
@@ -456,7 +538,7 @@
         </div>
       {/each}
 
-      <button class="button-accent mt-1" type="submit"
+      <button class="button-accent mt-1" type="submit" disabled={formBusy}
         >{$t("common.save")}</button
       >
     </form>
@@ -476,6 +558,115 @@
 
   .row-hover:hover {
     background: color-mix(in srgb, var(--accent) 4%, transparent);
+  }
+
+  /* At phone/tablet widths, a 760px table hides the action column behind an
+     invisible horizontal canvas. Keep the semantic table, but let each row
+     become a labelled card until the wide desktop layout has room for every
+     column. */
+  @media (max-width: 1279px) {
+    .feature-table-scroll {
+      overflow-x: visible;
+    }
+
+    .feature-table {
+      min-width: 0;
+      border-collapse: separate;
+      border-spacing: 0 0.75rem;
+    }
+
+    .feature-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .feature-table tbody {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .feature-table tbody tr:not(.edit-row) {
+      display: block;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+    }
+
+    .feature-table tbody tr:not(.edit-row) td {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      min-width: 0;
+      border-bottom: 1px solid var(--line);
+      padding: 0.75rem 1rem;
+    }
+
+    .feature-table tbody tr:not(.edit-row) td::before {
+      flex: 0 0 36%;
+      min-width: 0;
+      color: var(--muted);
+      content: attr(data-label);
+      font-family: "Barlow Condensed", Barlow, ui-sans-serif, sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    .feature-table tbody tr:not(.edit-row) td > * {
+      min-width: 0;
+      max-width: 64%;
+      overflow-wrap: anywhere;
+    }
+
+    .feature-table tbody tr:not(.edit-row) td:last-child {
+      border-bottom: 0;
+    }
+
+    .feature-table tbody tr:not(.edit-row) td.feature-actions {
+      display: block;
+    }
+
+    .feature-table tbody tr:not(.edit-row) td.feature-actions::before {
+      display: block;
+      margin-bottom: 0.65rem;
+    }
+
+    .feature-table tbody tr:not(.edit-row) td.feature-actions > div {
+      max-width: none;
+    }
+
+    .feature-table tbody tr.edit-row {
+      display: block;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+
+    .feature-table tbody tr.edit-row td.feature-edit-cell {
+      display: block;
+      border: 0;
+    }
+
+    .feature-table tbody tr.edit-row td.feature-edit-cell::before {
+      display: none;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .feature-table {
+      min-width: 760px;
+    }
   }
 
   /* The logo's speed-mark, reused as a corner motif — same treatment as the

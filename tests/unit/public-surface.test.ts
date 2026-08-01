@@ -33,4 +33,31 @@ describe("public surface contracts", () => {
     expect(auth).toContain('action="?/signIn"');
     expect(auth).toContain('action="?/signUp"');
   });
+
+  it("keeps the persisted theme mirror and browser chrome color in sync", () => {
+    const bootstrap = source("src/app.html");
+    const layout = source("src/routes/+layout.svelte");
+
+    expect(bootstrap).toContain('id="theme-color"');
+    expect(bootstrap).toContain(
+      "window.localStorage.getItem(THEME_STORAGE_KEY)",
+    );
+    expect(bootstrap).toContain(
+      'setAttribute("content", THEME_COLORS[resolved])',
+    );
+    expect(layout).toContain(
+      "window.localStorage.setItem(THEME_STORAGE_KEY, preference)",
+    );
+    expect(layout).toContain("meta[name='theme-color']");
+  });
+
+  it("publishes the completed benchmark and marketplace capabilities honestly", () => {
+    const roadmap = source("src/routes/(public)/roadmap/+page.svelte");
+
+    expect(roadmap).toContain("Comparativo anônimo por modelo");
+    expect(roadmap).toContain("pelo menos cinco participantes válidos");
+    expect(roadmap).toContain("Busca de peças no Mercado Livre");
+    expect(roadmap).toContain("diretamente no Mercado Livre");
+    expect(roadmap).not.toContain("Comparação anônima por modelo");
+  });
 });

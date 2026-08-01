@@ -46,7 +46,12 @@
     </p>
     <h1 class="display text-4xl">Vamos conhecer sua moto</h1>
   </header>
-  {#if form?.message}<p class="rounded bg-danger/10 p-3 text-sm text-danger">
+  {#if form?.message}<p
+      class="rounded bg-danger/10 p-3 text-sm text-danger"
+      role="alert"
+      aria-live="assertive"
+      tabindex="-1"
+    >
       {form.message}
     </p>{/if}
   <form
@@ -56,7 +61,9 @@
     class="panel grid gap-3 p-5"
     bind:this={formElement}
   >
-    <p class="label-tech text-[var(--accent)]">ETAPA {step} DE 2</p>
+    <p class="label-tech text-[var(--accent)]" aria-live="polite">
+      ETAPA {step} DE 2
+    </p>
     {#if step === 1}
       <label class="text-sm">
         Nome<input
@@ -67,7 +74,9 @@
         />
       </label>
       <div class="border-y border-[var(--line)] py-3">
-        <label class="flex items-center gap-2 text-sm font-semibold">
+        <label
+          class="flex min-h-11 items-center gap-2 rounded px-2 text-sm font-semibold"
+        >
           <input bind:checked={custom} type="checkbox" /> Não encontrei minha moto
           no catálogo
         </label>
@@ -220,21 +229,21 @@
                   : "Consulte o manual."}
               </p>
               <div class="grid gap-2 text-sm sm:grid-cols-3">
-                <label
+                <label class="flex min-h-11 items-center gap-2 rounded px-2"
                   ><input
                     type="radio"
                     name={`history_${item.maintenance_type}`}
                     value="confirmed_done"
                   /> Feito recentemente</label
                 >
-                <label
+                <label class="flex min-h-11 items-center gap-2 rounded px-2"
                   ><input
                     type="radio"
                     name={`history_${item.maintenance_type}`}
                     value="not_done"
                   /> Não foi feito</label
                 >
-                <label
+                <label class="flex min-h-11 items-center gap-2 rounded px-2"
                   ><input
                     type="radio"
                     name={`history_${item.maintenance_type}`}

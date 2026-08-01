@@ -1,4 +1,4 @@
-import { redirect } from "@sveltejs/kit";
+import { fail, redirect, type Actions } from "@sveltejs/kit";
 import { dashboardSummary, healthScore } from "$server/domain/reports";
 import { evaluateReminder, type ReminderInput } from "$server/domain/reminders";
 import {
@@ -18,10 +18,64 @@ import {
   dueStateForPlan,
   initialHistoryStatus,
 } from "$server/domain/motorcycle-catalog";
+import {
+  BENCHMARK_MIN_SAMPLE_SIZE,
+  comparableBenchmarkMetrics,
+  compareBenchmarkMetric,
+  hasComparableBenchmarkMetric,
+  modelBenchmarkKey,
+  type BenchmarkPosition,
+} from "$server/domain/model-benchmark";
+import type { FuelRecord } from "$server/domain/fuel";
 
 const DOCUMENT_HORIZON_DAYS = 30;
 
 type Row = Record<string, unknown>;
+
+type BenchmarkSummaryRow = {
+  sample_size: number | string;
+  consumption_sample_size: number | string;
+  average_consumption_km_l: number | string | null;
+  maintenance_sample_size: number | string;
+  average_maintenance_cents: number | string | null;
+};
+
+type BenchmarkComparison = {
+  sampleSize: number;
+  available: boolean;
+  average: number | null;
+  position: BenchmarkPosition;
+  differencePercent: number | null;
+};
+
+type BenchmarkData = {
+  motorcycleId: string | null;
+  modelLabel: string;
+  models: Array<{ id: string; name: string; label: string }>;
+  sampleSize: number;
+  minimumSampleSize: number;
+  submitted: boolean;
+  hasComparableMetric: boolean;
+  local: {
+    consumptionKmL: number | null;
+    maintenanceCentsPer1000Km: number | null;
+    consumptionIntervals: number;
+    maintenanceRecords: number;
+    distanceKm: number | null;
+  } | null;
+  cohort: {
+    consumption: BenchmarkComparison;
+    maintenance: BenchmarkComparison;
+  } | null;
+};
+
+function messageFrom(err: unknown) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function formValue(form: FormData, key: string) {
+  return String(form.get(key) ?? "").trim();
+}
 
 const sumCents = (rows: Row[], key: string) =>
   rows.reduce((sum, row) => sum + Number(row[key] ?? 0), 0);
@@ -33,15 +87,21 @@ function daysUntil(date: string, today: string) {
   return Math.round((target - now) / 86_400_000);
 }
 
-// The Supabase version never checked `{ error }` on any of these reads — a
-// failed query just fell back to an empty array. Reproduce that swallow
-// instead of letting postgres.js's thrown errors turn the dashboard into a
-// 500.
-function rowsOrEmpty<T>(promise: Promise<T[]>): Promise<T[]> {
-  return promise.catch(() => [] as T[]);
+// Keep a degraded dashboard renderable when one optional panel query fails, but
+// retain a signal so the UI can distinguish an outage from a genuinely empty
+// account. The old implementation swallowed the failure into an empty array,
+// which made a database outage look like a fresh account.
+function rowsOrEmpty<T>(
+  promise: Promise<T[]>,
+  onError: () => void,
+): Promise<T[]> {
+  return promise.catch(() => {
+    onError();
+    return [] as T[];
+  });
 }
 
-export async function load({ locals }) {
+export async function load({ locals, url }) {
   const user = locals.user;
   const today = new Date().toISOString().slice(0, 10);
 
@@ -58,19 +118,43 @@ export async function load({ locals }) {
       upcoming: [],
       dueNow: [],
       counts: { reminders: 0, tires: 0, documents: 0 },
+      benchmark: null,
     };
   }
 
   const ownerId = user.id;
-  const [motorcycleCountRow] = await locals.db<Array<{ count: number }>>`
-    select count(*)::int from motorcycles where owner_id = ${ownerId}
-  `.catch(() => [{ count: 0 }]);
+  let motorcycleCountRow: { count: number } | undefined;
+  try {
+    [motorcycleCountRow] = await locals.db<Array<{ count: number }>>`
+      select count(*)::int from motorcycles where owner_id = ${ownerId}
+    `;
+  } catch {
+    return {
+      today,
+      metrics: [],
+      garage: [],
+      health: null,
+      consumption: [],
+      spend: [],
+      costs: [],
+      activity: [],
+      upcoming: [],
+      dueNow: [],
+      counts: { reminders: 0, tires: 0, documents: 0 },
+      benchmark: null,
+      errorMessage: translate(locals.locale, "common.loadError"),
+    };
+  }
   // Same emptiness rule as /onboarding: any motorcycle counts, including
   // archived ones, so inactive-only garages never bounce between routes.
   if (!motorcycleCountRow?.count) {
     throw redirect(303, "/onboarding");
   }
 
+  let loadError = false;
+  const markLoadError = () => {
+    loadError = true;
+  };
   const [
     motorcycleRows,
     fuelRows,
@@ -88,13 +172,15 @@ export async function load({ locals }) {
         where owner_id = ${ownerId} and is_active = true
         order by name
       `,
+      markLoadError,
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
-        select date, odometer_km, liters, total_price_cents, tank_full
+        select motorcycle_id, date, odometer_km, liters, total_price_cents, tank_full
         from fuel_records
         where owner_id = ${ownerId}
       `,
+      markLoadError,
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
@@ -103,6 +189,7 @@ export async function load({ locals }) {
         from reminders
         where owner_id = ${ownerId} and is_active = true
       `,
+      markLoadError,
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
@@ -110,6 +197,7 @@ export async function load({ locals }) {
         from tire_records
         where owner_id = ${ownerId} and is_active = true
       `,
+      markLoadError,
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
@@ -117,13 +205,15 @@ export async function load({ locals }) {
         from motorcycle_documents
         where owner_id = ${ownerId}
       `,
+      markLoadError,
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
-        select date, cost_cents, maintenance_type
+        select motorcycle_id, date, odometer_km, cost_cents, maintenance_type
         from maintenance_records
         where owner_id = ${ownerId}
       `,
+      markLoadError,
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
@@ -131,6 +221,7 @@ export async function load({ locals }) {
         from annual_fees
         where owner_id = ${ownerId}
       `,
+      markLoadError,
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
@@ -143,6 +234,7 @@ export async function load({ locals }) {
         left join motorcycle_manual_sources ms on ms.id = p.manual_source_id
         where p.owner_id = ${ownerId} and p.is_active = true and m.is_active = true
       `,
+      markLoadError,
     ),
   ]);
 
@@ -283,6 +375,153 @@ export async function load({ locals }) {
     },
   ];
 
+  // Benchmarking is opt-in and scoped to one selected motorcycle. The query
+  // parameter lets a rider choose another bike in the form without silently
+  // changing which model is being compared on the next render.
+  const requestedBenchmarkMotorcycleId = url.searchParams.get("benchmark");
+  const benchmarkMotorcycle =
+    motorcycleRows.find(
+      (row) =>
+        String(row.id) === requestedBenchmarkMotorcycleId &&
+        modelBenchmarkKey(
+          String(row.brand ?? ""),
+          String(row.model ?? ""),
+          Number(row.year),
+        ),
+    ) ??
+    motorcycleRows.find((row) =>
+      modelBenchmarkKey(
+        String(row.brand ?? ""),
+        String(row.model ?? ""),
+        Number(row.year),
+      ),
+    );
+  const benchmarkModels = motorcycleRows
+    .map((row) => {
+      const key = modelBenchmarkKey(
+        String(row.brand ?? ""),
+        String(row.model ?? ""),
+        Number(row.year),
+      );
+      return {
+        id: String(row.id),
+        name: String(row.name ?? "Moto"),
+        label: [row.brand, row.model, row.year]
+          .filter(
+            (value) => value !== null && value !== undefined && value !== "",
+          )
+          .join(" "),
+        key,
+      };
+    })
+    .filter((row) => row.key);
+
+  let benchmark: BenchmarkData | null = null;
+  if (benchmarkMotorcycle) {
+    const benchmarkKey = modelBenchmarkKey(
+      String(benchmarkMotorcycle.brand ?? ""),
+      String(benchmarkMotorcycle.model ?? ""),
+      Number(benchmarkMotorcycle.year),
+    );
+    const benchmarkFuelRows = fuelRows.filter(
+      (row) =>
+        String(row.motorcycle_id ?? "") === String(benchmarkMotorcycle.id),
+    );
+    const benchmarkMaintenanceRows = maintenanceRows.filter(
+      (row) =>
+        String(row.motorcycle_id ?? "") === String(benchmarkMotorcycle.id),
+    );
+    const localMetrics = comparableBenchmarkMetrics(
+      benchmarkFuelRows as unknown as FuelRecord[],
+      benchmarkMaintenanceRows,
+    );
+    const [summaryRow] = await locals.db<BenchmarkSummaryRow[]>`
+      select
+        sample_size,
+        consumption_sample_size,
+        average_consumption_km_l,
+        maintenance_sample_size,
+        average_maintenance_cents
+      from model_benchmark_summary(${benchmarkKey})
+    `.catch(() => [] as BenchmarkSummaryRow[]);
+    const [submissionGuard] = await locals.db<
+      Array<{ contribution_id: string }>
+    >`
+      select contribution_id
+      from model_benchmark_submission_guards
+      where owner_id = ${ownerId} and model_key = ${benchmarkKey}
+      limit 1
+    `.catch(() => [] as Array<{ contribution_id: string }>);
+    const sampleSize = Number(summaryRow?.sample_size ?? 0);
+    const averageConsumption =
+      summaryRow?.average_consumption_km_l == null
+        ? null
+        : Number(summaryRow.average_consumption_km_l);
+    const averageMaintenance =
+      summaryRow?.average_maintenance_cents == null
+        ? null
+        : Number(summaryRow.average_maintenance_cents);
+    const consumptionSampleSize = Number(
+      summaryRow?.consumption_sample_size ?? 0,
+    );
+    const maintenanceSampleSize = Number(
+      summaryRow?.maintenance_sample_size ?? 0,
+    );
+    const consumptionComparison = compareBenchmarkMetric(
+      localMetrics.consumptionKmL,
+      averageConsumption,
+      consumptionSampleSize,
+    );
+    const maintenanceComparison = compareBenchmarkMetric(
+      localMetrics.maintenanceCentsPer1000Km,
+      averageMaintenance,
+      maintenanceSampleSize,
+    );
+    benchmark = {
+      motorcycleId: String(benchmarkMotorcycle.id),
+      modelLabel:
+        [
+          benchmarkMotorcycle.brand,
+          benchmarkMotorcycle.model,
+          benchmarkMotorcycle.year,
+        ]
+          .filter(Boolean)
+          .join(" ") || "Modelo não informado",
+      models: benchmarkModels.map((model) => ({
+        id: model.id,
+        name: model.name,
+        label: model.label,
+      })),
+      sampleSize,
+      minimumSampleSize: BENCHMARK_MIN_SAMPLE_SIZE,
+      submitted: Boolean(submissionGuard),
+      hasComparableMetric: hasComparableBenchmarkMetric(localMetrics),
+      local: {
+        consumptionKmL: localMetrics.consumptionKmL,
+        maintenanceCentsPer1000Km: localMetrics.maintenanceCentsPer1000Km,
+        consumptionIntervals: localMetrics.consumptionIntervals,
+        maintenanceRecords: localMetrics.maintenanceRecords,
+        distanceKm: localMetrics.distanceKm,
+      },
+      cohort: {
+        consumption: consumptionComparison,
+        maintenance: maintenanceComparison,
+      },
+    };
+  } else if (benchmarkModels.length === 0) {
+    benchmark = {
+      motorcycleId: null,
+      modelLabel: "",
+      models: [],
+      sampleSize: 0,
+      minimumSampleSize: BENCHMARK_MIN_SAMPLE_SIZE,
+      submitted: false,
+      hasComparableMetric: false,
+      local: null,
+      cohort: null,
+    };
+  }
+
   return {
     today,
     metrics,
@@ -336,5 +575,120 @@ export async function load({ locals }) {
       tires: tireRows.length,
       documents: expiringDocuments.length,
     },
+    benchmark,
+    errorMessage: loadError ? translate(locals.locale, "common.loadError") : "",
   };
 }
+
+export const actions: Actions = {
+  contributeBenchmark: async ({ request, locals }) => {
+    const ownerId = locals.user?.id;
+    if (!ownerId) return fail(401, { message: "Entre para compartilhar." });
+
+    const form = await request.formData();
+    const motorcycleId = formValue(form, "motorcycle_id");
+    const consent = formValue(form, "consent");
+    if (!motorcycleId) {
+      return fail(400, { message: "Escolha uma moto para comparar." });
+    }
+    if (!consent || !["on", "true", "1"].includes(consent)) {
+      return fail(400, {
+        message: "Confirme o compartilhamento anônimo para continuar.",
+      });
+    }
+
+    let motorcycle: Row | undefined;
+    let fuelRows: Row[] = [];
+    let maintenanceRows: Row[] = [];
+    try {
+      [motorcycle] = await locals.db<Row[]>`
+        select id, brand, model, year
+        from motorcycles
+        where id = ${motorcycleId} and owner_id = ${ownerId}
+        limit 1
+      `;
+      if (!motorcycle) {
+        return fail(400, { message: "Motocicleta não encontrada." });
+      }
+      [fuelRows, maintenanceRows] = await Promise.all([
+        locals.db<Row[]>`
+          select date, odometer_km, liters, tank_full
+          from fuel_records
+          where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}
+        `,
+        locals.db<Row[]>`
+          select date, odometer_km, cost_cents
+          from maintenance_records
+          where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}
+        `,
+      ]);
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+
+    const benchmarkKey = modelBenchmarkKey(
+      String(motorcycle.brand ?? ""),
+      String(motorcycle.model ?? ""),
+      Number(motorcycle.year),
+    );
+    if (!benchmarkKey) {
+      return fail(400, {
+        message:
+          "Complete marca, modelo e ano da moto antes de participar do comparativo.",
+      });
+    }
+
+    const metrics = comparableBenchmarkMetrics(
+      fuelRows as unknown as FuelRecord[],
+      maintenanceRows,
+    );
+    if (!hasComparableBenchmarkMetric(metrics)) {
+      return fail(400, {
+        message:
+          "Ainda não há histórico comparável. Registre dois tanques cheios ou uma manutenção com odômetros consistentes.",
+      });
+    }
+
+    try {
+      await locals.db.begin(async (tx) => {
+        // One guard row per account/model. Reusing its opaque contribution id
+        // makes a later explicit submission an upsert, while the benchmark
+        // table never receives owner_id.
+        const [guard] = await tx<Array<{ contribution_id: string }>>`
+          insert into model_benchmark_submission_guards (owner_id, model_key)
+          values (${ownerId}, ${benchmarkKey})
+          on conflict (owner_id, model_key)
+          do update set updated_at = now()
+          returning contribution_id
+        `;
+        if (!guard?.contribution_id) {
+          throw new Error("Não foi possível reservar a contribuição anônima.");
+        }
+
+        await tx`
+          insert into anonymous_model_benchmark_contributions
+            (id, model_key, consumption_km_l, maintenance_cents)
+          values (
+            ${guard.contribution_id},
+            ${benchmarkKey},
+            ${metrics.consumptionKmL},
+            ${metrics.maintenanceCentsPer1000Km}
+          )
+          on conflict (id)
+          do update set
+            model_key = excluded.model_key,
+            consumption_km_l = excluded.consumption_km_l,
+            maintenance_cents = excluded.maintenance_cents,
+            updated_at = now()
+        `;
+      });
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+
+    throw redirect(
+      303,
+      `/dashboard?benchmark=${encodeURIComponent(motorcycleId)}`,
+    );
+  },
+};

@@ -5,12 +5,12 @@
 </script>
 
 <article
-  class="panel group relative overflow-hidden p-5 transition-colors hover:border-[var(--accent)]"
+  class="panel group relative min-w-0 overflow-hidden p-5 transition-colors hover:border-[var(--accent)]"
 >
   <!-- Slash motif, revealed on hover rather than a permanent gradient wash. -->
   <div class="corner-slashes" aria-hidden="true"></div>
   <p class="label-tech text-[var(--muted)]">{label}</p>
-  <p class="display numeric mt-3 text-4xl">{value}</p>
+  <p class="display numeric mt-3 break-words text-4xl">{value}</p>
   {#if detail}
     <p class="mt-2 text-xs font-medium text-[var(--muted)]">{detail}</p>
   {/if}

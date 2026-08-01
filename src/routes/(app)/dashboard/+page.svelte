@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { enhance } from "$app/forms";
+  import type { SubmitFunction } from "@sveltejs/kit";
   import MetricCard from "$components/MetricCard.svelte";
   import HealthGauge from "$components/charts/HealthGauge.svelte";
   import TrendChart from "$components/charts/TrendChart.svelte";
@@ -10,6 +12,21 @@
   import type { MessageKey } from "$lib/i18n";
 
   export let data;
+  export let form;
+
+  let benchmarkBusy = false;
+  const enhanceBenchmark: SubmitFunction = () => {
+    benchmarkBusy = true;
+    return async ({ result, update }) => {
+      benchmarkBusy = false;
+      await update();
+      if (result.type === "failure") {
+        // The action result is rendered through `form` below; keeping the
+        // request state local prevents unrelated dashboard forms from being
+        // disabled by this opt-in operation.
+      }
+    };
+  };
 
   const STATUS_KEY = {
     overdue: "dashboard.statusOverdue",
@@ -53,6 +70,13 @@
 
   $: hasSpend = (data.spend ?? []).some((entry) => entry.cents > 0);
   $: hasActivity = (data.activity ?? []).some((cell) => cell.count > 0);
+
+  const benchmarkPositionKey = {
+    "acima da média": "dashboard.benchmarkAbove",
+    "abaixo da média": "dashboard.benchmarkBelow",
+    "na média": "dashboard.benchmarkAverage",
+    "sem comparação": "dashboard.benchmarkUnavailable",
+  } as const satisfies Record<string, MessageKey>;
 </script>
 
 <svelte:head><title>{$t("nav.dashboard")} · Moto Track</title></svelte:head>
@@ -80,6 +104,19 @@
     </div>
   </div>
 
+  {#if data.errorMessage}
+    <div
+      class="border-[var(--accent)]/30 flex flex-col gap-3 rounded border bg-[var(--accent-soft)] p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+      role="alert"
+      aria-live="assertive"
+    >
+      <span class="text-[var(--accent)]">{data.errorMessage}</span>
+      <a class="button-secondary min-h-11 shrink-0" href="/dashboard"
+        >{$t("common.retry")}</a
+      >
+    </div>
+  {/if}
+
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {#each data.metrics as metric (metric.label)}
       <MetricCard {...metric} />
@@ -90,38 +127,46 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <p class="eyebrow">
-          <span class="slash-rule" aria-hidden="true"></span>Manutenção
+          <span class="slash-rule" aria-hidden="true"></span>{$t(
+            "nav.maintenance",
+          )}
         </p>
-        <h2 class="display mt-2 text-2xl">O que vence agora</h2>
+        <h2 class="display mt-2 text-2xl">{$t("dashboard.dueNowTitle")}</h2>
         <p class="mt-1 text-sm text-[var(--muted)]">
-          Urgência baseada no histórico que você informou — nunca em uma revisão
-          presumida.
+          {$t("dashboard.dueNowHint")}
         </p>
       </div>
-      <a class="button-secondary" href="/maintenance">Abrir manutenção</a>
+      <a class="button-secondary min-h-11 shrink-0" href="/maintenance"
+        >{$t("dashboard.openMaintenance")}</a
+      >
     </div>
     <div class="mt-5 grid gap-3 lg:grid-cols-2">
       {#each data.dueNow as item (item.id)}
         <article class="rounded border border-[var(--line)] p-4">
           <div class="flex items-start justify-between gap-3">
-            <div>
-              <p class="font-semibold">{item.maintenanceType}</p>
+            <div class="min-w-0">
+              <p class="break-words font-semibold">{item.maintenanceType}</p>
               <p class="text-sm text-[var(--muted)]">{item.motorcycleName}</p>
             </div>
             <span
-              class="label-tech rounded px-2 py-1 text-xs {item.urgency ===
+              class="label-tech shrink-0 rounded px-2 py-1 text-xs {item.urgency ===
               'overdue'
-                ? 'bg-danger/10 text-danger'
-                : 'bg-warning/10 text-warning'}"
+                ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'text-[var(--warning)]'}"
+              style={item.urgency === "overdue"
+                ? undefined
+                : "background: color-mix(in srgb, var(--warning) 10%, transparent)"}
             >
-              {item.urgency === "overdue" ? "ATRASADO" : "FAZER AGORA"}
+              {item.urgency === "overdue"
+                ? $t("dashboard.urgencyOverdue")
+                : $t("dashboard.urgencyNow")}
             </span>
           </div>
           <p class="mt-3 text-sm">
-            Estimativa: <strong>{$format.money(item.estimatedCostCents)}</strong
-            >
+            {$t("dashboard.estimate")}:
+            <strong>{$format.money(item.estimatedCostCents)}</strong>
             {#if item.dueKm !== null}
-              · marco: {$format.distance(item.dueKm)}{/if}
+              · {$t("dashboard.milestone")}: {$format.distance(item.dueKm)}{/if}
           </p>
           {#if item.officialUrl}
             <a
@@ -129,7 +174,8 @@
               href={item.officialUrl}
               target="_blank"
               rel="noreferrer"
-              >Manual oficial: {item.documentVersion} · {item.pageReference} ↗</a
+              >{$t("dashboard.officialManual")}: {item.documentVersion} · {item.pageReference}
+              ↗</a
             >
           {/if}
         </article>
@@ -137,8 +183,7 @@
         <p
           class="rounded border border-dashed border-[var(--line)] p-5 text-sm text-[var(--muted)]"
         >
-          Nenhum item exige ação agora. Quando você adicionar uma agenda com
-          fonte oficial, ela aparecerá aqui.
+          {$t("dashboard.dueNowEmpty")}
         </p>
       {/each}
     </div>
@@ -282,6 +327,229 @@
       </div>
     </article>
   </div>
+
+  <article class="panel p-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p class="eyebrow">
+          <span class="slash-rule" aria-hidden="true"></span>{$t(
+            "dashboard.benchmarkTitle",
+          )}
+        </p>
+        <h2 class="display mt-2 text-2xl">{$t("dashboard.benchmarkTitle")}</h2>
+        <p class="mt-1 max-w-2xl text-sm text-[var(--muted)]">
+          {$t("dashboard.benchmarkHint")}
+          {$t("dashboard.benchmarkPrivacy")}
+        </p>
+      </div>
+      {#if data.benchmark?.modelLabel}
+        <span class="label-tech rounded border border-[var(--line)] px-2 py-1">
+          {data.benchmark.modelLabel}
+        </span>
+      {/if}
+    </div>
+
+    {#if data.benchmark?.modelLabel}
+      <div class="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <div class="rounded border border-[var(--line)] p-4">
+          <p class="label-tech text-[var(--muted)]">
+            {$t("dashboard.benchmarkYourData")}
+          </p>
+          <dl class="mt-3 grid gap-2 text-sm">
+            <div class="flex items-center justify-between gap-3">
+              <dt>{$t("dashboard.benchmarkConsumption")}</dt>
+              <dd class="numeric font-semibold">
+                {#if data.benchmark.local?.consumptionKmL !== null && data.benchmark.local?.consumptionKmL !== undefined}
+                  {$format.number(data.benchmark.local.consumptionKmL, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 2,
+                  })}
+                  km/L
+                {:else}
+                  {$t("dashboard.benchmarkUnavailable")}
+                {/if}
+              </dd>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <dt>{$t("dashboard.benchmarkMaintenance")}</dt>
+              <dd class="numeric text-right font-semibold">
+                {#if data.benchmark.local?.maintenanceCentsPer1000Km !== null && data.benchmark.local?.maintenanceCentsPer1000Km !== undefined}
+                  {$format.money(
+                    data.benchmark.local.maintenanceCentsPer1000Km,
+                  )}
+                {:else}
+                  {$t("dashboard.benchmarkUnavailable")}
+                {/if}
+              </dd>
+            </div>
+          </dl>
+          {#if data.benchmark.local}
+            <p class="mt-3 text-xs text-[var(--muted)]">
+              {data.benchmark.local.consumptionIntervals} intervalos de consumo ·
+              {data.benchmark.local.maintenanceRecords} registros de manutenção
+              {#if data.benchmark.local.distanceKm !== null}
+                · {$format.distance(data.benchmark.local.distanceKm)} registrados
+              {/if}
+            </p>
+          {/if}
+        </div>
+
+        <div class="rounded border border-[var(--line)] p-4">
+          <div class="flex items-center justify-between gap-3">
+            <p class="label-tech text-[var(--muted)]">
+              {$t("dashboard.benchmarkCohort")}
+            </p>
+            <span class="label-tech text-[var(--muted)]">
+              {$t("dashboard.benchmarkSample", {
+                count: data.benchmark.sampleSize,
+              })}
+            </span>
+          </div>
+          {#if data.benchmark.sampleSize < data.benchmark.minimumSampleSize}
+            <p class="mt-4 text-sm text-[var(--muted)]">
+              {$t("dashboard.benchmarkNeedMore", {
+                count:
+                  data.benchmark.minimumSampleSize - data.benchmark.sampleSize,
+              })}
+            </p>
+          {/if}
+          {#if data.benchmark.cohort}
+            <dl class="mt-3 grid gap-2 text-sm">
+              <div class="flex items-center justify-between gap-3">
+                <dt>{$t("dashboard.benchmarkConsumption")}</dt>
+                <dd class="text-right">
+                  {#if data.benchmark.cohort.consumption.average !== null}
+                    <span class="numeric font-semibold"
+                      >{$format.number(
+                        data.benchmark.cohort.consumption.average,
+                        {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 2,
+                        },
+                      )} km/L</span
+                    >
+                    <span class="ml-1 text-xs text-[var(--muted)]"
+                      >{$t(
+                        benchmarkPositionKey[
+                          data.benchmark.cohort.consumption.position
+                        ],
+                      )}</span
+                    >
+                  {:else}
+                    <span class="text-xs text-[var(--muted)]">
+                      {$t("dashboard.benchmarkMetricSample", {
+                        count: data.benchmark.cohort.consumption.sampleSize,
+                        minimum: data.benchmark.minimumSampleSize,
+                      })}
+                    </span>
+                  {/if}
+                </dd>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <dt>{$t("dashboard.benchmarkMaintenance")}</dt>
+                <dd class="text-right">
+                  {#if data.benchmark.cohort.maintenance.average !== null}
+                    <span class="numeric font-semibold"
+                      >{$format.money(
+                        data.benchmark.cohort.maintenance.average,
+                      )}</span
+                    >
+                    <span class="ml-1 text-xs text-[var(--muted)]"
+                      >{$t(
+                        benchmarkPositionKey[
+                          data.benchmark.cohort.maintenance.position
+                        ],
+                      )}</span
+                    >
+                  {:else}
+                    <span class="text-xs text-[var(--muted)]">
+                      {$t("dashboard.benchmarkMetricSample", {
+                        count: data.benchmark.cohort.maintenance.sampleSize,
+                        minimum: data.benchmark.minimumSampleSize,
+                      })}
+                    </span>
+                  {/if}
+                </dd>
+              </div>
+            </dl>
+          {:else}
+            <p class="mt-4 text-sm text-[var(--muted)]">
+              {$t("dashboard.benchmarkUnavailable")}
+            </p>
+          {/if}
+        </div>
+      </div>
+
+      <form
+        class="mt-5 grid gap-3 rounded border border-dashed border-[var(--line)] p-4"
+        method="POST"
+        action="?/contributeBenchmark"
+        use:enhance={enhanceBenchmark}
+      >
+        <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <div class="grid gap-1">
+            <label class="field-label" for="benchmark-motorcycle"
+              >{$t("dashboard.benchmarkModel")}</label
+            >
+            <select
+              class="field"
+              id="benchmark-motorcycle"
+              name="motorcycle_id"
+              required
+              value={data.benchmark.motorcycleId ?? ""}
+            >
+              {#each data.benchmark.models as model (model.id)}
+                <option value={model.id}>{model.name} · {model.label}</option>
+              {/each}
+            </select>
+          </div>
+          <button
+            class="button-primary min-h-11"
+            type="submit"
+            disabled={benchmarkBusy || !data.benchmark.hasComparableMetric}
+          >
+            {data.benchmark.submitted
+              ? $t("dashboard.benchmarkUpdate")
+              : $t("dashboard.benchmarkShare")}
+          </button>
+        </div>
+        <label class="flex items-start gap-2 text-sm text-[var(--muted)]">
+          <input
+            class="mt-1"
+            type="checkbox"
+            name="consent"
+            value="on"
+            required
+          />
+          <span>{$t("dashboard.benchmarkConsent")}</span>
+        </label>
+        {#if form?.message}
+          <p
+            class="text-sm text-[var(--accent)]"
+            role="alert"
+            aria-live="assertive"
+          >
+            {form.message}
+          </p>
+        {/if}
+        {#if data.benchmark.submitted}
+          <p
+            class="text-xs text-[var(--muted)]"
+            role="status"
+            aria-live="polite"
+          >
+            {$t("dashboard.benchmarkActive")}
+          </p>
+        {/if}
+      </form>
+    {:else if data.benchmark}
+      <p
+        class="mt-5 rounded border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]"
+      >
+        {$t("dashboard.benchmarkNoModel")}
+      </p>
+    {/if}
+  </article>
 
   <!-- Activity + costs -->
   <div class="grid gap-4 xl:grid-cols-[2fr_1fr]">

@@ -6,8 +6,8 @@ export function GET() {
     short_name: "Moto Track",
     start_url: "/dashboard",
     display: "standalone",
-    background_color: "#f8f6f0",
-    theme_color: "#18211f",
+    background_color: "#fafafa",
+    theme_color: "#18181b",
     icons: [
       {
         src: "/brand/moto-track-icon.png",

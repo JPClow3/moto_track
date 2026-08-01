@@ -24,14 +24,31 @@
         © {new Date().getFullYear()}
       </span>
     </div>
-    <div
+    <nav
       class="flex flex-wrap items-center justify-center gap-5 text-sm text-[var(--muted)]"
+      aria-label="Navegação secundária"
     >
-      <a href="/blog" class="nav-link">Blog</a>
-      <a href="/roadmap" class="nav-link">Roadmap</a>
-      <a href="/termos" class="nav-link">Termos</a>
-      <a href="/privacidade" class="nav-link">Privacidade</a>
-      <a href="/lgpd" class="nav-link">LGPD</a>
-    </div>
+      <a
+        href="/blog"
+        class="focus-ring nav-link inline-flex min-h-11 items-center">Blog</a
+      >
+      <a
+        href="/roadmap"
+        class="focus-ring nav-link inline-flex min-h-11 items-center">Roadmap</a
+      >
+      <a
+        href="/termos"
+        class="focus-ring nav-link inline-flex min-h-11 items-center">Termos</a
+      >
+      <a
+        href="/privacidade"
+        class="focus-ring nav-link inline-flex min-h-11 items-center"
+        >Privacidade</a
+      >
+      <a
+        href="/lgpd"
+        class="focus-ring nav-link inline-flex min-h-11 items-center">LGPD</a
+      >
+    </nav>
   </div>
 </footer>

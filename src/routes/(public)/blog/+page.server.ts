@@ -20,16 +20,21 @@ type ArticleRow = {
 };
 
 export async function load({ locals }) {
-  const data = await locals.db<ArticleRow[]>`
-    select title, slug, summary, published_at, body from forum_articles
-    where is_published = true
-    order by published_at desc
-  `;
+  try {
+    const data = await locals.db<ArticleRow[]>`
+      select title, slug, summary, published_at, body from forum_articles
+      where is_published = true
+      order by published_at desc
+    `;
 
-  return {
-    articles: data.map(({ body, ...article }) => ({
-      ...article,
-      reading_minutes: readingMinutes(body),
-    })),
-  };
+    return {
+      articles: data.map(({ body, ...article }) => ({
+        ...article,
+        reading_minutes: readingMinutes(body),
+      })),
+      unavailable: false,
+    };
+  } catch {
+    return { articles: [], unavailable: true };
+  }
 }

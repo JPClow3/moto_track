@@ -11,7 +11,7 @@
     reading_minutes: number;
   };
 
-  export let data: { articles: Article[] };
+  export let data: { articles: Article[]; unavailable?: boolean };
 
   const formatDate = (value: string) =>
     formatDateFor($locale, value, {
@@ -144,10 +144,20 @@
     {/if}
 
     {#if !data.articles.length}
-      <div class="panel p-12 text-center">
-        <p class="display text-2xl">Nenhum guia publicado ainda</p>
+      <div
+        class="panel p-12 text-center"
+        role={data.unavailable ? "alert" : "status"}
+        aria-live={data.unavailable ? "assertive" : "polite"}
+      >
+        <p class="display text-2xl">
+          {data.unavailable
+            ? "Os guias estão temporariamente indisponíveis"
+            : "Nenhum guia publicado ainda"}
+        </p>
         <p class="mt-3 text-[var(--muted)]">
-          Os primeiros guias de manutenção chegam em breve.
+          {data.unavailable
+            ? "Tente novamente em alguns instantes."
+            : "Os primeiros guias de manutenção chegam em breve."}
         </p>
       </div>
     {/if}

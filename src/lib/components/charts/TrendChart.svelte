@@ -63,90 +63,96 @@
     : [];
 </script>
 
-<svg
-  viewBox={`0 0 ${W} ${H}`}
-  class="w-full"
-  role="img"
+<div
+  class="trend-chart-scroll"
+  role="group"
   aria-label={$t("dashboard.trendAria", { count: points.length })}
 >
-  <defs>
-    <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.22" />
-      <stop offset="100%" stop-color="var(--accent)" stop-opacity="0" />
-    </linearGradient>
-  </defs>
+  <svg
+    viewBox={`0 0 ${W} ${H}`}
+    class="trend-chart w-full"
+    role="img"
+    aria-label={$t("dashboard.trendAria", { count: points.length })}
+  >
+    <defs>
+      <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.22" />
+        <stop offset="100%" stop-color="var(--accent)" stop-opacity="0" />
+      </linearGradient>
+    </defs>
 
-  {#each gridlines as gridline (gridline.value)}
-    <line
-      x1={PAD.left}
-      y1={gridline.y}
-      x2={W - PAD.right}
-      y2={gridline.y}
-      stroke="var(--line)"
-      stroke-width="1"
-      stroke-dasharray="3 5"
-    />
-    <text
-      x={PAD.left - 10}
-      y={gridline.y + 4}
-      text-anchor="end"
-      class="axis"
-      fill="var(--muted)"
-    >
-      {$format.number(gridline.value, {
-        minimumFractionDigits: precision,
-        maximumFractionDigits: precision,
-      })}
-    </text>
-  {/each}
-
-  {#if coords.length}
-    <path class="area" d={areaPath} fill="url(#trend-fill)" />
-    <path
-      class="line"
-      d={linePath}
-      fill="none"
-      stroke="var(--accent)"
-      stroke-width="2.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-
-    <!-- Latest reading, called out like a live instrument readout. -->
-    <circle
-      class="marker"
-      cx={lastCoord.x}
-      cy={lastCoord.y}
-      r="4.5"
-      fill="var(--accent)"
-    />
-    <circle
-      class="pulse"
-      cx={lastCoord.x}
-      cy={lastCoord.y}
-      r="4.5"
-      fill="var(--accent)"
-    />
-
-    {#each axisDates as entry, i (i)}
-      {#if entry.point}
-        <text
-          x={entry.x}
-          y={H - 8}
-          text-anchor={entry.anchor}
-          class="axis"
-          fill="var(--muted)"
-        >
-          {$format.date(`${entry.point.date}T00:00:00.000Z`, {
-            day: "2-digit",
-            month: "short",
-            timeZone: "UTC",
-          })}
-        </text>
-      {/if}
+    {#each gridlines as gridline (gridline.value)}
+      <line
+        x1={PAD.left}
+        y1={gridline.y}
+        x2={W - PAD.right}
+        y2={gridline.y}
+        stroke="var(--line)"
+        stroke-width="1"
+        stroke-dasharray="3 5"
+      />
+      <text
+        x={PAD.left - 10}
+        y={gridline.y + 4}
+        text-anchor="end"
+        class="axis"
+        fill="var(--muted)"
+      >
+        {$format.number(gridline.value, {
+          minimumFractionDigits: precision,
+          maximumFractionDigits: precision,
+        })}
+      </text>
     {/each}
-  {/if}
-</svg>
+
+    {#if coords.length}
+      <path class="area" d={areaPath} fill="url(#trend-fill)" />
+      <path
+        class="line"
+        d={linePath}
+        fill="none"
+        stroke="var(--accent)"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+
+      <!-- Latest reading, called out like a live instrument readout. -->
+      <circle
+        class="marker"
+        cx={lastCoord.x}
+        cy={lastCoord.y}
+        r="4.5"
+        fill="var(--accent)"
+      />
+      <circle
+        class="pulse"
+        cx={lastCoord.x}
+        cy={lastCoord.y}
+        r="4.5"
+        fill="var(--accent)"
+      />
+
+      {#each axisDates as entry, i (i)}
+        {#if entry.point}
+          <text
+            x={entry.x}
+            y={H - 8}
+            text-anchor={entry.anchor}
+            class="axis"
+            fill="var(--muted)"
+          >
+            {$format.date(`${entry.point.date}T00:00:00.000Z`, {
+              day: "2-digit",
+              month: "short",
+              timeZone: "UTC",
+            })}
+          </text>
+        {/if}
+      {/each}
+    {/if}
+  </svg>
+</div>
 
 {#if last}
   <p class="sr-only">
@@ -161,6 +167,15 @@
 {/if}
 
 <style>
+  .trend-chart-scroll {
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .trend-chart {
+    min-width: 32rem;
+  }
+
   .axis {
     font-family: "Barlow Condensed", Barlow, sans-serif;
     font-size: 12px;

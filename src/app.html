@@ -3,9 +3,44 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#18181b" />
+    <meta id="theme-color" name="theme-color" content="#fafafa" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/brand/favicon-32x32.png" />
+    <script>
+      (() => {
+        const THEME_STORAGE_KEY = "moto-track-theme";
+        const THEME_COLORS = { light: "#fafafa", dark: "#09090b" };
+        const normalizeTheme = (value) =>
+          value === "light" || value === "dark" || value === "system"
+            ? value
+            : "system";
+
+        let storedTheme = null;
+        try {
+          storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+        } catch {
+          // Fall back to the operating-system preference when storage is blocked.
+        }
+
+        try {
+          const preference = normalizeTheme(storedTheme);
+          const resolved =
+            preference === "dark" || preference === "light"
+              ? preference
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          const root = document.documentElement;
+          root.dataset.theme = resolved;
+          root.classList.toggle("dark", resolved === "dark");
+          document
+            .querySelector("meta[name='theme-color']")
+            ?.setAttribute("content", THEME_COLORS[resolved]);
+        } catch {
+          // The root layout applies the saved preference once it hydrates.
+        }
+      })();
+    </script>
     <script
       src="https://js.sentry-cdn.com/08e9ee7d9e7558988cd107dff4092f39.min.js"
       crossorigin="anonymous"

@@ -31,7 +31,7 @@
   <select
     {id}
     name="locale"
-    class="focus-ring appearance-none bg-transparent py-1.5 pl-7 pr-6 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--fg)]"
+    class="focus-ring min-h-11 appearance-none bg-transparent py-1.5 pl-7 pr-6 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--fg)]"
     value={$locale}
     on:change={(event) => event.currentTarget.form?.requestSubmit()}
   >

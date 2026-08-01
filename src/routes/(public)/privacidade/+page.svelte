@@ -120,7 +120,7 @@
     >
       {#each sections as section, index (section.id)}
         <a
-          class="legal-nav-link block px-4 py-2 text-sm text-[var(--muted)]"
+          class="focus-ring legal-nav-link inline-flex min-h-11 w-full items-center px-4 py-2 text-sm text-[var(--muted)]"
           href={`#${section.id}`}
           ><span class="label-tech mr-2 text-[var(--accent)]">0{index + 1}</span
           >{section.title}</a
@@ -173,7 +173,7 @@
             localizar o pedido com segurança.
           </p>
           <a
-            class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]"
+            class="focus-ring mt-4 inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
             href="mailto:privacidade@moto-track.app"
             >privacidade@moto-track.app <ArrowRight class="h-4 w-4" /></a
           >

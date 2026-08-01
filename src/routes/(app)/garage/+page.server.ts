@@ -12,6 +12,7 @@ import {
   getTemplateForYear,
   type MotorcycleCatalogPreview,
 } from "$server/domain/motorcycle-catalog";
+import { translate } from "$lib/i18n";
 
 type Row = Record<string, unknown>;
 type TemplateDocument = {
@@ -41,8 +42,14 @@ function messageFrom(err: unknown) {
 // The Supabase version never checked `{ error }` on these reads — a failed
 // query just fell back to an empty result. Reproduce that swallow instead of
 // letting postgres.js's thrown errors turn the page load into a 500.
-function rowsOrEmpty<T>(promise: Promise<T[]>): Promise<T[]> {
-  return promise.catch(() => [] as T[]);
+function rowsOrEmpty<T>(
+  promise: Promise<T[]>,
+  onError: () => void,
+): Promise<T[]> {
+  return promise.catch(() => {
+    onError();
+    return [] as T[];
+  });
 }
 
 // Shared by `create` and `restore`, which both re-run the same active-slot
@@ -77,6 +84,10 @@ async function canAddActiveMotorcycle(db: Sql, ownerId: string) {
 
 export async function load({ locals }) {
   const ownerId = locals.user!.id;
+  let loadError = false;
+  const markLoadError = () => {
+    loadError = true;
+  };
   const [motorcycles, profileRows, templates] = await Promise.all([
     rowsOrEmpty(
       locals.db<Row[]>`
@@ -84,6 +95,7 @@ export async function load({ locals }) {
         where owner_id = ${ownerId}
         order by is_active desc, name asc
       `,
+      markLoadError,
     ),
     rowsOrEmpty(
       locals.db<SubscriptionProfile[]>`
@@ -91,6 +103,7 @@ export async function load({ locals }) {
         from subscription_profiles
         where owner_id = ${ownerId}
       `,
+      markLoadError,
     ),
     rowsOrEmpty(
       locals.db<MotorcycleCatalogPreview[]>`
@@ -104,6 +117,7 @@ export async function load({ locals }) {
         order by t.brand, t.model
         limit 100
       `,
+      markLoadError,
     ),
   ]);
   const profile = profileRows[0];
@@ -115,6 +129,7 @@ export async function load({ locals }) {
           select * from motorcycle_specs
           where motorcycle_id in ${locals.db(motorcycleIds)}
         `,
+        markLoadError,
       )
     : [];
   const specsByMotorcycle = new Map(
@@ -138,18 +153,24 @@ export async function load({ locals }) {
     .filter(Boolean);
   const [documents, manualSources] = templateIds.length
     ? await Promise.all([
-        rowsOrEmpty(locals.db<TemplateDocument[]>`
+        rowsOrEmpty(
+          locals.db<TemplateDocument[]>`
           select template_id, title, document_type, external_url, notes
           from motorcycle_template_documents
           where template_id in ${locals.db(templateIds)}
           order by title
-        `),
-        rowsOrEmpty(locals.db<ManualSource[]>`
+        `,
+          markLoadError,
+        ),
+        rowsOrEmpty(
+          locals.db<ManualSource[]>`
           select template_id, official_url, document_version, page_reference,
             last_verified_date::text, coverage_notes
           from motorcycle_manual_sources
           where template_id in ${locals.db(templateIds)}
-        `),
+        `,
+          markLoadError,
+        ),
       ])
     : [[], []];
   const documentsByTemplate = new Map<string, TemplateDocument[]>();
@@ -185,6 +206,7 @@ export async function load({ locals }) {
       hasProAccess(profile) ||
       motorcyclesWithSpecs.filter((motorcycle) => motorcycle.is_active).length <
         FREE_ACTIVE_MOTORCYCLE_LIMIT,
+    errorMessage: loadError ? translate(locals.locale, "common.loadError") : "",
   };
 }
 

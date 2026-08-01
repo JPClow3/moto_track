@@ -46,7 +46,7 @@
 
   <div class="relative mx-auto max-w-3xl px-6 py-14 sm:py-16">
     <a
-      class="label-tech inline-flex items-center gap-2 text-[var(--muted)] transition-colors hover:text-[var(--accent)]"
+      class="focus-ring label-tech inline-flex min-h-11 items-center gap-2 rounded text-[var(--muted)] transition-colors hover:text-[var(--accent)]"
       href="/blog"
     >
       <ArrowLeft class="h-3.5 w-3.5" />

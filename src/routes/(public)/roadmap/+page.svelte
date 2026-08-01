@@ -103,6 +103,14 @@
           title: "Push no celular",
           body: "Lembretes também chegam como notificação do sistema quando o push está ativado na Conta.",
         },
+        {
+          title: "Comparativo anônimo por modelo",
+          body: "Compare consumo e manutenção por 1.000 km com motociclistas do mesmo modelo. O envio é opcional e cada média só aparece com pelo menos cinco participantes válidos.",
+        },
+        {
+          title: "Busca de peças no Mercado Livre",
+          body: "Use uma peça ou um plano de manutenção para preparar uma busca segura e abrir ofertas, preços e disponibilidade atuais diretamente no Mercado Livre.",
+        },
       ],
     },
     {
@@ -127,12 +135,7 @@
       heading: "Ideias em avaliação",
       blurb: "Interessante no papel. Ainda sem compromisso de entrega.",
       icon: Compass,
-      items: [
-        {
-          title: "Comparação anônima por modelo",
-          body: "Saber se o seu consumo e o seu custo de manutenção estão dentro do normal para quem tem a mesma moto.",
-        },
-      ],
+      items: [],
     },
   ];
 

@@ -8,6 +8,7 @@
   export let height = "1rem";
   /** Rendered as a stack of `lines` bars, the last one short like real text. */
   export let lines = 1;
+  export let label = "Loading";
   let className = "";
   export { className as class };
 
@@ -15,7 +16,7 @@
 </script>
 
 {#if lines > 1}
-  <div class={`grid gap-2 ${className}`} aria-hidden="true">
+  <div class={`grid gap-2 ${className}`} role="status" aria-label={label}>
     {#each indices as index (index)}
       <div
         class="skeleton"
@@ -29,6 +30,7 @@
     class={`skeleton ${className}`}
     style:width
     style:height
-    aria-hidden="true"
+    role="status"
+    aria-label={label}
   ></div>
 {/if}

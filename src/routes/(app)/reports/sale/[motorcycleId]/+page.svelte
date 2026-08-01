@@ -46,6 +46,22 @@
 
 <style>
   @media print {
+    :global(aside),
+    :global(header.sticky),
+    :global(.mobile-bottom-nav),
+    :global(#app-mobile-nav) {
+      display: none !important;
+    }
+
+    :global(main#main-content) {
+      max-width: none !important;
+      padding: 0 !important;
+    }
+
+    :global(.lg\:pl-72) {
+      padding-left: 0 !important;
+    }
+
     .print\:hidden {
       display: none;
     }

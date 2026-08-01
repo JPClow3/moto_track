@@ -1263,6 +1263,57 @@ export type Database = {
         };
         Relationships: [];
       };
+      anonymous_model_benchmark_contributions: {
+        Row: {
+          id: string;
+          model_key: string;
+          consumption_km_l: number | null;
+          maintenance_cents: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          model_key: string;
+          consumption_km_l?: number | null;
+          maintenance_cents?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          model_key?: string;
+          consumption_km_l?: number | null;
+          maintenance_cents?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      model_benchmark_submission_guards: {
+        Row: {
+          owner_id: string;
+          model_key: string;
+          contribution_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          owner_id: string;
+          model_key: string;
+          contribution_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          owner_id?: string;
+          model_key?: string;
+          contribution_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       insurance_policies: {
         Row: {
           id: string;
@@ -1901,7 +1952,20 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      model_benchmark_summary: {
+        Args: {
+          p_model_key: string;
+        };
+        Returns: Array<{
+          sample_size: number;
+          consumption_sample_size: number;
+          average_consumption_km_l: number | null;
+          maintenance_sample_size: number;
+          average_maintenance_cents: number | null;
+        }>;
+      };
+    };
     Enums: {
       billing_plan: "free" | "pro";
       billing_interval: "monthly" | "yearly";

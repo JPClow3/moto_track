@@ -54,7 +54,11 @@
         >
       {/each}
     </div>
-    <div class="heatmap flex-1">
+    <div
+      class="heatmap flex-1"
+      role="img"
+      aria-label={$t("dashboard.activityAria", { count: cells.length })}
+    >
       {#each scaled as cell (cell.date)}
         <div
           class="cell"
@@ -64,6 +68,19 @@
       {/each}
     </div>
   </div>
+
+  <details class="activity-details">
+    <summary class="focus-ring cursor-pointer text-sm font-semibold">
+      {$t("dashboard.activityDetails")}
+    </summary>
+    <ul
+      class="mt-3 grid max-h-48 gap-1 overflow-y-auto text-xs text-[var(--muted)]"
+    >
+      {#each scaled as cell (cell.date)}
+        <li>{cell.title}</li>
+      {/each}
+    </ul>
+  </details>
 
   <div class="flex items-center justify-between">
     <p class="text-xs text-[var(--muted)]">
@@ -93,6 +110,22 @@
     /* Long histories scroll rather than squeezing the cells into slivers. */
     overflow-x: auto;
     padding-bottom: 2px;
+    outline: none;
+  }
+
+  .heatmap:focus-visible {
+    border-radius: 2px;
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+
+  .activity-details summary {
+    color: var(--muted);
+  }
+
+  .activity-details summary:hover,
+  .activity-details summary:focus-visible {
+    color: var(--fg);
   }
 
   .cell {

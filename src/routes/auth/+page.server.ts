@@ -86,5 +86,9 @@ export async function load({ locals, url }) {
     );
   return {
     redirectTo: safeInternalRedirect(url.searchParams.get("redirectTo")),
+    message:
+      url.searchParams.get("message") === "senha_atualizada"
+        ? "Senha atualizada. Entre novamente para acessar sua garagem."
+        : undefined,
   };
 }

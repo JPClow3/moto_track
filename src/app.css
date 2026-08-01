@@ -199,6 +199,11 @@ a {
     transform: scaleX(1);
   }
 
+  .nav-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+
   /* Blueprint grid, masked to fade out. Replaces the blurred-blob backdrops. */
   .grid-backdrop {
     position: absolute;
@@ -374,7 +379,7 @@ a {
   }
 
   .button {
-    @apply focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded px-4 py-2 text-sm font-semibold transition;
+    @apply focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 py-2 text-sm font-semibold transition;
   }
 
   /* Primary stays graphite. Red is reserved as an accent, which is what keeps
@@ -441,7 +446,7 @@ a {
   /* Keyboard users had to tab through the entire sidebar on every navigation
      to reach the page content. */
   .skip-link {
-    @apply absolute left-4 z-50 rounded px-4 py-2 text-sm font-semibold;
+    @apply absolute left-4 z-50 inline-flex min-h-11 items-center rounded px-4 py-2 text-sm font-semibold;
     top: -100px;
     background: var(--accent-solid);
     color: var(--accent-contrast);

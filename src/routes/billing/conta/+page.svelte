@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { enablePushNotifications } from "$lib/utils/push";
   import { t } from "$lib/i18n/store";
+  import ConfirmDialog from "$components/ConfirmDialog.svelte";
 
   export let data: {
     profile: Record<string, string | boolean | null> | null;
@@ -23,6 +24,10 @@
   let deletionConfirmation = "";
   let tokenMessage = "";
   let tokenBusy = false;
+  let tokenLoading = true;
+  let tokenLoadMessage = "";
+  let tokenStatusRole: "status" | "alert" = "status";
+  let tokenConfirmDialog: ConfirmDialog;
   let tokens: Array<{
     id: string;
     name: string;
@@ -31,10 +36,22 @@
   }> = [];
 
   async function loadTokens() {
-    const response = await fetch("/api/v1/tokens");
-    if (!response.ok) return;
-    const body = await response.json();
-    tokens = body.results ?? [];
+    tokenLoading = true;
+    tokenLoadMessage = "";
+    try {
+      const response = await fetch("/api/v1/tokens");
+      if (!response.ok) throw new Error("Não foi possível carregar os tokens.");
+      const body = await response.json();
+      tokens = body.results ?? [];
+    } catch (error) {
+      tokenStatusRole = "alert";
+      tokenLoadMessage =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível carregar os tokens.";
+    } finally {
+      tokenLoading = false;
+    }
   }
 
   async function createApiToken() {
@@ -48,20 +65,44 @@
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body?.message ?? "token error");
+      tokenStatusRole = "status";
       tokenMessage = $t("conta.tokenCreated", { token: body.token });
       await loadTokens();
     } catch (error) {
       tokenMessage =
         error instanceof Error ? error.message : $t("conta.pushFailed");
+      tokenStatusRole = "alert";
     } finally {
       tokenBusy = false;
     }
   }
 
   async function revokeApiToken(id: string) {
-    await fetch(`/api/v1/tokens?id=${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    });
+    const ok = await tokenConfirmDialog.ask(
+      "Revogar este token? A integração deixará de funcionar.",
+    );
+    if (!ok) return;
+    tokenBusy = true;
+    tokenMessage = "";
+    try {
+      const response = await fetch(
+        `/api/v1/tokens?id=${encodeURIComponent(id)}`,
+        {
+          method: "DELETE",
+        },
+      );
+      if (!response.ok) throw new Error("Não foi possível revogar o token.");
+      tokenStatusRole = "status";
+      tokenMessage = "Token revogado.";
+    } catch (error) {
+      tokenStatusRole = "alert";
+      tokenMessage =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível revogar o token.";
+    } finally {
+      tokenBusy = false;
+    }
     await loadTokens();
   }
 
@@ -97,6 +138,18 @@
         : theme;
     document.documentElement.dataset.theme = resolved;
     document.documentElement.classList.toggle("dark", resolved === "dark");
+    try {
+      document
+        .querySelector("meta[name='theme-color']")
+        ?.setAttribute("content", resolved === "dark" ? "#09090b" : "#fafafa");
+    } catch {
+      // Browser chrome metadata is best effort in strict document contexts.
+    }
+    try {
+      window.localStorage.setItem("moto-track-theme", theme);
+    } catch {
+      // Theme preference is still applied in memory if browser storage is unavailable.
+    }
   }
 </script>
 
@@ -113,6 +166,8 @@
     <p
       class="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3 text-sm"
       class:text-danger={!form.ok}
+      role={form.ok ? "status" : "alert"}
+      aria-live={form.ok ? "polite" : "assertive"}
     >
       {form.message}
     </p>
@@ -198,7 +253,13 @@
       </button>
     </div>
     {#if pushMessage}
-      <p class="mt-3 text-sm text-[var(--muted)]">{pushMessage}</p>
+      <p
+        class="mt-3 text-sm text-[var(--muted)]"
+        role="status"
+        aria-live="polite"
+      >
+        {pushMessage}
+      </p>
     {/if}
   </div>
 
@@ -241,6 +302,10 @@
   <div class="panel p-5">
     <h2 class="font-semibold">{$t("conta.apiTokens")}</h2>
     <p class="mt-2 text-sm text-[var(--muted)]">{$t("conta.apiTokensHint")}</p>
+    <ConfirmDialog
+      bind:this={tokenConfirmDialog}
+      confirmLabel={$t("conta.revokeToken")}
+    />
     <div class="mt-4 flex flex-wrap gap-3">
       <button
         class="button-secondary"
@@ -252,31 +317,48 @@
       </button>
     </div>
     {#if tokenMessage}
-      <p class="mt-3 break-all text-sm text-[var(--muted)]">{tokenMessage}</p>
+      <p
+        class="mt-3 break-all text-sm text-[var(--muted)]"
+        class:text-danger={tokenStatusRole === "alert"}
+        role={tokenStatusRole}
+        aria-live={tokenStatusRole === "alert" ? "assertive" : "polite"}
+      >
+        {tokenMessage}
+      </p>
+    {/if}
+    {#if tokenLoadMessage}
+      <p class="mt-3 text-sm text-danger" role="alert" aria-live="assertive">
+        {tokenLoadMessage}
+      </p>
     {/if}
     <div class="mt-3 grid gap-2 text-sm">
-      {#each tokens as token}
-        <div
-          class="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] py-2"
-        >
-          <span>
-            {token.name} · {token.key_prefix}… · {token.is_active
-              ? "active"
-              : "revoked"}
-          </span>
-          {#if token.is_active}
-            <button
-              class="button-secondary px-3 py-1.5 text-xs"
-              type="button"
-              on:click={() => revokeApiToken(token.id)}
-            >
-              {$t("conta.revokeToken")}
-            </button>
-          {/if}
-        </div>
+      {#if tokenLoading}
+        <p class="text-[var(--muted)]" role="status">Carregando tokens…</p>
+      {:else if tokens.length}
+        {#each tokens as token}
+          <div
+            class="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] py-2"
+          >
+            <span>
+              {token.name} · {token.key_prefix}… · {token.is_active
+                ? "active"
+                : "revoked"}
+            </span>
+            {#if token.is_active}
+              <button
+                class="button-secondary px-3 py-1.5 text-xs"
+                type="button"
+                on:click={() => revokeApiToken(token.id)}
+                disabled={tokenBusy}
+              >
+                {$t("conta.revokeToken")}
+              </button>
+            {/if}
+          </div>
+        {/each}
       {:else}
         <p class="text-[var(--muted)]">{$t("conta.noRequests")}</p>
-      {/each}
+      {/if}
     </div>
   </div>
 

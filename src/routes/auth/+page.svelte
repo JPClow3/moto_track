@@ -5,7 +5,7 @@
     data,
     form,
   }: {
-    data: { redirectTo: string };
+    data: { redirectTo: string; message?: string };
     form: { message?: string; email?: string } | undefined;
   } = $props();
 
@@ -25,7 +25,7 @@
     <div class="mb-8 text-center">
       <a
         href="/"
-        class="focus-ring mb-8 inline-block rounded transition hover:opacity-70"
+        class="focus-ring mb-8 inline-flex min-h-11 items-center rounded transition hover:opacity-70"
       >
         <img
           src="/brand/svg/moto-track-logo-horizontal-light.svg"
@@ -49,9 +49,21 @@
         <!-- Errors use the danger token, not the accent. -->
         <div
           class="mb-6 flex items-start gap-3 rounded border border-danger/30 bg-danger/10 p-4 text-sm"
+          role="alert"
+          aria-live="assertive"
+          tabindex="-1"
         >
           <ShieldAlert class="h-5 w-5 shrink-0 text-danger" />
           <p>{form.message}</p>
+        </div>
+      {:else if data.message}
+        <div
+          class="mb-6 rounded border border-success/30 bg-success/10 p-4 text-sm text-success"
+          role="status"
+          aria-live="polite"
+          tabindex="-1"
+        >
+          <p>{data.message}</p>
         </div>
       {/if}
 
@@ -112,6 +124,7 @@
                 class="field pl-9"
                 name="email"
                 type="email"
+                autocomplete="email"
                 value={form?.email ?? ""}
                 placeholder="voce@exemplo.com"
                 required
@@ -132,6 +145,7 @@
                 class="field pl-9"
                 name="password"
                 type="password"
+                autocomplete="current-password"
                 placeholder="••••••••"
                 required
               />
@@ -149,7 +163,7 @@
 
         <button
           type="button"
-          class="mt-4 text-sm text-[var(--muted)] underline-offset-4 hover:underline"
+          class="focus-ring mt-4 inline-flex min-h-11 items-center rounded text-sm text-[var(--muted)] underline-offset-4 hover:underline"
           onclick={() => (showReset = !showReset)}
         >
           Esqueci minha senha
@@ -162,10 +176,15 @@
             action="?/resetPassword"
           >
             <h2 class="label-tech text-[var(--muted)]">Esqueci a senha</h2>
+            <label for="reset-email" class="label-tech text-[var(--muted)]"
+              >Email</label
+            >
             <input
+              id="reset-email"
               class="field"
               name="email"
               type="email"
+              autocomplete="email"
               placeholder="email@exemplo.com"
               required
             />
@@ -215,21 +234,37 @@
         hidden={mode !== "signUp"}
       >
         <form class="grid gap-4" method="POST" action="?/signUp">
+          <input type="hidden" name="redirectTo" value={data.redirectTo} />
           <h2 class="label-tech text-[var(--muted)]">Nova conta</h2>
-          <input
-            class="field"
-            name="email"
-            type="email"
-            placeholder="email@exemplo.com"
-            required
-          />
-          <input
-            class="field"
-            name="password"
-            type="password"
-            placeholder="senha (mínimo 6 caracteres)"
-            required
-          />
+          <div class="grid gap-1.5">
+            <label for="signup-email" class="label-tech text-[var(--muted)]"
+              >Email</label
+            >
+            <input
+              id="signup-email"
+              class="field"
+              name="email"
+              type="email"
+              autocomplete="email"
+              placeholder="email@exemplo.com"
+              required
+            />
+          </div>
+          <div class="grid gap-1.5">
+            <label for="signup-password" class="label-tech text-[var(--muted)]"
+              >Senha</label
+            >
+            <input
+              id="signup-password"
+              class="field"
+              name="password"
+              type="password"
+              autocomplete="new-password"
+              placeholder="senha (mínimo 6 caracteres)"
+              minlength="6"
+              required
+            />
+          </div>
           <button class="button-primary w-full py-2.5 text-base" type="submit"
             ><UserPlus class="h-4 w-4" /> Criar conta</button
           >

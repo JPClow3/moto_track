@@ -15,6 +15,7 @@
     CircleGauge,
     X,
   } from "lucide-svelte";
+  import { tick } from "svelte";
   import { t } from "$lib/i18n/store";
   import type { MessageKey } from "$lib/i18n";
   import LocaleSwitcher from "./LocaleSwitcher.svelte";
@@ -103,6 +104,58 @@
   ];
 
   let mobileOpen = false;
+  let menuButton: HTMLButtonElement;
+  let mobileNav: HTMLElement;
+  let lastPath = currentPath;
+
+  function focusFirstMobileControl() {
+    void tick().then(() => {
+      mobileNav
+        ?.querySelector<HTMLElement>(
+          "a, button, select, input, [tabindex]:not([tabindex='-1'])",
+        )
+        ?.focus();
+    });
+  }
+
+  function openMobileMenu() {
+    mobileOpen = true;
+    focusFirstMobileControl();
+  }
+
+  function closeMobileMenu(restoreFocus = true) {
+    mobileOpen = false;
+    if (restoreFocus) void tick().then(() => menuButton?.focus());
+  }
+
+  function toggleMobileMenu() {
+    if (mobileOpen) closeMobileMenu();
+    else openMobileMenu();
+  }
+
+  function handleMobileKeydown(event: KeyboardEvent) {
+    if (!mobileOpen) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMobileMenu();
+      return;
+    }
+    if (event.key !== "Tab") return;
+
+    const focusable = mobileNav?.querySelectorAll<HTMLElement>(
+      "a, button, select, input, [tabindex]:not([tabindex='-1'])",
+    );
+    if (!focusable?.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   $: visibleGroups = groups
     .map((group) => ({
@@ -119,8 +172,13 @@
     path === href || path.startsWith(`${href}/`);
 
   // Close the drawer on navigation, otherwise it stays open over the new page.
-  $: if (currentPath) mobileOpen = false;
+  $: if (currentPath !== lastPath) {
+    lastPath = currentPath;
+    if (mobileOpen) closeMobileMenu(false);
+  }
 </script>
+
+<svelte:window on:keydown={handleMobileKeydown} />
 
 <div class="relative min-h-screen bg-[var(--bg)] text-[var(--fg)]">
   <a href="#main-content" class="skip-link">{$t("a11y.skipToContent")}</a>
@@ -212,12 +270,13 @@
         class="mx-auto flex w-full items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8"
       >
         <button
-          class="focus-ring -ml-2 grid h-10 w-10 place-items-center rounded lg:hidden"
+          bind:this={menuButton}
+          class="focus-ring -ml-2 grid h-11 w-11 place-items-center rounded lg:hidden"
           type="button"
           aria-expanded={mobileOpen}
           aria-controls="app-mobile-nav"
           aria-label={mobileOpen ? $t("nav.closeMenu") : $t("nav.openMenu")}
-          on:click={() => (mobileOpen = !mobileOpen)}
+          on:click={toggleMobileMenu}
         >
           {#if mobileOpen}<X size={18} />{:else}<Menu size={18} />{/if}
         </button>
@@ -257,6 +316,7 @@
            nothing replacing it, so a phone had no way to reach any section. -->
       {#if mobileOpen}
         <nav
+          bind:this={mobileNav}
           id="app-mobile-nav"
           class="border-t border-[var(--line)] bg-[var(--panel)] px-4 py-2 lg:hidden"
           aria-label={$t("nav.primary")}
@@ -271,6 +331,7 @@
                     class="focus-ring flex items-center gap-3 rounded px-2 py-3 text-sm font-medium"
                     class:selected={active}
                     href={item.href}
+                    on:click={() => closeMobileMenu(false)}
                     aria-current={active ? "page" : undefined}
                   >
                     <Icon
@@ -294,21 +355,21 @@
 
     <main
       id="main-content"
-      class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-8"
+      class="app-main mx-auto w-full max-w-7xl flex-1 px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-8"
     >
       <slot />
     </main>
 
     <!-- Thumb-reachable bar for the most-used sections on phones. -->
     <nav
-      class="bg-[var(--panel)]/95 fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-[var(--line)] backdrop-blur-md lg:hidden"
+      class="mobile-bottom-nav bg-[var(--panel)]/95 fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-[var(--line)] backdrop-blur-md lg:hidden"
       aria-label={$t("nav.primary")}
     >
       {#each mobileItems.slice(0, 4) as item (item.href)}
         {@const Icon = icons[item.icon]}
         {@const active = isActive(item.href, currentPath)}
         <a
-          class="focus-ring flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition"
+          class="focus-ring flex min-h-11 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-medium transition"
           class:bar-active={active}
           class:bar-idle={!active}
           href={item.href}
@@ -360,5 +421,19 @@
 
   .bar-idle {
     color: var(--muted);
+  }
+
+  .app-main {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+
+  .mobile-bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  @media (min-width: 1024px) {
+    .app-main {
+      padding-bottom: 2rem;
+    }
   }
 </style>

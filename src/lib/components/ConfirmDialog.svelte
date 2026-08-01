@@ -48,6 +48,7 @@
   bind:this={dialog}
   class="confirm-dialog"
   aria-labelledby="confirm-title"
+  aria-describedby="confirm-message"
   on:close={() => settle(dialog.returnValue === "confirm")}
   on:click={onBackdropClick}
 >
@@ -55,16 +56,18 @@
     <h2 class="display text-2xl" id="confirm-title">
       {title || $t("common.confirmTitle")}
     </h2>
-    <p class="mt-2 text-sm text-[var(--muted)]">{message}</p>
+    <p class="mt-2 text-sm text-[var(--muted)]" id="confirm-message">
+      {message}
+    </p>
 
     <!-- method="dialog" closes the dialog and sets returnValue to the button's
          value, with no JS and no submit handler. -->
     <form method="dialog" class="mt-7 flex justify-end gap-2">
-      <button class="button-secondary" value="cancel"
+      <button class="button-secondary min-h-11" value="cancel"
         >{$t("common.cancel")}</button
       >
       <button
-        class={destructive ? "button-danger" : "button-primary"}
+        class={`${destructive ? "button-danger" : "button-primary"} min-h-11`}
         value="confirm"
         data-autofocus
       >

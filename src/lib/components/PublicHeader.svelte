@@ -24,6 +24,42 @@
 
   const isActive = (href: string, pathname: string) =>
     pathname.startsWith(href);
+
+  let menuButton: HTMLButtonElement;
+
+  function focusMenuEntry() {
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      document.querySelector<HTMLAnchorElement>("#mobile-nav a")?.focus();
+    });
+  }
+
+  function openMenu() {
+    open = true;
+    focusMenuEntry();
+  }
+
+  function closeMenu() {
+    open = false;
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => menuButton?.focus());
+  }
+
+  function toggleMenu() {
+    if (open) closeMenu();
+    else openMenu();
+  }
+
+  $effect(() => {
+    if (typeof document === "undefined" || !open) return;
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeMenu();
+    };
+    document.addEventListener("keydown", onKeydown);
+    return () => document.removeEventListener("keydown", onKeydown);
+  });
 </script>
 
 <header
@@ -35,19 +71,19 @@
   >
     <a
       href={user ? "/dashboard" : "/"}
-      class="focus-ring rounded transition hover:opacity-70"
+      class="focus-ring inline-flex min-h-11 items-center rounded transition hover:opacity-70"
     >
       <img
         src="/brand/svg/moto-track-logo-horizontal-light.svg"
         alt="Moto Track"
-        class="h-7 dark:hidden"
+        class="h-7 w-auto dark:hidden"
         width="845"
         height="160"
       />
       <img
         src="/brand/svg/moto-track-logo-horizontal-dark.svg"
         alt="Moto Track"
-        class="hidden h-7 dark:block"
+        class="hidden h-7 w-auto dark:block"
         width="845"
         height="160"
       />
@@ -56,7 +92,7 @@
     <div class="flex items-center gap-2 sm:gap-6">
       {#each links as link (link.href)}
         <a
-          class="nav-link label-tech hidden sm:inline-block"
+          class="focus-ring nav-link label-tech hidden min-h-11 items-center sm:inline-flex"
           class:is-active={isActive(link.href, $page.url.pathname)}
           href={link.href}
           aria-current={isActive(link.href, $page.url.pathname)
@@ -80,12 +116,13 @@
       {/if}
 
       <button
-        class="focus-ring -mr-2 grid h-10 w-10 place-items-center rounded sm:hidden"
+        bind:this={menuButton}
+        class="focus-ring -mr-2 grid h-11 w-11 place-items-center rounded sm:hidden"
         type="button"
         aria-expanded={open}
         aria-controls="mobile-nav"
         aria-label={open ? $t("nav.closeMenu") : $t("nav.openMenu")}
-        onclick={() => (open = !open)}
+        onclick={toggleMenu}
       >
         {#if open}
           <X class="h-5 w-5" />
@@ -109,7 +146,7 @@
           aria-current={isActive(link.href, $page.url.pathname)
             ? "page"
             : undefined}
-          onclick={() => (open = false)}
+          onclick={closeMenu}
         >
           {$t(link.key)}
         </a>

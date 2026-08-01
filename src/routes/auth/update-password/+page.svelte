@@ -16,7 +16,7 @@
     <div class="mb-8 text-center">
       <a
         href="/"
-        class="focus-ring mb-8 inline-block rounded transition hover:opacity-70"
+        class="focus-ring mb-8 inline-flex min-h-11 items-center rounded transition hover:opacity-70"
       >
         <img
           src="/brand/svg/moto-track-logo-horizontal-light.svg"
@@ -39,6 +39,9 @@
       {#if form?.message}
         <div
           class="mb-6 flex items-start gap-3 rounded border border-danger/30 bg-danger/10 p-4 text-sm"
+          role="alert"
+          aria-live="assertive"
+          tabindex="-1"
         >
           <ShieldAlert class="h-5 w-5 shrink-0 text-danger" />
           <p>{form.message}</p>
@@ -60,6 +63,7 @@
               class="field pl-9"
               name="password"
               type="password"
+              autocomplete="new-password"
               placeholder="mínimo 6 caracteres"
               required
               minlength="6"
@@ -80,6 +84,7 @@
               class="field pl-9"
               name="confirmPassword"
               type="password"
+              autocomplete="new-password"
               placeholder="••••••••"
               required
               minlength="6"

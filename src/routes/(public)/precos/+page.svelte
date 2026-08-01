@@ -237,6 +237,11 @@
     color: white;
   }
 
+  .billing-choice:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
   .billing-choice small {
     color: rgb(255 255 255 / 0.55);
   }

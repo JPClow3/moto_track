@@ -5,6 +5,12 @@ import {
   loadFeature,
 } from "$server/domain/crud";
 import { assertCanCreateUpload } from "$server/domain/entitlement-guards";
+import {
+  MARKETPLACE_QUERY_MAX_LENGTH,
+  MarketplaceError,
+  marketplaceSearchUrl,
+  normalizeMarketplaceQuery,
+} from "$server/domain/marketplace";
 import { validateMaintenancePhoto } from "$server/domain/maintenance-photos";
 import { syncPlanReminder } from "$server/domain/record-sync";
 import { uploadObjectFile } from "$server/r2/files";
@@ -17,6 +23,13 @@ function messageFrom(err: unknown) {
 
 const base = featureActions("maintenance");
 const v = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
+
+function marketplaceDisplayQuery(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, MARKETPLACE_QUERY_MAX_LENGTH);
+}
 
 export const actions = {
   ...base,
@@ -38,6 +51,44 @@ export const actions = {
       return fail(400, { message: messageFrom(err) });
     }
     return { ok: true };
+  },
+  searchMarketplace: async ({ request }) => {
+    const f = await request.formData();
+    const rawQuery = f.get("query");
+    const displayQuery = marketplaceDisplayQuery(rawQuery);
+
+    try {
+      const query = normalizeMarketplaceQuery(rawQuery);
+      // Mercado Livre now requires an OAuth access token for API calls. The
+      // product has no OAuth lifecycle yet, so keep this supported path honest:
+      // prepare a validated deep link rather than fabricate or cache in-app
+      // prices. The adapter remains available for a future authenticated
+      // integration.
+      return {
+        ok: true,
+        marketplace: {
+          query,
+          offers: [],
+          mode: "external-search",
+          fallbackUrl: marketplaceSearchUrl(query),
+        },
+      };
+    } catch (error) {
+      const code =
+        error instanceof MarketplaceError ? error.code : "invalid-query";
+      return {
+        ok: false,
+        marketplace: {
+          query: displayQuery,
+          offers: [],
+          error: code,
+          fallbackUrl:
+            displayQuery.length >= 3
+              ? marketplaceSearchUrl(displayQuery)
+              : undefined,
+        },
+      };
+    }
   },
   deletePart: async ({ request, locals }) => {
     const f = await request.formData();

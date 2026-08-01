@@ -49,6 +49,8 @@
         <div
           class="bar"
           class:is-latest={i === latest}
+          role="img"
+          aria-label={`${entry.label} — ${$format.money(entry.cents)}`}
           style={`--height:${peak ? Math.max((entry.cents / peak) * 100, entry.cents ? 2 : 0.8) : 0.8}%; --delay:${i * 70}ms`}
           title={`${entry.label} — ${$format.money(entry.cents)}`}
         ></div>
@@ -58,6 +60,17 @@
       </div>
     {/each}
   </div>
+
+  <details class="spend-details">
+    <summary class="focus-ring cursor-pointer text-sm font-semibold">
+      {$t("dashboard.monthlySpendDetails")}
+    </summary>
+    <ul class="mt-3 grid gap-1 text-xs text-[var(--muted)]">
+      {#each labelled as entry (entry.month)}
+        <li>{entry.label} — {$format.money(entry.cents)}</li>
+      {/each}
+    </ul>
+  </details>
 </div>
 
 <style>
@@ -82,6 +95,19 @@
 
   .group:hover .bar.is-latest {
     background: var(--accent-hover);
+  }
+
+  .group:focus-within p {
+    opacity: 1;
+  }
+
+  .spend-details summary {
+    color: var(--muted);
+  }
+
+  .spend-details summary:hover,
+  .spend-details summary:focus-visible {
+    color: var(--fg);
   }
 
   @keyframes rise {
