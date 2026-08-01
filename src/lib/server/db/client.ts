@@ -14,11 +14,6 @@ const POOLED_OPTIONS = {
   connect_timeout: 5,
 } satisfies postgres.Options<Record<string, never>>;
 
-// One Sql instance per resolved connection string, reused across requests
-// within the same Workers isolate (or the same Node process in dev) instead
-// of opening a fresh connection every call.
-const clients = new Map<string, postgres.Sql>();
-
 function resolveConnectionString(platform?: App.Platform): string {
   // Prefer DATABASE_URL whenever it is set. In local/CI, wrangler always
   // exposes a Hyperdrive binding (and requires localConnectionString), which
@@ -56,24 +51,19 @@ function sslForConnection(connectionString: string): "require" | undefined {
 }
 
 /**
- * Returns a memoized postgres.js `Sql` instance for the current environment.
- * Pass the SvelteKit `platform` through so the Hyperdrive binding is picked
- * up on Cloudflare; without it (local dev, scripts) this falls back to
- * DATABASE_URL.
+ * Returns a request-scoped postgres.js `Sql` instance for the current
+ * environment. Cloudflare Workers associates the driver's I/O objects with
+ * the request that created them; keeping a `Sql` instance in module scope and
+ * reusing it on a later request causes the runtime to reject the cross-request
+ * stream access with "Cannot perform I/O on behalf of a different request".
+ * Hyperdrive owns the connection pool, so the client itself does not need to
+ * be shared here.
  */
 export function getDb(platform?: App.Platform): postgres.Sql {
   const connectionString = resolveConnectionString(platform);
 
-  const existing = clients.get(connectionString);
-  if (existing) {
-    return existing;
-  }
-
-  const sql = postgres(connectionString, {
+  return postgres(connectionString, {
     ...POOLED_OPTIONS,
     ssl: sslForConnection(connectionString),
   });
-
-  clients.set(connectionString, sql);
-  return sql;
 }
