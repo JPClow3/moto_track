@@ -10,6 +10,12 @@ test.describe("public responsive foundation", () => {
   test("public routes do not overflow and expose usable shell controls", async ({
     page,
   }) => {
+    // This is a deliberately broad smoke test: five viewport sizes x four
+    // full navigations. Give cold Vite/DB-backed public routes enough budget
+    // to finish before Playwright cancels the in-flight navigation as
+    // ERR_ABORTED.
+    test.setTimeout(120_000);
+
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 });
 
