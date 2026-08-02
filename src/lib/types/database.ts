@@ -133,6 +133,7 @@ export type Database = {
           variant: string;
           generation: string;
           is_exact_schedule: boolean;
+          is_catalog_visible: boolean;
           engine_cc: number;
           country_code: string;
           created_at: string;
@@ -147,6 +148,7 @@ export type Database = {
           variant?: string;
           generation?: string;
           is_exact_schedule?: boolean;
+          is_catalog_visible?: boolean;
           engine_cc: number;
           country_code?: string;
           created_at?: string;
@@ -161,6 +163,7 @@ export type Database = {
           variant?: string;
           generation?: string;
           is_exact_schedule?: boolean;
+          is_catalog_visible?: boolean;
           engine_cc?: number;
           country_code?: string;
           created_at?: string;

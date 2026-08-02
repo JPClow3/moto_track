@@ -24,18 +24,28 @@
 
   function selectBrand() {
     selectedTemplateId = "";
+    selectedYear = "";
+  }
+
+  function selectTemplate() {
+    selectedYear = "";
   }
 
   function templateLabel(template: (typeof data.templates)[number]) {
     const year =
-      template.year_to && template.year_to !== template.year_from
-        ? `${template.year_from}–${template.year_to}`
+      (template.year_to ?? new Date().getFullYear()) !== template.year_from
+        ? `${template.year_from}–${template.year_to ?? new Date().getFullYear()}`
         : template.year_from;
     return `${template.model} ${template.variant} · ${year}`;
   }
 
   function openHistory() {
-    if (formElement.reportValidity()) step = 2;
+    if (!formElement.reportValidity()) return;
+    if (custom || !selectedTemplate?.is_exact_schedule) {
+      formElement.requestSubmit();
+      return;
+    }
+    step = 2;
   }
 </script>
 
@@ -82,8 +92,9 @@
         </label>
         {#if !custom}
           <p class="mt-1 text-xs text-[var(--muted)]">
-            Só mostramos agendas com manual oficial e cobertura exata de ano,
-            geração e versão.
+            Todos os modelos têm uma fonte oficial. “Agenda exata” identifica os
+            casos em que a tabela de manutenção foi conferida para aquele ano e
+            versão.
           </p>
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
             <label class="text-sm">
@@ -104,6 +115,7 @@
                 class="field"
                 name="template_id"
                 bind:value={selectedTemplateId}
+                on:change={selectTemplate}
                 required
                 disabled={!selectedBrand}
               >
@@ -118,7 +130,12 @@
             <p class="mt-2 text-xs text-[var(--muted)]">
               {selectedTemplate.model}
               {selectedTemplate.variant} · {selectedTemplate.generation}
-              · {selectedTemplate.year_from}. Fonte: {selectedTemplate.document_version},
+              · {selectedTemplate.year_from}–{selectedTemplate.year_to ??
+                new Date().getFullYear()}.
+              {selectedTemplate.is_exact_schedule
+                ? "Agenda conferida no manual oficial para este ano e versão."
+                : "Modelo e anos documentados. O Moto Track não aplicará intervalos automáticos; confirme a agenda no manual do ano escolhido."}
+              Fonte: {selectedTemplate.document_version},
               {selectedTemplate.page_reference}. Verificado em {selectedTemplate.last_verified_date}.
             </p>
             {#if selectedTemplate.manual_url}
@@ -126,7 +143,7 @@
                 class="mt-2 inline-block text-xs font-semibold text-brand underline-offset-4 hover:underline"
                 href={selectedTemplate.manual_url}
                 target="_blank"
-                rel="noreferrer">Abrir catálogo oficial de PDFs ↗</a
+                rel="noreferrer">Abrir documento oficial ↗</a
               >
             {/if}
           {/if}
@@ -162,17 +179,33 @@
           </div>
         {/if}
       </div>
-      <label class="text-sm">
-        Ano<input
-          class="field"
-          name="year"
-          type="number"
-          bind:value={selectedYear}
-          min={selectedTemplate?.year_from ?? 1901}
-          max={selectedTemplate?.year_to ?? new Date().getFullYear()}
-          required
-        />
-      </label>
+      {#if !custom && selectedTemplate}
+        <label class="text-sm">
+          Ano<select
+            class="field"
+            name="year"
+            bind:value={selectedYear}
+            required
+          >
+            <option value="" disabled>Selecione</option>
+            {#each selectedTemplate.available_years ?? [] as year}
+              <option value={year}>{year}</option>
+            {/each}
+          </select>
+        </label>
+      {:else}
+        <label class="text-sm">
+          Ano<input
+            class="field"
+            name="year"
+            type="number"
+            bind:value={selectedYear}
+            min="1901"
+            max={new Date().getFullYear()}
+            required
+          />
+        </label>
+      {/if}
       <label class="text-sm">
         Odômetro atual<input
           class="field"
@@ -187,7 +220,9 @@
         </span>
       </label>
       <button class="button-primary" type="button" on:click={openHistory}
-        >Continuar para o histórico</button
+        >{!custom && selectedTemplate?.is_exact_schedule
+          ? "Continuar para o histórico"
+          : "Criar minha moto"}</button
       >
     {:else}
       <input type="hidden" name="name" value={motorcycleName} />
@@ -215,7 +250,9 @@
             <p class="mt-1 text-sm text-[var(--muted)]">
               Para cada serviço, diga o que você sabe. Não vamos inventar uma
               revisão passada: “não sei” vira atenção agora; “não foi feito”
-              vira atrasado.
+              vira atrasado. {selectedTemplate.is_exact_schedule
+                ? "Os intervalos abaixo foram conferidos no manual indicado."
+                : "Este é um plano inicial; confirme os intervalos no documento do ano escolhido."}
             </p>
           </div>
           {#each selectedTemplate.maintenance_items ?? [] as item (item.maintenance_type)}
@@ -225,7 +262,7 @@
               >
               <p class="mb-2 text-xs text-[var(--muted)]">
                 {item.interval_km
-                  ? `Intervalo do manual: ${item.interval_km.toLocaleString("pt-BR")} km.`
+                  ? `${selectedTemplate.is_exact_schedule ? "Intervalo do manual" : "Lembrete inicial"}: ${item.interval_km.toLocaleString("pt-BR")} km.`
                   : "Consulte o manual."}
               </p>
               <div class="grid gap-2 text-sm sm:grid-cols-3">

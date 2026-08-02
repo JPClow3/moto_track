@@ -1,9 +1,10 @@
 import { fail, redirect } from "@sveltejs/kit";
 import {
   applyMotorcycleTemplate,
+  catalogYears,
   getTemplateForYear,
   initialHistoryStatus,
-  type MotorcycleCatalogPreview,
+  listVisibleMotorcycleCatalog,
 } from "$server/domain/motorcycle-catalog";
 
 function messageFrom(err: unknown) {
@@ -19,20 +20,12 @@ export async function load({ locals }) {
       where owner_id = ${locals.user!.id}
       limit 1
     `,
-    locals.db<MotorcycleCatalogPreview[]>`
-      select t.id, t.brand, t.model, t.year_from, t.year_to, t.variant,
-        t.generation, ms.official_url as manual_url, ms.document_version,
-        ms.page_reference, ms.last_verified_date::text, ms.coverage_notes,
-        (select count(*)::int from motorcycle_template_maintenance_items mi where mi.template_id = t.id) as maintenance_count
-      from motorcycle_templates t
-      join motorcycle_manual_sources ms on ms.template_id = t.id
-      where t.is_exact_schedule = true
-      order by t.brand, t.model
-      limit 100
-    `,
+    listVisibleMotorcycleCatalog(locals.db),
   ]);
   if (motorcycles.length) throw redirect(303, "/dashboard");
-  const templateIds = templates.map((template) => template.id);
+  const templateIds = templates
+    .filter((template) => template.is_exact_schedule)
+    .map((template) => template.id);
   const items = templateIds.length
     ? await locals.db<
         Array<{
@@ -50,6 +43,7 @@ export async function load({ locals }) {
   return {
     templates: templates.map((template) => ({
       ...template,
+      available_years: catalogYears(template),
       maintenance_items: items.filter(
         (item) => item.template_id === template.id,
       ),
@@ -64,11 +58,19 @@ export const actions = {
     let brand = String(form.get("brand") ?? "").trim();
     let model = String(form.get("model") ?? "").trim();
     const year = Number(form.get("year"));
+    const currentYear = new Date().getFullYear();
     const enteredOdometer = Number(form.get("current_odometer_km") ?? 0);
     if (!Number.isFinite(enteredOdometer) || enteredOdometer < 0)
       return fail(400, { message: "Informe um odômetro válido." });
     const currentOdometerKm = Math.trunc(enteredOdometer);
-    if (!name || !brand || !model || !Number.isInteger(year))
+    if (
+      !name ||
+      !brand ||
+      !model ||
+      !Number.isInteger(year) ||
+      year <= 1900 ||
+      year > currentYear
+    )
       return fail(400, { message: "Preencha os dados da moto." });
     const templateId = String(form.get("template_id") ?? "").trim() || null;
     if (templateId) {

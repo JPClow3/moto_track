@@ -9,6 +9,7 @@
   let selectedBrand = "";
   let custom = false;
   let pendingAction = "";
+  let selectedYear = "";
   $: brands = [...new Set(data.templates.map((template) => template.brand))];
   $: models = data.templates.filter(
     (template) => template.brand === selectedBrand,
@@ -19,12 +20,17 @@
 
   function selectBrand() {
     selectedTemplateId = "";
+    selectedYear = "";
+  }
+
+  function selectTemplate() {
+    selectedYear = "";
   }
 
   function templateLabel(template: (typeof data.templates)[number]) {
     const year =
-      template.year_to && template.year_to !== template.year_from
-        ? `${template.year_from}–${template.year_to}`
+      (template.year_to ?? new Date().getFullYear()) !== template.year_from
+        ? `${template.year_from}–${template.year_to ?? new Date().getFullYear()}`
         : template.year_from;
     return `${template.model} ${template.variant} · ${year}`;
   }
@@ -285,6 +291,7 @@
             class="field"
             name="template_id"
             bind:value={selectedTemplateId}
+            on:change={selectTemplate}
             required
             disabled={!selectedBrand}
           >
@@ -298,9 +305,16 @@
           <p class="text-xs text-[var(--muted)]">
             {selectedTemplate.model}
             {selectedTemplate.variant} · {selectedTemplate.generation}
-            · {selectedTemplate.year_from}. {selectedTemplate.maintenance_count}
-            {$t("maintenance.itemsLabel")}
-            {$t("garage.templateItems")}
+            · {selectedTemplate.year_from}–{selectedTemplate.year_to ??
+              new Date().getFullYear()}.
+            {selectedTemplate.is_exact_schedule
+              ? "Agenda conferida no manual oficial para este ano e versão."
+              : "Modelo e anos documentados. Nenhum intervalo automático será aplicado; confirme a agenda no manual do ano."}
+            {#if selectedTemplate.is_exact_schedule}
+              {selectedTemplate.maintenance_count}
+              {$t("maintenance.itemsLabel")}
+              {$t("garage.templateItems")}
+            {/if}
           </p>
           {#if selectedTemplate.manual_url}
             <a
@@ -340,16 +354,32 @@
           />
         </label>
       {/if}
-      <label class="text-sm">
-        {$t("garage.yearLabel")}<input
-          class="field"
-          name="year"
-          type="number"
-          min={selectedTemplate?.year_from ?? 1901}
-          max={selectedTemplate?.year_to ?? new Date().getFullYear()}
-          required
-        />
-      </label>
+      {#if !custom && selectedTemplate}
+        <label class="text-sm">
+          {$t("garage.yearLabel")}<select
+            class="field"
+            name="year"
+            bind:value={selectedYear}
+            required
+          >
+            <option value="" disabled>{$t("common.select")}</option>
+            {#each selectedTemplate.available_years ?? [] as year}
+              <option value={year}>{year}</option>
+            {/each}
+          </select>
+        </label>
+      {:else}
+        <label class="text-sm">
+          {$t("garage.yearLabel")}<input
+            class="field"
+            name="year"
+            type="number"
+            min="1901"
+            max={new Date().getFullYear()}
+            required
+          />
+        </label>
+      {/if}
       <label class="text-sm"
         >{$t("garage.odometerLabel")}<input
           class="field"

@@ -9,6 +9,8 @@ export type MotorcycleTemplate = {
   year_to: number | null;
   variant: string;
   generation: string;
+  is_exact_schedule: boolean;
+  is_catalog_visible: boolean;
 };
 
 export type MotorcycleCatalogPreview = MotorcycleTemplate & {
@@ -18,11 +20,40 @@ export type MotorcycleCatalogPreview = MotorcycleTemplate & {
   last_verified_date: string;
   coverage_notes: string;
   maintenance_count: number;
+  available_years?: number[];
   maintenance_items?: Array<{
     maintenance_type: string;
     interval_km: number | null;
   }>;
 };
+
+export function catalogYears(
+  template: Pick<MotorcycleTemplate, "year_from" | "year_to">,
+  currentYear = new Date().getFullYear(),
+) {
+  const lastYear = Math.min(template.year_to ?? currentYear, currentYear);
+  if (lastYear < template.year_from) return [];
+  return Array.from(
+    { length: lastYear - template.year_from + 1 },
+    (_, index) => lastYear - index,
+  );
+}
+
+export function listVisibleMotorcycleCatalog(db: Sql) {
+  return db<MotorcycleCatalogPreview[]>`
+    select t.id, t.brand, t.model, t.year_from, t.year_to, t.variant,
+      t.generation, t.is_exact_schedule, t.is_catalog_visible,
+      ms.official_url as manual_url, ms.document_version,
+      ms.page_reference, ms.last_verified_date::text, ms.coverage_notes,
+      case when t.is_exact_schedule then
+        (select count(*)::int from motorcycle_template_maintenance_items mi where mi.template_id = t.id)
+      else 0 end as maintenance_count
+    from motorcycle_templates t
+    join motorcycle_manual_sources ms on ms.template_id = t.id
+    where t.is_catalog_visible = true
+    order by t.brand, t.model, t.year_from desc
+  `;
+}
 
 export type InitialHistoryStatus = "confirmed_done" | "not_done" | "unknown";
 
@@ -60,12 +91,18 @@ export async function getTemplateForYear(
   year: number,
 ) {
   const [template] = await db<MotorcycleTemplate[]>`
-    select id, brand, model, year_from, year_to, variant, generation
+    select id, brand, model, year_from, year_to, variant, generation,
+      is_exact_schedule, is_catalog_visible
     from motorcycle_templates
     where id = ${templateId}
-      and is_exact_schedule = true
       and ${year} >= year_from
       and (${year} <= year_to or year_to is null)
+      and ${year} <= ${new Date().getFullYear()}
+      and is_catalog_visible = true
+      and exists (
+        select 1 from motorcycle_manual_sources
+        where template_id = motorcycle_templates.id
+      )
   `;
   return template ?? null;
 }
@@ -131,10 +168,12 @@ export async function applyMotorcycleTemplate(
       estimated_cost_cents: number;
     }>
   >`
-    select maintenance_type, interval_km, interval_days, notes,
-      manual_source_id, estimated_cost_cents
-    from motorcycle_template_maintenance_items
-    where template_id = ${templateId}
+    select mi.maintenance_type, mi.interval_km, mi.interval_days, mi.notes,
+      mi.manual_source_id, mi.estimated_cost_cents
+    from motorcycle_template_maintenance_items mi
+    join motorcycle_templates t on t.id = mi.template_id
+    where mi.template_id = ${templateId}
+      and t.is_exact_schedule = true
   `;
   for (const item of items) {
     const historyStatus = initialHistoryStatus(

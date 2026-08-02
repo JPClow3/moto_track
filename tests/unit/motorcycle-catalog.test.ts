@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  catalogYears,
   dueStateForPlan,
   initialHistoryStatus,
 } from "$server/domain/motorcycle-catalog";
@@ -19,8 +20,28 @@ const coverageMigration = readFileSync(
   ),
   "utf8",
 );
+const expandedCatalogMigration = readFileSync(
+  new URL(
+    "../../db/migrations/20260801000000_expand_documented_motorcycle_catalog.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 describe("seeded motorcycle catalogue", () => {
+  it("offers every model year in a documented range, newest first", () => {
+    expect(catalogYears({ year_from: 2017, year_to: 2021 }, 2026)).toEqual([
+      2021, 2020, 2019, 2018, 2017,
+    ]);
+    expect(catalogYears({ year_from: 2024, year_to: null }, 2026)).toEqual([
+      2026, 2025, 2024,
+    ]);
+    expect(catalogYears({ year_from: 2027, year_to: null }, 2026)).toEqual([]);
+    const since2010 = catalogYears({ year_from: 2010, year_to: 2026 }, 2026);
+    expect(since2010).toHaveLength(17);
+    expect(since2010.at(-1)).toBe(2010);
+  });
+
   it("adds a source record and an exact schedule instead of another family rule", () => {
     expect(migration).toContain("motorcycle_manual_sources");
     expect(migration).toContain("official_url");
@@ -45,6 +66,72 @@ describe("seeded motorcycle catalogue", () => {
     expect(coverageMigration).toContain("Não indicada no manual");
     expect(coverageMigration).toContain(
       "motorcycle_manual_sources_set_updated_at",
+    );
+  });
+
+  it("adds documented Yamaha, Dafra, Shineray and KTM choices", () => {
+    expect(expandedCatalogMigration).toContain("Catálogo oficial Yamaha");
+    expect(
+      expandedCatalogMigration.match(/'Dafra'/g)?.length,
+    ).toBeGreaterThanOrEqual(3);
+    expect(
+      expandedCatalogMigration.match(/'Shineray'/g)?.length,
+    ).toBeGreaterThanOrEqual(3);
+    expect(expandedCatalogMigration).toContain("'200 Duke', 2017, 2026");
+    expect(expandedCatalogMigration).toContain("'390 Duke', 2017, 2026");
+  });
+
+  it("gives every expanded template an official document source", () => {
+    expect(expandedCatalogMigration).toContain(
+      "https://www.yamaha-motor.com.br/manuais-e-catalogos",
+    );
+    expect(expandedCatalogMigration).toContain(
+      "https://daframotos.com.br/documentos/",
+    );
+    expect(expandedCatalogMigration).toContain(
+      "https://www.shineray.com.br/wp-content/uploads/",
+    );
+    expect(expandedCatalogMigration).toContain(
+      "https://www.ktm.com/pt-br/service/manuals.html",
+    );
+    expect(expandedCatalogMigration).toContain(
+      "insert into public.motorcycle_template_documents",
+    );
+
+    const newTemplateIds = [
+      ...expandedCatalogMigration.matchAll(
+        /\('(0f0bb40e-0aec-4b09-a3f0-2ddc3cafd0(?:2[0-3]|3[0-3]|4[01]))', '(?:Dafra|Shineray|KTM)'/g,
+      ),
+    ].map((match) => match[1]);
+    const sourcedTemplateIds = new Set(
+      [
+        ...expandedCatalogMigration.matchAll(
+          /\('0f0bb40e-0aec-4b09-a3f0-2ddc3cafd2\d{2}', '(0f0bb40e-0aec-4b09-a3f0-2ddc3cafd0\d{2})'/g,
+        ),
+      ].map((match) => match[1]),
+    );
+    expect(newTemplateIds).toHaveLength(10);
+    expect(newTemplateIds.every((id) => sourcedTemplateIds.has(id))).toBe(true);
+  });
+
+  it("does not promote family documents to exact maintenance schedules", () => {
+    expect(expandedCatalogMigration).toContain("false, true");
+    expect(expandedCatalogMigration).toContain("unless its maintenance table");
+  });
+
+  it("only exposes visible, sourced, in-range catalogue selections", () => {
+    expect(expandedCatalogMigration).toContain("is_catalog_visible");
+    expect(expandedCatalogMigration).toContain(
+      "motorcycle_templates_exact_single_year",
+    );
+    expect(expandedCatalogMigration).toContain(
+      "motorcycle_templates_visible_finite_range",
+    );
+    expect(expandedCatalogMigration).toContain(
+      "validate_motorcycle_catalog_selection",
+    );
+    expect(expandedCatalogMigration).toContain(
+      "motorcycles_validate_catalog_selection",
     );
   });
 

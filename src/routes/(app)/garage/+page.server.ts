@@ -9,8 +9,9 @@ import { archiveMotorcycle, restoreMotorcycle } from "$server/domain/parity";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
 import {
   applyMotorcycleTemplate,
+  catalogYears,
   getTemplateForYear,
-  type MotorcycleCatalogPreview,
+  listVisibleMotorcycleCatalog,
 } from "$server/domain/motorcycle-catalog";
 import { translate } from "$lib/i18n";
 
@@ -105,20 +106,7 @@ export async function load({ locals }) {
       `,
       markLoadError,
     ),
-    rowsOrEmpty(
-      locals.db<MotorcycleCatalogPreview[]>`
-        select t.id, t.brand, t.model, t.year_from, t.year_to, t.variant,
-          t.generation, ms.official_url as manual_url, ms.document_version,
-          ms.page_reference, ms.last_verified_date::text, ms.coverage_notes,
-          (select count(*)::int from motorcycle_template_maintenance_items mi where mi.template_id = t.id) as maintenance_count
-        from motorcycle_templates t
-        join motorcycle_manual_sources ms on ms.template_id = t.id
-        where t.is_exact_schedule = true
-        order by t.brand, t.model
-        limit 100
-      `,
-      markLoadError,
-    ),
+    rowsOrEmpty(listVisibleMotorcycleCatalog(locals.db), markLoadError),
   ]);
   const profile = profileRows[0];
 
@@ -201,7 +189,10 @@ export async function load({ locals }) {
         sourceByTemplate.get(String(motorcycle.source_template_id ?? "")) ??
         null,
     })),
-    templates,
+    templates: templates.map((template) => ({
+      ...template,
+      available_years: catalogYears(template),
+    })),
     canAddActive:
       hasProAccess(profile) ||
       motorcyclesWithSpecs.filter((motorcycle) => motorcycle.is_active).length <
@@ -221,7 +212,15 @@ export const actions = {
     let brand = value(form, "brand");
     let model = value(form, "model");
     const year = Number(form.get("year"));
-    if (!name || !brand || !model || !Number.isInteger(year)) {
+    const currentYear = new Date().getFullYear();
+    if (
+      !name ||
+      !brand ||
+      !model ||
+      !Number.isInteger(year) ||
+      year <= 1900 ||
+      year > currentYear
+    ) {
       return fail(400, {
         message: "Informe nome, marca, modelo e ano válidos.",
       });
