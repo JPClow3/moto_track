@@ -36,7 +36,7 @@ export async function load({ locals }) {
       >`
         select template_id, maintenance_type, interval_km
         from motorcycle_template_maintenance_items
-        where template_id in ${locals.db(templateIds)}
+        where template_id in (${locals.db(templateIds)})
         order by maintenance_type
       `
     : [];
