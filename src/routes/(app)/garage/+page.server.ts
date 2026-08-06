@@ -115,7 +115,7 @@ export async function load({ locals }) {
     ? await rowsOrEmpty(
         locals.db<Row[]>`
           select * from motorcycle_specs
-          where motorcycle_id in (${locals.db(motorcycleIds)})
+          where motorcycle_id in ${locals.db(motorcycleIds)}
         `,
         markLoadError,
       )
@@ -145,7 +145,7 @@ export async function load({ locals }) {
           locals.db<TemplateDocument[]>`
           select template_id, title, document_type, external_url, notes
           from motorcycle_template_documents
-          where template_id in (${locals.db(templateIds)})
+          where template_id in ${locals.db(templateIds)}
           order by title
         `,
           markLoadError,
@@ -155,7 +155,7 @@ export async function load({ locals }) {
           select template_id, official_url, document_version, page_reference,
             last_verified_date::text, coverage_notes
           from motorcycle_manual_sources
-          where template_id in (${locals.db(templateIds)})
+          where template_id in ${locals.db(templateIds)}
         `,
           markLoadError,
         ),

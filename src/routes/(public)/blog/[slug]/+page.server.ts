@@ -68,7 +68,7 @@ export async function load({ locals, params }) {
   const ids = [...new Set(comments.map((comment) => comment.owner_id))];
   const profiles = ids.length
     ? await locals.db<ProfileRow[]>`
-        select id, full_name from profiles where id in (${locals.db(ids)})
+        select id, full_name from profiles where id in ${locals.db(ids)}
       `
     : [];
   const names = new Map(
