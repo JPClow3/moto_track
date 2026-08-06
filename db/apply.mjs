@@ -1,7 +1,11 @@
-// Applies every db/migrations/*.sql file (in filename order) to the Neon
-// database referenced by DATABASE_URL, inside a single transaction so a
-// failed statement rolls back the whole run instead of leaving the schema
-// half-created. Run with `npm run db:push`.
+// Applies db/migrations/*.sql files (in filename order) to the Neon database
+// referenced by DATABASE_URL. Applied filenames are recorded in
+// public.schema_migrations so a rerun only replays files added since the
+// last run — some migrations (e.g. `create type ... as enum`) can't be
+// written to tolerate a second execution, so replaying everything on every
+// run isn't safe. Each pending file runs in its own transaction, so one
+// failure doesn't roll back migrations that already succeeded. Run with
+// `npm run db:push`.
 import { readFile, readdir } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -56,20 +60,49 @@ async function main() {
 
   const sql = postgres(databaseUrl, { prepare: false, ssl: "require" });
 
-  console.log(`Applying ${files.length} migration(s) to Neon...`);
-
   try {
-    await sql.begin(async (tx) => {
-      for (const file of files) {
-        const filePath = join(migrationsDir, file);
-        const query = await readFile(filePath, "utf8");
-        console.log(`  -> ${file}`);
-        await tx.unsafe(query);
+    await sql`
+      create table if not exists public.schema_migrations (
+        filename text primary key,
+        applied_at timestamptz not null default now()
+      )
+    `;
+
+    const applied = new Set(
+      (await sql`select filename from public.schema_migrations`).map(
+        (row) => row.filename,
+      ),
+    );
+    const pending = files.filter((file) => !applied.has(file));
+
+    if (pending.length === 0) {
+      console.log("No pending migrations; schema is up to date.");
+      return;
+    }
+
+    console.log(`Applying ${pending.length} pending migration(s) to Neon...`);
+
+    for (const file of pending) {
+      const filePath = join(migrationsDir, file);
+      const query = await readFile(filePath, "utf8");
+      console.log(`  -> ${file}`);
+      try {
+        await sql.begin(async (tx) => {
+          await tx.unsafe(query);
+          await tx`
+            insert into public.schema_migrations (filename) values (${file})
+          `;
+        });
+      } catch (err) {
+        console.error(`Migration ${file} failed; that transaction rolled back.`);
+        console.error(
+          `Migrations applied before this one are recorded and won't be replayed.`,
+        );
+        throw err;
       }
-    });
-    console.log("All migrations applied successfully.");
+    }
+    console.log("All pending migrations applied successfully.");
   } catch (err) {
-    console.error("Migration run failed; transaction rolled back.");
     console.error(err);
     process.exitCode = 1;
   } finally {
