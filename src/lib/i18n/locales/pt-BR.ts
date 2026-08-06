@@ -155,6 +155,11 @@ export const ptBR = {
     milestone: "Marco",
     officialManual: "Manual oficial",
     dueNowEmpty: "Nenhuma manutenção exige atenção agora.",
+    confidenceConfirmed: "Baseado no serviço que você confirmou.",
+    confidenceNotDone: "Você informou que este serviço não foi feito.",
+    confidenceUnknown:
+      "Sem histórico confirmado. Inspecione antes de assumir um marco.",
+    noManualSource: "Sem fonte oficial ligada a este item.",
     benchmarkTitle: "Comparativo anônimo",
     benchmarkHint:
       "Veja como seus registros se comparam com outros motociclistas do mesmo modelo.",
@@ -184,6 +189,39 @@ export const ptBR = {
       "Concordo em compartilhar estes números anonimamente para melhorar o comparativo.",
     benchmarkActive: "Sua contribuição anônima está ativa.",
   },
+  catalog: {
+    brandLabel: "Marca",
+    modelLabel: "Modelo",
+    yearLabel: "Ano",
+    chooseBrandFirst: "Escolha a marca",
+    noYearsAvailable: "Nenhum ano disponível para este modelo.",
+    noTemplateForYear: "Este ano ainda não está coberto para o modelo.",
+    exactBadge: "Agenda exata",
+    lineBadge: "Linha",
+    exactNote:
+      "Tabela de manutenção conferida no manual oficial deste ano e versão.",
+    lineNote:
+      "Modelo e anos documentados. Confirme os intervalos no manual do ano escolhido.",
+    sourcedItems: "itens com fonte oficial.",
+    source: "Fonte",
+    verifiedOn: "verificado em",
+    openDocument: "Abrir documento oficial",
+    pickerHint:
+      "Escolha o modelo e depois o ano. A combinação define qual manual oficial será usado.",
+  },
+  history: {
+    title: "Histórico inicial",
+    hint: "Para cada serviço, diga o que você sabe. Não vamos inventar uma revisão passada: “não sei” vira atenção agora; “não foi feito” vira atrasado.",
+    hintExact: "Os intervalos abaixo foram conferidos no manual indicado.",
+    hintLine:
+      "Este é um plano inicial; confirme os intervalos no documento do ano escolhido.",
+    manualInterval: "Intervalo do manual",
+    starterInterval: "Lembrete inicial",
+    checkManual: "Consulte o manual.",
+    confirmedDone: "Feito recentemente",
+    notDone: "Não foi feito",
+    unknown: "Não sei confirmar",
+  },
   garage: {
     pageTitle: "Garagem",
     heading: "Sua garagem",
@@ -211,6 +249,8 @@ export const ptBR = {
     templateItems: "itens de manutenção com fonte oficial",
     yearLabel: "Ano",
     odometerLabel: "Odômetro atual (km)",
+    odometerHint:
+      "Este valor não será tratado como prova de que uma revisão anterior foi feita.",
     createAction: "Cadastrar moto",
     freeLimit: "O plano Free permite uma moto ativa.",
     distanceUnit: "km",
@@ -243,6 +283,12 @@ export const ptBR = {
     historyNotDone: "Histórico inicial não confirmado",
     historyUnknown: "Histórico inicial desconhecido",
     historyConfirmed: "Histórico inicial confirmado",
+    editHistory: "Corrigir histórico inicial",
+    historyStatusLabel: "O que você sabe sobre este serviço",
+    lastDoneKmLabel: "Odômetro do último serviço (km)",
+    historyEditHint:
+      "O odômetro só é usado quando você confirma que o serviço foi feito.",
+    saveHistory: "Salvar histórico",
     photoFormTitle: "Adicionar foto",
     recordSelect: "Selecione um registro",
     noRecordsSelect: "Cadastre um registro primeiro",

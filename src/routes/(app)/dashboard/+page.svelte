@@ -168,6 +168,13 @@
             {#if item.dueKm !== null}
               · {$t("dashboard.milestone")}: {$format.distance(item.dueKm)}{/if}
           </p>
+          <p class="mt-1 text-xs text-[var(--muted)]">
+            {item.confidence === "confirmed"
+              ? $t("dashboard.confidenceConfirmed")
+              : item.confidence === "reported_not_done"
+                ? $t("dashboard.confidenceNotDone")
+                : $t("dashboard.confidenceUnknown")}
+          </p>
           {#if item.officialUrl}
             <a
               class="mt-3 inline-block text-sm font-semibold text-brand underline-offset-4 hover:underline"
@@ -177,6 +184,14 @@
               >{$t("dashboard.officialManual")}: {item.documentVersion} · {item.pageReference}
               ↗</a
             >
+          {:else}
+            <p class="mt-3 text-xs text-[var(--muted)]">
+              {$t("dashboard.noManualSource")}
+              <a
+                class="font-semibold text-brand underline-offset-4 hover:underline"
+                href="/garage">{$t("dashboard.openGarage")}</a
+              >
+            </p>
           {/if}
         </article>
       {:else}

@@ -1,10 +1,9 @@
 import { fail, redirect } from "@sveltejs/kit";
 import {
   applyMotorcycleTemplate,
-  catalogYears,
-  getTemplateForYear,
   initialHistoryStatus,
-  listVisibleMotorcycleCatalog,
+  loadCatalogModels,
+  resolveCatalogSelection,
 } from "$server/domain/motorcycle-catalog";
 
 function messageFrom(err: unknown) {
@@ -14,55 +13,46 @@ function messageFrom(err: unknown) {
 type Row = Record<string, unknown>;
 
 export async function load({ locals }) {
-  const [motorcycles, templates] = await Promise.all([
+  const [motorcycles, models] = await Promise.all([
     locals.db<Row[]>`
       select id from motorcycles
       where owner_id = ${locals.user!.id}
       limit 1
     `,
-    listVisibleMotorcycleCatalog(locals.db),
+    loadCatalogModels(locals.db),
   ]);
   if (motorcycles.length) throw redirect(303, "/dashboard");
-  const templateIds = templates
-    .filter((template) => template.is_exact_schedule)
-    .map((template) => template.id);
-  const items = templateIds.length
-    ? await locals.db<
-        Array<{
-          template_id: string;
-          maintenance_type: string;
-          interval_km: number | null;
-        }>
-      >`
-        select template_id, maintenance_type, interval_km
-        from motorcycle_template_maintenance_items
-        where template_id in ${locals.db(templateIds)}
-        order by maintenance_type
-      `
-    : [];
-  return {
-    templates: templates.map((template) => ({
-      ...template,
-      available_years: catalogYears(template),
-      maintenance_items: items.filter(
-        (item) => item.template_id === template.id,
-      ),
-    })),
-  };
+  return { models };
 }
 
 export const actions = {
   create: async ({ request, locals }) => {
     const form = await request.formData();
     const name = String(form.get("name") ?? "").trim();
-    let brand = String(form.get("brand") ?? "").trim();
-    let model = String(form.get("model") ?? "").trim();
     const year = Number(form.get("year"));
     const currentYear = new Date().getFullYear();
     const enteredOdometer = Number(form.get("current_odometer_km") ?? 0);
     if (!Number.isFinite(enteredOdometer) || enteredOdometer < 0)
       return fail(400, { message: "Informe um odômetro válido." });
     const currentOdometerKm = Math.trunc(enteredOdometer);
+
+    // Same rule as the garage: the picker submits a model and a year, and the
+    // template is resolved server-side so brand and model come from the
+    // catalogue row whose manual is about to be applied.
+    const modelId = String(form.get("model_id") ?? "").trim() || null;
+    let brand = String(form.get("brand") ?? "").trim();
+    let model = String(form.get("model") ?? "").trim();
+    let templateId: string | null = null;
+    if (modelId) {
+      const template = await resolveCatalogSelection(locals.db, modelId, year);
+      if (!template)
+        return fail(400, {
+          message: "Escolha um ano disponível para o modelo.",
+        });
+      templateId = template.id;
+      brand = template.brand;
+      model = template.model;
+    }
     if (
       !name ||
       !brand ||
@@ -72,16 +62,6 @@ export const actions = {
       year > currentYear
     )
       return fail(400, { message: "Preencha os dados da moto." });
-    const templateId = String(form.get("template_id") ?? "").trim() || null;
-    if (templateId) {
-      const template = await getTemplateForYear(locals.db, templateId, year);
-      if (!template)
-        return fail(400, {
-          message: "Escolha um ano disponível para o modelo.",
-        });
-      brand = template.brand;
-      model = template.model;
-    }
     const motorcycleId = crypto.randomUUID();
     try {
       await locals.db.begin(async (tx) => {

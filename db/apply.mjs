@@ -94,7 +94,9 @@ async function main() {
           `;
         });
       } catch (err) {
-        console.error(`Migration ${file} failed; that transaction rolled back.`);
+        console.error(
+          `Migration ${file} failed; that transaction rolled back.`,
+        );
         console.error(
           `Migrations applied before this one are recorded and won't be replayed.`,
         );

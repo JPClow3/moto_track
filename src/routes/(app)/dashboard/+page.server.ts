@@ -14,10 +14,7 @@ import {
   translate,
   type MessageKey,
 } from "$lib/i18n";
-import {
-  dueStateForPlan,
-  initialHistoryStatus,
-} from "$server/domain/motorcycle-catalog";
+import { buildDueNow } from "$server/domain/due-now";
 import {
   BENCHMARK_MIN_SAMPLE_SIZE,
   comparableBenchmarkMetrics,
@@ -246,35 +243,10 @@ export async function load({ locals, url }) {
     ]),
   );
 
-  const dueNow = planRows
-    .map((plan) => {
-      const status = dueStateForPlan({
-        historyStatus: initialHistoryStatus(
-          String(plan.initial_history_status ?? "unknown"),
-        ),
-        lastDoneKm:
-          plan.last_done_km == null ? null : Number(plan.last_done_km),
-        intervalKm: plan.interval_km == null ? null : Number(plan.interval_km),
-        currentKm: odometerFor.get(String(plan.motorcycle_id)) ?? 0,
-      });
-      return {
-        id: String(plan.id),
-        motorcycleName: String(plan.motorcycle_name ?? "Moto"),
-        maintenanceType: String(plan.maintenance_type ?? "Manutenção"),
-        urgency: status.urgency,
-        dueKm: status.dueKm,
-        estimatedCostCents: Number(plan.estimated_cost_cents ?? 0),
-        officialUrl: String(plan.official_url ?? ""),
-        documentVersion: String(plan.document_version ?? ""),
-        pageReference: String(plan.page_reference ?? ""),
-      };
-    })
-    .filter((plan) => plan.urgency !== "scheduled")
-    .sort((a, b) => {
-      const rank = { overdue: 0, due_now: 1, scheduled: 2 } as const;
-      return rank[a.urgency] - rank[b.urgency];
-    })
-    .slice(0, 5);
+  const dueNow = buildDueNow({
+    rows: planRows,
+    odometerByMotorcycle: odometerFor,
+  });
 
   // Only documents actually inside the renewal window count against health —
   // a CRLV valid for another two years is not a problem to solve today.

@@ -14,17 +14,34 @@ export type MotorcycleTemplate = {
 };
 
 export type MotorcycleCatalogPreview = MotorcycleTemplate & {
+  model_id: string;
+  model_display_name: string;
+  model_variant: string;
   manual_url: string;
   document_version: string;
   page_reference: string;
   last_verified_date: string;
   coverage_notes: string;
   maintenance_count: number;
-  available_years?: number[];
   maintenance_items?: Array<{
     maintenance_type: string;
     interval_km: number | null;
   }>;
+};
+
+/**
+ * One selectable model in the picker. `years` is the union across every
+ * template hanging off the model, so "CG 160 Start" appears once with 2019 and
+ * 2018 in its year dropdown instead of twice with the year in the label.
+ */
+export type CatalogModel = {
+  id: string;
+  brand: string;
+  displayName: string;
+  variant: string;
+  hasExactSchedule: boolean;
+  years: number[];
+  templatesByYear: Record<string, MotorcycleCatalogPreview>;
 };
 
 export function catalogYears(
@@ -43,16 +60,130 @@ export function listVisibleMotorcycleCatalog(db: Sql) {
   return db<MotorcycleCatalogPreview[]>`
     select t.id, t.brand, t.model, t.year_from, t.year_to, t.variant,
       t.generation, t.is_exact_schedule, t.is_catalog_visible,
+      mo.id as model_id, mo.display_name as model_display_name,
+      mo.variant as model_variant,
       ms.official_url as manual_url, ms.document_version,
       ms.page_reference, ms.last_verified_date::text, ms.coverage_notes,
       case when t.is_exact_schedule then
         (select count(*)::int from motorcycle_template_maintenance_items mi where mi.template_id = t.id)
       else 0 end as maintenance_count
     from motorcycle_templates t
+    join motorcycle_models mo on mo.id = t.model_id
     join motorcycle_manual_sources ms on ms.template_id = t.id
-    where t.is_catalog_visible = true
-    order by t.brand, t.model, t.year_from desc
+    where t.is_catalog_visible = true and mo.is_visible = true
+    order by mo.brand, mo.display_name, t.year_from desc
   `;
+}
+
+/**
+ * Two templates can cover the same year for one model: a sales-line row
+ * spanning 2006-2026 and an exact single-year row. An exact schedule was
+ * transcribed from that year's manual, so it always wins; a wider range only
+ * fills the years no exact row covers.
+ */
+function preferredTemplate(
+  a: MotorcycleCatalogPreview,
+  b: MotorcycleCatalogPreview,
+) {
+  if (a.is_exact_schedule !== b.is_exact_schedule)
+    return a.is_exact_schedule ? a : b;
+  const spanOf = (template: MotorcycleCatalogPreview) =>
+    (template.year_to ?? template.year_from) - template.year_from;
+  if (spanOf(a) !== spanOf(b)) return spanOf(a) < spanOf(b) ? a : b;
+  return a.year_from >= b.year_from ? a : b;
+}
+
+/**
+ * Collapses catalogue rows into the models the picker offers. Labels never
+ * carry a year — the form asks for one separately, and repeating it in the
+ * model name is what made three entries look like the same motorcycle.
+ */
+export function groupCatalogModels(
+  templates: MotorcycleCatalogPreview[],
+  currentYear = new Date().getFullYear(),
+): CatalogModel[] {
+  const models = new Map<string, CatalogModel>();
+  for (const template of templates) {
+    const existing = models.get(template.model_id);
+    const model: CatalogModel = existing ?? {
+      id: template.model_id,
+      brand: template.brand,
+      displayName: template.model_display_name,
+      variant: template.model_variant,
+      hasExactSchedule: false,
+      years: [],
+      templatesByYear: {},
+    };
+    if (!existing) models.set(template.model_id, model);
+    model.hasExactSchedule ||= template.is_exact_schedule;
+    for (const year of catalogYears(template, currentYear)) {
+      const current = model.templatesByYear[year];
+      model.templatesByYear[year] = current
+        ? preferredTemplate(current, template)
+        : template;
+    }
+  }
+  for (const model of models.values()) {
+    model.years = Object.keys(model.templatesByYear)
+      .map(Number)
+      .sort((a, b) => b - a);
+  }
+  return [...models.values()].sort(
+    (a, b) =>
+      a.brand.localeCompare(b.brand) ||
+      Number(b.hasExactSchedule) - Number(a.hasExactSchedule) ||
+      a.displayName.localeCompare(b.displayName),
+  );
+}
+
+/**
+ * The catalogue as both pickers consume it: models to choose from, each
+ * carrying the per-year templates and — for exact schedules — the maintenance
+ * items the initial-history step asks about.
+ */
+export async function loadCatalogModels(db: Sql) {
+  const templates = await listVisibleMotorcycleCatalog(db);
+  const exactIds = templates
+    .filter((template) => template.is_exact_schedule)
+    .map((template) => template.id);
+  const items = exactIds.length
+    ? await db<
+        Array<{
+          template_id: string;
+          maintenance_type: string;
+          interval_km: number | null;
+        }>
+      >`
+        select template_id, maintenance_type, interval_km
+        from motorcycle_template_maintenance_items
+        where template_id in ${db(exactIds)}
+        order by maintenance_type
+      `
+    : [];
+  return groupCatalogModels(
+    templates.map((template) => ({
+      ...template,
+      maintenance_items: items.filter(
+        (item) => item.template_id === template.id,
+      ),
+    })),
+  );
+}
+
+/**
+ * Server-side counterpart of the picker's selection. It groups the same rows
+ * through the same helper rather than re-implementing the tie-break in SQL, so
+ * the template the rider saw described is the template that gets applied.
+ */
+export async function resolveCatalogSelection(
+  db: Sql,
+  modelId: string,
+  year: number,
+) {
+  const models = groupCatalogModels(await listVisibleMotorcycleCatalog(db));
+  const model = models.find((candidate) => candidate.id === modelId);
+  if (!model) return null;
+  return model.templatesByYear[year] ?? null;
 }
 
 export type InitialHistoryStatus = "confirmed_done" | "not_done" | "unknown";
@@ -83,28 +214,6 @@ export function dueStateForPlan({
   if (dueKm !== null && currentKm >= dueKm)
     return { urgency: "overdue" as const, dueKm };
   return { urgency: "scheduled" as const, dueKm };
-}
-
-export async function getTemplateForYear(
-  db: Sql,
-  templateId: string,
-  year: number,
-) {
-  const [template] = await db<MotorcycleTemplate[]>`
-    select id, brand, model, year_from, year_to, variant, generation,
-      is_exact_schedule, is_catalog_visible
-    from motorcycle_templates
-    where id = ${templateId}
-      and ${year} >= year_from
-      and (${year} <= year_to or year_to is null)
-      and ${year} <= ${new Date().getFullYear()}
-      and is_catalog_visible = true
-      and exists (
-        select 1 from motorcycle_manual_sources
-        where template_id = motorcycle_templates.id
-      )
-  `;
-  return template ?? null;
 }
 
 export async function applyMotorcycleTemplate(

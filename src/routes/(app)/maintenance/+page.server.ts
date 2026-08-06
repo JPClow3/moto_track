@@ -12,6 +12,7 @@ import {
   normalizeMarketplaceQuery,
 } from "$server/domain/marketplace";
 import { validateMaintenancePhoto } from "$server/domain/maintenance-photos";
+import { initialHistoryStatus } from "$server/domain/motorcycle-catalog";
 import { syncPlanReminder } from "$server/domain/record-sync";
 import { uploadObjectFile } from "$server/r2/files";
 
@@ -147,6 +148,67 @@ export const actions = {
     if (!reminderResult.ok) {
       return fail(403, { message: reminderResult.message });
     }
+    return { ok: true };
+  },
+  // The initial history is stated once when the motorcycle is created, but a
+  // rider who answered "não sei" and later finds the receipt had no way back:
+  // `savePlan` deliberately leaves these columns alone, so correcting a wrong
+  // call meant deleting and recreating the plan.
+  updateHistory: async ({ request, locals }) => {
+    const f = await request.formData();
+    const ownerId = locals.user!.id;
+    const planId = v(f, "plan_item_id");
+    const status = initialHistoryStatus(v(f, "initial_history_status"));
+    const rawKm = v(f, "last_done_km");
+    const confirmed = status === "confirmed_done";
+
+    let lastDoneKm: number | null = null;
+    if (confirmed) {
+      const parsed = Number(rawKm);
+      if (!rawKm || !Number.isFinite(parsed) || parsed < 0) {
+        return fail(400, { message: "Informe o odômetro do último serviço." });
+      }
+      lastDoneKm = Math.trunc(parsed);
+    }
+
+    const [plan] = await locals.db<
+      Array<{
+        id: string;
+        motorcycle_id: string;
+        maintenance_type: string;
+        interval_km: number | null;
+        interval_days: number | null;
+      }>
+    >`
+      select id, motorcycle_id, maintenance_type, interval_km, interval_days
+      from maintenance_plan_items
+      where id = ${planId} and owner_id = ${ownerId}
+    `.catch(() => []);
+    if (!plan) return fail(404, { message: "Plano não encontrado." });
+
+    try {
+      await locals.db`
+        update maintenance_plan_items
+        set initial_history_status = ${status},
+          last_done_km = ${lastDoneKm},
+          last_done_date = ${confirmed ? new Date().toISOString().slice(0, 10) : null},
+          updated_at = now()
+        where id = ${planId} and owner_id = ${ownerId}
+      `;
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+
+    // The reminder's reference point moves with the stated history, otherwise
+    // the dashboard and the reminder would disagree about the same service.
+    await syncPlanReminder(locals.db, ownerId, {
+      id: plan.id,
+      motorcycle_id: plan.motorcycle_id,
+      maintenance_type: plan.maintenance_type,
+      interval_km: plan.interval_km,
+      interval_days: plan.interval_days,
+      reference_km: lastDoneKm,
+    });
     return { ok: true };
   },
   deletePlan: async ({ request, locals }) => {

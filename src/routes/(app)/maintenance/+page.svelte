@@ -463,6 +463,49 @@
               >{String(plan.document_version)} · {String(plan.page_reference)} ↗</a
             >
           {/if}
+          <details class="mt-2">
+            <summary
+              class="focus-ring flex min-h-11 cursor-pointer items-center rounded font-semibold"
+              >{$t("maintenance.editHistory")}</summary
+            >
+            <form
+              class="mt-2 grid gap-2"
+              method="POST"
+              action="?/updateHistory"
+              use:enhance={enhanceAction(`history:${plan.id}`)}
+              aria-busy={pendingAction === `history:${plan.id}`}
+            >
+              <input type="hidden" name="plan_item_id" value={plan.id} />
+              <label class="grid gap-1"
+                >{$t("maintenance.historyStatusLabel")}<select
+                  class="field"
+                  name="initial_history_status"
+                  value={String(plan.initial_history_status ?? "unknown")}
+                >
+                  <option value="confirmed_done"
+                    >{$t("history.confirmedDone")}</option
+                  >
+                  <option value="not_done">{$t("history.notDone")}</option>
+                  <option value="unknown">{$t("history.unknown")}</option>
+                </select></label
+              >
+              <label class="grid gap-1"
+                >{$t("maintenance.lastDoneKmLabel")}<input
+                  class="field"
+                  name="last_done_km"
+                  type="number"
+                  min="0"
+                  value={plan.last_done_km ?? ""}
+                /></label
+              >
+              <p class="text-xs">{$t("maintenance.historyEditHint")}</p>
+              <button
+                class="button-secondary min-h-11"
+                disabled={pendingAction === `history:${plan.id}`}
+                type="submit">{$t("maintenance.saveHistory")}</button
+              >
+            </form>
+          </details>
         </div>
         <form
           method="POST"

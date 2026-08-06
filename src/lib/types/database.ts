@@ -123,9 +123,49 @@ export type Database = {
         };
         Relationships: [];
       };
+      motorcycle_models: {
+        Row: {
+          id: string;
+          brand: string;
+          model_name: string;
+          variant: string;
+          display_name: string;
+          engine_cc: number;
+          country_code: string;
+          is_visible: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          brand: string;
+          model_name: string;
+          variant?: string;
+          display_name: string;
+          engine_cc: number;
+          country_code?: string;
+          is_visible?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          brand?: string;
+          model_name?: string;
+          variant?: string;
+          display_name?: string;
+          engine_cc?: number;
+          country_code?: string;
+          is_visible?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       motorcycle_templates: {
         Row: {
           id: string;
+          model_id: string | null;
           brand: string;
           model: string;
           year_from: number;
@@ -141,6 +181,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
+          model_id?: string | null;
           brand: string;
           model: string;
           year_from: number;
@@ -156,6 +197,7 @@ export type Database = {
         };
         Update: {
           id?: string;
+          model_id?: string | null;
           brand?: string;
           model?: string;
           year_from?: number;

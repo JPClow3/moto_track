@@ -9,9 +9,9 @@ import { archiveMotorcycle, restoreMotorcycle } from "$server/domain/parity";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
 import {
   applyMotorcycleTemplate,
-  catalogYears,
-  getTemplateForYear,
-  listVisibleMotorcycleCatalog,
+  initialHistoryStatus,
+  loadCatalogModels,
+  resolveCatalogSelection,
 } from "$server/domain/motorcycle-catalog";
 import { translate } from "$lib/i18n";
 
@@ -89,7 +89,7 @@ export async function load({ locals }) {
   const markLoadError = () => {
     loadError = true;
   };
-  const [motorcycles, profileRows, templates] = await Promise.all([
+  const [motorcycles, profileRows, models] = await Promise.all([
     rowsOrEmpty(
       locals.db<Row[]>`
         select * from motorcycles
@@ -106,7 +106,7 @@ export async function load({ locals }) {
       `,
       markLoadError,
     ),
-    rowsOrEmpty(listVisibleMotorcycleCatalog(locals.db), markLoadError),
+    rowsOrEmpty(loadCatalogModels(locals.db), markLoadError),
   ]);
   const profile = profileRows[0];
 
@@ -189,10 +189,7 @@ export async function load({ locals }) {
         sourceByTemplate.get(String(motorcycle.source_template_id ?? "")) ??
         null,
     })),
-    templates: templates.map((template) => ({
-      ...template,
-      available_years: catalogYears(template),
-    })),
+    models,
     canAddActive:
       hasProAccess(profile) ||
       motorcyclesWithSpecs.filter((motorcycle) => motorcycle.is_active).length <
@@ -209,10 +206,31 @@ export const actions = {
       return fail(403, { message: "O plano Free permite uma moto ativa." });
     }
     const name = value(form, "name");
-    let brand = value(form, "brand");
-    let model = value(form, "model");
     const year = Number(form.get("year"));
     const currentYear = new Date().getFullYear();
+    const enteredOdometer = Number(form.get("current_odometer_km") ?? 0);
+    if (!Number.isFinite(enteredOdometer) || enteredOdometer < 0) {
+      return fail(400, { message: "Odômetro inválido." });
+    }
+    const currentOdometerKm = Math.trunc(enteredOdometer);
+
+    // The picker submits a model plus a year; the template is resolved here
+    // rather than trusted from the form, so brand and model always come from
+    // the catalogue row whose manual will be applied.
+    const modelId = value(form, "model_id") || null;
+    let brand = value(form, "brand");
+    let model = value(form, "model");
+    let templateId: string | null = null;
+    if (modelId) {
+      const template = await resolveCatalogSelection(locals.db, modelId, year);
+      if (!template)
+        return fail(400, {
+          message: "Escolha um ano disponível para o modelo.",
+        });
+      templateId = template.id;
+      brand = template.brand;
+      model = template.model;
+    }
     if (
       !name ||
       !brand ||
@@ -224,21 +242,6 @@ export const actions = {
       return fail(400, {
         message: "Informe nome, marca, modelo e ano válidos.",
       });
-    }
-    const enteredOdometer = Number(form.get("current_odometer_km") ?? 0);
-    if (!Number.isFinite(enteredOdometer) || enteredOdometer < 0) {
-      return fail(400, { message: "Odômetro inválido." });
-    }
-    const currentOdometerKm = Math.trunc(enteredOdometer);
-    const templateId = value(form, "template_id") || null;
-    if (templateId) {
-      const template = await getTemplateForYear(locals.db, templateId, year);
-      if (!template)
-        return fail(400, {
-          message: "Escolha um ano disponível para o modelo.",
-        });
-      brand = template.brand;
-      model = template.model;
     }
     const motorcycleId = crypto.randomUUID();
     try {
@@ -257,6 +260,22 @@ export const actions = {
           })}
         `;
         if (templateId) {
+          // Without this the plan would default every item to "unknown" and a
+          // bike added at 50.000 km would silently claim no history was ever
+          // stated — the same assumption the onboarding step exists to avoid.
+          const templateItems = await tx<Array<{ maintenance_type: string }>>`
+            select maintenance_type
+            from motorcycle_template_maintenance_items
+            where template_id = ${templateId}
+          `;
+          const history = Object.fromEntries(
+            templateItems.map((item) => [
+              item.maintenance_type,
+              initialHistoryStatus(
+                String(form.get(`history_${item.maintenance_type}`) ?? ""),
+              ),
+            ]),
+          );
           await applyMotorcycleTemplate(
             // See the onboarding equivalent: the helper only uses the shared
             // tagged-query surface, which transactions provide at runtime.
@@ -265,6 +284,7 @@ export const actions = {
             motorcycleId,
             templateId,
             currentOdometerKm,
+            history,
           );
         }
       });

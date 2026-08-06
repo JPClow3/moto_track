@@ -2,38 +2,18 @@
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { t } from "$lib/i18n/store";
+  import CatalogPicker from "$lib/components/CatalogPicker.svelte";
+  import InitialHistoryStep from "$lib/components/InitialHistoryStep.svelte";
+  import type { MotorcycleCatalogPreview } from "$server/domain/motorcycle-catalog";
   export let data;
   export let form;
 
-  let selectedTemplateId = "";
-  let selectedBrand = "";
   let custom = false;
   let pendingAction = "";
+  let selectedBrand = "";
+  let selectedModelId = "";
   let selectedYear = "";
-  $: brands = [...new Set(data.templates.map((template) => template.brand))];
-  $: models = data.templates.filter(
-    (template) => template.brand === selectedBrand,
-  );
-  $: selectedTemplate = data.templates.find(
-    (template) => template.id === selectedTemplateId,
-  );
-
-  function selectBrand() {
-    selectedTemplateId = "";
-    selectedYear = "";
-  }
-
-  function selectTemplate() {
-    selectedYear = "";
-  }
-
-  function templateLabel(template: (typeof data.templates)[number]) {
-    const year =
-      (template.year_to ?? new Date().getFullYear()) !== template.year_from
-        ? `${template.year_from}–${template.year_to ?? new Date().getFullYear()}`
-        : template.year_from;
-    return `${template.model} ${template.variant} · ${year}`;
-  }
+  let resolvedTemplate: MotorcycleCatalogPreview | null = null;
 
   function enhanceAction(action: string): SubmitFunction {
     return () => {
@@ -273,72 +253,15 @@
         {$t("garage.customToggle")}
       </label>
       {#if !custom}
-        <label class="text-sm">
-          {$t("garage.brandLabel")}<select
-            class="field"
-            bind:value={selectedBrand}
-            on:change={selectBrand}
-            required
-          >
-            <option value="" disabled>{$t("common.select")}</option>
-            {#each brands as brand}
-              <option value={brand}>{brand}</option>
-            {/each}
-          </select>
-        </label>
-        <label class="text-sm">
-          {$t("garage.modelLabel")}<select
-            class="field"
-            name="template_id"
-            bind:value={selectedTemplateId}
-            on:change={selectTemplate}
-            required
-            disabled={!selectedBrand}
-          >
-            <option value="" disabled>{$t("common.select")}</option>
-            {#each models as template}
-              <option value={template.id}>{templateLabel(template)}</option>
-            {/each}
-          </select>
-        </label>
-        {#if selectedTemplate}
-          <p class="text-xs text-[var(--muted)]">
-            {selectedTemplate.model}
-            {selectedTemplate.variant} · {selectedTemplate.generation}
-            · {selectedTemplate.year_from}–{selectedTemplate.year_to ??
-              new Date().getFullYear()}.
-            {selectedTemplate.is_exact_schedule
-              ? "Agenda conferida no manual oficial para este ano e versão."
-              : "Modelo e anos documentados. Nenhum intervalo automático será aplicado; confirme a agenda no manual do ano."}
-            {#if selectedTemplate.is_exact_schedule}
-              {selectedTemplate.maintenance_count}
-              {$t("maintenance.itemsLabel")}
-              {$t("garage.templateItems")}
-            {/if}
-          </p>
-          {#if selectedTemplate.manual_url}
-            <a
-              class="text-xs font-semibold text-brand underline-offset-4 hover:underline"
-              href={selectedTemplate.manual_url}
-              target="_blank"
-              rel="noreferrer"
-              >{selectedTemplate.document_version} · {selectedTemplate.page_reference}
-              ↗</a
-            >
-          {/if}
-        {/if}
-        <input
-          type="hidden"
-          name="brand"
-          value={selectedTemplate?.brand ?? ""}
-        />
-        <input
-          type="hidden"
-          name="model"
-          value={selectedTemplate?.model ?? ""}
+        <CatalogPicker
+          models={data.models}
+          bind:selectedBrand
+          bind:selectedModelId
+          bind:selectedYear
+          bind:resolvedTemplate
         />
       {:else}
-        <input type="hidden" name="template_id" value="" />
+        <input type="hidden" name="model_id" value="" />
         <label class="text-sm">
           {$t("garage.brandLabel")}<input
             class="field"
@@ -353,22 +276,6 @@
             required={custom}
           />
         </label>
-      {/if}
-      {#if !custom && selectedTemplate}
-        <label class="text-sm">
-          {$t("garage.yearLabel")}<select
-            class="field"
-            name="year"
-            bind:value={selectedYear}
-            required
-          >
-            <option value="" disabled>{$t("common.select")}</option>
-            {#each selectedTemplate.available_years ?? [] as year}
-              <option value={year}>{year}</option>
-            {/each}
-          </select>
-        </label>
-      {:else}
         <label class="text-sm">
           {$t("garage.yearLabel")}<input
             class="field"
@@ -387,8 +294,27 @@
           type="number"
           min="0"
           value="0"
-        /></label
-      ><button
+        />
+        <span class="mt-1 block text-xs text-[var(--muted)]">
+          {$t("garage.odometerHint")}
+        </span></label
+      >
+      {#if !custom && resolvedTemplate?.is_exact_schedule}
+        <details class="rounded border border-[var(--line)] p-3" open>
+          <summary
+            class="focus-ring flex min-h-11 cursor-pointer items-center rounded text-sm font-semibold"
+            >{$t("history.title")}</summary
+          >
+          <div class="mt-3">
+            <InitialHistoryStep
+              items={resolvedTemplate.maintenance_items ?? []}
+              isExactSchedule={resolvedTemplate.is_exact_schedule}
+              showHeading={false}
+            />
+          </div>
+        </details>
+      {/if}
+      <button
         class="button-primary min-h-11"
         type="submit"
         disabled={!data.canAddActive || pendingAction === "create"}

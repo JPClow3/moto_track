@@ -1,47 +1,28 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { t } from "$lib/i18n/store";
+  import CatalogPicker from "$lib/components/CatalogPicker.svelte";
+  import InitialHistoryStep from "$lib/components/InitialHistoryStep.svelte";
+  import type { MotorcycleCatalogPreview } from "$server/domain/motorcycle-catalog";
   export let data;
   export let form;
 
-  let selectedTemplateId = "";
-  let selectedBrand = "";
   let custom = false;
   let motorcycleName = "";
   let customBrand = "";
   let customModel = "";
-  let selectedYear = "";
   let odometer = "0";
   let step = 1;
   let formElement: HTMLFormElement;
 
-  $: brands = [...new Set(data.templates.map((template) => template.brand))];
-  $: models = data.templates.filter(
-    (template) => template.brand === selectedBrand,
-  );
-  $: selectedTemplate = data.templates.find(
-    (template) => template.id === selectedTemplateId,
-  );
-
-  function selectBrand() {
-    selectedTemplateId = "";
-    selectedYear = "";
-  }
-
-  function selectTemplate() {
-    selectedYear = "";
-  }
-
-  function templateLabel(template: (typeof data.templates)[number]) {
-    const year =
-      (template.year_to ?? new Date().getFullYear()) !== template.year_from
-        ? `${template.year_from}–${template.year_to ?? new Date().getFullYear()}`
-        : template.year_from;
-    return `${template.model} ${template.variant} · ${year}`;
-  }
+  let selectedBrand = "";
+  let selectedModelId = "";
+  let selectedYear = "";
+  let resolvedTemplate: MotorcycleCatalogPreview | null = null;
 
   function openHistory() {
     if (!formElement.reportValidity()) return;
-    if (custom || !selectedTemplate?.is_exact_schedule) {
+    if (custom || !resolvedTemplate?.is_exact_schedule) {
       formElement.requestSubmit();
       return;
     }
@@ -92,73 +73,19 @@
         </label>
         {#if !custom}
           <p class="mt-1 text-xs text-[var(--muted)]">
-            Todos os modelos têm uma fonte oficial. “Agenda exata” identifica os
-            casos em que a tabela de manutenção foi conferida para aquele ano e
-            versão.
+            {$t("catalog.pickerHint")}
           </p>
-          <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <label class="text-sm">
-              Marca<select
-                class="field"
-                bind:value={selectedBrand}
-                on:change={selectBrand}
-                required
-              >
-                <option value="" disabled>Selecione</option>
-                {#each brands as brand}
-                  <option value={brand}>{brand}</option>
-                {/each}
-              </select>
-            </label>
-            <label class="text-sm">
-              Modelo<select
-                class="field"
-                name="template_id"
-                bind:value={selectedTemplateId}
-                on:change={selectTemplate}
-                required
-                disabled={!selectedBrand}
-              >
-                <option value="" disabled>Selecione</option>
-                {#each models as template}
-                  <option value={template.id}>{templateLabel(template)}</option>
-                {/each}
-              </select>
-            </label>
+          <div class="mt-3">
+            <CatalogPicker
+              models={data.models}
+              bind:selectedBrand
+              bind:selectedModelId
+              bind:selectedYear
+              bind:resolvedTemplate
+            />
           </div>
-          {#if selectedTemplate}
-            <p class="mt-2 text-xs text-[var(--muted)]">
-              {selectedTemplate.model}
-              {selectedTemplate.variant} · {selectedTemplate.generation}
-              · {selectedTemplate.year_from}–{selectedTemplate.year_to ??
-                new Date().getFullYear()}.
-              {selectedTemplate.is_exact_schedule
-                ? "Agenda conferida no manual oficial para este ano e versão."
-                : "Modelo e anos documentados. O Moto Track não aplicará intervalos automáticos; confirme a agenda no manual do ano escolhido."}
-              Fonte: {selectedTemplate.document_version},
-              {selectedTemplate.page_reference}. Verificado em {selectedTemplate.last_verified_date}.
-            </p>
-            {#if selectedTemplate.manual_url}
-              <a
-                class="mt-2 inline-block text-xs font-semibold text-brand underline-offset-4 hover:underline"
-                href={selectedTemplate.manual_url}
-                target="_blank"
-                rel="noreferrer">Abrir documento oficial ↗</a
-              >
-            {/if}
-          {/if}
-          <input
-            type="hidden"
-            name="brand"
-            value={selectedTemplate?.brand ?? ""}
-          />
-          <input
-            type="hidden"
-            name="model"
-            value={selectedTemplate?.model ?? ""}
-          />
         {:else}
-          <input type="hidden" name="template_id" value="" />
+          <input type="hidden" name="model_id" value="" />
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
             <label class="text-sm">
               Marca<input
@@ -177,35 +104,19 @@
               />
             </label>
           </div>
+          <label class="mt-3 block text-sm">
+            Ano<input
+              class="field"
+              name="year"
+              type="number"
+              bind:value={selectedYear}
+              min="1901"
+              max={new Date().getFullYear()}
+              required
+            />
+          </label>
         {/if}
       </div>
-      {#if !custom && selectedTemplate}
-        <label class="text-sm">
-          Ano<select
-            class="field"
-            name="year"
-            bind:value={selectedYear}
-            required
-          >
-            <option value="" disabled>Selecione</option>
-            {#each selectedTemplate.available_years ?? [] as year}
-              <option value={year}>{year}</option>
-            {/each}
-          </select>
-        </label>
-      {:else}
-        <label class="text-sm">
-          Ano<input
-            class="field"
-            name="year"
-            type="number"
-            bind:value={selectedYear}
-            min="1901"
-            max={new Date().getFullYear()}
-            required
-          />
-        </label>
-      {/if}
       <label class="text-sm">
         Odômetro atual<input
           class="field"
@@ -220,7 +131,7 @@
         </span>
       </label>
       <button class="button-primary" type="button" on:click={openHistory}
-        >{!custom && selectedTemplate?.is_exact_schedule
+        >{!custom && resolvedTemplate?.is_exact_schedule
           ? "Continuar para o histórico"
           : "Criar minha moto"}</button
       >
@@ -228,70 +139,26 @@
       <input type="hidden" name="name" value={motorcycleName} />
       <input
         type="hidden"
-        name="template_id"
-        value={custom ? "" : selectedTemplateId}
+        name="model_id"
+        value={custom ? "" : selectedModelId}
       />
       <input
         type="hidden"
         name="brand"
-        value={custom ? customBrand : (selectedTemplate?.brand ?? "")}
+        value={custom ? customBrand : (resolvedTemplate?.brand ?? "")}
       />
       <input
         type="hidden"
         name="model"
-        value={custom ? customModel : (selectedTemplate?.model ?? "")}
+        value={custom ? customModel : (resolvedTemplate?.model ?? "")}
       />
       <input type="hidden" name="year" value={selectedYear} />
       <input type="hidden" name="current_odometer_km" value={odometer} />
-      {#if selectedTemplate}
-        <div class="grid gap-3">
-          <div>
-            <h2 class="display text-2xl">Histórico inicial</h2>
-            <p class="mt-1 text-sm text-[var(--muted)]">
-              Para cada serviço, diga o que você sabe. Não vamos inventar uma
-              revisão passada: “não sei” vira atenção agora; “não foi feito”
-              vira atrasado. {selectedTemplate.is_exact_schedule
-                ? "Os intervalos abaixo foram conferidos no manual indicado."
-                : "Este é um plano inicial; confirme os intervalos no documento do ano escolhido."}
-            </p>
-          </div>
-          {#each selectedTemplate.maintenance_items ?? [] as item (item.maintenance_type)}
-            <fieldset class="rounded border border-[var(--line)] p-3">
-              <legend class="px-1 text-sm font-semibold"
-                >{item.maintenance_type}</legend
-              >
-              <p class="mb-2 text-xs text-[var(--muted)]">
-                {item.interval_km
-                  ? `${selectedTemplate.is_exact_schedule ? "Intervalo do manual" : "Lembrete inicial"}: ${item.interval_km.toLocaleString("pt-BR")} km.`
-                  : "Consulte o manual."}
-              </p>
-              <div class="grid gap-2 text-sm sm:grid-cols-3">
-                <label class="flex min-h-11 items-center gap-2 rounded px-2"
-                  ><input
-                    type="radio"
-                    name={`history_${item.maintenance_type}`}
-                    value="confirmed_done"
-                  /> Feito recentemente</label
-                >
-                <label class="flex min-h-11 items-center gap-2 rounded px-2"
-                  ><input
-                    type="radio"
-                    name={`history_${item.maintenance_type}`}
-                    value="not_done"
-                  /> Não foi feito</label
-                >
-                <label class="flex min-h-11 items-center gap-2 rounded px-2"
-                  ><input
-                    type="radio"
-                    name={`history_${item.maintenance_type}`}
-                    value="unknown"
-                    checked
-                  /> Não sei confirmar</label
-                >
-              </div>
-            </fieldset>
-          {/each}
-        </div>
+      {#if resolvedTemplate}
+        <InitialHistoryStep
+          items={resolvedTemplate.maintenance_items ?? []}
+          isExactSchedule={resolvedTemplate.is_exact_schedule}
+        />
       {:else}
         <p class="bg-[var(--muted)]/10 rounded p-3 text-sm">
           Sem uma agenda exata selecionada, a moto será criada sem recomendações

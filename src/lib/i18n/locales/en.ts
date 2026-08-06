@@ -150,6 +150,11 @@ export const en: Messages = {
     milestone: "Milestone",
     officialManual: "Official manual",
     dueNowEmpty: "No maintenance needs attention right now.",
+    confidenceConfirmed: "Based on the service you confirmed.",
+    confidenceNotDone: "You reported this service as never done.",
+    confidenceUnknown:
+      "No confirmed history. Inspect before assuming a milestone.",
+    noManualSource: "No official source linked to this item.",
     benchmarkTitle: "Anonymous benchmark",
     benchmarkHint:
       "See how your records compare with other riders of the same model.",
@@ -179,6 +184,39 @@ export const en: Messages = {
       "I agree to share these numbers anonymously to improve the benchmark.",
     benchmarkActive: "Your anonymous contribution is active.",
   },
+  catalog: {
+    brandLabel: "Brand",
+    modelLabel: "Model",
+    yearLabel: "Year",
+    chooseBrandFirst: "Pick a brand first",
+    noYearsAvailable: "No years available for this model.",
+    noTemplateForYear: "This year is not covered for the model yet.",
+    exactBadge: "Exact schedule",
+    lineBadge: "Sales line",
+    exactNote:
+      "Maintenance table verified in the official manual for this year and variant.",
+    lineNote:
+      "Model and years documented. Confirm the intervals in the manual for the chosen year.",
+    sourcedItems: "items with an official source.",
+    source: "Source",
+    verifiedOn: "verified on",
+    openDocument: "Open official document",
+    pickerHint:
+      "Pick the model, then the year. The combination decides which official manual is used.",
+  },
+  history: {
+    title: "Initial history",
+    hint: "For each service, tell us what you know. We will not invent a past service: “not sure” becomes attention now; “never done” becomes overdue.",
+    hintExact: "The intervals below were verified in the manual shown.",
+    hintLine:
+      "This is a starter plan; confirm the intervals in the document for the chosen year.",
+    manualInterval: "Manual interval",
+    starterInterval: "Starter reminder",
+    checkManual: "Check the manual.",
+    confirmedDone: "Done recently",
+    notDone: "Never done",
+    unknown: "Not sure",
+  },
   garage: {
     pageTitle: "Garage",
     heading: "Your garage",
@@ -206,6 +244,8 @@ export const en: Messages = {
     templateItems: "maintenance items with official source",
     yearLabel: "Year",
     odometerLabel: "Current odometer (km)",
+    odometerHint:
+      "This value will not be treated as proof that a past service was done.",
     createAction: "Add bike",
     freeLimit: "The Free plan allows one active bike.",
     distanceUnit: "km",
@@ -238,6 +278,12 @@ export const en: Messages = {
     historyNotDone: "Initial history not confirmed",
     historyUnknown: "Initial history unknown",
     historyConfirmed: "Initial history confirmed",
+    editHistory: "Correct initial history",
+    historyStatusLabel: "What you know about this service",
+    lastDoneKmLabel: "Odometer at last service (km)",
+    historyEditHint:
+      "The odometer is only used when you confirm the service was done.",
+    saveHistory: "Save history",
     photoFormTitle: "Add photo",
     recordSelect: "Select a record",
     noRecordsSelect: "Add a record first",
