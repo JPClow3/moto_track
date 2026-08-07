@@ -119,7 +119,32 @@
       heading: "O que vem agora",
       blurb: "Definido e priorizado — é para onde vai o próximo esforço.",
       icon: Wrench,
-      items: [],
+      items: [
+        {
+          title: "Previsão da próxima troca",
+          body: "Estimativa de data baseada no seu ritmo real de km rodado por dia, não só no intervalo padrão do fabricante.",
+        },
+        {
+          title: "Vida útil estimada do pneu",
+          body: "A partir do desgaste informado, quantos km e quanto tempo faltam até a troca.",
+        },
+        {
+          title: "Custo total por km rodado",
+          body: "Compra, combustível, manutenção, pneus e taxas somados num único número: quanto a moto custa por km.",
+        },
+        {
+          title: "Compra de peças dentro do app",
+          body: "Checkout direto no Mercado Livre a partir de uma peça ou plano de manutenção, sem sair para comparar links.",
+        },
+        {
+          title: "Mais motos com agenda exata",
+          body: "Hoje só duas entradas do catálogo têm cronograma oficial transcrito; a fila é ampliar Dafra, Shineray, KTM e as demais famílias.",
+        },
+        {
+          title: "Transparência das fontes do catálogo",
+          body: "Painel mostrando a data de verificação de cada manual usado no catálogo, para saber o que está desatualizado.",
+        },
+      ],
     },
     {
       status: "planned",
@@ -127,7 +152,28 @@
       heading: "Na fila",
       blurb: "Aceito no backlog, ainda sem posição definida.",
       icon: CircleDashed,
-      items: [],
+      items: [
+        {
+          title: "Moto Track em inglês",
+          body: "A tradução já existe no sistema de i18n; falta o seletor de idioma e as páginas públicas revisadas.",
+        },
+        {
+          title: "Garagem compartilhada",
+          body: "Convide outra pessoa para acessar a mesma garagem — útil para famílias e times de entrega com várias motos.",
+        },
+        {
+          title: "Lembretes no seu calendário",
+          body: "Sincronize vencimentos por km ou data com Google Agenda ou Apple Calendar, além do e-mail e push.",
+        },
+        {
+          title: "Comparativo de oficinas",
+          body: "A mesma lógica do comparativo anônimo por modelo, aplicada ao preço de mão de obra por serviço e região.",
+        },
+        {
+          title: "Posto mais barato perto de você",
+          body: "O app já registra onde você abastece; a ideia é usar isso para indicar o posto mais em conta nas proximidades.",
+        },
+      ],
     },
     {
       status: "exploring",
@@ -135,7 +181,20 @@
       heading: "Ideias em avaliação",
       blurb: "Interessante no papel. Ainda sem compromisso de entrega.",
       icon: Compass,
-      items: [],
+      items: [
+        {
+          title: "Leitura de odômetro por foto",
+          body: "A mesma tecnologia do OCR de cupom, aplicada ao painel — menos digitação para registrar o km atual.",
+        },
+        {
+          title: "Cotação de seguro",
+          body: "Usar o histórico de apólices e sinistros já registrado para comparar cotações de seguradoras parceiras.",
+        },
+        {
+          title: "Acesso para oficinas parceiras",
+          body: "Deixar uma oficina de confiança lançar serviços direto no histórico do cliente, com permissão limitada.",
+        },
+      ],
     },
   ];
 
