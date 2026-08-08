@@ -8,7 +8,7 @@ import { sendWebPush, type WebPushConfig } from "./web-push";
 
 export interface Env {
   HYPERDRIVE: Hyperdrive;
-  RESEND_API_KEY: string;
+  EMAIL: SendEmail;
   DEFAULT_FROM_EMAIL: string;
   REMINDERS_TRIGGER_TOKEN: string;
   PUBLIC_VAPID_KEY?: string;
@@ -70,7 +70,7 @@ function webPushConfig(env: Env): WebPushConfig | null {
   return {
     publicKey: env.PUBLIC_VAPID_KEY,
     privateKey: env.VAPID_PRIVATE_KEY,
-    subject: env.VAPID_SUBJECT || "mailto:ops@mototrack.app",
+    subject: env.VAPID_SUBJECT || "mailto:ops@moto-track.net",
   };
 }
 
@@ -227,24 +227,22 @@ export async function processReminders(env: Env) {
   }
 }
 
-// Ported from supabase/functions/send-email/index.ts, now called in-process
-// instead of via a Supabase Edge Function hop.
 async function sendReminderEmail(
   env: Env,
   payload: { to: string; subject: string; text: string },
 ) {
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      from: env.DEFAULT_FROM_EMAIL,
-      to: [payload.to],
+  try {
+    await env.EMAIL.send({
+      from: { email: env.DEFAULT_FROM_EMAIL, name: "Moto Track" },
+      to: payload.to,
       subject: payload.subject,
       text: payload.text,
-    }),
-  });
-  return response.ok;
+    });
+    return true;
+  } catch (cause) {
+    // Delivery failures must not mark the reminder as notified, so the next
+    // cron run can retry. Do not include a recipient address in persisted logs.
+    console.error("Reminder email delivery failed.", cause);
+    return false;
+  }
 }

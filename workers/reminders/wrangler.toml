@@ -1,6 +1,6 @@
 name = "moto-track-reminders"
 main = "index.ts"
-compatibility_date = "2026-07-01"
+compatibility_date = "2026-08-08"
 compatibility_flags = ["nodejs_compat"]
 
 # The cron is the only intended entrypoint; the fetch handler triggers real
@@ -11,7 +11,23 @@ workers_dev = false
 crons = ["0 8 * * *"] # Every day at 8:00 AM UTC
 
 [vars]
-DEFAULT_FROM_EMAIL = "Moto Track <no-reply@moto-track.net>"
+DEFAULT_FROM_EMAIL = "no-reply@moto-track.net"
+
+[[send_email]]
+name = "EMAIL"
+allowed_sender_addresses = ["no-reply@moto-track.net"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+persist = true
+
+[observability.traces]
+enabled = true
+persist = true
 
 # Hyperdrive config "moto-track-neon" pointing at the Neon database.
 # Required by wrangler for local emulation; production uses the binding id.
@@ -21,9 +37,8 @@ id = "173c6f16dc3445cdb982cd84dbcb9b23"
 localConnectionString = "postgresql://user:pass@127.0.0.1:1/postgres"
 
 # You must manually set these secrets using `wrangler secret put` or via the Cloudflare Dashboard:
-# RESEND_API_KEY
 # REMINDERS_TRIGGER_TOKEN  (optional; leave unset to disable the manual trigger)
 # PUBLIC_VAPID_KEY         (optional; push delivery is skipped until this and VAPID_PRIVATE_KEY are set)
 # VAPID_PRIVATE_KEY        (optional; see above)
 # PUSH_ENCRYPTION_KEY      (optional; must match the app's PUSH_ENCRYPTION_KEY to decrypt subscriptions)
-# VAPID_SUBJECT            (optional; defaults to mailto:ops@mototrack.app)
+# VAPID_SUBJECT            (optional; defaults to mailto:ops@moto-track.net)
