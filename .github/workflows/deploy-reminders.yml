@@ -1,0 +1,47 @@
+name: Deploy reminder Worker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-reminders.yml"
+      - "workers/reminders/**"
+      - "src/lib/server/domain/reminders.ts"
+      - "src/lib/server/domain/push-crypto.ts"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The job intentionally stays skipped until this scoped repository secret is
+  # added. It must have Cloudflare Workers Scripts:Edit access for the account.
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+concurrency:
+  group: deploy-reminder-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
+    name: Deploy production reminder Worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy
+        run: npm exec -- wrangler deploy -c workers/reminders/wrangler.toml
