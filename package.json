@@ -24,7 +24,7 @@
     "@fontsource/barlow-condensed": "^5.2.8",
     "@neondatabase/auth": "^0.4.2-beta",
     "@sveltejs/adapter-cloudflare": "^7.0.5",
-    "@sveltejs/kit": "^2.27.0",
+    "@sveltejs/kit": "^2.70.2",
     "@sveltejs/vite-plugin-svelte": "^6.1.0",
     "clsx": "^2.1.1",
     "jose": "^6.2.4",
