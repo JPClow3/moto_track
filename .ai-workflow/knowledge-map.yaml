@@ -1,0 +1,32 @@
+sources:
+  architecture: []
+  domain:
+    - AGENTS.md
+    - README.md
+    - docs/api-migration.md
+    - docs/catalog-exact-schedules-plan.md
+    - docs/deployment.md
+    - docs/parity-checklist.md
+    - docs/superpowers/plans/2026-07-16-public-surface-polish.md
+    - docs/superpowers/plans/2026-07-16-pwa-installability.md
+    - docs/superpowers/plans/2026-07-16-stripe-pro-subscription.md
+    - docs/superpowers/specs/2026-07-16-public-surface-polish-design.md
+    - docs/superpowers/specs/2026-07-16-stripe-pro-subscription-design.md
+  product: []
+  coding_conventions: []
+  testing: []
+  deployment: []
+  security: []
+  database: []
+  ui_design: []
+  historical_notes: []
+exclude:
+  - .git/**
+  - build/**
+  - dist/**
+  - docs/archive/**
+  - generated/**
+  - node_modules/**
+  - vendor/**
+conflicts: []
+generatedAt: 2026-08-08T03:45:15.283Z

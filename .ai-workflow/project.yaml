@@ -1,0 +1,29 @@
+version: 1
+
+project:
+  id: moto-track
+
+base_branch: main
+
+validation:
+  commands:
+    lint:
+      command: npm run lint
+      required: false
+    typecheck:
+      command: npm run check
+      required: true
+    test:
+      command: npm run test:unit
+      required: true
+    build:
+      command: npm run build
+      required: true
+
+risk:
+  high:
+    paths:
+      - .github/workflows/**
+
+knowledge:
+  map: .ai-workflow/knowledge-map.yaml
