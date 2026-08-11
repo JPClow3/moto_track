@@ -61,7 +61,7 @@
     document.documentElement.dataset.appReady = "true";
 
     if (!("serviceWorker" in navigator)) return;
-    void navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
