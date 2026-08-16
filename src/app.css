@@ -105,6 +105,34 @@ html {
   -webkit-font-smoothing: antialiased;
 }
 
+::selection {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
 body {
   min-height: 100vh;
   margin: 0;
@@ -363,7 +391,7 @@ a {
     height: 16px;
     background: var(--panel);
     box-shadow: 0 1px 2px rgb(var(--shadow-color) / 0.25);
-    transition: transform 0.18s ease;
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .switch input:checked + .switch-track {
@@ -379,7 +407,7 @@ a {
   }
 
   .button {
-    @apply focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 py-2 text-sm font-semibold transition;
+    @apply focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 py-2 text-sm font-semibold transition active:scale-[0.98] active:opacity-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   /* Primary stays graphite. Red is reserved as an accent, which is what keeps

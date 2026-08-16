@@ -68,7 +68,7 @@
       {/if}
 
       <div
-        class="mb-6 grid grid-cols-2 gap-1 rounded border border-[var(--line)] p-1"
+        class="mb-6 grid grid-cols-2 gap-1 rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-1"
         role="tablist"
         aria-label="Modo de acesso"
       >
@@ -78,10 +78,10 @@
           id="auth-tab-sign-in"
           aria-selected={mode === "signIn"}
           aria-controls="auth-sign-in"
-          class="button-secondary justify-center gap-2 py-2 text-sm {mode ===
+          class="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 py-2 text-sm font-semibold transition {mode ===
           'signIn'
-            ? 'bg-[var(--accent)] text-paper hover:opacity-100'
-            : 'border-transparent bg-transparent'}"
+            ? 'bg-[var(--accent-solid)] text-white shadow-sm'
+            : 'text-[var(--muted)] hover:text-[var(--fg)]'}"
           onclick={() => (mode = "signIn")}
         >
           <LogIn class="h-4 w-4" /> Entrar
@@ -92,10 +92,10 @@
           id="auth-tab-sign-up"
           aria-selected={mode === "signUp"}
           aria-controls="auth-sign-up"
-          class="button-secondary justify-center gap-2 py-2 text-sm {mode ===
+          class="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 py-2 text-sm font-semibold transition {mode ===
           'signUp'
-            ? 'bg-[var(--accent)] text-paper hover:opacity-100'
-            : 'border-transparent bg-transparent'}"
+            ? 'bg-[var(--accent-solid)] text-white shadow-sm'
+            : 'text-[var(--muted)] hover:text-[var(--fg)]'}"
           onclick={() => (mode = "signUp")}
         >
           <UserPlus class="h-4 w-4" /> Criar conta

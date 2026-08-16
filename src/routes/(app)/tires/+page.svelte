@@ -170,7 +170,9 @@
         </form>
       </article>
     {:else}
-      <p class="text-sm text-[var(--muted)]">Nenhum produto no catálogo.</p>
+      <p class="panel p-5 text-sm text-[var(--muted)]">
+        Nenhum produto no catálogo.
+      </p>
     {/each}
   </div>
 
@@ -194,7 +196,9 @@
         </form>
       </article>
     {:else}
-      <p class="text-sm text-[var(--muted)]">Nenhuma calibragem registrada.</p>
+      <p class="panel p-5 text-sm text-[var(--muted)]">
+        Nenhuma calibragem registrada.
+      </p>
     {/each}
   </div>
 </section>

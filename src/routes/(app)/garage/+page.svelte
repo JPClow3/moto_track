@@ -123,11 +123,18 @@
             {/if}
           </div>
           {#if motorcycle.is_active}
-            <details class="mt-4 border-t border-[var(--line)] pt-3">
+            <details
+              class="group/details mt-4 border-t border-[var(--line)] pt-3"
+            >
               <summary
-                class="focus-ring flex min-h-11 cursor-pointer items-center rounded font-semibold"
-                >{$t("garage.odometerSpecs")}</summary
+                class="focus-ring flex min-h-11 cursor-pointer items-center justify-between rounded px-1 font-semibold text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
               >
+                <span>{$t("garage.odometerSpecs")}</span>
+                <span
+                  class="label-tech text-[10px] text-[var(--accent)] transition-transform duration-200 group-open/details:rotate-180"
+                  aria-hidden="true">▼</span
+                >
+              </summary>
               <form
                 class="mt-3 grid gap-2"
                 method="POST"
@@ -233,9 +240,14 @@
             </div>
           {/if}
         </article>
-      {:else}<p class="panel p-6 text-[var(--muted)]">
-          {$t("garage.emptyState")}
-        </p>{/each}
+      {:else}
+        <div class="panel col-span-full p-10 text-center">
+          <p class="display text-2xl">{$t("garage.heading")}</p>
+          <p class="mt-2 text-sm text-[var(--muted)]">
+            {$t("garage.emptyState")}
+          </p>
+        </div>
+      {/each}
     </div>
     <form
       class="panel grid gap-3 p-5"

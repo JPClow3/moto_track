@@ -317,11 +317,15 @@
                   class="feature-edit-cell px-4 py-3"
                   colspan={feature.listColumns.length + 2}
                 >
-                  <details>
+                  <details class="group/edit">
                     <summary
-                      class="focus-ring cursor-pointer rounded text-sm font-semibold"
+                      class="focus-ring flex cursor-pointer items-center justify-between rounded px-2 py-1.5 text-sm font-semibold text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
                     >
-                      {$t("feature.editRecord")}
+                      <span>{$t("feature.editRecord")}</span>
+                      <span
+                        class="label-tech text-[10px] text-[var(--accent)] transition-transform duration-200 group-open/edit:rotate-180"
+                        aria-hidden="true">▼</span
+                      >
                     </summary>
                     <form
                       class="mt-3 grid gap-4 md:grid-cols-2"
@@ -426,10 +430,14 @@
                   class="px-4 py-16 text-center"
                   colspan={feature.listColumns.length + 2}
                 >
-                  <p class="display text-2xl">{$t("feature.noRecords")}</p>
-                  <p class="mx-auto mt-2 max-w-sm text-sm text-[var(--muted)]">
-                    {$t("feature.noRecordsHint")}
-                  </p>
+                  <div
+                    class="mx-auto max-w-sm rounded border border-dashed border-[var(--line)] p-8"
+                  >
+                    <p class="display text-2xl">{$t("feature.noRecords")}</p>
+                    <p class="mt-2 text-sm text-[var(--muted)]">
+                      {$t("feature.noRecordsHint")}
+                    </p>
+                  </div>
                 </td>
               </tr>
             {/each}

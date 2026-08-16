@@ -242,9 +242,12 @@
     </nav>
 
     <div class="mt-4 border-t border-[var(--line)] pt-4">
-      <div class="flex items-center gap-3 px-2 py-2">
+      <div
+        class="flex items-center gap-3 rounded px-2 py-2 transition hover:bg-[color-mix(in_srgb,var(--fg)_4%,transparent)]"
+        title={user?.email ?? $t("common.account")}
+      >
         <div
-          class="flex h-8 w-8 items-center justify-center rounded-sm bg-[var(--accent-soft)] text-xs font-bold uppercase text-[var(--accent)]"
+          class="ring-[var(--accent)]/20 flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-[var(--accent-soft)] text-xs font-bold uppercase text-[var(--accent)] ring-1"
           aria-hidden="true"
         >
           {user?.email?.charAt(0) ?? "U"}
@@ -312,13 +315,19 @@
         </div>
       </div>
 
-      <!-- Mobile drawer. Before this the sidebar was `hidden lg:flex` with
-           nothing replacing it, so a phone had no way to reach any section. -->
+      <!-- Mobile drawer with backdrop -->
       {#if mobileOpen}
+        <button
+          type="button"
+          class="fixed inset-0 top-[57px] z-10 cursor-default border-0 bg-black/40 backdrop-blur-sm lg:hidden"
+          on:click={() => closeMobileMenu(false)}
+          aria-label={$t("nav.closeMenu")}
+          tabindex="-1"
+        ></button>
         <nav
           bind:this={mobileNav}
           id="app-mobile-nav"
-          class="border-t border-[var(--line)] bg-[var(--panel)] px-4 py-2 lg:hidden"
+          class="relative z-20 border-t border-[var(--line)] bg-[var(--panel)] px-4 py-2 shadow-lift lg:hidden"
           aria-label={$t("nav.primary")}
         >
           {#each visibleGroups as group (group.key ?? "root")}
@@ -356,6 +365,7 @@
     <main
       id="main-content"
       class="app-main mx-auto w-full max-w-7xl flex-1 px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-8"
+      tabindex="-1"
     >
       <slot />
     </main>
@@ -416,7 +426,20 @@
   }
 
   .bar-active {
+    position: relative;
     color: var(--accent);
+    font-weight: 600;
+  }
+
+  .bar-active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 28%;
+    right: 28%;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 9999px;
   }
 
   .bar-idle {

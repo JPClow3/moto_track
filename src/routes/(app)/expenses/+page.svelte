@@ -212,7 +212,9 @@
         </form>
       </article>
     {:else}
-      <p class="text-sm text-[var(--muted)]">Nenhuma apólice cadastrada.</p>
+      <p class="panel p-5 text-sm text-[var(--muted)]">
+        Nenhuma apólice cadastrada.
+      </p>
     {/each}
   </div>
   <div class="grid gap-2">
@@ -241,7 +243,9 @@
         </form>
       </article>
     {:else}
-      <p class="text-sm text-[var(--muted)]">Nenhum sinistro registrado.</p>
+      <p class="panel p-5 text-sm text-[var(--muted)]">
+        Nenhum sinistro registrado.
+      </p>
     {/each}
   </div>
 </section>

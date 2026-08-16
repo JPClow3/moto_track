@@ -5,7 +5,7 @@
 </script>
 
 <article
-  class="panel group relative min-w-0 overflow-hidden p-5 transition-colors hover:border-[var(--accent)]"
+  class="panel group relative min-w-0 overflow-hidden p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]"
 >
   <!-- Slash motif, revealed on hover rather than a permanent gradient wash. -->
   <div class="corner-slashes" aria-hidden="true"></div>

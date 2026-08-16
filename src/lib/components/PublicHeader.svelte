@@ -134,13 +134,20 @@
   </nav>
 
   {#if open}
+    <button
+      type="button"
+      class="fixed inset-0 top-[65px] z-40 cursor-default border-0 bg-black/40 backdrop-blur-sm sm:hidden"
+      onclick={closeMenu}
+      aria-label={$t("nav.closeMenu")}
+      tabindex="-1"
+    ></button>
     <div
       id="mobile-nav"
-      class="border-t border-[var(--line)] bg-[var(--bg)] px-6 py-1 sm:hidden"
+      class="relative z-50 border-t border-[var(--line)] bg-[var(--bg)] px-6 py-1 shadow-lift sm:hidden"
     >
       {#each links as link (link.href)}
         <a
-          class="label-tech block border-b border-[var(--line)] py-4"
+          class="label-tech block border-b border-[var(--line)] py-4 transition-colors hover:text-[var(--accent)]"
           class:is-current={isActive(link.href, $page.url.pathname)}
           href={link.href}
           aria-current={isActive(link.href, $page.url.pathname)

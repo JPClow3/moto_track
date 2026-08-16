@@ -224,6 +224,9 @@
     border-radius: 0.35rem;
     padding: 0.7rem;
     color: rgb(255 255 255 / 0.8);
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease;
   }
 
   .billing-choice input {

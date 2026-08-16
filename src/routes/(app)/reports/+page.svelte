@@ -159,9 +159,14 @@
         <strong class:text-danger={event.amountCents > 0}
           >{money(event.amountCents)}</strong
         >
-      </div>{:else}<p class="p-6 text-[var(--muted)]">
-        Sem eventos para este filtro.
-      </p>{/each}
+      </div>{:else}
+      <div class="p-8 text-center text-sm text-[var(--muted)]">
+        <p>Sem eventos para este filtro.</p>
+        <p class="mt-1 text-xs text-[var(--muted)]">
+          Tente ajustar as datas ou a fonte selecionada.
+        </p>
+      </div>
+    {/each}
   </div>
   <div class="grid gap-3 md:grid-cols-2">
     {#each data.shares as share}<article

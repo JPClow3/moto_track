@@ -195,11 +195,12 @@
           {/if}
         </article>
       {:else}
-        <p
-          class="rounded border border-dashed border-[var(--line)] p-5 text-sm text-[var(--muted)]"
+        <div
+          class="flex items-center gap-3 rounded border border-dashed border-[var(--line)] bg-[var(--panel-sunken)] p-5 text-sm text-[var(--muted)] lg:col-span-2"
         >
-          {$t("dashboard.dueNowEmpty")}
-        </p>
+          <span class="tick" aria-hidden="true"></span>
+          <p>{$t("dashboard.dueNowEmpty")}</p>
+        </div>
       {/each}
     </div>
   </article>
@@ -519,18 +520,26 @@
             </select>
           </div>
           <button
-            class="button-primary min-h-11"
+            class="button-primary min-h-11 shrink-0"
             type="submit"
             disabled={benchmarkBusy || !data.benchmark.hasComparableMetric}
           >
-            {data.benchmark.submitted
-              ? $t("dashboard.benchmarkUpdate")
-              : $t("dashboard.benchmarkShare")}
+            {#if benchmarkBusy}
+              <span class="inline-block animate-pulse"
+                >{$t("common.save")}…</span
+              >
+            {:else}
+              {data.benchmark.submitted
+                ? $t("dashboard.benchmarkUpdate")
+                : $t("dashboard.benchmarkShare")}
+            {/if}
           </button>
         </div>
-        <label class="flex items-start gap-2 text-sm text-[var(--muted)]">
+        <label
+          class="flex cursor-pointer items-start gap-2.5 rounded p-1 text-sm text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+        >
           <input
-            class="mt-1"
+            class="mt-1 accent-[var(--accent)]"
             type="checkbox"
             name="consent"
             value="on"
