@@ -2,7 +2,7 @@
   import FeaturePage from "$components/FeaturePage.svelte";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
-  import { locale } from "$lib/i18n/store";
+  import { locale, t } from "$lib/i18n/store";
   import { formatMoney } from "$lib/i18n";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
   export let data;
@@ -15,6 +15,16 @@
   }) =>
     `${policy.provider}${policy.policy_number ? ` · ${policy.policy_number}` : ""}`;
 
+  // Nav says "Despesas"; the generic config rendered the English "Expenses"
+  // title and an infrastructure-flavoured subtitle on top of the page.
+  $: localizedFeature = {
+    ...data.feature,
+    slug: $t("nav.expenses"),
+    title: $t("expenses.pageTitle"),
+    subtitle: $t("expenses.pageSubtitle"),
+  };
+  $: hasPolicies = data.policies.length > 0;
+
   let formBusy = false;
   let statusMessage = "";
   let statusRole: "status" | "alert" = "status";
@@ -26,12 +36,10 @@
   }) => {
     if (result.type === "success") {
       statusRole = "status";
-      statusMessage = "Operação concluída.";
+      statusMessage = $t("common.actionSuccess");
     } else {
       statusRole = "alert";
-      statusMessage = String(
-        result.data?.message ?? "Não foi possível concluir.",
-      );
+      statusMessage = String(result.data?.message ?? $t("error.serverBody"));
     }
   };
 
@@ -46,9 +54,7 @@
   };
 
   const enhanceDelete: SubmitFunction = async ({ cancel }) => {
-    const ok = await confirmDialog.ask(
-      "Excluir este item? Esta ação não pode ser desfeita.",
-    );
+    const ok = await confirmDialog.ask($t("feature.confirmDelete"));
     if (!ok) {
       cancel();
       return;
@@ -65,12 +71,14 @@
 
 <section class="grid gap-6" aria-busy={formBusy}>
   <FeaturePage
-    {...data}
+    feature={localizedFeature}
+    rows={data.rows}
+    motorcycles={data.motorcycles}
     errorMessage={!form?.ok
       ? form?.message || data.errorMessage
       : data.errorMessage}
   />
-  <ConfirmDialog bind:this={confirmDialog} confirmLabel="Excluir" />
+  <ConfirmDialog bind:this={confirmDialog} confirmLabel={$t("common.delete")} />
   {#if statusMessage}
     <p
       class={statusRole === "alert"
@@ -156,10 +164,21 @@
       use:enhance={enhanceWithStatus}
     >
       <h2 class="font-bold">Sinistro</h2>
+      {#if !hasPolicies}
+        <!-- A claim requires a policy; an empty select used to just dead-end. -->
+        <p class="text-sm text-[var(--muted)]">
+          {$t("expenses.claimNeedsPolicy")}
+        </p>
+      {/if}
       <label class="field-label" for="expense-claim-policy">Seguro</label>
-      <select class="field" id="expense-claim-policy" name="policy_id" required
-        ><option value="">Seguro</option>{#each data.policies as p}<option
-            value={p.id}>{policyLabel(p)}</option
+      <select
+        class="field"
+        id="expense-claim-policy"
+        name="policy_id"
+        required
+        disabled={!hasPolicies}
+        ><option value="">{$t("common.select")}</option
+        >{#each data.policies as p}<option value={p.id}>{policyLabel(p)}</option
           >{/each}</select
       ><label class="field-label" for="expense-claim-date"
         >Data do sinistro</label
@@ -196,30 +215,30 @@
     </form>
   </div>
   <div class="grid gap-2">
-    <h2 class="display text-2xl">Apólices</h2>
-    {#each data.policies as p}
+    <h2 class="display text-2xl">{$t("expenses.policiesHeading")}</h2>
+    {#each data.policies as p (p.id)}
       <article class="panel flex min-w-0 flex-wrap justify-between gap-3 p-4">
         <span class="min-w-0 flex-1 break-words"
-          >{policyLabel(p)} · vence {p.coverage_end} · {brl(
-            p.premium_cents ?? 0,
-          )}</span
+          >{policyLabel(p)} · {$t("expenses.policyDue", {
+            date: p.coverage_end,
+          })} · {brl(p.premium_cents ?? 0)}</span
         >
         <form method="POST" action="?/deletePolicy" use:enhance={enhanceDelete}>
           <input type="hidden" name="id" value={p.id} /><button
             class="button-danger min-h-11"
-            disabled={formBusy}>Excluir</button
+            disabled={formBusy}>{$t("common.delete")}</button
           >
         </form>
       </article>
     {:else}
       <p class="panel p-5 text-sm text-[var(--muted)]">
-        Nenhuma apólice cadastrada.
+        {$t("expenses.emptyPolicies")}
       </p>
     {/each}
   </div>
   <div class="grid gap-2">
-    <h2 class="display text-2xl">Sinistros</h2>
-    {#each data.claims as claim}
+    <h2 class="display text-2xl">{$t("expenses.claimsHeading")}</h2>
+    {#each data.claims as claim (claim.id)}
       <article class="panel flex min-w-0 flex-wrap justify-between gap-3 p-4">
         <div class="min-w-0 flex-1 break-words">
           <p class="font-medium">
@@ -231,20 +250,20 @@
           <p class="mt-1 text-sm text-[var(--muted)]">
             {claim.description} · {brl(claim.amount_cents ?? 0)} · {claim.status ===
             "settled"
-              ? "Resolvido"
-              : "Aberto"}
+              ? $t("expenses.claimSettled")
+              : $t("expenses.claimOpen")}
           </p>
         </div>
         <form method="POST" action="?/deleteClaim" use:enhance={enhanceDelete}>
           <input type="hidden" name="id" value={claim.id} /><button
             class="button-danger min-h-11"
-            disabled={formBusy}>Excluir</button
+            disabled={formBusy}>{$t("common.delete")}</button
           >
         </form>
       </article>
     {:else}
       <p class="panel p-5 text-sm text-[var(--muted)]">
-        Nenhum sinistro registrado.
+        {$t("expenses.emptyClaims")}
       </p>
     {/each}
   </div>

@@ -359,6 +359,7 @@
               max="100"
               name="wear_percent"
             />
+            <p class="field-help">{$t("tires.wearOptionalHint")}</p>
           </div>
           <div class="field-group">
             <label class="field-label" for="tire-install-change"
@@ -371,6 +372,7 @@
               min="0"
               name="estimated_change_km"
             />
+            <p class="field-help">{$t("tires.changeOptionalHint")}</p>
           </div>
         </div>
         <label class="switch">
@@ -455,7 +457,7 @@
           class="button-secondary"
           type="submit"
           disabled={!hasMotorcycles || formBusy}
-          >{$t("tires.pressureFormTitle")}</button
+          >{$t("tires.pressureAction")}</button
         >
       </form>
 
@@ -581,13 +583,30 @@
                         for={`edit-${tire.id}-position`}
                         >{$t("tires.positionLabel")}</label
                       >
-                      <input
+                      <!-- Same dianteiro/traseiro choices as the install form;
+                           the free-text input used to let junk positions in. -->
+                      <select
                         class="field"
                         id={`edit-${tire.id}-position`}
                         name="position"
-                        value={String(tire.position ?? "")}
                         required
-                      />
+                      >
+                        <option
+                          value="dianteiro"
+                          selected={String(tire.position ?? "") === "dianteiro"}
+                          >{$t("tires.positionFront")}</option
+                        >
+                        <option
+                          value="traseiro"
+                          selected={String(tire.position ?? "") === "traseiro"}
+                          >{$t("tires.positionRear")}</option
+                        >
+                        {#if !["dianteiro", "traseiro"].includes(String(tire.position ?? ""))}
+                          <option value={String(tire.position ?? "")} selected>
+                            {String(tire.position ?? "—")}
+                          </option>
+                        {/if}
+                      </select>
                     </div>
                     <div class="field-group">
                       <label class="field-label" for={`edit-${tire.id}-brand`}

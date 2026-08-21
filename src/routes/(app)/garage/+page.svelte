@@ -102,7 +102,7 @@
                 aria-busy={pendingAction === `archive:${motorcycle.id}`}
               >
                 <input type="hidden" name="id" value={motorcycle.id} /><button
-                  class="button-danger min-h-11"
+                  class="button-secondary min-h-11"
                   disabled={pendingAction === `archive:${motorcycle.id}`}
                   type="submit">{$t("garage.archiveAction")}</button
                 >
@@ -123,6 +123,25 @@
             {/if}
           </div>
           {#if motorcycle.is_active}
+            <!-- Jump-off points: the garage is the hub, so each card routes
+                 straight into the bike's data instead of forcing a detour
+                 through the sidebar. -->
+            <div
+              class="mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--line)] pt-3 text-xs"
+            >
+              <a
+                class="font-semibold text-brand underline-offset-4 hover:underline"
+                href="/maintenance">{$t("nav.maintenance")}</a
+              >
+              <a
+                class="font-semibold text-brand underline-offset-4 hover:underline"
+                href="/fuel">{$t("nav.fuel")}</a
+              >
+              <a
+                class="font-semibold text-brand underline-offset-4 hover:underline"
+                href="/tires">{$t("nav.tires")}</a
+              >
+            </div>
             <details
               class="group/details mt-4 border-t border-[var(--line)] pt-3"
             >
@@ -312,7 +331,9 @@
         </span></label
       >
       {#if !custom && resolvedTemplate?.is_exact_schedule}
-        <details class="rounded border border-[var(--line)] p-3" open>
+        <!-- Collapsed by default: the checklist is long and was pushing the
+             "Cadastrar moto" button below the fold. -->
+        <details class="rounded border border-[var(--line)] p-3">
           <summary
             class="focus-ring flex min-h-11 cursor-pointer items-center rounded text-sm font-semibold"
             >{$t("history.title")}</summary

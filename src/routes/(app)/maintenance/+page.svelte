@@ -66,6 +66,15 @@
     }
   }
 
+  // The plan form lives in a collapsed panel far down the rail; the empty
+  // state opens and reveals it instead of pointing at it with an arrow.
+  function openPlanForm() {
+    if (typeof document === "undefined") return;
+    const details = document.getElementById("new-plan-details");
+    details?.setAttribute("open", "");
+    details?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   function urgencyLabel(urgency: PlanRow["urgency"]) {
     if (urgency === "overdue") return $t("dashboard.urgencyOverdue");
     if (urgency === "due_now") return $t("dashboard.urgencyNow");
@@ -189,6 +198,20 @@
     destructive
   />
 
+  <!-- Free-text typing here produced "Troca de oleo" vs "troca de óleo" soup;
+       the datalist suggests canonical names while still allowing any value. -->
+  <datalist id="maintenance-type-suggestions">
+    <option value="Troca de óleo"></option>
+    <option value="Filtro de óleo"></option>
+    <option value="Corrente e retentores"></option>
+    <option value="Freios"></option>
+    <option value="Velas"></option>
+    <option value="Pneus"></option>
+    <option value="Rolamentos"></option>
+    <option value="Suspensão"></option>
+    <option value="Valvulinas"></option>
+  </datalist>
+
   <div class="grid gap-3">
     <div>
       <h2 class="display text-2xl">{$t("maintenance.dueNextTitle")}</h2>
@@ -200,8 +223,13 @@
       >
         <p class="display text-2xl">{$t("maintenance.noPlans")}</p>
         <p class="mt-2 text-sm text-[var(--muted)]">
-          {$t("maintenance.planFormTitle")} ↓
+          {$t("maintenance.dueNextHint")}
         </p>
+        <button
+          class="button-secondary mt-4 min-h-11"
+          type="button"
+          on:click={openPlanForm}>{$t("maintenance.openPlanForm")}</button
+        >
       </div>
     {:else}
       <div class="grid gap-4 md:grid-cols-2">
@@ -539,6 +567,7 @@
                           name="maintenance_type"
                           value={String(row.maintenance_type ?? "")}
                           required
+                          list="maintenance-type-suggestions"
                         />
                       </div>
                       <div class="field-group">
@@ -700,6 +729,7 @@
             id="record-type"
             name="maintenance_type"
             required
+            list="maintenance-type-suggestions"
           />
           <label class="field-label" for="record-description"
             >{$t("maintenance.descriptionLabel")}</label
@@ -765,7 +795,7 @@
         >
       </form>
 
-      <details class="panel p-5">
+      <details id="new-plan-details" class="panel p-5">
         <summary class="display cursor-pointer text-lg">
           {$t("maintenance.planFormTitle")}
         </summary>
@@ -795,6 +825,7 @@
             aria-label={$t("maintenance.maintenanceType")}
             placeholder={$t("maintenance.maintenanceType")}
             required
+            list="maintenance-type-suggestions"
           />
           <div class="grid gap-3 sm:grid-cols-2">
             <div class="field-group">
@@ -1036,7 +1067,7 @@
     </div>
 
     <div class="mt-6 grid gap-2">
-      <h3 class="font-bold">{$t("maintenance.partsHeading")}</h3>
+      <h3 class="font-bold">{$t("maintenance.partsListHeading")}</h3>
       {#each data.parts as part (part.id)}
         <article
           class="flex min-w-0 flex-col justify-between gap-3 rounded border border-[var(--line)] p-3 sm:flex-row sm:items-start"

@@ -345,234 +345,254 @@
   </div>
 
   <article class="panel p-6">
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <p class="eyebrow">
-          <span class="slash-rule" aria-hidden="true"></span>{$t(
-            "dashboard.benchmarkTitle",
-          )}
-        </p>
-        <h2 class="display mt-2 text-2xl">{$t("dashboard.benchmarkTitle")}</h2>
-        <p class="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-          {$t("dashboard.benchmarkHint")}
-          {$t("dashboard.benchmarkPrivacy")}
-        </p>
-      </div>
-      {#if data.benchmark?.modelLabel}
-        <span class="label-tech rounded border border-[var(--line)] px-2 py-1">
-          {data.benchmark.modelLabel}
+    <!-- The benchmark is a power feature with a consent form; keeping it open
+         by default pushed real telemetry below the fold. -->
+    <details class="group/benchmark">
+      <summary
+        class="focus-ring flex cursor-pointer flex-wrap items-start justify-between gap-4 rounded"
+      >
+        <span class="min-w-0">
+          <span class="eyebrow block">
+            <span class="slash-rule" aria-hidden="true"></span>
+            {$t("dashboard.benchmarkEyebrow")}
+          </span>
+          <span class="display mt-2 block text-2xl">
+            {$t("dashboard.benchmarkTitle")}
+          </span>
+          <span class="mt-1 block max-w-2xl text-sm text-[var(--muted)]">
+            {$t("dashboard.benchmarkHint")}
+          </span>
         </span>
-      {/if}
-    </div>
+        {#if data.benchmark?.modelLabel}
+          <span
+            class="label-tech shrink-0 rounded border border-[var(--line)] px-2 py-1"
+          >
+            {data.benchmark.modelLabel}
+          </span>
+        {/if}
+        <span
+          class="label-tech shrink-0 text-[10px] text-[var(--accent)] transition-transform duration-200 group-open/benchmark:rotate-180"
+          aria-hidden="true">▼</span
+        >
+      </summary>
 
-    {#if data.benchmark?.modelLabel}
-      <div class="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <div class="rounded border border-[var(--line)] p-4">
-          <p class="label-tech text-[var(--muted)]">
-            {$t("dashboard.benchmarkYourData")}
-          </p>
-          <dl class="mt-3 grid gap-2 text-sm">
-            <div class="flex items-center justify-between gap-3">
-              <dt>{$t("dashboard.benchmarkConsumption")}</dt>
-              <dd class="numeric font-semibold">
-                {#if data.benchmark.local?.consumptionKmL !== null && data.benchmark.local?.consumptionKmL !== undefined}
-                  {$format.number(data.benchmark.local.consumptionKmL, {
-                    minimumFractionDigits: 1,
-                    maximumFractionDigits: 2,
-                  })}
-                  km/L
-                {:else}
-                  {$t("dashboard.benchmarkUnavailable")}
-                {/if}
-              </dd>
-            </div>
-            <div class="flex items-center justify-between gap-3">
-              <dt>{$t("dashboard.benchmarkMaintenance")}</dt>
-              <dd class="numeric text-right font-semibold">
-                {#if data.benchmark.local?.maintenanceCentsPer1000Km !== null && data.benchmark.local?.maintenanceCentsPer1000Km !== undefined}
-                  {$format.money(
-                    data.benchmark.local.maintenanceCentsPer1000Km,
-                  )}
-                {:else}
-                  {$t("dashboard.benchmarkUnavailable")}
-                {/if}
-              </dd>
-            </div>
-          </dl>
-          {#if data.benchmark.local}
-            <p class="mt-3 text-xs text-[var(--muted)]">
-              {data.benchmark.local.consumptionIntervals} intervalos de consumo ·
-              {data.benchmark.local.maintenanceRecords} registros de manutenção
-              {#if data.benchmark.local.distanceKm !== null}
-                · {$format.distance(data.benchmark.local.distanceKm)} registrados
-              {/if}
-            </p>
-          {/if}
-        </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--muted)]">
+        {$t("dashboard.benchmarkPrivacy")}
+      </p>
 
-        <div class="rounded border border-[var(--line)] p-4">
-          <div class="flex items-center justify-between gap-3">
+      {#if data.benchmark?.modelLabel}
+        <div class="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
+          <div class="rounded border border-[var(--line)] p-4">
             <p class="label-tech text-[var(--muted)]">
-              {$t("dashboard.benchmarkCohort")}
+              {$t("dashboard.benchmarkYourData")}
             </p>
-            <span class="label-tech text-[var(--muted)]">
-              {$t("dashboard.benchmarkSample", {
-                count: data.benchmark.sampleSize,
-              })}
-            </span>
-          </div>
-          {#if data.benchmark.sampleSize < data.benchmark.minimumSampleSize}
-            <p class="mt-4 text-sm text-[var(--muted)]">
-              {$t("dashboard.benchmarkNeedMore", {
-                count:
-                  data.benchmark.minimumSampleSize - data.benchmark.sampleSize,
-              })}
-            </p>
-          {/if}
-          {#if data.benchmark.cohort}
             <dl class="mt-3 grid gap-2 text-sm">
               <div class="flex items-center justify-between gap-3">
                 <dt>{$t("dashboard.benchmarkConsumption")}</dt>
-                <dd class="text-right">
-                  {#if data.benchmark.cohort.consumption.average !== null}
-                    <span class="numeric font-semibold"
-                      >{$format.number(
-                        data.benchmark.cohort.consumption.average,
-                        {
-                          minimumFractionDigits: 1,
-                          maximumFractionDigits: 2,
-                        },
-                      )} km/L</span
-                    >
-                    <span class="ml-1 text-xs text-[var(--muted)]"
-                      >{$t(
-                        benchmarkPositionKey[
-                          data.benchmark.cohort.consumption.position
-                        ],
-                      )}</span
-                    >
+                <dd class="numeric font-semibold">
+                  {#if data.benchmark.local?.consumptionKmL !== null && data.benchmark.local?.consumptionKmL !== undefined}
+                    {$format.number(data.benchmark.local.consumptionKmL, {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 2,
+                    })}
+                    km/L
                   {:else}
-                    <span class="text-xs text-[var(--muted)]">
-                      {$t("dashboard.benchmarkMetricSample", {
-                        count: data.benchmark.cohort.consumption.sampleSize,
-                        minimum: data.benchmark.minimumSampleSize,
-                      })}
-                    </span>
+                    {$t("dashboard.benchmarkUnavailable")}
                   {/if}
                 </dd>
               </div>
               <div class="flex items-center justify-between gap-3">
                 <dt>{$t("dashboard.benchmarkMaintenance")}</dt>
-                <dd class="text-right">
-                  {#if data.benchmark.cohort.maintenance.average !== null}
-                    <span class="numeric font-semibold"
-                      >{$format.money(
-                        data.benchmark.cohort.maintenance.average,
-                      )}</span
-                    >
-                    <span class="ml-1 text-xs text-[var(--muted)]"
-                      >{$t(
-                        benchmarkPositionKey[
-                          data.benchmark.cohort.maintenance.position
-                        ],
-                      )}</span
-                    >
+                <dd class="numeric text-right font-semibold">
+                  {#if data.benchmark.local?.maintenanceCentsPer1000Km !== null && data.benchmark.local?.maintenanceCentsPer1000Km !== undefined}
+                    {$format.money(
+                      data.benchmark.local.maintenanceCentsPer1000Km,
+                    )}
                   {:else}
-                    <span class="text-xs text-[var(--muted)]">
-                      {$t("dashboard.benchmarkMetricSample", {
-                        count: data.benchmark.cohort.maintenance.sampleSize,
-                        minimum: data.benchmark.minimumSampleSize,
-                      })}
-                    </span>
+                    {$t("dashboard.benchmarkUnavailable")}
                   {/if}
                 </dd>
               </div>
             </dl>
-          {:else}
-            <p class="mt-4 text-sm text-[var(--muted)]">
-              {$t("dashboard.benchmarkUnavailable")}
+            {#if data.benchmark.local}
+              <p class="mt-3 text-xs text-[var(--muted)]">
+                {data.benchmark.local.consumptionIntervals} intervalos de consumo
+                ·
+                {data.benchmark.local.maintenanceRecords} registros de manutenção
+                {#if data.benchmark.local.distanceKm !== null}
+                  · {$format.distance(data.benchmark.local.distanceKm)} registrados
+                {/if}
+              </p>
+            {/if}
+          </div>
+
+          <div class="rounded border border-[var(--line)] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <p class="label-tech text-[var(--muted)]">
+                {$t("dashboard.benchmarkCohort")}
+              </p>
+              <span class="label-tech text-[var(--muted)]">
+                {$t("dashboard.benchmarkSample", {
+                  count: data.benchmark.sampleSize,
+                })}
+              </span>
+            </div>
+            {#if data.benchmark.sampleSize < data.benchmark.minimumSampleSize}
+              <p class="mt-4 text-sm text-[var(--muted)]">
+                {$t("dashboard.benchmarkNeedMore", {
+                  count:
+                    data.benchmark.minimumSampleSize -
+                    data.benchmark.sampleSize,
+                })}
+              </p>
+            {/if}
+            {#if data.benchmark.cohort}
+              <dl class="mt-3 grid gap-2 text-sm">
+                <div class="flex items-center justify-between gap-3">
+                  <dt>{$t("dashboard.benchmarkConsumption")}</dt>
+                  <dd class="text-right">
+                    {#if data.benchmark.cohort.consumption.average !== null}
+                      <span class="numeric font-semibold"
+                        >{$format.number(
+                          data.benchmark.cohort.consumption.average,
+                          {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 2,
+                          },
+                        )} km/L</span
+                      >
+                      <span class="ml-1 text-xs text-[var(--muted)]"
+                        >{$t(
+                          benchmarkPositionKey[
+                            data.benchmark.cohort.consumption.position
+                          ],
+                        )}</span
+                      >
+                    {:else}
+                      <span class="text-xs text-[var(--muted)]">
+                        {$t("dashboard.benchmarkMetricSample", {
+                          count: data.benchmark.cohort.consumption.sampleSize,
+                          minimum: data.benchmark.minimumSampleSize,
+                        })}
+                      </span>
+                    {/if}
+                  </dd>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <dt>{$t("dashboard.benchmarkMaintenance")}</dt>
+                  <dd class="text-right">
+                    {#if data.benchmark.cohort.maintenance.average !== null}
+                      <span class="numeric font-semibold"
+                        >{$format.money(
+                          data.benchmark.cohort.maintenance.average,
+                        )}</span
+                      >
+                      <span class="ml-1 text-xs text-[var(--muted)]"
+                        >{$t(
+                          benchmarkPositionKey[
+                            data.benchmark.cohort.maintenance.position
+                          ],
+                        )}</span
+                      >
+                    {:else}
+                      <span class="text-xs text-[var(--muted)]">
+                        {$t("dashboard.benchmarkMetricSample", {
+                          count: data.benchmark.cohort.maintenance.sampleSize,
+                          minimum: data.benchmark.minimumSampleSize,
+                        })}
+                      </span>
+                    {/if}
+                  </dd>
+                </div>
+              </dl>
+            {:else}
+              <p class="mt-4 text-sm text-[var(--muted)]">
+                {$t("dashboard.benchmarkUnavailable")}
+              </p>
+            {/if}
+          </div>
+        </div>
+
+        <form
+          class="mt-5 grid gap-3 rounded border border-dashed border-[var(--line)] p-4"
+          method="POST"
+          action="?/contributeBenchmark"
+          use:enhance={enhanceBenchmark}
+        >
+          <div
+            class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
+          >
+            <div class="grid gap-1">
+              <label class="field-label" for="benchmark-motorcycle"
+                >{$t("dashboard.benchmarkModel")}</label
+              >
+              <select
+                class="field"
+                id="benchmark-motorcycle"
+                name="motorcycle_id"
+                required
+                value={data.benchmark.motorcycleId ?? ""}
+              >
+                {#each data.benchmark.models as model (model.id)}
+                  <option value={model.id}>{model.name} · {model.label}</option>
+                {/each}
+              </select>
+            </div>
+            <button
+              class="button-primary min-h-11 shrink-0"
+              type="submit"
+              disabled={benchmarkBusy || !data.benchmark.hasComparableMetric}
+            >
+              {#if benchmarkBusy}
+                <span class="inline-block animate-pulse"
+                  >{$t("common.save")}…</span
+                >
+              {:else}
+                {data.benchmark.submitted
+                  ? $t("dashboard.benchmarkUpdate")
+                  : $t("dashboard.benchmarkShare")}
+              {/if}
+            </button>
+          </div>
+          <label
+            class="flex cursor-pointer items-start gap-2.5 rounded p-1 text-sm text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+          >
+            <input
+              class="mt-1 accent-[var(--accent)]"
+              type="checkbox"
+              name="consent"
+              value="on"
+              required
+            />
+            <span>{$t("dashboard.benchmarkConsent")}</span>
+          </label>
+          {#if form?.message}
+            <p
+              class="text-sm text-[var(--accent)]"
+              role="alert"
+              aria-live="assertive"
+            >
+              {form.message}
             </p>
           {/if}
-        </div>
-      </div>
-
-      <form
-        class="mt-5 grid gap-3 rounded border border-dashed border-[var(--line)] p-4"
-        method="POST"
-        action="?/contributeBenchmark"
-        use:enhance={enhanceBenchmark}
-      >
-        <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-          <div class="grid gap-1">
-            <label class="field-label" for="benchmark-motorcycle"
-              >{$t("dashboard.benchmarkModel")}</label
+          {#if data.benchmark.submitted}
+            <p
+              class="text-xs text-[var(--muted)]"
+              role="status"
+              aria-live="polite"
             >
-            <select
-              class="field"
-              id="benchmark-motorcycle"
-              name="motorcycle_id"
-              required
-              value={data.benchmark.motorcycleId ?? ""}
-            >
-              {#each data.benchmark.models as model (model.id)}
-                <option value={model.id}>{model.name} · {model.label}</option>
-              {/each}
-            </select>
-          </div>
-          <button
-            class="button-primary min-h-11 shrink-0"
-            type="submit"
-            disabled={benchmarkBusy || !data.benchmark.hasComparableMetric}
-          >
-            {#if benchmarkBusy}
-              <span class="inline-block animate-pulse"
-                >{$t("common.save")}…</span
-              >
-            {:else}
-              {data.benchmark.submitted
-                ? $t("dashboard.benchmarkUpdate")
-                : $t("dashboard.benchmarkShare")}
-            {/if}
-          </button>
-        </div>
-        <label
-          class="flex cursor-pointer items-start gap-2.5 rounded p-1 text-sm text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+              {$t("dashboard.benchmarkActive")}
+            </p>
+          {/if}
+        </form>
+      {:else if data.benchmark}
+        <p
+          class="mt-5 rounded border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]"
         >
-          <input
-            class="mt-1 accent-[var(--accent)]"
-            type="checkbox"
-            name="consent"
-            value="on"
-            required
-          />
-          <span>{$t("dashboard.benchmarkConsent")}</span>
-        </label>
-        {#if form?.message}
-          <p
-            class="text-sm text-[var(--accent)]"
-            role="alert"
-            aria-live="assertive"
-          >
-            {form.message}
-          </p>
-        {/if}
-        {#if data.benchmark.submitted}
-          <p
-            class="text-xs text-[var(--muted)]"
-            role="status"
-            aria-live="polite"
-          >
-            {$t("dashboard.benchmarkActive")}
-          </p>
-        {/if}
-      </form>
-    {:else if data.benchmark}
-      <p
-        class="mt-5 rounded border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]"
-      >
-        {$t("dashboard.benchmarkNoModel")}
-      </p>
-    {/if}
+          {$t("dashboard.benchmarkNoModel")}
+        </p>
+      {/if}
+    </details>
   </article>
 
   <!-- Activity + costs -->

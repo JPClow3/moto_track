@@ -1,12 +1,26 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
-  import { locale } from "$lib/i18n/store";
+  import { locale, t } from "$lib/i18n/store";
   import { formatDate, formatMoney } from "$lib/i18n";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
   export let data;
   export let form;
   const money = (c: number) => formatMoney($locale, c);
+
+  // The timeline used to print raw enums ("fuel", "work") next to pt-BR copy.
+  const SOURCE_LABELS: Record<string, string> = {
+    fuel: "Abastecimento",
+    maintenance: "Manutenção",
+    tires: "Pneus",
+    expenses: "Despesas",
+    work: "Trabalho",
+  };
+  const sourceLabel = (source: string) => SOURCE_LABELS[source] ?? source;
+  // Work sessions are income; painting every positive amount red made
+  // earnings look like costs.
+  const isCostSource = (source: string) => source !== "work";
+
   let formBusy = false;
   let statusMessage = "";
   let statusRole: "status" | "alert" = "status";
@@ -19,8 +33,8 @@
     statusRole = result.type === "success" ? "status" : "alert";
     statusMessage =
       result.type === "success"
-        ? "Operação concluída."
-        : String(result.data?.message ?? "Não foi possível concluir.");
+        ? $t("common.actionSuccess")
+        : String(result.data?.message ?? $t("error.serverBody"));
   };
 
   const enhanceWithStatus: SubmitFunction = () => {
@@ -153,10 +167,12 @@
         <div class="min-w-0 flex-1 break-words">
           <p class="font-medium">{event.label}</p>
           <p class="text-xs text-[var(--muted)]">
-            {event.source} · {event.date}
+            {sourceLabel(String(event.source))} · {event.date}
           </p>
         </div>
-        <strong class:text-danger={event.amountCents > 0}
+        <strong
+          class:text-danger={event.amountCents > 0 &&
+            isCostSource(String(event.source))}
           >{money(event.amountCents)}</strong
         >
       </div>{:else}

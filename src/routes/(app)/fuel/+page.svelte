@@ -19,6 +19,9 @@
   const price = (millicents: number) => formatPreciseMoney($locale, millicents);
   $: ocr = form?.ocr;
   $: defaults = data.preferences[0] ?? {};
+  // A registered station and a free-text name are two ways of saying the same
+  // thing; picking one disables the other so the record can't carry both.
+  let stationIdChoice = String(data.preferences[0]?.station_id ?? "");
 
   // History filters are client-side on purpose: the load already ships every
   // row, so filtering locally keeps the exploration instant instead of paying
@@ -222,6 +225,10 @@
         <p class="mt-2 text-sm text-[var(--muted)]">
           {$t("fuel.trendEmptyHint")}
         </p>
+        <a
+          class="button-secondary mt-4 inline-block min-h-11"
+          href="#fuel-new-record">{$t("fuel.newRecordTitle")}</a
+        >
       </div>
     {/if}
   </div>
@@ -300,8 +307,11 @@
     </div>
   {/if}
 
+  <!-- Orders flip the visual stack on narrow screens so the create form
+       (rail) comes before the whole history table; on xl the wide left
+       column is the history again. -->
   <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-    <div class="panel overflow-hidden">
+    <div class="panel order-2 overflow-hidden xl:order-1">
       <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-end">
         <div class="field-group min-w-0 flex-1">
           <label class="field-label" for="fuel-filter-motorcycle"
@@ -423,6 +433,12 @@
                       ? $t("fuel.filterEmptyHint")
                       : $t("fuel.emptyRecordsHint")}
                   </p>
+                  {#if data.rows.length === 0}
+                    <a
+                      class="button-secondary mt-4 inline-block min-h-11"
+                      href="#fuel-new-record">{$t("fuel.newRecordTitle")}</a
+                    >
+                  {/if}
                 </td>
               </tr>
             {/each}
@@ -431,8 +447,9 @@
       </div>
     </div>
 
-    <div class="grid h-fit gap-4">
+    <div class="order-1 grid h-fit gap-4 xl:order-2">
       <form
+        id="fuel-new-record"
         class="panel grid gap-3 p-4"
         method="POST"
         action="?/createRecord"
@@ -526,11 +543,13 @@
             <label class="field-label" for="fuel-station"
               >{$t("fuel.stationSavedLabel")}</label
             >
-            <select class="field" id="fuel-station" name="station_id"
-              ><option value="">{$t("fuel.stationSavedLabel")}</option
-              >{#each data.stations as station}<option
-                  value={station.id}
-                  selected={defaults.station_id === station.id}
+            <select
+              class="field"
+              id="fuel-station"
+              name="station_id"
+              bind:value={stationIdChoice}
+              ><option value="">{$t("fuel.stationAnyLabel")}</option
+              >{#each data.stations as station}<option value={station.id}
                   >{station.name}</option
                 >{/each}</select
             >
@@ -559,18 +578,31 @@
               id="fuel-station-name"
               name="station_name"
               value={defaults.station_name ?? ""}
+              disabled={Boolean(stationIdChoice)}
             />
+            <p class="field-help">{$t("fuel.stationNameHelp")}</p>
           </div>
           <div class="field-group">
             <label class="field-label" for="fuel-type"
               >{$t("fuel.fuelTypeLabel")}</label
             >
-            <input
+            <select
               class="field"
               id="fuel-type"
               name="fuel_type"
               value={defaults.fuel_type ?? "gasoline"}
-            />
+            >
+              <option value="gasoline">{$t("fuel.typeGasoline")}</option>
+              <option value="ethanol">{$t("fuel.typeEthanol")}</option>
+              <option value="flex">{$t("fuel.typeFlex")}</option>
+              <option value="diesel">{$t("fuel.typeDiesel")}</option>
+              <option value="gnv">{$t("fuel.typeGnv")}</option>
+              {#if defaults.fuel_type && !["gasoline", "ethanol", "flex", "diesel", "gnv"].includes(String(defaults.fuel_type))}
+                <option value={String(defaults.fuel_type)}>
+                  {String(defaults.fuel_type)}
+                </option>
+              {/if}
+            </select>
           </div>
         </div>
         <label class="flex items-center gap-2 text-sm" for="fuel-tank-full"
