@@ -134,11 +134,13 @@
   </nav>
 
   {#if open}
+    <!-- Click-away backdrop: not keyboard reachable and redundant with the
+         toggle + Escape, so it stays out of the accessibility tree. -->
     <button
       type="button"
       class="fixed inset-0 top-[65px] z-40 cursor-default border-0 bg-black/40 backdrop-blur-sm sm:hidden"
       onclick={closeMenu}
-      aria-label={$t("nav.closeMenu")}
+      aria-hidden="true"
       tabindex="-1"
     ></button>
     <div

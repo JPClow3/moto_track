@@ -1,9 +1,5 @@
 import { fail } from "@sveltejs/kit";
-import {
-  deleteOwnedRow,
-  featureActions,
-  loadFeature,
-} from "$server/domain/crud";
+import { deleteOwnedRow, featureActions } from "$server/domain/crud";
 import { assertCanCreateUpload } from "$server/domain/entitlement-guards";
 import {
   MARKETPLACE_QUERY_MAX_LENGTH,
@@ -12,7 +8,10 @@ import {
   normalizeMarketplaceQuery,
 } from "$server/domain/marketplace";
 import { validateMaintenancePhoto } from "$server/domain/maintenance-photos";
-import { initialHistoryStatus } from "$server/domain/motorcycle-catalog";
+import {
+  initialHistoryStatus,
+  dueStateForPlan,
+} from "$server/domain/motorcycle-catalog";
 import { syncPlanReminder } from "$server/domain/record-sync";
 import { uploadObjectFile } from "$server/r2/files";
 
@@ -303,53 +302,126 @@ export const actions = {
 
 export async function load({ locals }) {
   const ownerId = locals.user!.id;
-  const baseData = await loadFeature(locals.db, "maintenance", locals.user!);
-  const [parts, plans, photos] = await Promise.all([
-    locals.db<Row[]>`
-      select * from maintenance_parts
-      where owner_id = ${ownerId}
-      order by name
-    `.catch(() => [] as Row[]),
-    locals.db<Row[]>`
-      select p.*, m.name as motorcycle_name, m.current_odometer_km,
-        ms.official_url, ms.document_version, ms.page_reference,
-        ms.last_verified_date, ms.coverage_notes,
-        case
-          when p.interval_km is not null and p.last_done_km is not null
-            then p.last_done_km + p.interval_km
-          else null
-        end as next_due_km
-      from maintenance_plan_items p
-      left join motorcycles m on m.id = p.motorcycle_id
-      left join motorcycle_manual_sources ms on ms.id = p.manual_source_id
-      where p.owner_id = ${ownerId}
-      order by p.maintenance_type
-    `.catch(() => [] as Row[]),
-    locals.db<Row[]>`
-      select ph.*, r.date as record_date, r.maintenance_type as record_maintenance_type
-      from maintenance_photos ph
-      left join maintenance_records r on r.id = ph.maintenance_record_id
-      where ph.owner_id = ${ownerId}
-      order by ph.created_at desc
-    `.catch(() => [] as Row[]),
-  ]);
-  return {
-    ...baseData,
-    parts,
-    plans: plans.map(
-      (
-        plan,
-      ): Row & {
-        motorcycles: { name: unknown } | null;
-        next_due_km: number | null;
-      } => ({
+  const [motorcycleRows, recordResult, parts, planRows, photos] =
+    await Promise.all([
+      locals.db<
+        Array<{
+          id: string;
+          name: string;
+          brand: string;
+          model: string;
+          current_odometer_km: number | null;
+        }>
+      >`
+        select id, name, brand, model, current_odometer_km from motorcycles
+        where owner_id = ${ownerId} and is_active = true and deleted_at is null
+        order by name
+      `.catch(() => []),
+      locals.db<Row[]>`
+        select r.*, m.name as motorcycle_name
+        from maintenance_records r
+        left join motorcycles m on m.id = r.motorcycle_id
+        where r.owner_id = ${ownerId}
+        order by r.date desc
+        limit 100
+      `.then(
+        (rows) => ({ rows, error: null as string | null }),
+        (err: unknown) => ({ rows: [] as Row[], error: messageFrom(err) }),
+      ),
+      locals.db<Row[]>`
+        select * from maintenance_parts
+        where owner_id = ${ownerId}
+        order by name
+      `.catch(() => [] as Row[]),
+      locals.db<Row[]>`
+        select p.*, m.name as motorcycle_name,
+          ms.official_url, ms.document_version, ms.page_reference,
+          ms.last_verified_date, ms.coverage_notes,
+          case
+            when p.interval_km is not null and p.last_done_km is not null
+              then p.last_done_km + p.interval_km
+            else null
+          end as next_due_km
+        from maintenance_plan_items p
+        left join motorcycles m on m.id = p.motorcycle_id
+        left join motorcycle_manual_sources ms on ms.id = p.manual_source_id
+        where p.owner_id = ${ownerId}
+        order by p.maintenance_type
+      `.catch(() => [] as Row[]),
+      locals.db<Row[]>`
+        select ph.*, r.date as record_date, r.maintenance_type as record_maintenance_type
+        from maintenance_photos ph
+        left join maintenance_records r on r.id = ph.maintenance_record_id
+        where ph.owner_id = ${ownerId}
+        order by ph.created_at desc
+      `.catch(() => [] as Row[]),
+    ]);
+
+  // Every plan item gets a live urgency read against its bike's odometer so
+  // the page can lead with what needs attention instead of a raw list.
+  const odometerByMotorcycle = new Map(
+    motorcycleRows.map((row) => [
+      String(row.id),
+      Number(row.current_odometer_km ?? 0),
+    ]),
+  );
+
+  const URGENCY_RANK = { overdue: 0, due_now: 1, scheduled: 2 } as const;
+  const plans = planRows
+    .map((plan) => {
+      const motorcycleId = String(plan.motorcycle_id ?? "");
+      const historyStatus = initialHistoryStatus(
+        String(plan.initial_history_status ?? "unknown"),
+      );
+      const lastDoneKm =
+        plan.last_done_km == null ? null : Number(plan.last_done_km);
+      const intervalKm =
+        plan.interval_km == null ? null : Number(plan.interval_km);
+      const currentKm = odometerByMotorcycle.get(motorcycleId) ?? 0;
+      const state = dueStateForPlan({
+        historyStatus,
+        lastDoneKm,
+        intervalKm,
+        currentKm,
+      });
+      const progressPercent =
+        state.urgency === "scheduled" &&
+        lastDoneKm !== null &&
+        intervalKm !== null &&
+        intervalKm > 0
+          ? Math.min(
+              Math.round(
+                (Math.max(currentKm - lastDoneKm, 0) / intervalKm) * 100,
+              ),
+              100,
+            )
+          : null;
+      return {
         ...plan,
-        next_due_km: plan.next_due_km == null ? null : Number(plan.next_due_km),
         motorcycles: plan.motorcycle_name
           ? { name: plan.motorcycle_name }
           : null,
-      }),
-    ),
+        next_due_km: plan.next_due_km == null ? null : Number(plan.next_due_km),
+        urgency: state.urgency,
+        due_km: state.dueKm,
+        remaining_km:
+          state.dueKm !== null ? Math.max(state.dueKm - currentKm, 0) : null,
+        progress_percent: progressPercent,
+        current_km: currentKm,
+      };
+    })
+    .sort(
+      (a, b) =>
+        URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency] ||
+        (a.due_km ?? Infinity) - (b.due_km ?? Infinity),
+    );
+
+  return {
+    errorMessage: recordResult.error ?? "",
+    rows: recordResult.rows,
+    motorcycles: motorcycleRows,
+    parts,
+    plans,
     photos: photos.map(
       (
         photo,

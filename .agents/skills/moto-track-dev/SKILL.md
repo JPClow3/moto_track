@@ -21,11 +21,13 @@ This skill provides procedures and guidelines for developing and verifying the M
 ## 2. Key Commands
 
 ### Environment Setup
+
 ```powershell
 npm ci
 ```
 
 ### Development & Build
+
 ```powershell
 # Run local dev server
 npm run dev
@@ -50,6 +52,7 @@ npm run preview
 ```
 
 ### Cloudflare D1 Migrations (via Wrangler)
+
 ```powershell
 # Apply local migrations
 npx wrangler d1 migrations apply DB --local

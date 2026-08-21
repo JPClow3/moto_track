@@ -6,6 +6,7 @@ import {
   parseFuelCsv,
   parseReceiptFile,
 } from "$server/domain/fuel";
+import { consumptionTrend } from "$server/domain/dashboard";
 import { uploadObjectFile } from "$server/r2/files";
 import { runtimeEnv } from "$server/runtime";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
@@ -203,6 +204,12 @@ export async function load({ locals }) {
     grades,
     preferences,
     reviewPreferences,
+    // Same methodology as the dashboard trend, but surfaced where the rider
+    // actually enters fill-ups so the feedback loop is immediate.
+    consumption: consumptionTrend(fuelRows as never).map((point) => ({
+      date: point.date,
+      value: point.kmPerLiter,
+    })),
     summary: {
       totalSpend,
       totalLiters: fuelRows.reduce(
