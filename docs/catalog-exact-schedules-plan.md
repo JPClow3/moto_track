@@ -5,7 +5,8 @@ provenance, initial service history, exact year/generation/variant schedules,
 and the "what is due now" surface.
 
 Sections 1–5 are **shipped**. Section 6 is the remaining work, which is
-content transcription rather than code.
+content transcription rather than code — plus the two code-side gaps it
+listed, which shipped in August 2026 (see 6.1 and 6.2).
 
 ---
 
@@ -160,3 +161,29 @@ policy / `to anon` / `to authenticated` syntax, guard constraint additions with
 `if not exists`, use fixed date literals rather than `now()`, and pin
 `search_path` on any new plpgsql function — all enforced by
 [migration-syntax.test.ts](../tests/unit/migration-syntax.test.ts).
+
+### 6.1 Shipped: the picker states when no schedule will be created
+
+`applyMotorcycleTemplate` only creates plan items from exact schedules, so a
+line-template selection (or an exact one with an untranscribed table) always
+meant an empty maintenance plan. The picker now says so before saving:
+[CatalogPicker.svelte](../src/lib/components/CatalogPicker.svelte) renders a
+`catalog.noScheduleItems` warning whenever the resolved template is not exact
+or has zero items (pt-BR + en copy in both locale files). The rider learns the
+consequence at selection time instead of after creating the motorcycle.
+
+### 6.2 Shipped: staff view of manual sources by verification age
+
+The admin console now lists every `motorcycle_manual_sources` row joined to
+its template, ordered oldest verification first, with per-template item counts
+([+page.server.ts](<../src/routes/(app)/admin/+page.server.ts>),
+[+page.svelte](<../src/routes/(app)/admin/+page.svelte>)). A zero count is
+highlighted red, which is exactly the transcription backlog this section asks
+staff to work down.
+
+While there, the broken `createTemplate` action was repaired for the
+model-first schema: it now upserts the `motorcycle_models` row from the form's
+brand/model/variant, links the template via `model_id`, validates year input,
+and creates new templates as `is_catalog_visible = false` so nothing reaches
+the picker without a manual source. Previously it inserted without `model_id`,
+which made the action unusable after the model-first migration.

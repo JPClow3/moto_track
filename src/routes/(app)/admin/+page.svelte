@@ -320,8 +320,12 @@
           class="field"
           id="template-variant"
           name="variant"
-          placeholder="Versão"
+          placeholder="Versão (vazio = Linha)"
         />
+        <p class="text-xs text-[var(--muted)]">
+          O template nasce invisível no catálogo; registre a fonte oficial e a
+          tabela de manutenção antes de torná-lo visível.
+        </p>
         <button class="button-secondary" type="submit" disabled={formBusy}
           >Criar template</button
         >
@@ -355,6 +359,63 @@
           {:else}
             <p class="text-[var(--muted)]">Sem solicitações abertas.</p>
           {/each}
+        </div>
+      </div>
+
+      <div class="panel p-4 xl:col-span-2">
+        <h2 class="display text-xl">Fontes do catálogo por verificação</h2>
+        <p class="mt-1 text-sm text-[var(--muted)]">
+          Verificação mais antiga primeiro. Um modelo exato com 0 itens não gera
+          agenda; um modelo Linha nunca gera — transcreva a tabela antes de
+          torná-lo visível.
+        </p>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-[var(--muted)]">
+                <th class="py-1 pr-4 font-medium">Modelo</th>
+                <th class="py-1 pr-4 font-medium">Anos</th>
+                <th class="py-1 pr-4 font-medium">Documento</th>
+                <th class="py-1 pr-4 font-medium">Verificado em</th>
+                <th class="py-1 font-medium">Itens</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each data.manualSources as source}
+                <tr class="border-t border-[var(--line)]">
+                  <td class="py-1.5 pr-4">
+                    {source.brand}
+                    {source.model}
+                    {source.variant}
+                    {#if source.is_exact_schedule}
+                      <span
+                        class="label-tech ml-1 rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] text-[var(--accent)]"
+                        >Exata</span
+                      >
+                    {/if}
+                  </td>
+                  <td class="py-1.5 pr-4">
+                    {source.year_from}–{source.year_to ?? source.year_from}
+                  </td>
+                  <td class="py-1.5 pr-4">{source.document_version}</td>
+                  <td class="py-1.5 pr-4">{source.last_verified_date}</td>
+                  <td
+                    class="py-1.5 {source.maintenance_count === 0
+                      ? 'font-semibold text-danger'
+                      : ''}"
+                  >
+                    {source.maintenance_count}
+                  </td>
+                </tr>
+              {:else}
+                <tr>
+                  <td colspan="5" class="py-4 text-center text-[var(--muted)]">
+                    Nenhuma fonte registrada.
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

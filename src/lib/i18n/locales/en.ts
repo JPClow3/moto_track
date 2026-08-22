@@ -235,6 +235,8 @@ export const en: Messages = {
       "Maintenance table verified in the official manual for this year and variant.",
     lineNote:
       "Model and years documented. Confirm the intervals in the manual for the chosen year.",
+    noScheduleItems:
+      "This model has no transcribed maintenance table yet: no automatic schedule will be created. You can add reminders later on the Maintenance page.",
     sourcedItems: "items with an official source.",
     source: "Source",
     verifiedOn: "verified on",

@@ -28,7 +28,7 @@ export async function load({ locals }) {
     [{ count: requestsCount }],
     settingsRows,
     articles,
-    templates,
+    manualSources,
     requests,
   ] = await Promise.all([
     db<Array<{ count: number }>>`select count(*)::int from profiles`,
@@ -43,10 +43,32 @@ export async function load({ locals }) {
       order by published_at desc
       limit 10
     `,
-    db<Row[]>`
-      select * from motorcycle_templates
-      order by brand, model
-      limit 20
+    // Catalogue QA: sources ordered oldest verification first, with the item
+    // count that decides whether choosing the model yields any schedule at
+    // all. Exact templates must have items; line models are allowed none.
+    db<
+      Array<{
+        template_id: string;
+        brand: string;
+        model: string;
+        year_from: number;
+        year_to: number | null;
+        variant: string;
+        is_exact_schedule: boolean;
+        document_version: string;
+        last_verified_date: string;
+        maintenance_count: number;
+      }>
+    >`
+      select t.id as template_id, t.brand, t.model, t.year_from,
+        t.year_to, t.variant, t.is_exact_schedule,
+        ms.document_version, ms.last_verified_date::text,
+        (select count(*)::int from motorcycle_template_maintenance_items mi
+         where mi.template_id = t.id) as maintenance_count
+      from motorcycle_manual_sources ms
+      join motorcycle_templates t on t.id = ms.template_id
+      order by ms.last_verified_date asc, t.brand, t.model
+      limit 30
     `,
     db<Row[]>`
       select * from account_data_requests
@@ -59,7 +81,7 @@ export async function load({ locals }) {
     isStaff,
     settings: settingsRows[0] ?? null,
     articles,
-    templates,
+    manualSources,
     requests,
     counts: {
       users,
@@ -184,18 +206,58 @@ export const actions = {
     if (!(await staffState(locals)))
       return fail(403, { message: "Staff only." });
     const form = await request.formData();
+    const brand = String(form.get("brand") ?? "").trim();
+    const modelName = String(form.get("model") ?? "").trim();
+    const variant = String(form.get("variant") ?? "").trim() || "Linha";
+    if (!brand || !modelName)
+      return fail(400, { message: "Informe marca e modelo." });
+    const yearFrom = Number(form.get("year_from"));
+    if (!Number.isInteger(yearFrom) || yearFrom <= 1900) {
+      return fail(400, { message: "Ano inicial inválido." });
+    }
+    const yearToValue = String(form.get("year_to") ?? "").trim();
+    let yearTo: number | null = null;
+    if (yearToValue) {
+      const parsedYearTo = Number(yearToValue);
+      if (!Number.isInteger(parsedYearTo) || parsedYearTo < yearFrom) {
+        return fail(400, { message: "Ano final inválido." });
+      }
+      yearTo = parsedYearTo;
+    }
     try {
-      await locals.db`
-        insert into motorcycle_templates ${locals.db({
-          brand: String(form.get("brand") ?? ""),
-          model: String(form.get("model") ?? ""),
-          year_from: Number(form.get("year_from") ?? 2000),
-          year_to: form.get("year_to") ? Number(form.get("year_to")) : null,
-          variant: String(form.get("variant") ?? ""),
+      // The picker resolves (model, year) → template, so every new template
+      // must hang off a motorcycle_models row; without one the catalog
+      // selection trigger and the visibility constraint both reject it.
+      // Upsert keeps repeated saves idempotent without touching is_visible.
+      const [model] = await locals.db<Array<{ id: string }>>`
+        insert into motorcycle_models ${locals.db({
+          brand,
+          model_name: modelName,
+          variant,
+          display_name:
+            variant === "Linha" ? modelName : `${modelName} ${variant}`,
           engine_cc: Number(form.get("engine_cc") ?? 1),
           country_code: String(form.get("country_code") ?? "BR"),
+          is_visible: false,
         })}
+        on conflict (brand, model_name, variant, country_code) do update set
+          updated_at = now()
+        returning id
       `;
+      // New templates stay invisible until a manual source exists — the same
+      // rule the seeded catalogue follows (no source, no picker entry).
+      await locals.db`
+        insert into motorcycle_templates ${locals.db({
+          brand,
+          model: modelName,
+          year_from: yearFrom,
+          year_to: yearTo,
+          variant,
+          engine_cc: Number(form.get("engine_cc") ?? 1),
+          country_code: String(form.get("country_code") ?? "BR"),
+          model_id: model.id,
+          is_catalog_visible: false,
+        })}`;
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }

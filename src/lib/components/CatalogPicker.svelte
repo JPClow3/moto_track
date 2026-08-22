@@ -112,6 +112,14 @@
       {$t("catalog.sourcedItems")}
     {/if}
   </p>
+  {#if !resolvedTemplate.is_exact_schedule || !resolvedTemplate.maintenance_count}
+    <!-- applyMotorcycleTemplate only creates plan items from exact schedules,
+         so say so here instead of letting the rider discover an empty
+         maintenance plan after saving. -->
+    <p class="mt-1 text-xs font-semibold text-[var(--accent)]" role="status">
+      {$t("catalog.noScheduleItems")}
+    </p>
+  {/if}
   <p class="mt-1 text-xs text-[var(--muted)]">
     {$t("catalog.source")}: {resolvedTemplate.document_version} · {resolvedTemplate.page_reference}
     · {$t("catalog.verifiedOn")}

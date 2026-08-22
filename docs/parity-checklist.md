@@ -26,5 +26,5 @@ The Django runtime has been removed from the final tree; do not expect Django te
 - Legal copy on `/privacidade` and `/lgpd` still needs a formal counsel review before launch marketing.
 - Smoke an authenticated garage → checkout → Stripe webhook loop on a preview deployment (requires live Neon + Stripe test keys).
 - Confirm push delivery end-to-end after VAPID + `PUSH_ENCRYPTION_KEY` secrets are set on Pages and the reminder worker.
-- Apply `20260801090000_harden_anonymous_model_benchmarks.sql` to Neon, then smoke an explicit benchmark contribution/update and verify that each metric remains hidden below five valid contributors.
+- ~~Apply `20260801090000_harden_anonymous_model_benchmarks.sql` to Neon, then smoke an explicit benchmark contribution/update and verify that each metric remains hidden below five valid contributors.~~ Applied: `npm run db:push` reports all 17 migrations applied to the live Neon branch (verified 2026-08-22). The below-five-contributor smoke still needs an authenticated preview session.
 - If migrating historical data, run `LEGACY_EXPORT_PATH=legacy-export.json npm run import:legacy` and upload media keys to R2 from the generated manifest.

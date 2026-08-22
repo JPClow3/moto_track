@@ -239,6 +239,8 @@ export const ptBR = {
       "Tabela de manutenção conferida no manual oficial deste ano e versão.",
     lineNote:
       "Modelo e anos documentados. Confirme os intervalos no manual do ano escolhido.",
+    noScheduleItems:
+      "Este modelo ainda não tem tabela de manutenção transcrita: nenhuma agenda automática será criada. Você pode criar lembretes depois na página Manutenção.",
     sourcedItems: "itens com fonte oficial.",
     source: "Fonte",
     verifiedOn: "verificado em",
