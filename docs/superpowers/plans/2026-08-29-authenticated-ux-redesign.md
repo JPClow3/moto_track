@@ -20,6 +20,10 @@
 - No in-scope record page may show a permanent creation form in its default state.
 - Each migrated route must remain functional when its task is committed.
 
+## Behavioral testing rule
+
+Tests must exercise exported helpers, rendered Svelte output, or browser-visible behavior. They must not read component files and assert that source strings are present or absent. Where a task below names a structural assertion, implement it by rendering the real component with `render` from `svelte/server` or by driving the authenticated page with Playwright; the earlier source-reading examples are superseded by this rule.
+
 ---
 
 ### Task 1: Shared authenticated-page primitives
@@ -44,31 +48,32 @@
 
 - [ ] **Step 1: Write the failing shared-component contract test**
 
-Create `tests/unit/authenticated-ux-contract.test.ts` with source-level assertions that guard native dialog semantics, the stable mobile action class, focus restoration, and reduced-motion rules:
+Create `tests/unit/authenticated-ux-contract.test.ts` with rendered-output assertions for the accessible component contract. Use dynamic imports so the initial run produces explicit failed expectations while the components are absent:
 
 ```ts
+import { render } from "svelte/server";
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-
-const source = (path: string) => readFileSync(path, "utf8");
 
 describe("authenticated UX primitives", () => {
-  it("uses native dialogs and restores focus", () => {
-    const sheet = source("src/lib/components/app/RecordSheet.svelte");
-    expect(sheet).toContain("<dialog");
-    expect(sheet).toContain("showModal()");
-    expect(sheet).toContain("returnFocus?.focus()");
+  it("renders a labelled native record dialog", async () => {
+    const module = await import("../../src/lib/components/app/RecordSheet.svelte").catch(() => null);
+    expect(module, "RecordSheet component must exist").not.toBeNull();
+    const { body } = render(module!.default, {
+      props: { title: "New fill-up", closeLabel: "Close" },
+    });
+    expect(body).toContain("<dialog");
+    expect(body).toContain("New fill-up");
+    expect(body).toContain('aria-label="Close"');
   });
 
-  it("keeps the mobile action above bottom navigation", () => {
-    const action = source("src/lib/components/app/PageAction.svelte");
-    expect(action).toContain("page-action-mobile");
-    expect(action).toContain("aria-label");
-  });
-
-  it("removes sheet motion when reduced motion is requested", () => {
-    const sheet = source("src/lib/components/app/RecordSheet.svelte");
-    expect(sheet).toContain("prefers-reduced-motion: reduce");
+  it("renders one explicitly labelled primary action", async () => {
+    const module = await import("../../src/lib/components/app/PageAction.svelte").catch(() => null);
+    expect(module, "PageAction component must exist").not.toBeNull();
+    const { body } = render(module!.default, {
+      props: { label: "Add fill-up", ariaLabel: "Add fill-up" },
+    });
+    expect(body.match(/<button/g)).toHaveLength(1);
+    expect(body).toContain('aria-label="Add fill-up"');
   });
 });
 ```
@@ -629,4 +634,3 @@ git commit -m "fix: finish authenticated UX visual QA"
 ```
 
 If no source file changed, do not create an empty commit.
-
