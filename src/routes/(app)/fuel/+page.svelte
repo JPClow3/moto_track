@@ -684,7 +684,7 @@
               </strong>
               L
             </span>
-            <span>{price(row.price_per_liter_millicents)}/L</span>
+            <span>{price(Number(row.price_per_liter_millicents))}/L</span>
             {#if row.receipt_file_key}
               <a
                 class="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
@@ -702,7 +702,7 @@
           class="flex shrink-0 items-center justify-between gap-4 sm:justify-end"
         >
           <span class="display numeric text-lg font-bold text-[var(--fg)]">
-            {brl(row.total_price_cents)}
+            {brl(Number(row.total_price_cents))}
           </span>
           <form
             method="POST"

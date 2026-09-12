@@ -131,7 +131,17 @@
     }
   }
 
-  $: activityItems = data.recentActivity ?? [];
+  type ActivityItem = {
+    id: string;
+    type: string;
+    date: string;
+    title: string;
+    subtitle: string;
+    amountCents: number;
+    href: string;
+  };
+
+  $: activityItems = (data.recentActivity ?? []) as ActivityItem[];
 </script>
 
 <svelte:head><title>{$t("nav.dashboard")} · Moto Track</title></svelte:head>
