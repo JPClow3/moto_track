@@ -1,10 +1,14 @@
 <script lang="ts">
   import FeaturePage from "$components/FeaturePage.svelte";
+  import RecordSheet from "$lib/components/app/RecordSheet.svelte";
+  import type { ActionChoice } from "$lib/components/app/ActionMenu.svelte";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { locale, t } from "$lib/i18n/store";
   import { formatMoney } from "$lib/i18n";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
+  import Plus from "lucide-svelte/icons/plus";
+
   export let data;
   export let form;
 
@@ -15,8 +19,6 @@
   }) =>
     `${policy.provider}${policy.policy_number ? ` · ${policy.policy_number}` : ""}`;
 
-  // Nav says "Despesas"; the generic config rendered the English "Expenses"
-  // title and an infrastructure-flavoured subtitle on top of the page.
   $: localizedFeature = {
     ...data.feature,
     slug: $t("nav.expenses"),
@@ -29,6 +31,36 @@
   let statusMessage = "";
   let statusRole: "status" | "alert" = "status";
   let confirmDialog: ConfirmDialog;
+  let policySheet: RecordSheet;
+  let claimSheet: RecordSheet;
+
+  $: actionChoices = [
+    {
+      id: "expense-record",
+      label: $t("authenticatedUx.addExpense"),
+      description: $t("authenticatedUx.addExpenseDesc"),
+      recommended: true,
+    },
+    {
+      id: "expense-policy",
+      label: $t("authenticatedUx.addPolicy"),
+      description: $t("authenticatedUx.addPolicyDesc"),
+    },
+    {
+      id: "expense-claim",
+      label: $t("authenticatedUx.addClaim"),
+      description: $t("authenticatedUx.addClaimDesc"),
+    },
+  ] satisfies ActionChoice[];
+
+  function handleActionSelect(event: CustomEvent<string>) {
+    const choice = event.detail;
+    if (choice === "expense-policy") {
+      policySheet?.open();
+    } else if (choice === "expense-claim") {
+      claimSheet?.open();
+    }
+  }
 
   const finishStatus = (result: {
     type: string;
@@ -37,6 +69,8 @@
     if (result.type === "success") {
       statusRole = "status";
       statusMessage = $t("common.actionSuccess");
+      policySheet?.close();
+      claimSheet?.close();
     } else {
       statusRole = "alert";
       statusMessage = String(result.data?.message ?? $t("error.serverBody"));
@@ -71,9 +105,12 @@
 
 <section class="grid gap-6" aria-busy={formBusy}>
   <FeaturePage
+    routeSlug="expenses"
     feature={localizedFeature}
     rows={data.rows}
     motorcycles={data.motorcycles}
+    {actionChoices}
+    on:actionSelect={handleActionSelect}
     errorMessage={!form?.ok
       ? form?.message || data.errorMessage
       : data.errorMessage}
@@ -90,181 +127,323 @@
       {statusMessage}
     </p>
   {/if}
-  <div class="grid gap-6 lg:grid-cols-2">
+
+  <!-- Sheet for New Insurance Policy -->
+  <RecordSheet
+    bind:this={policySheet}
+    title={$t("authenticatedUx.addPolicy")}
+    description={$t("authenticatedUx.addPolicyDesc")}
+    closeLabel={$t("authenticatedUx.close") || "Fechar"}
+  >
     <form
-      class="panel grid gap-2 p-5"
+      class="grid gap-3"
       method="POST"
       action="?/savePolicy"
       use:enhance={enhanceWithStatus}
     >
-      <h2 class="font-bold">Seguro</h2>
-      <label class="field-label" for="expense-policy-motorcycle">Moto</label>
-      <select
-        class="field"
-        id="expense-policy-motorcycle"
-        name="motorcycle_id"
-        required
-        ><option value="">Moto</option>{#each data.motorcycles as m}<option
-            value={m.id}>{m.name}</option
-          >{/each}</select
-      ><label class="field-label" for="expense-policy-provider"
-        >Seguradora</label
-      ><input
-        class="field"
-        id="expense-policy-provider"
-        name="provider"
-        placeholder="Seguradora"
-        required
-      /><label class="field-label" for="expense-policy-number">Apólice</label
-      ><input
-        class="field"
-        id="expense-policy-number"
-        name="policy_number"
-        placeholder="Apólice"
-      /><label class="field-label" for="expense-policy-start"
-        >Início da cobertura</label
-      ><input
-        class="field"
-        id="expense-policy-start"
-        name="coverage_start"
-        type="date"
-        required
-      /><label class="field-label" for="expense-policy-end"
-        >Fim da cobertura</label
-      ><input
-        class="field"
-        id="expense-policy-end"
-        name="coverage_end"
-        type="date"
-        required
-      /><label class="field-label" for="expense-policy-premium">Prêmio</label
-      ><input
-        class="field"
-        id="expense-policy-premium"
-        name="premium"
-        type="number"
-        step=".01"
-        placeholder="Prêmio"
-      /><label class="field-label" for="expense-policy-notify"
-        >Avisar antes (dias)</label
-      ><input
-        class="field"
-        id="expense-policy-notify"
-        name="notify_before_days"
-        type="number"
-        value="30"
-      /><button class="button-primary" type="submit" disabled={formBusy}
-        >Salvar seguro</button
+      <div class="field-group">
+        <label class="field-label" for="expense-policy-motorcycle">Moto</label>
+        <select
+          class="field"
+          id="expense-policy-motorcycle"
+          name="motorcycle_id"
+          required
+        >
+          <option value="">{$t("common.select")}</option>
+          {#each data.motorcycles as m}
+            <option value={m.id}>{m.name}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="expense-policy-provider"
+          >Seguradora</label
+        >
+        <input
+          class="field"
+          id="expense-policy-provider"
+          name="provider"
+          placeholder="Ex: Porto Seguro"
+          required
+        />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="expense-policy-number">Apólice</label>
+        <input
+          class="field"
+          id="expense-policy-number"
+          name="policy_number"
+          placeholder="Número da apólice"
+        />
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="field-group">
+          <label class="field-label" for="expense-policy-start"
+            >Início da cobertura</label
+          >
+          <input
+            class="field"
+            id="expense-policy-start"
+            name="coverage_start"
+            type="date"
+            required
+          />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="expense-policy-end"
+            >Fim da cobertura</label
+          >
+          <input
+            class="field"
+            id="expense-policy-end"
+            name="coverage_end"
+            type="date"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="field-group">
+          <label class="field-label" for="expense-policy-premium"
+            >Prêmio (R$)</label
+          >
+          <input
+            class="field"
+            id="expense-policy-premium"
+            name="premium"
+            type="number"
+            step=".01"
+            placeholder="0,00"
+          />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="expense-policy-notify"
+            >Avisar antes (dias)</label
+          >
+          <input
+            class="field"
+            id="expense-policy-notify"
+            name="notify_before_days"
+            type="number"
+            value="30"
+          />
+        </div>
+      </div>
+
+      <button
+        class="button-primary mt-2 min-h-11"
+        type="submit"
+        disabled={formBusy}
       >
+        {$t("common.save")}
+      </button>
     </form>
+  </RecordSheet>
+
+  <!-- Sheet for New Insurance Claim -->
+  <RecordSheet
+    bind:this={claimSheet}
+    title={$t("authenticatedUx.addClaim")}
+    description={$t("authenticatedUx.addClaimDesc")}
+    closeLabel={$t("authenticatedUx.close") || "Fechar"}
+  >
     <form
-      class="panel grid gap-2 p-5"
+      class="grid gap-3"
       method="POST"
       action="?/saveClaim"
       use:enhance={enhanceWithStatus}
     >
-      <h2 class="font-bold">Sinistro</h2>
       {#if !hasPolicies}
-        <!-- A claim requires a policy; an empty select used to just dead-end. -->
         <p class="text-sm text-[var(--muted)]">
           {$t("expenses.claimNeedsPolicy")}
         </p>
       {/if}
-      <label class="field-label" for="expense-claim-policy">Seguro</label>
-      <select
-        class="field"
-        id="expense-claim-policy"
-        name="policy_id"
-        required
-        disabled={!hasPolicies}
-        ><option value="">{$t("common.select")}</option
-        >{#each data.policies as p}<option value={p.id}>{policyLabel(p)}</option
-          >{/each}</select
-      ><label class="field-label" for="expense-claim-date"
-        >Data do sinistro</label
-      ><input
-        class="field"
-        id="expense-claim-date"
-        name="claim_date"
-        type="date"
-        required
-      /><label class="field-label" for="expense-claim-description"
-        >Descrição</label
-      ><input
-        class="field"
-        id="expense-claim-description"
-        name="description"
-        placeholder="Descrição"
-        required
-      /><label class="field-label" for="expense-claim-amount">Valor</label
-      ><input
-        class="field"
-        id="expense-claim-amount"
-        name="amount"
-        type="number"
-        step=".01"
-        placeholder="Valor"
-      /><label class="field-label" for="expense-claim-status">Status</label
-      ><select class="field" id="expense-claim-status" name="status"
-        ><option value="open">Aberto</option><option value="settled"
-          >Resolvido</option
-        ></select
-      ><button class="button-secondary" type="submit" disabled={formBusy}
-        >Registrar sinistro</button
-      >
-    </form>
-  </div>
-  <div class="grid gap-2">
-    <h2 class="display text-2xl">{$t("expenses.policiesHeading")}</h2>
-    {#each data.policies as p (p.id)}
-      <article class="panel flex min-w-0 flex-wrap justify-between gap-3 p-4">
-        <span class="min-w-0 flex-1 break-words"
-          >{policyLabel(p)} · {$t("expenses.policyDue", {
-            date: p.coverage_end,
-          })} · {brl(p.premium_cents ?? 0)}</span
+
+      <div class="field-group">
+        <label class="field-label" for="expense-claim-policy">Seguro</label>
+        <select
+          class="field"
+          id="expense-claim-policy"
+          name="policy_id"
+          required
+          disabled={!hasPolicies}
         >
-        <form method="POST" action="?/deletePolicy" use:enhance={enhanceDelete}>
-          <input type="hidden" name="id" value={p.id} /><button
-            class="button-danger min-h-11"
-            disabled={formBusy}>{$t("common.delete")}</button
+          <option value="">{$t("common.select")}</option>
+          {#each data.policies as p}
+            <option value={p.id}>{policyLabel(p)}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="expense-claim-date"
+          >Data do sinistro</label
+        >
+        <input
+          class="field"
+          id="expense-claim-date"
+          name="claim_date"
+          type="date"
+          required
+        />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="expense-claim-description"
+          >Descrição</label
+        >
+        <input
+          class="field"
+          id="expense-claim-description"
+          name="description"
+          placeholder="Ex: Queda lateral, reparo carenagem"
+          required
+        />
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="field-group">
+          <label class="field-label" for="expense-claim-amount"
+            >Valor (R$)</label
           >
-        </form>
-      </article>
-    {:else}
-      <p class="panel p-5 text-sm text-[var(--muted)]">
-        {$t("expenses.emptyPolicies")}
-      </p>
-    {/each}
-  </div>
-  <div class="grid gap-2">
-    <h2 class="display text-2xl">{$t("expenses.claimsHeading")}</h2>
-    {#each data.claims as claim (claim.id)}
-      <article class="panel flex min-w-0 flex-wrap justify-between gap-3 p-4">
-        <div class="min-w-0 flex-1 break-words">
-          <p class="font-medium">
-            {claim.insurance_policies
-              ? policyLabel(claim.insurance_policies)
-              : "Seguro"}
-            · {claim.claim_date}
-          </p>
-          <p class="mt-1 text-sm text-[var(--muted)]">
-            {claim.description} · {brl(claim.amount_cents ?? 0)} · {claim.status ===
-            "settled"
-              ? $t("expenses.claimSettled")
-              : $t("expenses.claimOpen")}
-          </p>
+          <input
+            class="field"
+            id="expense-claim-amount"
+            name="amount"
+            type="number"
+            step=".01"
+            placeholder="0,00"
+          />
         </div>
-        <form method="POST" action="?/deleteClaim" use:enhance={enhanceDelete}>
-          <input type="hidden" name="id" value={claim.id} /><button
-            class="button-danger min-h-11"
-            disabled={formBusy}>{$t("common.delete")}</button
+
+        <div class="field-group">
+          <label class="field-label" for="expense-claim-status">Status</label>
+          <select class="field" id="expense-claim-status" name="status">
+            <option value="open">Aberto</option>
+            <option value="settled">Resolvido</option>
+          </select>
+        </div>
+      </div>
+
+      <button
+        class="button-primary mt-2 min-h-11"
+        type="submit"
+        disabled={formBusy || !hasPolicies}
+      >
+        {$t("common.save")}
+      </button>
+    </form>
+  </RecordSheet>
+
+  <!-- Secondary sections: Policies and Claims -->
+  <div class="grid gap-6 lg:grid-cols-2">
+    <!-- Policies Section -->
+    <div class="panel grid gap-3 p-5">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="display text-xl">{$t("expenses.policiesHeading")}</h2>
+        <button
+          type="button"
+          class="button-secondary flex min-h-8 items-center gap-1 px-2 py-1 text-xs"
+          on:click={() => policySheet?.open()}
+        >
+          <Plus size={14} />
+          {$t("authenticatedUx.addPolicy")}
+        </button>
+      </div>
+      <div class="mt-2 grid gap-2">
+        {#each data.policies as p (p.id)}
+          <article
+            class="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3"
           >
-        </form>
-      </article>
-    {:else}
-      <p class="panel p-5 text-sm text-[var(--muted)]">
-        {$t("expenses.emptyClaims")}
-      </p>
-    {/each}
+            <div class="min-w-0 flex-1 break-words">
+              <p class="text-sm font-medium">{policyLabel(p)}</p>
+              <p class="text-xs text-[var(--muted)]">
+                {$t("expenses.policyDue", { date: p.coverage_end })} · {brl(
+                  p.premium_cents ?? 0,
+                )}
+              </p>
+            </div>
+            <form
+              method="POST"
+              action="?/deletePolicy"
+              use:enhance={enhanceDelete}
+            >
+              <input type="hidden" name="id" value={p.id} />
+              <button
+                class="button-danger min-h-9 px-2 py-1 text-xs"
+                disabled={formBusy}
+              >
+                {$t("common.delete")}
+              </button>
+            </form>
+          </article>
+        {:else}
+          <p class="p-4 text-center text-sm text-[var(--muted)]">
+            {$t("expenses.emptyPolicies")}
+          </p>
+        {/each}
+      </div>
+    </div>
+
+    <!-- Claims Section -->
+    <div class="panel grid gap-3 p-5">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="display text-xl">{$t("expenses.claimsHeading")}</h2>
+        <button
+          type="button"
+          class="button-secondary flex min-h-8 items-center gap-1 px-2 py-1 text-xs"
+          disabled={!hasPolicies}
+          on:click={() => claimSheet?.open()}
+        >
+          <Plus size={14} />
+          {$t("authenticatedUx.addClaim")}
+        </button>
+      </div>
+      <div class="mt-2 grid gap-2">
+        {#each data.claims as claim (claim.id)}
+          <article
+            class="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3"
+          >
+            <div class="min-w-0 flex-1 break-words">
+              <p class="text-sm font-medium">
+                {claim.insurance_policies
+                  ? policyLabel(claim.insurance_policies)
+                  : "Seguro"}
+                · {claim.claim_date}
+              </p>
+              <p class="mt-0.5 text-xs text-[var(--muted)]">
+                {claim.description} · {brl(claim.amount_cents ?? 0)} · {claim.status ===
+                "settled"
+                  ? $t("expenses.claimSettled")
+                  : $t("expenses.claimOpen")}
+              </p>
+            </div>
+            <form
+              method="POST"
+              action="?/deleteClaim"
+              use:enhance={enhanceDelete}
+            >
+              <input type="hidden" name="id" value={claim.id} />
+              <button
+                class="button-danger min-h-9 px-2 py-1 text-xs"
+                disabled={formBusy}
+              >
+                {$t("common.delete")}
+              </button>
+            </form>
+          </article>
+        {:else}
+          <p class="p-4 text-center text-sm text-[var(--muted)]">
+            {$t("expenses.emptyClaims")}
+          </p>
+        {/each}
+      </div>
+    </div>
   </div>
 </section>

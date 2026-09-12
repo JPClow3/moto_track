@@ -1,10 +1,26 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
-  import { CircleGauge } from "lucide-svelte";
+  import CircleGauge from "lucide-svelte/icons/circle-gauge";
+  import Download from "lucide-svelte/icons/download";
+  import BookOpen from "lucide-svelte/icons/book-open";
+  import Edit from "lucide-svelte/icons/edit-2";
+  import Trash2 from "lucide-svelte/icons/trash-2";
   import { locale, t } from "$lib/i18n/store";
   import { formatMoney } from "$lib/i18n";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
+  import PageHeader from "$lib/components/app/PageHeader.svelte";
+  import PageAction from "$lib/components/app/PageAction.svelte";
+  import BikeContextBar from "$lib/components/app/BikeContextBar.svelte";
+  import SignalStrip, {
+    type Signal,
+  } from "$lib/components/app/SignalStrip.svelte";
+  import ActionMenu, {
+    type ActionChoice,
+  } from "$lib/components/app/ActionMenu.svelte";
+  import RecordSheet from "$lib/components/app/RecordSheet.svelte";
+  import PageOverflowMenu from "$lib/components/app/PageOverflowMenu.svelte";
+
   export let data;
   export let form;
 
@@ -14,19 +30,76 @@
 
   type LifeEstimate = { projectedChangeKm: number; remainingKm: number } | null;
   type TireRow = Record<string, unknown> & {
+    id: string;
     life_estimate?: LifeEstimate;
     current_km?: number | null;
     motorcycle_name?: string | null;
+    motorcycle_id?: string;
+    position?: string;
+    brand_model?: string;
+    installed_at?: string;
+    installed_odometer_km?: number | string | null;
+    wear_percent?: number | string | null;
+    estimated_change_km?: number | string | null;
+    cost_cents?: number | null;
+    is_active?: boolean;
   };
 
   $: hasMotorcycles = data.motorcycles.length > 0;
   $: activeTires = (data.activeTires ?? []) as TireRow[];
   $: historyTires = (data.rows ?? []) as TireRow[];
 
+  let selectedMotorcycleId = data.motorcycles[0]?.id
+    ? String(data.motorcycles[0].id)
+    : "";
+  $: currentMotorcycle =
+    data.motorcycles.find(
+      (m: Record<string, unknown>) =>
+        String(m.id) === String(selectedMotorcycleId),
+    ) ?? data.motorcycles[0];
+
   let formBusy = false;
   let statusMessage = "";
   let statusRole: "status" | "alert" = "status";
   let confirmDialog: ConfirmDialog;
+
+  let actionMenu: ActionMenu;
+  let pressureSheet: RecordSheet;
+  let installSheet: RecordSheet;
+  let editSheet: RecordSheet;
+  let catalogSheet: RecordSheet;
+  let editingTire: TireRow | null = null;
+
+  const tireChoices: ActionChoice[] = [
+    {
+      id: "tires-pressure",
+      label: $t("authenticatedUx.logPressure") || "Aferir calibragem",
+      description:
+        $t("authenticatedUx.logPressureDesc") || "Pressão atual dos pneus",
+      recommended: true,
+    },
+    {
+      id: "tires-install",
+      label: $t("authenticatedUx.installTire") || "Instalar ou trocar pneu",
+      description:
+        $t("authenticatedUx.installTireDesc") ||
+        "Novo pneu dianteiro ou traseiro",
+    },
+  ];
+
+  function handleActionSelect(event: CustomEvent<string>) {
+    actionMenu.close();
+    if (event.detail === "tires-pressure") {
+      pressureSheet.open();
+    } else if (event.detail === "tires-install") {
+      installSheet.open();
+    }
+  }
+
+  function openEditTire(tire: TireRow) {
+    editingTire = tire;
+    editSheet.open();
+  }
 
   function positionLabel(position: unknown) {
     const value = String(position ?? "").toLowerCase();
@@ -37,8 +110,6 @@
     return String(position ?? "—");
   }
 
-  // Wear below 60% is healthy, up to 85% is a planning hint, past that the
-  // swap stops being a someday item — the bar colour carries that urgency.
   function wearColor(wearPercent: number) {
     if (wearPercent >= 80) return "var(--danger)";
     if (wearPercent >= 60) return "var(--warning)";
@@ -62,6 +133,12 @@
     return async ({ result, update }) => {
       formBusy = false;
       finishStatus(result);
+      if (result.type === "success") {
+        pressureSheet?.close();
+        installSheet?.close();
+        editSheet?.close();
+        catalogSheet?.close();
+      }
       await update();
     };
   };
@@ -80,25 +157,132 @@
       await update();
     };
   };
+
+  $: frontTire = activeTires.find(
+    (t) =>
+      String(t.position).toLowerCase().includes("diant") ||
+      String(t.position).toLowerCase().includes("front"),
+  );
+  $: rearTire = activeTires.find(
+    (t) =>
+      String(t.position).toLowerCase().includes("tras") ||
+      String(t.position).toLowerCase().includes("rear"),
+  );
+
+  $: signals = [
+    frontTire
+      ? {
+          label: `${$t("tires.positionFront")} · ${frontTire.brand_model || ""}`,
+          value: `${Number(frontTire.wear_percent ?? 0)}% ${$t("tires.wearLabel")}`,
+          hint: frontTire.life_estimate
+            ? $t("tires.remainingKm", {
+                count: km(frontTire.life_estimate.remainingKm),
+              })
+            : undefined,
+        }
+      : {
+          label: $t("tires.positionFront"),
+          value: $t("common.empty"),
+          hint: $t("tires.activeEmptyHint"),
+        },
+    rearTire
+      ? {
+          label: `${$t("tires.positionRear")} · ${rearTire.brand_model || ""}`,
+          value: `${Number(rearTire.wear_percent ?? 0)}% ${$t("tires.wearLabel")}`,
+          hint: rearTire.life_estimate
+            ? $t("tires.remainingKm", {
+                count: km(rearTire.life_estimate.remainingKm),
+              })
+            : undefined,
+        }
+      : {
+          label: $t("tires.positionRear"),
+          value: $t("common.empty"),
+          hint: $t("tires.activeEmptyHint"),
+        },
+    {
+      label: $t("nav.tires"),
+      value: `${activeTires.length} ${$t("garage.active")}`,
+      hint: `${historyTires.length} total`,
+    },
+  ] as Signal[];
 </script>
 
 <svelte:head><title>{$t("tires.pageTitle")} · Moto Track</title></svelte:head>
 
 <section class="grid gap-6" aria-busy={formBusy}>
-  <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-    <div>
-      <p class="eyebrow">
-        <span class="slash-rule" aria-hidden="true"></span>{$t("nav.tires")}
-      </p>
-      <h1 class="display text-4xl">{$t("tires.pageTitle")}</h1>
-      <p class="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-        {$t("tires.pageSubtitle")}
-      </p>
-    </div>
-    <a class="button-secondary" href="/tires/export.csv"
-      >{$t("common.exportCsv")}</a
-    >
-  </div>
+  <PageHeader
+    eyebrow={$t("nav.tires")}
+    title={$t("tires.pageTitle")}
+    description={$t("tires.pageSubtitle")}
+  >
+    <svelte:fragment slot="actions">
+      <PageAction
+        label={$t("authenticatedUx.add")}
+        ariaLabel={$t("authenticatedUx.add")}
+        on:click={() => actionMenu?.open()}
+      />
+    </svelte:fragment>
+    <svelte:fragment slot="overflow">
+      <PageOverflowMenu label={$t("authenticatedUx.moreActions")}>
+        <a
+          class="focus-ring flex items-center gap-2 rounded px-3 py-2 text-sm text-[var(--fg)] hover:bg-[var(--line)]"
+          href="/tires/export.csv"
+        >
+          <Download size={14} aria-hidden="true" />
+          <span>{$t("common.exportCsv")}</span>
+        </a>
+        <button
+          type="button"
+          class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--line)]"
+          on:click={() => catalogSheet?.open()}
+        >
+          <BookOpen size={14} aria-hidden="true" />
+          <span>{$t("tires.catalogHeading")}</span>
+        </button>
+      </PageOverflowMenu>
+    </svelte:fragment>
+  </PageHeader>
+
+  <ActionMenu
+    bind:this={actionMenu}
+    title={$t("nav.tires")}
+    closeLabel={$t("authenticatedUx.close")}
+    choices={tireChoices}
+    on:select={handleActionSelect}
+  />
+
+  <BikeContextBar
+    name={currentMotorcycle
+      ? String(currentMotorcycle.name)
+      : $t("maintenance.bikeFallback")}
+    model={currentMotorcycle
+      ? `${currentMotorcycle.brand || ""} ${currentMotorcycle.model || ""}`.trim()
+      : ""}
+    odometerKm={currentMotorcycle?.current_odometer_km ?? null}
+  >
+    <svelte:fragment slot="selection">
+      {#if data.motorcycles.length > 1}
+        <div class="flex items-center gap-2">
+          <label for="tires-bike-select" class="sr-only">
+            {$t("authenticatedUx.selectBike")}
+          </label>
+          <select
+            id="tires-bike-select"
+            class="field px-2 py-1 text-xs"
+            bind:value={selectedMotorcycleId}
+            aria-label={$t("authenticatedUx.selectBike")}
+          >
+            {#each data.motorcycles as moto (moto.id)}
+              <option value={moto.id}>{moto.name}</option>
+            {/each}
+          </select>
+        </div>
+      {/if}
+    </svelte:fragment>
+  </BikeContextBar>
+
+  <SignalStrip {signals} />
 
   {#if !hasMotorcycles}
     <div
@@ -137,8 +321,20 @@
 
   <ConfirmDialog bind:this={confirmDialog} confirmLabel={$t("common.delete")} />
 
+  <!-- ACTIVE TIRES STATUS CARDS -->
   <div class="grid gap-3">
-    <h2 class="display text-2xl">{$t("tires.activeHeading")}</h2>
+    <div class="flex items-center justify-between">
+      <h2 class="display text-2xl">{$t("tires.activeHeading")}</h2>
+      <button
+        type="button"
+        class="button-secondary min-h-9 px-3 py-1 text-xs"
+        on:click={() => installSheet?.open()}
+        disabled={!hasMotorcycles || formBusy}
+      >
+        {$t("tires.installAction")}
+      </button>
+    </div>
+
     {#if activeTires.length === 0}
       <div
         class="rounded border border-dashed border-[var(--line)] p-8 text-center"
@@ -171,15 +367,28 @@
                   {String(tire.motorcycle_name ?? "—")}
                 </p>
               </div>
-              <form method="POST" use:enhance={enhanceDelete} class="shrink-0">
-                <input type="hidden" name="_intent" value="delete" />
-                <input type="hidden" name="id" value={String(tire.id)} />
+              <div class="flex shrink-0 items-center gap-1">
                 <button
-                  class="button-danger min-h-11 px-3 py-1 text-xs"
-                  type="submit"
-                  disabled={formBusy}>{$t("common.delete")}</button
+                  type="button"
+                  class="button-secondary min-h-9 px-2 py-1 text-xs"
+                  on:click={() => openEditTire(tire)}
+                  title={$t("common.edit")}
                 >
-              </form>
+                  <Edit size={14} aria-hidden="true" />
+                </button>
+                <form method="POST" use:enhance={enhanceDelete}>
+                  <input type="hidden" name="_intent" value="delete" />
+                  <input type="hidden" name="id" value={String(tire.id)} />
+                  <button
+                    class="button-danger min-h-9 px-2 py-1 text-xs"
+                    type="submit"
+                    disabled={formBusy}
+                    title={$t("common.delete")}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                  </button>
+                </form>
+              </div>
             </div>
 
             <div>
@@ -257,442 +466,132 @@
     {/if}
   </div>
 
-  <div class="grid gap-6 lg:grid-cols-2">
-    <form
-      class="panel relative grid gap-3 overflow-hidden p-5"
-      method="POST"
-      use:enhance={enhanceWithStatus}
-    >
-      <div class="corner-slashes" aria-hidden="true"></div>
-      <input type="hidden" name="_intent" value="create" />
-      <h2 class="display relative text-xl">{$t("tires.installFormTitle")}</h2>
-      <div class="relative grid gap-3">
-        <label class="field-label" for="tire-install-motorcycle"
-          >{$t("tires.motorcycleLabel")}</label
-        >
-        <select
-          class="field"
-          id="tire-install-motorcycle"
-          name="motorcycle_id"
-          required
-          disabled={!hasMotorcycles}
-        >
-          {#each data.motorcycles as moto (moto.id)}
-            <option value={moto.id}>{moto.name}</option>
-          {/each}
-        </select>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <div class="field-group">
-            <label class="field-label" for="tire-install-date"
-              >{$t("tires.dateLabel")}</label
-            >
-            <input
-              class="field"
-              id="tire-install-date"
-              type="date"
-              name="installed_at"
-              required
-            />
-          </div>
-          <div class="field-group">
-            <label class="field-label" for="tire-install-position"
-              >{$t("tires.positionLabel")}</label
-            >
-            <select
-              class="field"
-              id="tire-install-position"
-              name="position"
-              required
-            >
-              <option value="dianteiro">{$t("tires.positionFront")}</option>
-              <option value="traseiro">{$t("tires.positionRear")}</option>
-            </select>
-          </div>
-        </div>
-        <label class="field-label" for="tire-install-brand"
-          >{$t("tires.brandModelLabel")}</label
-        >
-        <input
-          class="field"
-          id="tire-install-brand"
-          name="brand_model"
-          required
-        />
-        <div class="grid gap-3 sm:grid-cols-2">
-          <div class="field-group">
-            <label class="field-label" for="tire-install-km"
-              >{$t("tires.installedKmLabel")}</label
-            >
-            <input
-              class="field"
-              id="tire-install-km"
-              type="number"
-              name="installed_odometer_km"
-              min="0"
-              required
-            />
-          </div>
-          <div class="field-group">
-            <label class="field-label" for="tire-install-cost"
-              >{$t("tires.costLabel")}</label
-            >
-            <input
-              class="field"
-              id="tire-install-cost"
-              type="number"
-              step="0.01"
-              min="0"
-              name="cost_cents"
-            />
-          </div>
-        </div>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <div class="field-group">
-            <label class="field-label" for="tire-install-wear"
-              >{$t("tires.wearPercentLabel")}</label
-            >
-            <input
-              class="field"
-              id="tire-install-wear"
-              type="number"
-              min="0"
-              max="100"
-              name="wear_percent"
-            />
-            <p class="field-help">{$t("tires.wearOptionalHint")}</p>
-          </div>
-          <div class="field-group">
-            <label class="field-label" for="tire-install-change"
-              >{$t("tires.estimatedChangeKmLabel")}</label
-            >
-            <input
-              class="field"
-              id="tire-install-change"
-              type="number"
-              min="0"
-              name="estimated_change_km"
-            />
-            <p class="field-help">{$t("tires.changeOptionalHint")}</p>
-          </div>
-        </div>
-        <label class="switch">
-          <input type="checkbox" name="is_active" value="true" checked />
-          <span class="switch-track" aria-hidden="true"></span>
-          <span class="text-sm text-[var(--muted)]"
-            >{$t("tires.isActiveLabel")}</span
-          >
-        </label>
+  <!-- PRESSURE SUMMARY STRIP -->
+  <div class="panel p-5">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="display text-xl font-bold">{$t("tires.pressureHeading")}</h3>
+        <p class="text-xs text-[var(--muted)]">
+          {$t("tires.pressureFormTitle")}
+        </p>
       </div>
       <button
-        class="button-primary relative"
-        type="submit"
+        type="button"
+        class="button-secondary min-h-9 px-3 py-1 text-xs"
+        on:click={() => pressureSheet?.open()}
         disabled={!hasMotorcycles || formBusy}
-        >{$t("tires.installAction")}</button
       >
-    </form>
-
-    <div class="panel grid gap-3 p-5">
-      <form
-        class="grid gap-3"
-        method="POST"
-        action="?/savePressure"
-        use:enhance={enhanceWithStatus}
-      >
-        <h2 class="display text-xl">{$t("tires.pressureFormTitle")}</h2>
-        <label class="field-label" for="tire-pressure-motorcycle"
-          >{$t("tires.motorcycleLabel")}</label
-        >
-        <select
-          class="field"
-          id="tire-pressure-motorcycle"
-          name="motorcycle_id"
-          required
-          disabled={!hasMotorcycles}
-        >
-          {#each data.motorcycles as moto (moto.id)}
-            <option value={moto.id}>{moto.name}</option>
-          {/each}
-        </select>
-        <label class="field-label" for="tire-pressure-date"
-          >{$t("tires.dateLabel")}</label
-        >
-        <input
-          class="field"
-          id="tire-pressure-date"
-          type="date"
-          name="date"
-          required
-        />
-        <div class="grid gap-3 sm:grid-cols-2">
-          <div class="field-group">
-            <label class="field-label" for="tire-pressure-front"
-              >{$t("tires.psiFront")}</label
-            >
-            <input
-              class="field"
-              id="tire-pressure-front"
-              type="number"
-              step="0.5"
-              min="0"
-              name="psi_front"
-              required
-            />
-          </div>
-          <div class="field-group">
-            <label class="field-label" for="tire-pressure-rear"
-              >{$t("tires.psiRear")}</label
-            >
-            <input
-              class="field"
-              id="tire-pressure-rear"
-              type="number"
-              step="0.5"
-              min="0"
-              name="psi_rear"
-              required
-            />
-          </div>
-        </div>
-        <button
-          class="button-secondary"
-          type="submit"
-          disabled={!hasMotorcycles || formBusy}
-          >{$t("tires.pressureAction")}</button
-        >
-      </form>
-
-      <div class="border-t border-[var(--line)] pt-3">
-        <h3 class="font-bold">{$t("tires.pressureHeading")}</h3>
-        <ul class="mt-2 grid gap-2">
-          {#each data.pressures.slice(0, 8) as pressure (pressure.id)}
-            <li class="flex items-center justify-between gap-3 text-sm">
-              <span class="min-w-0 break-words"
-                >{pressure.motorcycles?.name ?? "—"} · {pressure.date} ·
-                <strong>{pressure.psi_front}/{pressure.psi_rear}</strong>
-                PSI</span
-              >
-              <form
-                method="POST"
-                action="?/deletePressure"
-                use:enhance={enhanceDelete}
-              >
-                <input type="hidden" name="id" value={String(pressure.id)} />
-                <button
-                  class="button-danger min-h-11 px-3 py-1 text-xs"
-                  disabled={formBusy}>{$t("common.delete")}</button
-                >
-              </form>
-            </li>
-          {:else}
-            <li class="text-sm text-[var(--muted)]">
-              {$t("tires.pressureEmpty")}
-            </li>
-          {/each}
-        </ul>
-      </div>
+        {$t("authenticatedUx.logPressure")}
+      </button>
     </div>
+
+    <ul class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {#each (data.pressures ?? []).slice(0, 4) as pressure (pressure.id)}
+        <li
+          class="flex items-center justify-between gap-2 rounded border border-[var(--line)] p-3 text-sm"
+        >
+          <div class="min-w-0">
+            <p class="text-xs font-medium text-[var(--muted)]">
+              {pressure.motorcycles?.name ?? "—"} · {pressure.date}
+            </p>
+            <p class="mt-0.5 text-base font-bold">
+              {pressure.psi_front}/{pressure.psi_rear}
+              <span class="text-xs font-normal text-[var(--muted)]">PSI</span>
+            </p>
+          </div>
+          <form
+            method="POST"
+            action="?/deletePressure"
+            use:enhance={enhanceDelete}
+          >
+            <input type="hidden" name="id" value={String(pressure.id)} />
+            <button
+              class="button-danger min-h-8 px-2 py-1 text-xs"
+              disabled={formBusy}
+              title={$t("common.delete")}
+            >
+              <Trash2 size={12} aria-hidden="true" />
+            </button>
+          </form>
+        </li>
+      {:else}
+        <li class="text-sm text-[var(--muted)] sm:col-span-2">
+          {$t("tires.pressureEmpty")}
+        </li>
+      {/each}
+    </ul>
   </div>
 
+  <!-- HISTORY TABLE -->
   <div class="panel overflow-hidden">
-    <h2 class="display px-4 pt-4 text-xl">{$t("tires.historyHeading")}</h2>
-    <div class="tire-table-scroll mt-3 overflow-x-auto">
+    <div
+      class="border-b border-[var(--line)] bg-[var(--accent-soft)] px-4 py-2.5"
+    >
+      <span class="label-tech text-[var(--accent)]">
+        {$t("tires.historyHeading")} ({historyTires.length})
+      </span>
+    </div>
+    <div class="tire-table-scroll overflow-x-auto">
       <table class="tire-table w-full text-left text-sm">
         <thead
-          class="border-b border-[var(--line)] text-xs uppercase text-[var(--muted)]"
+          class="border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--fg)_3%,transparent)] text-xs uppercase text-[var(--muted)]"
         >
           <tr>
             <th class="px-4 py-3">{$t("tires.dateLabel")}</th>
-            <th>{$t("tires.positionLabel")}</th>
-            <th>{$t("tires.brandModelLabel")}</th>
-            <th>{$t("tires.motorcycleLabel")}</th>
-            <th>{$t("tires.wearPercentLabel")}</th>
-            <th>{$t("tires.costLabel")}</th>
-            <th>{$t("common.actions")}</th>
+            <th class="px-4 py-3">{$t("tires.positionLabel")}</th>
+            <th class="px-4 py-3">{$t("tires.brandModelLabel")}</th>
+            <th class="px-4 py-3">{$t("tires.motorcycleLabel")}</th>
+            <th class="px-4 py-3">{$t("tires.wearPercentLabel")}</th>
+            <th class="px-4 py-3">{$t("tires.costLabel")}</th>
+            <th class="px-4 py-3">{$t("common.actions")}</th>
           </tr>
         </thead>
         <tbody>
           {#each historyTires as tire (tire.id)}
-            <tr class="border-b border-[var(--line)]">
+            <tr class="row-hover border-b border-[var(--line)]">
               <td class="px-4 py-3" data-label={$t("tires.dateLabel")}
                 >{String(tire.installed_at)}</td
               >
-              <td data-label={$t("tires.positionLabel")}
+              <td class="px-4 py-3" data-label={$t("tires.positionLabel")}
                 >{positionLabel(tire.position)}</td
               >
-              <td data-label={$t("tires.brandModelLabel")}
+              <td class="px-4 py-3" data-label={$t("tires.brandModelLabel")}
                 >{String(tire.brand_model ?? "—")}</td
               >
-              <td data-label={$t("tires.motorcycleLabel")}
+              <td class="px-4 py-3" data-label={$t("tires.motorcycleLabel")}
                 >{String(tire.motorcycle_name ?? "—")}</td
               >
-              <td data-label={$t("tires.wearPercentLabel")}
+              <td class="px-4 py-3" data-label={$t("tires.wearPercentLabel")}
                 >{tire.wear_percent == null
                   ? "—"
                   : `${Number(tire.wear_percent)}%`}</td
               >
-              <td data-label={$t("tires.costLabel")}
+              <td class="px-4 py-3" data-label={$t("tires.costLabel")}
                 >{brl(Number(tire.cost_cents ?? 0))}</td
               >
-              <td class="tire-actions" data-label={$t("common.actions")}>
-                <form method="POST" use:enhance={enhanceDelete}>
-                  <input type="hidden" name="_intent" value="delete" />
-                  <input type="hidden" name="id" value={String(tire.id)} />
+              <td class="px-4 py-3" data-label={$t("common.actions")}>
+                <div class="flex items-center gap-2">
                   <button
-                    class="button-danger min-h-11 px-3 py-1 text-xs"
-                    type="submit"
-                    disabled={formBusy}>{$t("common.delete")}</button
+                    type="button"
+                    class="button-secondary min-h-8 px-2 py-1 text-xs"
+                    on:click={() => openEditTire(tire)}
+                    title={$t("common.edit")}
                   >
-                </form>
-              </td>
-            </tr>
-            <tr class="border-b border-[var(--line)]">
-              <td colspan="7" class="px-4 pb-3">
-                <details>
-                  <summary
-                    class="focus-ring flex min-h-11 cursor-pointer items-center text-sm font-semibold text-[var(--muted)] hover:text-[var(--fg)]"
-                    >{$t("tires.editRecord")}</summary
-                  >
-                  <form
-                    class="mt-2 grid gap-3 md:grid-cols-3"
-                    method="POST"
-                    use:enhance={enhanceWithStatus}
-                  >
-                    <input type="hidden" name="_intent" value="update" />
+                    <Edit size={12} aria-hidden="true" />
+                  </button>
+                  <form method="POST" use:enhance={enhanceDelete}>
+                    <input type="hidden" name="_intent" value="delete" />
                     <input type="hidden" name="id" value={String(tire.id)} />
-                    <input
-                      type="hidden"
-                      name="motorcycle_id"
-                      value={String(tire.motorcycle_id ?? "")}
-                    />
-                    <div class="field-group">
-                      <label class="field-label" for={`edit-${tire.id}-date`}
-                        >{$t("tires.dateLabel")}</label
-                      >
-                      <input
-                        class="field"
-                        id={`edit-${tire.id}-date`}
-                        type="date"
-                        name="installed_at"
-                        value={String(tire.installed_at ?? "")}
-                        required
-                      />
-                    </div>
-                    <div class="field-group">
-                      <label
-                        class="field-label"
-                        for={`edit-${tire.id}-position`}
-                        >{$t("tires.positionLabel")}</label
-                      >
-                      <!-- Same dianteiro/traseiro choices as the install form;
-                           the free-text input used to let junk positions in. -->
-                      <select
-                        class="field"
-                        id={`edit-${tire.id}-position`}
-                        name="position"
-                        required
-                      >
-                        <option
-                          value="dianteiro"
-                          selected={String(tire.position ?? "") === "dianteiro"}
-                          >{$t("tires.positionFront")}</option
-                        >
-                        <option
-                          value="traseiro"
-                          selected={String(tire.position ?? "") === "traseiro"}
-                          >{$t("tires.positionRear")}</option
-                        >
-                        {#if !["dianteiro", "traseiro"].includes(String(tire.position ?? ""))}
-                          <option value={String(tire.position ?? "")} selected>
-                            {String(tire.position ?? "—")}
-                          </option>
-                        {/if}
-                      </select>
-                    </div>
-                    <div class="field-group">
-                      <label class="field-label" for={`edit-${tire.id}-brand`}
-                        >{$t("tires.brandModelLabel")}</label
-                      >
-                      <input
-                        class="field"
-                        id={`edit-${tire.id}-brand`}
-                        name="brand_model"
-                        value={String(tire.brand_model ?? "")}
-                        required
-                      />
-                    </div>
-                    <div class="field-group">
-                      <label class="field-label" for={`edit-${tire.id}-km`}
-                        >{$t("tires.installedKmLabel")}</label
-                      >
-                      <input
-                        class="field"
-                        id={`edit-${tire.id}-km`}
-                        type="number"
-                        name="installed_odometer_km"
-                        value={String(tire.installed_odometer_km ?? "")}
-                        required
-                      />
-                    </div>
-                    <div class="field-group">
-                      <label class="field-label" for={`edit-${tire.id}-cost`}
-                        >{$t("tires.costLabel")}</label
-                      >
-                      <input
-                        class="field"
-                        id={`edit-${tire.id}-cost`}
-                        type="number"
-                        step="0.01"
-                        name="cost_cents"
-                        value={Number(tire.cost_cents ?? 0) / 100}
-                      />
-                    </div>
-                    <div class="field-group">
-                      <label class="field-label" for={`edit-${tire.id}-wear`}
-                        >{$t("tires.wearPercentLabel")}</label
-                      >
-                      <input
-                        class="field"
-                        id={`edit-${tire.id}-wear`}
-                        type="number"
-                        min="0"
-                        max="100"
-                        name="wear_percent"
-                        value={String(tire.wear_percent ?? "")}
-                      />
-                    </div>
-                    <div class="field-group">
-                      <label class="field-label" for={`edit-${tire.id}-change`}
-                        >{$t("tires.estimatedChangeKmLabel")}</label
-                      >
-                      <input
-                        class="field"
-                        id={`edit-${tire.id}-change`}
-                        type="number"
-                        name="estimated_change_km"
-                        value={String(tire.estimated_change_km ?? "")}
-                      />
-                    </div>
-                    <label class="switch items-end">
-                      <input
-                        type="checkbox"
-                        name="is_active"
-                        value="true"
-                        checked={tire.is_active === true}
-                      />
-                      <span class="switch-track" aria-hidden="true"></span>
-                      <span class="text-sm text-[var(--muted)]"
-                        >{$t("tires.isActiveLabel")}</span
-                      >
-                    </label>
-                    <div class="flex items-end">
-                      <button
-                        class="button-primary"
-                        type="submit"
-                        disabled={formBusy}>{$t("common.saveChanges")}</button
-                      >
-                    </div>
+                    <button
+                      class="button-danger min-h-8 px-2 py-1 text-xs"
+                      type="submit"
+                      disabled={formBusy}
+                      title={$t("common.delete")}
+                    >
+                      <Trash2 size={12} aria-hidden="true" />
+                    </button>
                   </form>
-                </details>
+                </div>
               </td>
             </tr>
           {:else}
@@ -710,11 +609,410 @@
     </div>
   </div>
 
-  <details class="panel p-5">
-    <summary class="display cursor-pointer text-xl"
-      >{$t("tires.catalogHeading")}</summary
+  <!-- INSTALL TIRE RECORD SHEET -->
+  <RecordSheet
+    bind:this={installSheet}
+    title={$t("tires.installFormTitle")}
+    closeLabel={$t("authenticatedUx.close")}
+  >
+    <form
+      class="grid gap-4"
+      method="POST"
+      action="?/installTire"
+      use:enhance={enhanceWithStatus}
     >
-    <div class="mt-4 grid gap-6 lg:grid-cols-2">
+      <input type="hidden" name="_intent" value="create" />
+      <div class="field-group">
+        <label class="field-label" for="sheet-install-motorcycle">
+          {$t("tires.motorcycleLabel")}
+        </label>
+        <select
+          class="field"
+          id="sheet-install-motorcycle"
+          name="motorcycle_id"
+          required
+          disabled={!hasMotorcycles}
+        >
+          {#each data.motorcycles as moto (moto.id)}
+            <option
+              value={moto.id}
+              selected={String(moto.id) === String(selectedMotorcycleId)}
+            >
+              {moto.name}
+            </option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="field-group">
+          <label class="field-label" for="sheet-install-date">
+            {$t("tires.dateLabel")}
+          </label>
+          <input
+            class="field"
+            id="sheet-install-date"
+            type="date"
+            name="installed_at"
+            required
+          />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="sheet-install-position">
+            {$t("tires.positionLabel")}
+          </label>
+          <select
+            class="field"
+            id="sheet-install-position"
+            name="position"
+            required
+          >
+            <option value="dianteiro">{$t("tires.positionFront")}</option>
+            <option value="traseiro">{$t("tires.positionRear")}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="sheet-install-brand">
+          {$t("tires.brandModelLabel")}
+        </label>
+        <input
+          class="field"
+          id="sheet-install-brand"
+          name="brand_model"
+          required
+        />
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="field-group">
+          <label class="field-label" for="sheet-install-km">
+            {$t("tires.installedKmLabel")}
+          </label>
+          <input
+            class="field"
+            id="sheet-install-km"
+            type="number"
+            name="installed_odometer_km"
+            min="0"
+            required
+          />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="sheet-install-cost">
+            {$t("tires.costLabel")}
+          </label>
+          <input
+            class="field"
+            id="sheet-install-cost"
+            type="number"
+            step="0.01"
+            min="0"
+            name="cost_cents"
+          />
+        </div>
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="field-group">
+          <label class="field-label" for="sheet-install-wear">
+            {$t("tires.wearPercentLabel")}
+          </label>
+          <input
+            class="field"
+            id="sheet-install-wear"
+            type="number"
+            min="0"
+            max="100"
+            name="wear_percent"
+          />
+          <p class="field-help">{$t("tires.wearOptionalHint")}</p>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="sheet-install-change">
+            {$t("tires.estimatedChangeKmLabel")}
+          </label>
+          <input
+            class="field"
+            id="sheet-install-change"
+            type="number"
+            min="0"
+            name="estimated_change_km"
+          />
+          <p class="field-help">{$t("tires.changeOptionalHint")}</p>
+        </div>
+      </div>
+
+      <label class="switch">
+        <input type="checkbox" name="is_active" value="true" checked />
+        <span class="switch-track" aria-hidden="true"></span>
+        <span class="text-sm text-[var(--muted)]"
+          >{$t("tires.isActiveLabel")}</span
+        >
+      </label>
+
+      <button
+        class="button-primary min-h-11 w-full"
+        type="submit"
+        disabled={!hasMotorcycles || formBusy}
+      >
+        {$t("tires.installAction")}
+      </button>
+    </form>
+  </RecordSheet>
+
+  <!-- LOG PRESSURE RECORD SHEET -->
+  <RecordSheet
+    bind:this={pressureSheet}
+    title={$t("tires.pressureFormTitle")}
+    closeLabel={$t("authenticatedUx.close")}
+  >
+    <form
+      class="grid gap-4"
+      method="POST"
+      action="?/savePressure"
+      use:enhance={enhanceWithStatus}
+    >
+      <div class="field-group">
+        <label class="field-label" for="sheet-pressure-motorcycle">
+          {$t("tires.motorcycleLabel")}
+        </label>
+        <select
+          class="field"
+          id="sheet-pressure-motorcycle"
+          name="motorcycle_id"
+          required
+          disabled={!hasMotorcycles}
+        >
+          {#each data.motorcycles as moto (moto.id)}
+            <option
+              value={moto.id}
+              selected={String(moto.id) === String(selectedMotorcycleId)}
+            >
+              {moto.name}
+            </option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="sheet-pressure-date">
+          {$t("tires.dateLabel")}
+        </label>
+        <input
+          class="field"
+          id="sheet-pressure-date"
+          type="date"
+          name="date"
+          required
+        />
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="field-group">
+          <label class="field-label" for="sheet-pressure-front">
+            {$t("tires.psiFront")}
+          </label>
+          <input
+            class="field"
+            id="sheet-pressure-front"
+            type="number"
+            step="0.5"
+            min="0"
+            name="psi_front"
+            required
+          />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="sheet-pressure-rear">
+            {$t("tires.psiRear")}
+          </label>
+          <input
+            class="field"
+            id="sheet-pressure-rear"
+            type="number"
+            step="0.5"
+            min="0"
+            name="psi_rear"
+            required
+          />
+        </div>
+      </div>
+
+      <button
+        class="button-primary min-h-11 w-full"
+        type="submit"
+        disabled={!hasMotorcycles || formBusy}
+      >
+        {$t("tires.pressureAction")}
+      </button>
+    </form>
+  </RecordSheet>
+
+  <!-- EDIT TIRE RECORD SHEET -->
+  <RecordSheet
+    bind:this={editSheet}
+    title={$t("tires.editRecord")}
+    closeLabel={$t("authenticatedUx.close")}
+  >
+    {#if editingTire}
+      <form
+        class="grid gap-4"
+        method="POST"
+        action="?/installTire"
+        use:enhance={enhanceWithStatus}
+      >
+        <input type="hidden" name="_intent" value="update" />
+        <input type="hidden" name="id" value={String(editingTire.id)} />
+        <input
+          type="hidden"
+          name="motorcycle_id"
+          value={String(editingTire.motorcycle_id ?? selectedMotorcycleId)}
+        />
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="field-group">
+            <label class="field-label" for="sheet-edit-date">
+              {$t("tires.dateLabel")}
+            </label>
+            <input
+              class="field"
+              id="sheet-edit-date"
+              type="date"
+              name="installed_at"
+              value={String(editingTire.installed_at ?? "")}
+              required
+            />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="sheet-edit-position">
+              {$t("tires.positionLabel")}
+            </label>
+            <select
+              class="field"
+              id="sheet-edit-position"
+              name="position"
+              required
+            >
+              <option
+                value="dianteiro"
+                selected={String(editingTire.position ?? "") === "dianteiro"}
+              >
+                {$t("tires.positionFront")}
+              </option>
+              <option
+                value="traseiro"
+                selected={String(editingTire.position ?? "") === "traseiro"}
+              >
+                {$t("tires.positionRear")}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="sheet-edit-brand">
+            {$t("tires.brandModelLabel")}
+          </label>
+          <input
+            class="field"
+            id="sheet-edit-brand"
+            name="brand_model"
+            value={String(editingTire.brand_model ?? "")}
+            required
+          />
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="field-group">
+            <label class="field-label" for="sheet-edit-km">
+              {$t("tires.installedKmLabel")}
+            </label>
+            <input
+              class="field"
+              id="sheet-edit-km"
+              type="number"
+              name="installed_odometer_km"
+              value={String(editingTire.installed_odometer_km ?? "")}
+              required
+            />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="sheet-edit-cost">
+              {$t("tires.costLabel")}
+            </label>
+            <input
+              class="field"
+              id="sheet-edit-cost"
+              type="number"
+              step="0.01"
+              name="cost_cents"
+              value={Number(editingTire.cost_cents ?? 0) / 100}
+            />
+          </div>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="field-group">
+            <label class="field-label" for="sheet-edit-wear">
+              {$t("tires.wearPercentLabel")}
+            </label>
+            <input
+              class="field"
+              id="sheet-edit-wear"
+              type="number"
+              min="0"
+              max="100"
+              name="wear_percent"
+              value={String(editingTire.wear_percent ?? "")}
+            />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="sheet-edit-change">
+              {$t("tires.estimatedChangeKmLabel")}
+            </label>
+            <input
+              class="field"
+              id="sheet-edit-change"
+              type="number"
+              name="estimated_change_km"
+              value={String(editingTire.estimated_change_km ?? "")}
+            />
+          </div>
+        </div>
+
+        <label class="switch">
+          <input
+            type="checkbox"
+            name="is_active"
+            value="true"
+            checked={editingTire.is_active === true}
+          />
+          <span class="switch-track" aria-hidden="true"></span>
+          <span class="text-sm text-[var(--muted)]"
+            >{$t("tires.isActiveLabel")}</span
+          >
+        </label>
+
+        <button
+          class="button-primary min-h-11 w-full"
+          type="submit"
+          disabled={formBusy}
+        >
+          {$t("common.saveChanges")}
+        </button>
+      </form>
+    {/if}
+  </RecordSheet>
+
+  <!-- TIRE CATALOG RECORD SHEET -->
+  <RecordSheet
+    bind:this={catalogSheet}
+    title={$t("tires.catalogHeading")}
+    closeLabel={$t("authenticatedUx.close")}
+  >
+    <div class="grid gap-6">
       <form
         class="grid gap-3"
         method="POST"
@@ -724,23 +1022,23 @@
         <h3 class="font-bold">{$t("tires.catalogFormTitle")}</h3>
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="field-group">
-            <label class="field-label" for="tire-product-manufacturer"
-              >{$t("tires.manufacturerLabel")}</label
-            >
+            <label class="field-label" for="sheet-product-manufacturer">
+              {$t("tires.manufacturerLabel")}
+            </label>
             <input
               class="field"
-              id="tire-product-manufacturer"
+              id="sheet-product-manufacturer"
               name="manufacturer"
               required
             />
           </div>
           <div class="field-group">
-            <label class="field-label" for="tire-product-model"
-              >{$t("tires.modelLabel")}</label
-            >
+            <label class="field-label" for="sheet-product-model">
+              {$t("tires.modelLabel")}
+            </label>
             <input
               class="field"
-              id="tire-product-model"
+              id="sheet-product-model"
               name="model_name"
               required
             />
@@ -748,18 +1046,18 @@
         </div>
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="field-group">
-            <label class="field-label" for="tire-product-type"
-              >{$t("tires.tireTypeLabel")}</label
-            >
-            <input class="field" id="tire-product-type" name="tire_type" />
+            <label class="field-label" for="sheet-product-type">
+              {$t("tires.tireTypeLabel")}
+            </label>
+            <input class="field" id="sheet-product-type" name="tire_type" />
           </div>
           <div class="field-group">
-            <label class="field-label" for="tire-product-price"
-              >{$t("tires.priceLabel")}</label
-            >
+            <label class="field-label" for="sheet-product-price">
+              {$t("tires.priceLabel")}
+            </label>
             <input
               class="field"
-              id="tire-product-price"
+              id="sheet-product-price"
               type="number"
               step="0.01"
               min="0"
@@ -768,117 +1066,52 @@
           </div>
         </div>
         <button
-          class="button-secondary justify-self-start"
+          class="button-primary min-h-11 w-full"
           type="submit"
-          disabled={formBusy}>{$t("common.save")}</button
+          disabled={formBusy}
         >
+          {$t("common.save")}
+        </button>
       </form>
 
-      <div class="grid gap-2">
-        <h3 class="font-bold">{$t("tires.catalogHeading")}</h3>
-        {#each data.products as product (product.id)}
-          <div
-            class="flex items-center justify-between gap-3 border-t border-[var(--line)] py-2 text-sm"
-          >
-            <span class="min-w-0 break-words"
-              >{product.manufacturer}
-              {product.model_name} ·
-              {product.tire_type} ·
-              {brl(Number(product.price_cents ?? 0))}</span
+      <div class="border-t border-[var(--line)] pt-4">
+        <h3 class="mb-3 font-bold">{$t("tires.catalogHeading")}</h3>
+        <ul class="grid gap-2">
+          {#each data.products ?? [] as product (product.id)}
+            <li
+              class="flex items-center justify-between gap-3 rounded border border-[var(--line)] p-3 text-sm"
             >
-            <form
-              method="POST"
-              action="?/deleteProduct"
-              use:enhance={enhanceDelete}
-            >
-              <input type="hidden" name="id" value={String(product.id)} />
-              <button
-                class="button-danger min-h-11 px-3 py-1 text-xs"
-                disabled={formBusy}>{$t("common.delete")}</button
+              <span class="min-w-0 break-words">
+                <strong>{product.manufacturer}</strong>
+                {product.model_name}
+                <span class="block text-xs text-[var(--muted)]">
+                  {product.tire_type || "—"} · {brl(
+                    Number(product.price_cents ?? 0),
+                  )}
+                </span>
+              </span>
+              <form
+                method="POST"
+                action="?/deleteProduct"
+                use:enhance={enhanceDelete}
               >
-            </form>
-          </div>
-        {:else}
-          <p class="text-sm text-[var(--muted)]">{$t("tires.catalogEmpty")}</p>
-        {/each}
+                <input type="hidden" name="id" value={String(product.id)} />
+                <button
+                  class="button-danger min-h-8 px-2 py-1 text-xs"
+                  disabled={formBusy}
+                  title={$t("common.delete")}
+                >
+                  <Trash2 size={12} aria-hidden="true" />
+                </button>
+              </form>
+            </li>
+          {:else}
+            <li class="text-sm text-[var(--muted)]">
+              {$t("common.empty")}
+            </li>
+          {/each}
+        </ul>
       </div>
     </div>
-  </details>
+  </RecordSheet>
 </section>
-
-<style>
-  @media (max-width: 1279px) {
-    .tire-table-scroll {
-      overflow-x: visible;
-    }
-
-    .tire-table {
-      min-width: 0;
-      border-collapse: separate;
-      border-spacing: 0 0.75rem;
-    }
-
-    .tire-table thead {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
-    .tire-table tbody tr {
-      display: block;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-radius: 4px;
-      background: var(--panel);
-    }
-
-    .tire-table tbody tr td {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 1rem;
-      min-width: 0;
-      padding: 0.75rem 1rem;
-    }
-
-    .tire-table tbody tr td::before {
-      flex: 0 0 36%;
-      min-width: 0;
-      color: var(--muted);
-      content: attr(data-label);
-      font-family: "Barlow Condensed", Barlow, ui-sans-serif, sans-serif;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      line-height: 1.2;
-      text-transform: uppercase;
-    }
-
-    .tire-table tbody tr td > * {
-      min-width: 0;
-      max-width: 64%;
-      overflow-wrap: anywhere;
-    }
-
-    .tire-table tbody tr td.tire-actions {
-      display: block;
-    }
-
-    .tire-table tbody tr td.tire-actions::before {
-      display: block;
-      margin-bottom: 0.65rem;
-    }
-  }
-
-  @media (min-width: 1280px) {
-    .tire-table {
-      min-width: 780px;
-    }
-  }
-</style>

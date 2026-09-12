@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { goto } from "$app/navigation";
   import type { SubmitFunction } from "@sveltejs/kit";
   import MetricCard from "$components/MetricCard.svelte";
   import HealthGauge from "$components/charts/HealthGauge.svelte";
@@ -7,7 +8,21 @@
   import CostDonut from "$components/charts/CostDonut.svelte";
   import ActivityHeatmap from "$components/charts/ActivityHeatmap.svelte";
   import SpendBars from "$components/charts/SpendBars.svelte";
-  import { ArrowRight, Bell, Fuel, TriangleAlert } from "lucide-svelte";
+  import PageHeader from "$lib/components/app/PageHeader.svelte";
+  import PageAction from "$lib/components/app/PageAction.svelte";
+  import BikeContextBar from "$lib/components/app/BikeContextBar.svelte";
+  import ActivityTimeline from "$lib/components/app/ActivityTimeline.svelte";
+  import ActionMenu, {
+    type ActionChoice,
+  } from "$lib/components/app/ActionMenu.svelte";
+  import ArrowRight from "lucide-svelte/icons/arrow-right";
+  import Bell from "lucide-svelte/icons/bell";
+  import Fuel from "lucide-svelte/icons/fuel";
+  import TriangleAlert from "lucide-svelte/icons/triangle-alert";
+  import Wrench from "lucide-svelte/icons/wrench";
+  import CircleDot from "lucide-svelte/icons/circle-dot";
+  import Receipt from "lucide-svelte/icons/receipt";
+  import ChevronDown from "lucide-svelte/icons/chevron-down";
   import { t, format } from "$lib/i18n/store";
   import type { MessageKey } from "$lib/i18n";
 
@@ -15,15 +30,15 @@
   export let form;
 
   let benchmarkBusy = false;
+  let actionMenu: ActionMenu;
+
   const enhanceBenchmark: SubmitFunction = () => {
     benchmarkBusy = true;
     return async ({ result, update }) => {
       benchmarkBusy = false;
       await update();
       if (result.type === "failure") {
-        // The action result is rendered through `form` below; keeping the
-        // request state local prevents unrelated dashboard forms from being
-        // disabled by this opt-in operation.
+        // The action result is rendered through `form` below.
       }
     };
   };
@@ -48,6 +63,8 @@
     fees: "dashboard.costFees",
   } as const satisfies Record<string, MessageKey>;
 
+  $: primaryBike = (data.garage ?? [])[0] ?? null;
+
   // costBreakdown() returns keys, not wording, so the labels are attached here.
   $: costSlices = (data.costs ?? []).map(
     (slice: { key: keyof typeof COST_KEY; cents: number }) => ({
@@ -59,7 +76,6 @@
   $: consumption = data.consumption ?? [];
   $: latestConsumption = consumption[consumption.length - 1]?.value ?? null;
   $: previousConsumption = consumption[consumption.length - 2]?.value ?? null;
-  // Higher km/L is better, so an increase is a win worth calling out.
   $: consumptionDelta =
     latestConsumption !== null && previousConsumption
       ? Math.round(
@@ -77,19 +93,53 @@
     "na média": "dashboard.benchmarkAverage",
     "sem comparação": "dashboard.benchmarkUnavailable",
   } as const satisfies Record<string, MessageKey>;
+
+  $: actionChoices = [
+    {
+      id: "fuel",
+      label: $t("authenticatedUx.fuelShortcut"),
+      description: $t("authenticatedUx.fuelShortcutDesc"),
+      recommended: true,
+    },
+    {
+      id: "maintenance",
+      label: $t("authenticatedUx.maintenanceShortcut"),
+      description: $t("authenticatedUx.maintenanceShortcutDesc"),
+    },
+    {
+      id: "expenses",
+      label: $t("authenticatedUx.expenseShortcut"),
+      description: $t("authenticatedUx.expenseShortcutDesc"),
+    },
+    {
+      id: "documents",
+      label: $t("authenticatedUx.documentShortcut"),
+      description: $t("authenticatedUx.documentShortcutDesc"),
+    },
+  ] satisfies ActionChoice[];
+
+  function handleActionSelect(event: CustomEvent<string>) {
+    const choiceId = event.detail;
+    if (choiceId === "fuel") {
+      goto("/fuel?action=add");
+    } else if (choiceId === "maintenance") {
+      goto("/maintenance?action=add");
+    } else if (choiceId === "expenses") {
+      goto("/expenses?action=add");
+    } else if (choiceId === "documents") {
+      goto("/documents?action=add");
+    }
+  }
+
+  $: activityItems = data.recentActivity ?? [];
 </script>
 
 <svelte:head><title>{$t("nav.dashboard")} · Moto Track</title></svelte:head>
 
 <section class="grid gap-6">
-  <div class="flex flex-wrap items-end justify-between gap-4">
-    <div>
-      <p class="eyebrow">
-        <span class="slash-rule" aria-hidden="true"></span>
-        {$t("nav.dashboard")}
-      </p>
-      <h1 class="display mt-3 text-5xl">{$t("nav.tagline")}</h1>
-      <p class="live mt-3 flex items-center gap-2 text-sm text-[var(--muted)]">
+  <PageHeader eyebrow={$t("nav.dashboard")} title={$t("nav.tagline")}>
+    <svelte:fragment slot="context">
+      <p class="live flex items-center gap-2 text-sm text-[var(--muted)]">
         <span class="live-dot" aria-hidden="true"></span>
         {$t("dashboard.synced")} · {$format.date(
           `${data.today}T00:00:00.000Z`,
@@ -101,8 +151,48 @@
           },
         )}
       </p>
+    </svelte:fragment>
+    <svelte:fragment slot="actions">
+      <PageAction
+        label={$t("authenticatedUx.addRecord")}
+        ariaLabel={$t("authenticatedUx.addRecord")}
+        on:click={() => actionMenu?.open()}
+      />
+    </svelte:fragment>
+  </PageHeader>
+
+  <ActionMenu
+    bind:this={actionMenu}
+    title={$t("authenticatedUx.addRecord")}
+    choices={actionChoices}
+    on:select={handleActionSelect}
+  />
+
+  {#if primaryBike}
+    <BikeContextBar
+      name={primaryBike.name}
+      model={primaryBike.detail}
+      odometerKm={primaryBike.odometer}
+    >
+      <svelte:fragment slot="selection">
+        {#if (data.garage ?? []).length > 1}
+          <span class="label-tech mr-2 text-xs text-[var(--muted)]">
+            {(data.garage ?? []).length} motos
+          </span>
+        {/if}
+        <a href="/garage" class="button-secondary min-h-9 px-3 py-1 text-xs">
+          {$t("dashboard.openGarage")}
+        </a>
+      </svelte:fragment>
+    </BikeContextBar>
+  {:else}
+    <div class="panel p-5 text-center">
+      <p class="text-sm text-[var(--muted)]">{$t("dashboard.noActiveBike")}</p>
+      <a class="button-primary mt-2 inline-block" href="/garage"
+        >{$t("dashboard.addBike")}</a
+      >
     </div>
-  </div>
+  {/if}
 
   {#if data.errorMessage}
     <div
@@ -118,584 +208,696 @@
   {/if}
 
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    {#each data.metrics as metric (metric.label)}
+    {#each data.metrics ?? [] as metric (metric.label)}
       <MetricCard {...metric} />
     {/each}
   </div>
 
+  {#if (data.dueNow ?? []).length > 0}
+    <article class="panel border-l-4 border-l-[var(--accent)] p-6">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="eyebrow text-[var(--accent)]">
+            <span class="slash-rule" aria-hidden="true"></span>{$t(
+              "nav.maintenance",
+            )}
+          </p>
+          <h2 class="display mt-2 text-2xl">{$t("dashboard.dueNowTitle")}</h2>
+          <p class="mt-1 text-sm text-[var(--muted)]">
+            {$t("dashboard.dueNowHint")}
+          </p>
+        </div>
+        <a class="button-secondary min-h-11 shrink-0" href="/maintenance"
+          >{$t("dashboard.openMaintenance")}</a
+        >
+      </div>
+      <div class="mt-5 grid gap-3 lg:grid-cols-2">
+        {#each data.dueNow as item (item.id)}
+          <article
+            class="rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-4"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="break-words font-semibold">{item.maintenanceType}</p>
+                <p class="text-sm text-[var(--muted)]">{item.motorcycleName}</p>
+              </div>
+              <span
+                class="label-tech shrink-0 rounded px-2 py-1 text-xs {item.urgency ===
+                'overdue'
+                  ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                  : 'text-[var(--warning)]'}"
+                style={item.urgency === "overdue"
+                  ? undefined
+                  : "background: color-mix(in srgb, var(--warning) 10%, transparent)"}
+              >
+                {item.urgency === "overdue"
+                  ? $t("dashboard.urgencyOverdue")
+                  : $t("dashboard.urgencyNow")}
+              </span>
+            </div>
+            <p class="mt-3 text-sm">
+              {$t("dashboard.estimate")}:
+              <strong>{$format.money(item.estimatedCostCents)}</strong>
+              {#if item.dueKm !== null}
+                · {$t("dashboard.milestone")}: {$format.distance(
+                  item.dueKm,
+                )}{/if}
+            </p>
+            <p class="mt-1 text-xs text-[var(--muted)]">
+              {item.confidence === "confirmed"
+                ? $t("dashboard.confidenceConfirmed")
+                : item.confidence === "reported_not_done"
+                  ? $t("dashboard.confidenceNotDone")
+                  : $t("dashboard.confidenceUnknown")}
+            </p>
+            {#if item.officialUrl}
+              <a
+                class="mt-3 inline-block text-sm font-semibold text-brand underline-offset-4 hover:underline"
+                href={item.officialUrl}
+                target="_blank"
+                rel="noreferrer"
+                >{$t("dashboard.officialManual")}: {item.documentVersion} · {item.pageReference}
+                ↗</a
+              >
+            {:else}
+              <p class="mt-3 text-xs text-[var(--muted)]">
+                {$t("dashboard.noManualSource")}
+                <a
+                  class="font-semibold text-brand underline-offset-4 hover:underline"
+                  href="/garage">{$t("dashboard.openGarage")}</a
+                >
+              </p>
+            {/if}
+          </article>
+        {/each}
+      </div>
+    </article>
+  {/if}
+
+  <!-- Activity Timeline -->
   <article class="panel p-6">
-    <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="mb-4 flex items-center justify-between gap-3">
       <div>
-        <p class="eyebrow">
-          <span class="slash-rule" aria-hidden="true"></span>{$t(
-            "nav.maintenance",
-          )}
-        </p>
-        <h2 class="display mt-2 text-2xl">{$t("dashboard.dueNowTitle")}</h2>
+        <h2 class="display text-2xl">{$t("dashboard.activity")}</h2>
         <p class="mt-1 text-sm text-[var(--muted)]">
-          {$t("dashboard.dueNowHint")}
+          {$t("dashboard.activityHint")}
         </p>
       </div>
-      <a class="button-secondary min-h-11 shrink-0" href="/maintenance"
-        >{$t("dashboard.openMaintenance")}</a
-      >
     </div>
-    <div class="mt-5 grid gap-3 lg:grid-cols-2">
-      {#each data.dueNow as item (item.id)}
-        <article class="rounded border border-[var(--line)] p-4">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="break-words font-semibold">{item.maintenanceType}</p>
-              <p class="text-sm text-[var(--muted)]">{item.motorcycleName}</p>
-            </div>
-            <span
-              class="label-tech shrink-0 rounded px-2 py-1 text-xs {item.urgency ===
-              'overdue'
-                ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                : 'text-[var(--warning)]'}"
-              style={item.urgency === "overdue"
-                ? undefined
-                : "background: color-mix(in srgb, var(--warning) 10%, transparent)"}
-            >
-              {item.urgency === "overdue"
-                ? $t("dashboard.urgencyOverdue")
-                : $t("dashboard.urgencyNow")}
-            </span>
-          </div>
-          <p class="mt-3 text-sm">
-            {$t("dashboard.estimate")}:
-            <strong>{$format.money(item.estimatedCostCents)}</strong>
-            {#if item.dueKm !== null}
-              · {$t("dashboard.milestone")}: {$format.distance(item.dueKm)}{/if}
-          </p>
-          <p class="mt-1 text-xs text-[var(--muted)]">
-            {item.confidence === "confirmed"
-              ? $t("dashboard.confidenceConfirmed")
-              : item.confidence === "reported_not_done"
-                ? $t("dashboard.confidenceNotDone")
-                : $t("dashboard.confidenceUnknown")}
-          </p>
-          {#if item.officialUrl}
-            <a
-              class="mt-3 inline-block text-sm font-semibold text-brand underline-offset-4 hover:underline"
-              href={item.officialUrl}
-              target="_blank"
-              rel="noreferrer"
-              >{$t("dashboard.officialManual")}: {item.documentVersion} · {item.pageReference}
-              ↗</a
-            >
-          {:else}
-            <p class="mt-3 text-xs text-[var(--muted)]">
-              {$t("dashboard.noManualSource")}
-              <a
-                class="font-semibold text-brand underline-offset-4 hover:underline"
-                href="/garage">{$t("dashboard.openGarage")}</a
-              >
-            </p>
-          {/if}
-        </article>
-      {:else}
-        <div
-          class="flex items-center gap-3 rounded border border-dashed border-[var(--line)] bg-[var(--panel-sunken)] p-5 text-sm text-[var(--muted)] lg:col-span-2"
+    <ActivityTimeline
+      title=""
+      emptyMessage={$t("authenticatedUx.emptyTimeline")}
+      items={activityItems}
+    >
+      <svelte:fragment slot="item" let:item>
+        {@const act = item}
+        <a
+          href={act.href}
+          class="flex items-center justify-between gap-3 rounded p-2 transition-colors hover:bg-[var(--panel-sunken)]"
         >
-          <span class="tick" aria-hidden="true"></span>
-          <p>{$t("dashboard.dueNowEmpty")}</p>
-        </div>
-      {/each}
-    </div>
+          <div class="flex min-w-0 items-center gap-3">
+            <div
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-[var(--line)] bg-[var(--accent-soft)] text-[var(--accent)]"
+              aria-hidden="true"
+            >
+              {#if act.type === "fuel"}
+                <Fuel size={16} />
+              {:else if act.type === "maintenance"}
+                <Wrench size={16} />
+              {:else if act.type === "tires"}
+                <CircleDot size={16} />
+              {:else}
+                <Receipt size={16} />
+              {/if}
+            </div>
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium text-[var(--fg)]">
+                {act.title}
+              </p>
+              <p class="text-xs text-[var(--muted)]">
+                {act.date}{act.subtitle ? ` · ${act.subtitle}` : ""}
+              </p>
+            </div>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            {#if act.amountCents > 0}
+              <span class="numeric text-sm font-semibold">
+                {$format.money(act.amountCents)}
+              </span>
+            {/if}
+            <ArrowRight size={14} class="text-[var(--muted)]" />
+          </div>
+        </a>
+      </svelte:fragment>
+    </ActivityTimeline>
   </article>
 
-  <!-- Telemetry + health -->
-  <div class="grid gap-4 xl:grid-cols-[2fr_1fr]">
-    <article class="panel p-6">
-      <div class="flex flex-wrap items-start justify-between gap-4">
+  <!-- Secondary Analytics in Disclosures below Activity -->
+  <div class="grid gap-6">
+    <!-- Telemetry + Health -->
+    <details class="panel group/telemetry p-6" open>
+      <summary
+        class="focus-ring flex cursor-pointer items-center justify-between gap-4 rounded"
+      >
         <div>
-          <h2 class="display text-2xl">{$t("dashboard.consumption")}</h2>
+          <h2 class="display text-2xl">
+            {$t("dashboard.consumption")} &amp; {$t("dashboard.health")}
+          </h2>
           <p class="mt-1 text-sm text-[var(--muted)]">
             {$t("dashboard.consumptionHint")}
           </p>
         </div>
-        {#if latestConsumption !== null}
-          <div class="text-right">
-            <p class="display numeric text-4xl text-[var(--accent)]">
-              {$format.number(latestConsumption, {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1,
-              })}
-            </p>
-            <p class="label-tech text-[var(--muted)]">
-              km/L
-              {#if consumptionDelta !== null && consumptionDelta !== 0}
-                <span
-                  class:up={consumptionDelta > 0}
-                  class:down={consumptionDelta < 0}
-                >
-                  {consumptionDelta > 0 ? "▲" : "▼"}
-                  {$format.number(Math.abs(consumptionDelta), {
-                    minimumFractionDigits: 1,
-                    maximumFractionDigits: 1,
-                  })}%
-                </span>
-              {/if}
-            </p>
-          </div>
-        {/if}
-      </div>
-
-      {#if consumption.length > 1}
-        <div class="mt-4">
-          <TrendChart points={consumption} unit="km/L" />
-        </div>
-      {:else}
-        <div
-          class="mt-6 flex flex-col items-center justify-center gap-3 py-14 text-center"
-        >
-          <Fuel class="h-6 w-6 text-[var(--accent)]" />
-          <p class="label-tech text-[var(--accent)]">
-            {$t("dashboard.consumptionEmpty")}
-          </p>
-          <p class="max-w-xs text-sm text-[var(--muted)]">
-            {$t("dashboard.consumptionEmptyHint")}
-          </p>
-          <a class="button-secondary mt-1" href="/fuel"
-            >{$t("dashboard.addFuel")}</a
-          >
-        </div>
-      {/if}
-    </article>
-
-    <article class="panel relative overflow-hidden p-6">
-      <div class="corner-slashes" aria-hidden="true"></div>
-      <div class="relative">
-        <h2 class="display text-2xl">{$t("dashboard.health")}</h2>
-        <p class="mt-1 text-sm text-[var(--muted)]">
-          {#if data.healthMotorcycle}
-            {$t("dashboard.healthWorst")} · {data.healthMotorcycle}
-          {:else}
-            {$t("dashboard.healthHint")}
-          {/if}
-        </p>
-
-        {#if data.health}
-          <div class="mt-5">
-            <HealthGauge
-              score={data.health.total}
-              status={$t(HEALTH_KEY[data.health.status])}
-            />
-          </div>
-
-          <ul class="mt-5 grid gap-2 border-t border-[var(--line)] pt-4">
-            {#each data.upcoming as reminder (reminder.id)}
-              <li class="flex items-center gap-3 text-sm">
-                <span
-                  class="tick"
-                  class:tick--accent={reminder.status === "overdue"}
-                  aria-hidden="true"
-                ></span>
-                <span class="flex-1 truncate">{reminder.title}</span>
-                <span
-                  class="label-tech shrink-0 text-[10px] {reminder.status ===
-                  'overdue'
-                    ? 'text-[var(--accent)]'
-                    : 'text-[var(--muted)]'}"
-                >
-                  {#if reminder.remainingKm !== null && reminder.status !== "ok"}
-                    {reminder.remainingKm <= 0
-                      ? $t(STATUS_KEY.overdue)
-                      : $format.distance(reminder.remainingKm)}
-                  {:else if reminder.remainingDays !== null && reminder.status !== "ok"}
-                    {reminder.remainingDays <= 0
-                      ? $t(STATUS_KEY.overdue)
-                      : $t("dashboard.inDays", {
-                          count: reminder.remainingDays,
-                        })}
-                  {:else}
-                    {$t(STATUS_KEY[reminder.status])}
-                  {/if}
-                </span>
-              </li>
-            {:else}
-              <li class="py-2 text-sm text-[var(--muted)]">
-                {$t("dashboard.noReminders")}
-              </li>
-            {/each}
-          </ul>
-          <a class="button-secondary mt-4 w-full" href="/reminders">
-            <Bell class="h-3.5 w-3.5" />
-            {$t("dashboard.viewReminders")}
-          </a>
-        {:else}
-          <div
-            class="flex flex-col items-center justify-center gap-3 py-16 text-center"
-          >
-            <TriangleAlert class="h-6 w-6 text-[var(--accent)]" />
-            <p class="label-tech text-[var(--accent)]">
-              {$t("dashboard.emptyGarage")}
-            </p>
-            <p class="max-w-[15rem] text-sm text-[var(--muted)]">
-              {$t("dashboard.emptyGarageHint")}
-            </p>
-            <a class="button-primary mt-1" href="/garage"
-              >{$t("dashboard.addBike")}</a
-            >
-          </div>
-        {/if}
-      </div>
-    </article>
-  </div>
-
-  <article class="panel p-6">
-    <!-- The benchmark is a power feature with a consent form; keeping it open
-         by default pushed real telemetry below the fold. -->
-    <details class="group/benchmark">
-      <summary
-        class="focus-ring flex cursor-pointer flex-wrap items-start justify-between gap-4 rounded"
-      >
-        <span class="min-w-0">
-          <span class="eyebrow block">
-            <span class="slash-rule" aria-hidden="true"></span>
-            {$t("dashboard.benchmarkEyebrow")}
-          </span>
-          <span class="display mt-2 block text-2xl">
-            {$t("dashboard.benchmarkTitle")}
-          </span>
-          <span class="mt-1 block max-w-2xl text-sm text-[var(--muted)]">
-            {$t("dashboard.benchmarkHint")}
-          </span>
-        </span>
-        {#if data.benchmark?.modelLabel}
-          <span
-            class="label-tech shrink-0 rounded border border-[var(--line)] px-2 py-1"
-          >
-            {data.benchmark.modelLabel}
-          </span>
-        {/if}
-        <span
-          class="label-tech shrink-0 text-[10px] text-[var(--accent)] transition-transform duration-200 group-open/benchmark:rotate-180"
-          aria-hidden="true">▼</span
-        >
+        <ChevronDown
+          size={18}
+          class="text-[var(--muted)] transition-transform duration-200 group-open/telemetry:rotate-180"
+        />
       </summary>
 
-      <p class="mt-4 max-w-2xl text-sm text-[var(--muted)]">
-        {$t("dashboard.benchmarkPrivacy")}
-      </p>
-
-      {#if data.benchmark?.modelLabel}
-        <div class="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
-          <div class="rounded border border-[var(--line)] p-4">
-            <p class="label-tech text-[var(--muted)]">
-              {$t("dashboard.benchmarkYourData")}
-            </p>
-            <dl class="mt-3 grid gap-2 text-sm">
-              <div class="flex items-center justify-between gap-3">
-                <dt>{$t("dashboard.benchmarkConsumption")}</dt>
-                <dd class="numeric font-semibold">
-                  {#if data.benchmark.local?.consumptionKmL !== null && data.benchmark.local?.consumptionKmL !== undefined}
-                    {$format.number(data.benchmark.local.consumptionKmL, {
-                      minimumFractionDigits: 1,
-                      maximumFractionDigits: 2,
-                    })}
-                    km/L
-                  {:else}
-                    {$t("dashboard.benchmarkUnavailable")}
-                  {/if}
-                </dd>
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <dt>{$t("dashboard.benchmarkMaintenance")}</dt>
-                <dd class="numeric text-right font-semibold">
-                  {#if data.benchmark.local?.maintenanceCentsPer1000Km !== null && data.benchmark.local?.maintenanceCentsPer1000Km !== undefined}
-                    {$format.money(
-                      data.benchmark.local.maintenanceCentsPer1000Km,
-                    )}
-                  {:else}
-                    {$t("dashboard.benchmarkUnavailable")}
-                  {/if}
-                </dd>
-              </div>
-            </dl>
-            {#if data.benchmark.local}
-              <p class="mt-3 text-xs text-[var(--muted)]">
-                {data.benchmark.local.consumptionIntervals} intervalos de consumo
-                ·
-                {data.benchmark.local.maintenanceRecords} registros de manutenção
-                {#if data.benchmark.local.distanceKm !== null}
-                  · {$format.distance(data.benchmark.local.distanceKm)} registrados
-                {/if}
+      <div class="mt-6 grid gap-6 xl:grid-cols-[2fr_1fr]">
+        <div class="rounded border border-[var(--line)] p-4">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h3 class="display text-xl">{$t("dashboard.consumption")}</h3>
+              <p class="mt-1 text-sm text-[var(--muted)]">
+                {$t("dashboard.consumptionHint")}
               </p>
+            </div>
+            {#if latestConsumption !== null}
+              <div class="text-right">
+                <p class="display numeric text-4xl text-[var(--accent)]">
+                  {$format.number(latestConsumption, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  })}
+                </p>
+                <p class="label-tech text-[var(--muted)]">
+                  km/L
+                  {#if consumptionDelta !== null && consumptionDelta !== 0}
+                    <span
+                      class:up={consumptionDelta > 0}
+                      class:down={consumptionDelta < 0}
+                    >
+                      {consumptionDelta > 0 ? "▲" : "▼"}
+                      {$format.number(Math.abs(consumptionDelta), {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      })}%
+                    </span>
+                  {/if}
+                </p>
+              </div>
             {/if}
           </div>
 
-          <div class="rounded border border-[var(--line)] p-4">
-            <div class="flex items-center justify-between gap-3">
-              <p class="label-tech text-[var(--muted)]">
-                {$t("dashboard.benchmarkCohort")}
-              </p>
-              <span class="label-tech text-[var(--muted)]">
-                {$t("dashboard.benchmarkSample", {
-                  count: data.benchmark.sampleSize,
-                })}
-              </span>
+          {#if consumption.length > 1}
+            <div class="mt-4">
+              <TrendChart points={consumption} unit="km/L" />
             </div>
-            {#if data.benchmark.sampleSize < data.benchmark.minimumSampleSize}
-              <p class="mt-4 text-sm text-[var(--muted)]">
-                {$t("dashboard.benchmarkNeedMore", {
-                  count:
-                    data.benchmark.minimumSampleSize -
-                    data.benchmark.sampleSize,
-                })}
+          {:else}
+            <div
+              class="mt-6 flex flex-col items-center justify-center gap-3 py-14 text-center"
+            >
+              <Fuel class="h-6 w-6 text-[var(--accent)]" />
+              <p class="label-tech text-[var(--accent)]">
+                {$t("dashboard.consumptionEmpty")}
               </p>
+              <p class="max-w-xs text-sm text-[var(--muted)]">
+                {$t("dashboard.consumptionEmptyHint")}
+              </p>
+              <a class="button-secondary mt-1" href="/fuel"
+                >{$t("dashboard.addFuel")}</a
+              >
+            </div>
+          {/if}
+        </div>
+
+        <div
+          class="relative overflow-hidden rounded border border-[var(--line)] p-4"
+        >
+          <div class="corner-slashes" aria-hidden="true"></div>
+          <div class="relative">
+            <h3 class="display text-xl">{$t("dashboard.health")}</h3>
+            <p class="mt-1 text-sm text-[var(--muted)]">
+              {#if data.healthMotorcycle}
+                {$t("dashboard.healthWorst")} · {data.healthMotorcycle}
+              {:else}
+                {$t("dashboard.healthHint")}
+              {/if}
+            </p>
+
+            {#if data.health}
+              <div class="mt-5">
+                <HealthGauge
+                  score={data.health.total}
+                  status={$t(HEALTH_KEY[data.health.status])}
+                />
+              </div>
+
+              <ul class="mt-5 grid gap-2 border-t border-[var(--line)] pt-4">
+                {#each data.upcoming ?? [] as reminder (reminder.id)}
+                  <li class="flex items-center gap-3 text-sm">
+                    <span
+                      class="tick"
+                      class:tick--accent={reminder.status === "overdue"}
+                      aria-hidden="true"
+                    ></span>
+                    <span class="flex-1 truncate">{reminder.title}</span>
+                    <span
+                      class="label-tech shrink-0 text-[10px] {reminder.status ===
+                      'overdue'
+                        ? 'text-[var(--accent)]'
+                        : 'text-[var(--muted)]'}"
+                    >
+                      {#if reminder.remainingKm !== null && reminder.status !== "ok"}
+                        {reminder.remainingKm <= 0
+                          ? $t(STATUS_KEY.overdue)
+                          : $format.distance(reminder.remainingKm)}
+                      {:else if reminder.remainingDays !== null && reminder.status !== "ok"}
+                        {reminder.remainingDays <= 0
+                          ? $t(STATUS_KEY.overdue)
+                          : $t("dashboard.inDays", {
+                              count: reminder.remainingDays,
+                            })}
+                      {:else}
+                        {$t(STATUS_KEY[reminder.status])}
+                      {/if}
+                    </span>
+                  </li>
+                {:else}
+                  <li class="py-2 text-sm text-[var(--muted)]">
+                    {$t("dashboard.noReminders")}
+                  </li>
+                {/each}
+              </ul>
+              <a class="button-secondary mt-4 w-full" href="/reminders">
+                <Bell class="h-3.5 w-3.5" />
+                {$t("dashboard.viewReminders")}
+              </a>
+            {:else}
+              <div
+                class="flex flex-col items-center justify-center gap-3 py-16 text-center"
+              >
+                <TriangleAlert class="h-6 w-6 text-[var(--accent)]" />
+                <p class="label-tech text-[var(--accent)]">
+                  {$t("dashboard.emptyGarage")}
+                </p>
+                <p class="max-w-[15rem] text-sm text-[var(--muted)]">
+                  {$t("dashboard.emptyGarageHint")}
+                </p>
+                <a class="button-primary mt-1" href="/garage"
+                  >{$t("dashboard.addBike")}</a
+                >
+              </div>
             {/if}
-            {#if data.benchmark.cohort}
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- Benchmark Disclosure -->
+    <article class="panel p-6">
+      <details class="group/benchmark">
+        <summary
+          class="focus-ring flex cursor-pointer flex-wrap items-start justify-between gap-4 rounded"
+        >
+          <span class="min-w-0">
+            <span class="eyebrow block">
+              <span class="slash-rule" aria-hidden="true"></span>
+              {$t("dashboard.benchmarkEyebrow")}
+            </span>
+            <span class="display mt-2 block text-2xl">
+              {$t("dashboard.benchmarkTitle")}
+            </span>
+            <span class="mt-1 block max-w-2xl text-sm text-[var(--muted)]">
+              {$t("dashboard.benchmarkHint")}
+            </span>
+          </span>
+          {#if data.benchmark?.modelLabel}
+            <span
+              class="label-tech shrink-0 rounded border border-[var(--line)] px-2 py-1"
+            >
+              {data.benchmark.modelLabel}
+            </span>
+          {/if}
+          <span
+            class="label-tech shrink-0 text-[10px] text-[var(--accent)] transition-transform duration-200 group-open/benchmark:rotate-180"
+            aria-hidden="true">▼</span
+          >
+        </summary>
+
+        <p class="mt-4 max-w-2xl text-sm text-[var(--muted)]">
+          {$t("dashboard.benchmarkPrivacy")}
+        </p>
+
+        {#if data.benchmark?.modelLabel}
+          <div class="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
+            <div class="rounded border border-[var(--line)] p-4">
+              <p class="label-tech text-[var(--muted)]">
+                {$t("dashboard.benchmarkYourData")}
+              </p>
               <dl class="mt-3 grid gap-2 text-sm">
                 <div class="flex items-center justify-between gap-3">
                   <dt>{$t("dashboard.benchmarkConsumption")}</dt>
-                  <dd class="text-right">
-                    {#if data.benchmark.cohort.consumption.average !== null}
-                      <span class="numeric font-semibold"
-                        >{$format.number(
-                          data.benchmark.cohort.consumption.average,
-                          {
-                            minimumFractionDigits: 1,
-                            maximumFractionDigits: 2,
-                          },
-                        )} km/L</span
-                      >
-                      <span class="ml-1 text-xs text-[var(--muted)]"
-                        >{$t(
-                          benchmarkPositionKey[
-                            data.benchmark.cohort.consumption.position
-                          ],
-                        )}</span
-                      >
+                  <dd class="numeric font-semibold">
+                    {#if data.benchmark.local?.consumptionKmL !== null && data.benchmark.local?.consumptionKmL !== undefined}
+                      {$format.number(data.benchmark.local.consumptionKmL, {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 2,
+                      })}
+                      km/L
                     {:else}
-                      <span class="text-xs text-[var(--muted)]">
-                        {$t("dashboard.benchmarkMetricSample", {
-                          count: data.benchmark.cohort.consumption.sampleSize,
-                          minimum: data.benchmark.minimumSampleSize,
-                        })}
-                      </span>
+                      {$t("dashboard.benchmarkUnavailable")}
                     {/if}
                   </dd>
                 </div>
                 <div class="flex items-center justify-between gap-3">
                   <dt>{$t("dashboard.benchmarkMaintenance")}</dt>
-                  <dd class="text-right">
-                    {#if data.benchmark.cohort.maintenance.average !== null}
-                      <span class="numeric font-semibold"
-                        >{$format.money(
-                          data.benchmark.cohort.maintenance.average,
-                        )}</span
-                      >
-                      <span class="ml-1 text-xs text-[var(--muted)]"
-                        >{$t(
-                          benchmarkPositionKey[
-                            data.benchmark.cohort.maintenance.position
-                          ],
-                        )}</span
-                      >
+                  <dd class="numeric text-right font-semibold">
+                    {#if data.benchmark.local?.maintenanceCentsPer1000Km !== null && data.benchmark.local?.maintenanceCentsPer1000Km !== undefined}
+                      {$format.money(
+                        data.benchmark.local.maintenanceCentsPer1000Km,
+                      )}
                     {:else}
-                      <span class="text-xs text-[var(--muted)]">
-                        {$t("dashboard.benchmarkMetricSample", {
-                          count: data.benchmark.cohort.maintenance.sampleSize,
-                          minimum: data.benchmark.minimumSampleSize,
-                        })}
-                      </span>
+                      {$t("dashboard.benchmarkUnavailable")}
                     {/if}
                   </dd>
                 </div>
               </dl>
+              {#if data.benchmark.local}
+                <p class="mt-3 text-xs text-[var(--muted)]">
+                  {data.benchmark.local.consumptionIntervals} intervalos de consumo
+                  ·
+                  {data.benchmark.local.maintenanceRecords} registros de manutenção
+                  {#if data.benchmark.local.distanceKm !== null}
+                    · {$format.distance(data.benchmark.local.distanceKm)} registrados
+                  {/if}
+                </p>
+              {/if}
+            </div>
+
+            <div class="rounded border border-[var(--line)] p-4">
+              <div class="flex items-center justify-between gap-3">
+                <p class="label-tech text-[var(--muted)]">
+                  {$t("dashboard.benchmarkCohort")}
+                </p>
+                <span class="label-tech text-[var(--muted)]">
+                  {$t("dashboard.benchmarkSample", {
+                    count: data.benchmark.sampleSize,
+                  })}
+                </span>
+              </div>
+              {#if data.benchmark.sampleSize < data.benchmark.minimumSampleSize}
+                <p class="mt-4 text-sm text-[var(--muted)]">
+                  {$t("dashboard.benchmarkNeedMore", {
+                    count:
+                      data.benchmark.minimumSampleSize -
+                      data.benchmark.sampleSize,
+                  })}
+                </p>
+              {/if}
+              {#if data.benchmark.cohort}
+                <dl class="mt-3 grid gap-2 text-sm">
+                  <div class="flex items-center justify-between gap-3">
+                    <dt>{$t("dashboard.benchmarkConsumption")}</dt>
+                    <dd class="text-right">
+                      {#if data.benchmark.cohort.consumption.average !== null}
+                        <span class="numeric font-semibold"
+                          >{$format.number(
+                            data.benchmark.cohort.consumption.average,
+                            {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 2,
+                            },
+                          )} km/L</span
+                        >
+                        <span class="ml-1 text-xs text-[var(--muted)]"
+                          >{$t(
+                            benchmarkPositionKey[
+                              data.benchmark.cohort.consumption.position
+                            ],
+                          )}</span
+                        >
+                      {:else}
+                        <span class="text-xs text-[var(--muted)]">
+                          {$t("dashboard.benchmarkMetricSample", {
+                            count: data.benchmark.cohort.consumption.sampleSize,
+                            minimum: data.benchmark.minimumSampleSize,
+                          })}
+                        </span>
+                      {/if}
+                    </dd>
+                  </div>
+                  <div class="flex items-center justify-between gap-3">
+                    <dt>{$t("dashboard.benchmarkMaintenance")}</dt>
+                    <dd class="text-right">
+                      {#if data.benchmark.cohort.maintenance.average !== null}
+                        <span class="numeric font-semibold"
+                          >{$format.money(
+                            data.benchmark.cohort.maintenance.average,
+                          )}</span
+                        >
+                        <span class="ml-1 text-xs text-[var(--muted)]"
+                          >{$t(
+                            benchmarkPositionKey[
+                              data.benchmark.cohort.maintenance.position
+                            ],
+                          )}</span
+                        >
+                      {:else}
+                        <span class="text-xs text-[var(--muted)]">
+                          {$t("dashboard.benchmarkMetricSample", {
+                            count: data.benchmark.cohort.maintenance.sampleSize,
+                            minimum: data.benchmark.minimumSampleSize,
+                          })}
+                        </span>
+                      {/if}
+                    </dd>
+                  </div>
+                </dl>
+              {:else}
+                <p class="mt-4 text-sm text-[var(--muted)]">
+                  {$t("dashboard.benchmarkUnavailable")}
+                </p>
+              {/if}
+            </div>
+          </div>
+
+          <form
+            class="mt-5 grid gap-3 rounded border border-dashed border-[var(--line)] p-4"
+            method="POST"
+            action="?/contributeBenchmark"
+            use:enhance={enhanceBenchmark}
+          >
+            <div
+              class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
+            >
+              <div class="grid gap-1">
+                <label class="field-label" for="benchmark-motorcycle"
+                  >{$t("dashboard.benchmarkModel")}</label
+                >
+                <select
+                  class="field"
+                  id="benchmark-motorcycle"
+                  name="motorcycle_id"
+                  required
+                  value={data.benchmark.motorcycleId ?? ""}
+                >
+                  {#each data.benchmark.models as model (model.id)}
+                    <option value={model.id}
+                      >{model.name} · {model.label}</option
+                    >
+                  {/each}
+                </select>
+              </div>
+              <button
+                class="button-primary min-h-11 shrink-0"
+                type="submit"
+                disabled={benchmarkBusy || !data.benchmark.hasComparableMetric}
+              >
+                {#if benchmarkBusy}
+                  <span class="inline-block animate-pulse"
+                    >{$t("common.save")}…</span
+                  >
+                {:else}
+                  {data.benchmark.submitted
+                    ? $t("dashboard.benchmarkUpdate")
+                    : $t("dashboard.benchmarkShare")}
+                {/if}
+              </button>
+            </div>
+            <label
+              class="flex cursor-pointer items-start gap-2.5 rounded p-1 text-sm text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+            >
+              <input
+                class="mt-1 accent-[var(--accent)]"
+                type="checkbox"
+                name="consent"
+                value="on"
+                required
+              />
+              <span>{$t("dashboard.benchmarkConsent")}</span>
+            </label>
+            {#if form?.message}
+              <p
+                class="text-sm text-[var(--accent)]"
+                role="alert"
+                aria-live="assertive"
+              >
+                {form.message}
+              </p>
+            {/if}
+            {#if data.benchmark.submitted}
+              <p
+                class="text-xs text-[var(--muted)]"
+                role="status"
+                aria-live="polite"
+              >
+                {$t("dashboard.benchmarkActive")}
+              </p>
+            {/if}
+          </form>
+        {:else if data.benchmark}
+          <p
+            class="mt-5 rounded border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]"
+          >
+            {$t("dashboard.benchmarkNoModel")}
+          </p>
+        {/if}
+      </details>
+    </article>
+
+    <!-- Activity Heatmap, Costs & Monthly Spend -->
+    <details class="panel group/finances p-6">
+      <summary
+        class="focus-ring flex cursor-pointer items-center justify-between gap-4 rounded"
+      >
+        <div>
+          <h2 class="display text-2xl">
+            {$t("dashboard.costs")} &amp; {$t("dashboard.monthlySpend")}
+          </h2>
+          <p class="mt-1 text-sm text-[var(--muted)]">
+            {$t("dashboard.costsHint")}
+          </p>
+        </div>
+        <ChevronDown
+          size={18}
+          class="text-[var(--muted)] transition-transform duration-200 group-open/finances:rotate-180"
+        />
+      </summary>
+
+      <div class="mt-6 grid gap-6 xl:grid-cols-[2fr_1fr]">
+        <div class="rounded border border-[var(--line)] p-4">
+          <h3 class="display text-xl">{$t("dashboard.activity")}</h3>
+          <p class="mt-1 text-sm text-[var(--muted)]">
+            {$t("dashboard.activityHint")}
+          </p>
+          <div class="mt-5">
+            {#if hasActivity}
+              <ActivityHeatmap cells={data.activity} />
             {:else}
-              <p class="mt-4 text-sm text-[var(--muted)]">
-                {$t("dashboard.benchmarkUnavailable")}
+              <p class="py-10 text-center text-sm text-[var(--muted)]">
+                {$t("dashboard.activityEmpty")}
               </p>
             {/if}
           </div>
         </div>
 
-        <form
-          class="mt-5 grid gap-3 rounded border border-dashed border-[var(--line)] p-4"
-          method="POST"
-          action="?/contributeBenchmark"
-          use:enhance={enhanceBenchmark}
-        >
-          <div
-            class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
-          >
-            <div class="grid gap-1">
-              <label class="field-label" for="benchmark-motorcycle"
-                >{$t("dashboard.benchmarkModel")}</label
-              >
-              <select
-                class="field"
-                id="benchmark-motorcycle"
-                name="motorcycle_id"
-                required
-                value={data.benchmark.motorcycleId ?? ""}
-              >
-                {#each data.benchmark.models as model (model.id)}
-                  <option value={model.id}>{model.name} · {model.label}</option>
-                {/each}
-              </select>
-            </div>
-            <button
-              class="button-primary min-h-11 shrink-0"
-              type="submit"
-              disabled={benchmarkBusy || !data.benchmark.hasComparableMetric}
-            >
-              {#if benchmarkBusy}
-                <span class="inline-block animate-pulse"
-                  >{$t("common.save")}…</span
-                >
-              {:else}
-                {data.benchmark.submitted
-                  ? $t("dashboard.benchmarkUpdate")
-                  : $t("dashboard.benchmarkShare")}
-              {/if}
-            </button>
+        <div class="rounded border border-[var(--line)] p-4">
+          <h3 class="display text-xl">{$t("dashboard.costs")}</h3>
+          <p class="mt-1 text-sm text-[var(--muted)]">
+            {$t("dashboard.costsHint")}
+          </p>
+          <div class="mt-6">
+            {#if costSlices.length}
+              <CostDonut slices={costSlices} />
+            {:else}
+              <p class="py-10 text-center text-sm text-[var(--muted)]">
+                {$t("dashboard.costsEmpty")}
+              </p>
+            {/if}
           </div>
-          <label
-            class="flex cursor-pointer items-start gap-2.5 rounded p-1 text-sm text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
-          >
-            <input
-              class="mt-1 accent-[var(--accent)]"
-              type="checkbox"
-              name="consent"
-              value="on"
-              required
-            />
-            <span>{$t("dashboard.benchmarkConsent")}</span>
-          </label>
-          {#if form?.message}
-            <p
-              class="text-sm text-[var(--accent)]"
-              role="alert"
-              aria-live="assertive"
-            >
-              {form.message}
-            </p>
-          {/if}
-          {#if data.benchmark.submitted}
-            <p
-              class="text-xs text-[var(--muted)]"
-              role="status"
-              aria-live="polite"
-            >
-              {$t("dashboard.benchmarkActive")}
-            </p>
-          {/if}
-        </form>
-      {:else if data.benchmark}
-        <p
-          class="mt-5 rounded border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]"
-        >
-          {$t("dashboard.benchmarkNoModel")}
-        </p>
-      {/if}
+        </div>
+
+        <div class="rounded border border-[var(--line)] p-4 xl:col-span-2">
+          <h3 class="display text-xl">{$t("dashboard.monthlySpend")}</h3>
+          <p class="mt-1 text-sm text-[var(--muted)]">
+            {$t("dashboard.monthlySpendHint")}
+          </p>
+          <div class="mt-5">
+            {#if hasSpend}
+              <SpendBars months={data.spend} />
+            {:else}
+              <p class="py-10 text-center text-sm text-[var(--muted)]">
+                {$t("dashboard.monthlySpendEmpty")}
+              </p>
+            {/if}
+          </div>
+        </div>
+      </div>
     </details>
-  </article>
 
-  <!-- Activity + costs -->
-  <div class="grid gap-4 xl:grid-cols-[2fr_1fr]">
-    <article class="panel p-6">
-      <h2 class="display text-2xl">{$t("dashboard.activity")}</h2>
-      <p class="mt-1 text-sm text-[var(--muted)]">
-        {$t("dashboard.activityHint")}
-      </p>
-      <div class="mt-5">
-        {#if hasActivity}
-          <ActivityHeatmap cells={data.activity} />
-        {:else}
-          <p class="py-10 text-center text-sm text-[var(--muted)]">
-            {$t("dashboard.activityEmpty")}
+    <!-- Garage Overview -->
+    <details class="panel group/garage p-6">
+      <summary
+        class="focus-ring flex cursor-pointer items-center justify-between gap-4 rounded"
+      >
+        <div>
+          <h2 class="display text-2xl">{$t("nav.garage")}</h2>
+          <p class="mt-1 text-sm text-[var(--muted)]">
+            {$t("dashboard.garageHint")}
           </p>
-        {/if}
-      </div>
-    </article>
+        </div>
+        <ChevronDown
+          size={18}
+          class="text-[var(--muted)] transition-transform duration-200 group-open/garage:rotate-180"
+        />
+      </summary>
 
-    <article class="panel p-6">
-      <h2 class="display text-2xl">{$t("dashboard.costs")}</h2>
-      <p class="mt-1 text-sm text-[var(--muted)]">
-        {$t("dashboard.costsHint")}
-      </p>
       <div class="mt-6">
-        {#if costSlices.length}
-          <CostDonut slices={costSlices} />
-        {:else}
-          <p class="py-10 text-center text-sm text-[var(--muted)]">
-            {$t("dashboard.costsEmpty")}
-          </p>
-        {/if}
-      </div>
-    </article>
-  </div>
-
-  <!-- Spend + garage -->
-  <div class="grid gap-4 xl:grid-cols-[2fr_1fr]">
-    <article class="panel p-6">
-      <h2 class="display text-2xl">{$t("dashboard.monthlySpend")}</h2>
-      <p class="mt-1 text-sm text-[var(--muted)]">
-        {$t("dashboard.monthlySpendHint")}
-      </p>
-      <div class="mt-5">
-        {#if hasSpend}
-          <SpendBars months={data.spend} />
-        {:else}
-          <p class="py-10 text-center text-sm text-[var(--muted)]">
-            {$t("dashboard.monthlySpendEmpty")}
-          </p>
-        {/if}
-      </div>
-    </article>
-
-    <article class="panel p-6">
-      <h2 class="display text-2xl">{$t("nav.garage")}</h2>
-      <p class="mt-1 text-sm text-[var(--muted)]">
-        {$t("dashboard.garageHint")}
-      </p>
-      <ul class="mt-5 grid gap-1">
-        {#each data.garage as motorcycle, i (motorcycle.id)}
-          <li class="garage-row flex items-center gap-3 rounded px-2 py-2.5">
-            <span
-              class="label-tech numeric w-6 shrink-0 text-center text-[var(--muted)]"
-            >
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm font-semibold"
-                >{motorcycle.name}</span
-              >
-              <span class="block truncate text-xs text-[var(--muted)]"
-                >{motorcycle.detail}</span
-              >
-            </span>
-            <span class="shrink-0 text-right">
-              <span class="numeric block text-sm font-semibold">
-                {$format.distance(motorcycle.odometer)}
-              </span>
+        <ul class="grid gap-1">
+          {#each data.garage ?? [] as motorcycle, i (motorcycle.id)}
+            <li class="garage-row flex items-center gap-3 rounded px-2 py-2.5">
               <span
-                class="label-tech block text-[10px] {motorcycle.health.total <
-                50
-                  ? 'text-[var(--accent)]'
-                  : 'text-[var(--muted)]'}"
+                class="label-tech numeric w-6 shrink-0 text-center text-[var(--muted)]"
               >
-                {$t("dashboard.healthScore", {
-                  score: motorcycle.health.total,
-                })}
+                {String(i + 1).padStart(2, "0")}
               </span>
-            </span>
-          </li>
-        {:else}
-          <li class="py-8 text-center text-sm text-[var(--muted)]">
-            {$t("dashboard.noActiveBike")}
-          </li>
-        {/each}
-      </ul>
-      <a class="button-secondary mt-4 w-full" href="/garage">
-        {$t("dashboard.openGarage")}
-        <ArrowRight class="h-3.5 w-3.5" />
-      </a>
-    </article>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-semibold"
+                  >{motorcycle.name}</span
+                >
+                <span class="block truncate text-xs text-[var(--muted)]"
+                  >{motorcycle.detail}</span
+                >
+              </span>
+              <span class="shrink-0 text-right">
+                <span class="numeric block text-sm font-semibold">
+                  {$format.distance(motorcycle.odometer)}
+                </span>
+                <span
+                  class="label-tech block text-[10px] {motorcycle.health.total <
+                  50
+                    ? 'text-[var(--accent)]'
+                    : 'text-[var(--muted)]'}"
+                >
+                  {$t("dashboard.healthScore", {
+                    score: motorcycle.health.total,
+                  })}
+                </span>
+              </span>
+            </li>
+          {:else}
+            <li class="py-8 text-center text-sm text-[var(--muted)]">
+              {$t("dashboard.noActiveBike")}
+            </li>
+          {/each}
+        </ul>
+        <a class="button-secondary mt-4 w-full" href="/garage">
+          {$t("dashboard.openGarage")}
+          <ArrowRight class="h-3.5 w-3.5" />
+        </a>
+      </div>
+    </details>
   </div>
 </section>
 

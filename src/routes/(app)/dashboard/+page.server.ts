@@ -116,6 +116,7 @@ export async function load({ locals, url }) {
       dueNow: [],
       counts: { reminders: 0, tires: 0, documents: 0 },
       benchmark: null,
+      recentActivity: [],
     };
   }
 
@@ -139,6 +140,7 @@ export async function load({ locals, url }) {
       dueNow: [],
       counts: { reminders: 0, tires: 0, documents: 0 },
       benchmark: null,
+      recentActivity: [],
       errorMessage: translate(locals.locale, "common.loadError"),
     };
   }
@@ -548,6 +550,50 @@ export async function load({ locals, url }) {
       documents: expiringDocuments.length,
     },
     benchmark,
+    recentActivity: [
+      ...fuelRows.map((row) => ({
+        id: `fuel-${row.id ?? row.date}-${row.odometer_km}`,
+        type: "fuel",
+        date: String(row.date ?? ""),
+        title: `${row.liters ?? 0}L ${tr("dashboard.costFuel")}`,
+        subtitle: row.odometer_km
+          ? formatDistance(locale, Number(row.odometer_km))
+          : "",
+        amountCents: Number(row.total_price_cents ?? 0),
+        href: "/fuel",
+      })),
+      ...maintenanceRows.map((row) => ({
+        id: `maint-${row.id ?? row.date}-${row.odometer_km}`,
+        type: "maintenance",
+        date: String(row.date ?? ""),
+        title: String(row.maintenance_type ?? tr("dashboard.costMaintenance")),
+        subtitle: row.odometer_km
+          ? formatDistance(locale, Number(row.odometer_km))
+          : "",
+        amountCents: Number(row.cost_cents ?? 0),
+        href: "/maintenance",
+      })),
+      ...tireRows.map((row) => ({
+        id: `tire-${row.id ?? row.installed_at}`,
+        type: "tires",
+        date: String(row.installed_at ?? ""),
+        title: tr("dashboard.costTires"),
+        subtitle: row.wear_percent ? `${row.wear_percent}%` : "",
+        amountCents: Number(row.cost_cents ?? 0),
+        href: "/tires",
+      })),
+      ...feeRows.map((row) => ({
+        id: `fee-${row.id ?? row.due_date}`,
+        type: "expenses",
+        date: String(row.due_date ?? ""),
+        title: String(row.fee_type ?? tr("dashboard.costFees")),
+        subtitle: "",
+        amountCents: Number(row.amount_cents ?? 0),
+        href: "/expenses",
+      })),
+    ]
+      .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0))
+      .slice(0, 10),
     errorMessage: loadError ? translate(locals.locale, "common.loadError") : "",
   };
 }

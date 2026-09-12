@@ -7,7 +7,6 @@
   $: hasMotorcycles = data.motorcycles.length > 0;
   $: localizedFeature = {
     ...data.feature,
-    slug: $t("nav.reminders"),
     title: $t("reminders.pageTitle"),
     subtitle: $t("reminders.pageSubtitle"),
   };
@@ -57,6 +56,7 @@
 {/if}
 
 <FeaturePage
+  routeSlug="reminders"
   feature={localizedFeature}
   rows={data.rows}
   motorcycles={data.motorcycles}

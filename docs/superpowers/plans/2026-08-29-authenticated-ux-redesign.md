@@ -29,6 +29,7 @@ Tests must exercise exported helpers, rendered Svelte output, or browser-visible
 ### Task 1: Shared authenticated-page primitives
 
 **Files:**
+
 - Create: `src/lib/components/app/PageHeader.svelte`
 - Create: `src/lib/components/app/PageAction.svelte`
 - Create: `src/lib/components/app/BikeContextBar.svelte`
@@ -41,6 +42,7 @@ Tests must exercise exported helpers, rendered Svelte output, or browser-visible
 - Create: `tests/unit/authenticated-ux-contract.test.ts`
 
 **Interfaces:**
+
 - Produces: `RecordSheet.open(): void` and `RecordSheet.close(reason?: string): void`.
 - Produces: `ActionMenu.open(): void` and `ActionMenu.close(): void`.
 - Produces: `ActionChoice = { id: string; label: string; description: string; recommended?: boolean; disabled?: boolean }`.
@@ -56,7 +58,10 @@ import { describe, expect, it } from "vitest";
 
 describe("authenticated UX primitives", () => {
   it("renders a labelled native record dialog", async () => {
-    const module = await import("../../src/lib/components/app/RecordSheet.svelte").catch(() => null);
+    const module =
+      await import("../../src/lib/components/app/RecordSheet.svelte").catch(
+        () => null,
+      );
     expect(module, "RecordSheet component must exist").not.toBeNull();
     const { body } = render(module!.default, {
       props: { title: "New fill-up", closeLabel: "Close" },
@@ -67,7 +72,10 @@ describe("authenticated UX primitives", () => {
   });
 
   it("renders one explicitly labelled primary action", async () => {
-    const module = await import("../../src/lib/components/app/PageAction.svelte").catch(() => null);
+    const module =
+      await import("../../src/lib/components/app/PageAction.svelte").catch(
+        () => null,
+      );
     expect(module, "PageAction component must exist").not.toBeNull();
     const { body } = render(module!.default, {
       props: { label: "Add fill-up", ariaLabel: "Add fill-up" },
@@ -138,7 +146,12 @@ The component stores the initiating element, opens modally, restores focus after
   <section class="record-sheet-panel" aria-labelledby="record-sheet-title">
     <header>
       <h2 id="record-sheet-title">{title}</h2>
-      <button type="button" class="focus-ring" aria-label={closeLabel} on:click={() => close()}>
+      <button
+        type="button"
+        class="focus-ring"
+        aria-label={closeLabel}
+        on:click={() => close()}
+      >
         <X aria-hidden="true" />
       </button>
       {#if description}<p>{description}</p>{/if}
@@ -179,6 +192,7 @@ git commit -m "feat: add authenticated page UX primitives"
 ### Task 2: Stable generic CRUD routes and sheet-based `FeaturePage`
 
 **Files:**
+
 - Modify: `src/lib/components/FeaturePage.svelte`
 - Modify: `src/routes/(app)/documents/+page.svelte`
 - Modify: `src/routes/(app)/reminders/+page.svelte`
@@ -189,6 +203,7 @@ git commit -m "feat: add authenticated page UX primitives"
 - Modify: `tests/unit/authenticated-ux-contract.test.ts`
 
 **Interfaces:**
+
 - Consumes: `PageHeader`, `PageAction`, `BikeContextBar`, `RecordSheet`, `ActivityTimeline`, and `PageOverflowMenu` from Task 1.
 - Produces: `FeaturePage.routeSlug: string`, independent from `feature.slug`, and optional `addLabel: string`.
 - Preserves: root CRUD actions driven by `_intent=create`, `_intent=update`, and `_intent=delete`.
@@ -203,7 +218,7 @@ it("keeps generic export routes stable and moves creation into a sheet", () => {
   expect(feature).toContain("export let routeSlug: string");
   expect(feature).toContain("href={`/${routeSlug}/export.csv`}");
   expect(feature).toContain("<RecordSheet");
-  expect(feature).not.toContain('xl:grid-cols-[minmax(0,1fr)_360px]');
+  expect(feature).not.toContain("xl:grid-cols-[minmax(0,1fr)_360px]");
 });
 
 it.each([
@@ -273,6 +288,7 @@ git commit -m "feat: streamline generic record pages"
 ### Task 3: Fuel vertical slice
 
 **Files:**
+
 - Modify: `src/routes/(app)/fuel/+page.svelte`
 - Modify: `src/lib/i18n/locales/pt-BR.ts`
 - Modify: `src/lib/i18n/locales/en.ts`
@@ -280,6 +296,7 @@ git commit -m "feat: streamline generic record pages"
 - Modify: `tests/e2e/data-responsive.spec.ts`
 
 **Interfaces:**
+
 - Consumes: all Task 1 primitives.
 - Preserves: `?/createRecord`, `?/repeatLast`, `?/ocrScan`, `?/deleteRecord`, import, preference, station, grade, and review-setting actions.
 - Produces: action ids `fuel-scan`, `fuel-manual`, and conditional `fuel-repeat`.
@@ -348,6 +365,7 @@ git commit -m "feat: rebuild Fuel around quick capture"
 ### Task 4: Dashboard and Garage
 
 **Files:**
+
 - Modify: `src/routes/(app)/dashboard/+page.svelte`
 - Modify: `src/routes/(app)/garage/+page.svelte`
 - Modify: `src/lib/i18n/locales/pt-BR.ts`
@@ -356,6 +374,7 @@ git commit -m "feat: rebuild Fuel around quick capture"
 - Modify: `tests/e2e/core-responsive.spec.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1 primitives.
 - Preserves: Garage create/update/archive/restore actions and Dashboard secondary forms.
 - Produces: Dashboard shortcut hrefs and Garage sheet-based create/edit behavior.
@@ -406,6 +425,7 @@ git commit -m "feat: focus Dashboard and Garage on bike activity"
 ### Task 5: Maintenance and Tires
 
 **Files:**
+
 - Modify: `src/routes/(app)/maintenance/+page.svelte`
 - Modify: `src/routes/(app)/tires/+page.svelte`
 - Modify: `src/lib/i18n/locales/pt-BR.ts`
@@ -415,6 +435,7 @@ git commit -m "feat: focus Dashboard and Garage on bike activity"
 - Modify: `tests/e2e/data-responsive.spec.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1 primitives.
 - Preserves: every existing maintenance, plan, part, photo, marketplace, tire installation, pressure, catalog, edit, and delete action.
 - Produces: Maintenance action ids `maintenance-log` and `maintenance-plan`; Tire action ids `tires-pressure` and `tires-install`.
@@ -465,6 +486,7 @@ git commit -m "feat: streamline maintenance and tire workflows"
 ### Task 6: Expenses, Work secondary tools, and Reports
 
 **Files:**
+
 - Modify: `src/routes/(app)/expenses/+page.svelte`
 - Modify: `src/routes/(app)/trabalho/+page.svelte`
 - Modify: `src/routes/(app)/reports/+page.svelte`
@@ -474,6 +496,7 @@ git commit -m "feat: streamline maintenance and tire workflows"
 - Modify: `tests/e2e/data-responsive.spec.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1 primitives and the sheet-enabled `FeaturePage` from Task 2.
 - Preserves: expense CRUD, policy, claim, work-cost settings, sale-report, export, and share actions.
 - Produces: Expenses action ids `expense-record`, `expense-policy`, `expense-claim`; Reports primary `Generate report` action.
@@ -524,6 +547,7 @@ git commit -m "feat: clarify expenses work and report tasks"
 ### Task 7: Cross-page accessibility and responsive regression coverage
 
 **Files:**
+
 - Modify: `tests/e2e/core-responsive.spec.ts`
 - Modify: `tests/e2e/data-responsive.spec.ts`
 - Modify: `tests/unit/authenticated-ux-contract.test.ts`
@@ -531,6 +555,7 @@ git commit -m "feat: clarify expenses work and report tasks"
 - Modify: `src/app.css` only if shared focus, zoom, or fixed-action rules fail.
 
 **Interfaces:**
+
 - Consumes: all migrated routes and shared component contracts.
 - Produces: a repeatable authenticated regression matrix that remains skipped only when the documented auth environment variables are absent.
 
@@ -578,10 +603,12 @@ git commit -m "test: cover authenticated quick-action UX"
 ### Task 8: Authenticated visual verification and final corrections
 
 **Files:**
+
 - Modify: only files implicated by observed visual or interaction defects.
 - Save evidence: `C:/Users/lives/.codex/visualizations/2026/08/29/01a04e22-52e0-70a0-950b-17c1de099701/moto-track-ux-redesign/`
 
 **Interfaces:**
+
 - Consumes: the user’s authenticated Moto Track browser session and the selected Bike Timeline generated concept.
 - Produces: accepted desktop/mobile screenshots and a requirement-by-requirement completion audit.
 

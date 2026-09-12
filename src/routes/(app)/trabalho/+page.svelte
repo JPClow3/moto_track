@@ -46,6 +46,7 @@
 >
 
 <FeaturePage
+  routeSlug="trabalho"
   feature={localizedFeature}
   rows={data.rows}
   motorcycles={data.motorcycles}

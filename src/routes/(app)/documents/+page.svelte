@@ -11,7 +11,6 @@
   // override it with the localized page identity like /reminders does.
   $: localizedFeature = {
     ...data.feature,
-    slug: $t("nav.documents"),
     title: $t("documents.pageTitle"),
     subtitle: $t("documents.pageSubtitle"),
   };
@@ -45,6 +44,7 @@
 
 <section aria-busy={formBusy}>
   <FeaturePage
+    routeSlug="documents"
     feature={localizedFeature}
     rows={data.rows}
     motorcycles={data.motorcycles}

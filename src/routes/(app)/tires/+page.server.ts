@@ -11,8 +11,37 @@ function messageFrom(err: unknown) {
 const base = featureActions("tires");
 const v = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
+const savePressureAction = async ({
+  request,
+  locals,
+}: {
+  request: Request;
+  locals: App.Locals;
+}) => {
+  const f = await request.formData();
+  try {
+    await locals.db`
+      insert into tire_pressure_records ${locals.db({
+        owner_id: locals.user!.id,
+        motorcycle_id: v(f, "motorcycle_id"),
+        date: v(f, "date"),
+        psi_front: Number(f.get("psi_front")),
+        psi_rear: Number(f.get("psi_rear")),
+        notes: v(f, "notes"),
+      })}
+    `;
+  } catch (err) {
+    return fail(400, { message: messageFrom(err) });
+  }
+  return { ok: true };
+};
+
 export const actions = {
   ...base,
+  installTire: base.default,
+  deleteTire: base.default,
+  logPressure: savePressureAction,
+  savePressure: savePressureAction,
   saveProduct: async ({ request, locals }) => {
     const f = await request.formData();
     try {
@@ -39,24 +68,6 @@ export const actions = {
       locals.user!.id,
     );
     return error ? fail(400, { message: error }) : { ok: true };
-  },
-  savePressure: async ({ request, locals }) => {
-    const f = await request.formData();
-    try {
-      await locals.db`
-        insert into tire_pressure_records ${locals.db({
-          owner_id: locals.user!.id,
-          motorcycle_id: v(f, "motorcycle_id"),
-          date: v(f, "date"),
-          psi_front: Number(f.get("psi_front")),
-          psi_rear: Number(f.get("psi_rear")),
-          notes: v(f, "notes"),
-        })}
-      `;
-    } catch (err) {
-      return fail(400, { message: messageFrom(err) });
-    }
-    return { ok: true };
   },
   deletePressure: async ({ request, locals }) => {
     const f = await request.formData();

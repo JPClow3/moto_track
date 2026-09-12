@@ -33,6 +33,8 @@ function marketplaceDisplayQuery(value: unknown) {
 
 export const actions = {
   ...base,
+  logCompleted: base.default,
+  deleteRecord: base.default,
   savePart: async ({ request, locals }) => {
     const f = await request.formData();
     try {
