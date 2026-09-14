@@ -11,10 +11,11 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import X from "lucide-svelte/icons/x";
+  import { t } from "$lib/i18n/store";
 
   export let title = "";
-  export let closeLabel = "Fechar";
-  export let recommendedLabel = "Recomendado";
+  export let closeLabel = "";
+  export let recommendedLabel = "";
   export let choices: ActionChoice[] = [];
 
   const dispatch = createEventDispatcher<{
@@ -80,7 +81,7 @@
         <button
           type="button"
           class="focus-ring -mr-1 flex h-9 w-9 items-center justify-center rounded text-[var(--muted)] hover:text-[var(--fg)]"
-          aria-label={closeLabel}
+          aria-label={closeLabel || $t("common.close")}
           on:click={close}
         >
           <X size={18} aria-hidden="true" />
@@ -104,7 +105,7 @@
               <span
                 class="label-tech rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent)]"
               >
-                {recommendedLabel}
+                {recommendedLabel || $t("pricing.recommended")}
               </span>
             {/if}
           </div>

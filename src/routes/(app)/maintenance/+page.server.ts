@@ -1,5 +1,10 @@
 import { fail } from "@sveltejs/kit";
-import { deleteOwnedRow, featureActions } from "$server/domain/crud";
+import {
+  deleteOwnedRow,
+  featureActions,
+  parseFormNumber,
+  parseMoneyCents,
+} from "$server/domain/crud";
 import { assertCanCreateUpload } from "$server/domain/entitlement-guards";
 import {
   MARKETPLACE_QUERY_MAX_LENGTH,
@@ -44,9 +49,12 @@ export const actions = {
           name: v(f, "name"),
           manufacturer: v(f, "manufacturer"),
           part_type: v(f, "part_type") || "other",
-          price_cents: Math.round(Number(f.get("price") ?? 0) * 100),
+          price_cents: parseMoneyCents(f.get("price")),
           track_stock: f.get("track_stock") === "true",
-          stock_quantity: Number(f.get("stock_quantity") ?? 0),
+          stock_quantity: Math.max(
+            0,
+            Math.round(parseFormNumber(f.get("stock_quantity"), 0)),
+          ),
         })}
       `;
     } catch (err) {
@@ -107,8 +115,10 @@ export const actions = {
     const ownerId = locals.user!.id;
     const motorcycleId = v(f, "motorcycle_id");
     const type = v(f, "maintenance_type");
-    const intervalKm = Number(f.get("interval_km")) || null;
-    const intervalDays = Number(f.get("interval_days")) || null;
+    const intervalKm =
+      Math.round(parseFormNumber(f.get("interval_km"), 0)) || null;
+    const intervalDays =
+      Math.round(parseFormNumber(f.get("interval_days"), 0)) || null;
 
     // Explicit onConflict target matching the schema's unique combo
     // (motorcycle_id, maintenance_type, is_severe_duty_override) so saving

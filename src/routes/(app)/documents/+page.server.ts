@@ -1,6 +1,7 @@
 import { fail } from "@sveltejs/kit";
 import { featureActions, loadFeature } from "$server/domain/crud";
 import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
+import { subtractDays } from "$server/domain/record-sync";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -45,6 +46,7 @@ export const actions = {
     if (!doc?.valid_until)
       return fail(400, { message: "Documento sem validade." });
 
+    const noticeDays = doc.notify_before_days ?? 30;
     try {
       await locals.db`
         insert into reminders ${locals.db({
@@ -52,8 +54,8 @@ export const actions = {
           motorcycle_id: doc.motorcycle_id,
           title: `Documento: ${doc.name}`,
           trigger_type: "by_date",
-          trigger_value_days: doc.notify_before_days,
-          reference_date: doc.valid_until,
+          trigger_value_days: 0,
+          reference_date: subtractDays(doc.valid_until, noticeDays),
           is_active: true,
           send_email: true,
           send_push: true,

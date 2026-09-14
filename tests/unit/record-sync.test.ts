@@ -37,4 +37,12 @@ describe("linked reminder definitions", () => {
       is_recurring: false,
     });
   });
+
+  it("calculates subtractDays correctly across months and leap years", async () => {
+    const { subtractDays } =
+      await import("../../src/lib/server/domain/record-sync");
+    expect(subtractDays("2026-08-10", 30)).toBe("2026-07-11");
+    expect(subtractDays("2024-03-01", 1)).toBe("2024-02-29");
+    expect(subtractDays("2026-01-05", 10)).toBe("2025-12-26");
+  });
 });

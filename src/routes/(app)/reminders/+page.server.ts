@@ -52,15 +52,18 @@ export const actions = {
     }
     if (!reminder) return { ok: false, message: "Lembrete não encontrado." };
 
-    const base = reminder.reference_date
-      ? new Date(`${reminder.reference_date}T00:00:00`)
-      : new Date();
-    base.setDate(base.getDate() + days);
+    const today = new Date().toISOString().slice(0, 10);
+    const baseDateStr =
+      reminder.reference_date && reminder.reference_date > today
+        ? reminder.reference_date
+        : today;
+    const target = new Date(`${baseDateStr}T00:00:00.000Z`);
+    target.setUTCDate(target.getUTCDate() + days);
 
     try {
       await locals.db`
         update reminders
-        set reference_date = ${base.toISOString().slice(0, 10)},
+        set reference_date = ${target.toISOString().slice(0, 10)},
           last_notified_at = null,
           last_email_notified_at = null,
           last_push_notified_at = null
@@ -96,7 +99,7 @@ export const actions = {
       ownerId,
       reminder.motorcycle_id,
     );
-    const base = Number(reminder.reference_km ?? current);
+    const base = Math.max(Number(reminder.reference_km ?? 0), current);
 
     try {
       await locals.db`

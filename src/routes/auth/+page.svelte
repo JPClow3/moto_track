@@ -206,6 +206,7 @@
         </div>
 
         <form method="POST" action="?/google">
+          <input type="hidden" name="redirectTo" value={data.redirectTo} />
           <button class="button-secondary w-full py-2.5" type="submit">
             <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"
               ><path

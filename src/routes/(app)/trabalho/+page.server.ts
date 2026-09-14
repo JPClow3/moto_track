@@ -1,5 +1,10 @@
 import { fail } from "@sveltejs/kit";
-import { featureActions, loadFeature } from "$server/domain/crud";
+import {
+  featureActions,
+  loadFeature,
+  parseMoneyCents,
+  parseMoneyMillicents,
+} from "$server/domain/crud";
 import { calculateWorkProfitability } from "$server/domain/parity";
 
 function messageFrom(err: unknown) {
@@ -23,15 +28,13 @@ export const actions = {
         insert into professional_cost_settings ${locals.db({
           owner_id: ownerId,
           motorcycle_id: motorcycleId,
-          maintenance_reserve_per_km_millicents: Math.round(
-            Number(f.get("maintenance_reserve") ?? 0) * 100000,
+          maintenance_reserve_per_km_millicents: parseMoneyMillicents(
+            f.get("maintenance_reserve"),
           ),
-          depreciation_per_km_millicents: Math.round(
-            Number(f.get("depreciation") ?? 0) * 100000,
+          depreciation_per_km_millicents: parseMoneyMillicents(
+            f.get("depreciation"),
           ),
-          fixed_daily_cost_cents: Math.round(
-            Number(f.get("fixed_daily_cost") ?? 0) * 100,
-          ),
+          fixed_daily_cost_cents: parseMoneyCents(f.get("fixed_daily_cost")),
         })}
         on conflict (motorcycle_id) do update set
           maintenance_reserve_per_km_millicents = excluded.maintenance_reserve_per_km_millicents,

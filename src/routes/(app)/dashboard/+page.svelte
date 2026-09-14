@@ -187,7 +187,9 @@
       <svelte:fragment slot="selection">
         {#if (data.garage ?? []).length > 1}
           <span class="label-tech mr-2 text-xs text-[var(--muted)]">
-            {(data.garage ?? []).length} motos
+            {$t("dashboard.garageCount", {
+              count: String((data.garage ?? []).length),
+            })}
           </span>
         {/if}
         <a href="/garage" class="button-secondary min-h-9 px-3 py-1 text-xs">
@@ -595,11 +597,19 @@
               </dl>
               {#if data.benchmark.local}
                 <p class="mt-3 text-xs text-[var(--muted)]">
-                  {data.benchmark.local.consumptionIntervals} intervalos de consumo
+                  {$t("dashboard.benchmarkIntervals", {
+                    count: String(data.benchmark.local.consumptionIntervals),
+                  })}
                   ·
-                  {data.benchmark.local.maintenanceRecords} registros de manutenção
+                  {$t("dashboard.benchmarkMaintenanceRecords", {
+                    count: String(data.benchmark.local.maintenanceRecords),
+                  })}
                   {#if data.benchmark.local.distanceKm !== null}
-                    · {$format.distance(data.benchmark.local.distanceKm)} registrados
+                    · {$t("dashboard.benchmarkDistanceRecorded", {
+                      distance: $format.distance(
+                        data.benchmark.local.distanceKm,
+                      ),
+                    })}
                   {/if}
                 </p>
               {/if}

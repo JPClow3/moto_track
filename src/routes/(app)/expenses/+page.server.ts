@@ -3,6 +3,8 @@ import {
   deleteOwnedRow,
   featureActions,
   loadFeature,
+  parseFormNumber,
+  parseMoneyCents,
 } from "$server/domain/crud";
 import {
   clearInsuranceReminder,
@@ -30,8 +32,9 @@ export const actions = {
       policy_number: v(f, "policy_number"),
       coverage_start: v(f, "coverage_start"),
       coverage_end: v(f, "coverage_end"),
-      premium_cents: Math.round(Number(f.get("premium") ?? 0) * 100),
-      notify_before_days: Number(f.get("notify_before_days") ?? 30),
+      premium_cents: parseMoneyCents(f.get("premium")),
+      notify_before_days:
+        Math.round(parseFormNumber(f.get("notify_before_days"), 30)) || 30,
       notes: v(f, "notes"),
     };
     try {
@@ -95,7 +98,7 @@ export const actions = {
           policy_id: policyId,
           claim_date: v(f, "claim_date"),
           description: v(f, "description"),
-          amount_cents: Math.round(Number(f.get("amount") ?? 0) * 100),
+          amount_cents: parseMoneyCents(f.get("amount")),
           status: v(f, "status") || "open",
         })}
       `;

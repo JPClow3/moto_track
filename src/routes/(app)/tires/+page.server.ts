@@ -1,5 +1,10 @@
 import { fail } from "@sveltejs/kit";
-import { deleteOwnedRow, featureActions } from "$server/domain/crud";
+import {
+  deleteOwnedRow,
+  featureActions,
+  parseFormNumber,
+  parseMoneyCents,
+} from "$server/domain/crud";
 import { estimateTireLife } from "$server/domain/tire-life";
 
 type Row = Record<string, unknown>;
@@ -25,8 +30,8 @@ const savePressureAction = async ({
         owner_id: locals.user!.id,
         motorcycle_id: v(f, "motorcycle_id"),
         date: v(f, "date"),
-        psi_front: Number(f.get("psi_front")),
-        psi_rear: Number(f.get("psi_rear")),
+        psi_front: parseFormNumber(f.get("psi_front")),
+        psi_rear: parseFormNumber(f.get("psi_rear")),
         notes: v(f, "notes"),
       })}
     `;
@@ -51,7 +56,7 @@ export const actions = {
           manufacturer: v(f, "manufacturer"),
           model_name: v(f, "model_name"),
           tire_type: v(f, "tire_type") || "street",
-          price_cents: Math.round(Number(f.get("price") ?? 0) * 100),
+          price_cents: parseMoneyCents(f.get("price")),
         })}
       `;
     } catch (err) {

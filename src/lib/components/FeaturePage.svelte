@@ -12,7 +12,7 @@
     type ActionChoice,
   } from "$lib/components/app/ActionMenu.svelte";
   import type { FeatureConfig } from "$server/domain/features";
-  import { t, locale } from "$lib/i18n/store";
+  import { t, locale, format } from "$lib/i18n/store";
   import { formatMoney, formatPreciseMoney } from "$lib/i18n";
   import { privateFileUrl } from "$lib/utils/private-file-url";
 
@@ -143,15 +143,15 @@
       formBusy = false;
       if (result.type === "success") {
         statusRole = "status";
-        statusMessage = "Operação concluída.";
+        statusMessage = $t("feature.operationComplete");
       } else if (result.type === "failure") {
         statusRole = "alert";
         statusMessage = String(
-          result.data?.message ?? "Não foi possível concluir.",
+          result.data?.message ?? $t("feature.operationFailed"),
         );
       } else if (result.type === "error") {
         statusRole = "alert";
-        statusMessage = "Não foi possível concluir.";
+        statusMessage = $t("feature.operationFailed");
       }
       await update();
     };
@@ -164,18 +164,18 @@
       formBusy = false;
       if (result.type === "success") {
         statusRole = "status";
-        statusMessage = "Operação concluída.";
+        statusMessage = $t("feature.operationComplete");
         await update();
         createSheet?.close();
       } else {
         if (result.type === "failure") {
           statusRole = "alert";
           statusMessage = String(
-            result.data?.message ?? "Não foi possível concluir.",
+            result.data?.message ?? $t("feature.operationFailed"),
           );
         } else if (result.type === "error") {
           statusRole = "alert";
-          statusMessage = "Não foi possível concluir.";
+          statusMessage = $t("feature.operationFailed");
         }
         await update();
       }
@@ -189,18 +189,18 @@
       formBusy = false;
       if (result.type === "success") {
         statusRole = "status";
-        statusMessage = "Operação concluída.";
+        statusMessage = $t("feature.operationComplete");
         await update();
         editSheet?.close();
       } else {
         if (result.type === "failure") {
           statusRole = "alert";
           statusMessage = String(
-            result.data?.message ?? "Não foi possível concluir.",
+            result.data?.message ?? $t("feature.operationFailed"),
           );
         } else if (result.type === "error") {
           statusRole = "alert";
-          statusMessage = "Não foi possível concluir.";
+          statusMessage = $t("feature.operationFailed");
         }
         await update();
       }
@@ -219,15 +219,15 @@
       formBusy = false;
       if (result.type === "success") {
         statusRole = "status";
-        statusMessage = "Registro excluído.";
+        statusMessage = $t("feature.deleteComplete");
       } else if (result.type === "failure") {
         statusRole = "alert";
         statusMessage = String(
-          result.data?.message ?? "Não foi possível excluir o registro.",
+          result.data?.message ?? $t("feature.deleteFailed"),
         );
       } else {
         statusRole = "alert";
-        statusMessage = "Não foi possível excluir o registro.";
+        statusMessage = $t("feature.deleteFailed");
       }
       await update();
     };
@@ -335,7 +335,7 @@
               >
             {/each}
             <th class="label-tech px-4 py-3 text-left" scope="col"
-              >{$t("common.status")}</th
+              >{$t("feature.updatedAt")}</th
             >
             <th class="label-tech px-4 py-3 text-left" scope="col"
               >{$t("common.actions")}</th
@@ -364,9 +364,18 @@
               {/each}
               <td
                 class="px-4 py-3 text-xs text-[var(--muted)]"
-                data-label={$t("common.status")}
-                >{valueFor(row, "updated_at")}</td
+                data-label={$t("feature.updatedAt")}
               >
+                {#if row.updated_at && typeof row.updated_at === "string"}
+                  {$format.date(row.updated_at, {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                {:else}
+                  {valueFor(row, "updated_at")}
+                {/if}
+              </td>
               <td
                 class="feature-actions px-4 py-3"
                 data-label={$t("common.actions")}
@@ -471,6 +480,13 @@
                   <p class="mt-2 text-sm text-[var(--muted)]">
                     {$t("feature.noRecordsHint")}
                   </p>
+                  <button
+                    type="button"
+                    class="button-primary mt-4"
+                    on:click={handleActionClick}
+                  >
+                    {$t("feature.addFirst")}
+                  </button>
                 </div>
               </td>
             </tr>

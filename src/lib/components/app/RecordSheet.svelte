@@ -1,11 +1,23 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import X from "lucide-svelte/icons/x";
+  import { t } from "$lib/i18n/store";
+
+  // Module-level counter so each RecordSheet instance gets a unique title ID.
+  // This prevents the duplicate-ID bug that occurs when FeaturePage mounts both
+  // a create sheet and an edit sheet: both previously used id="record-sheet-title",
+  // which made aria-labelledby point to whichever appeared first in the DOM.
+  let _uid = 0;
+  function nextUid() {
+    return ++_uid;
+  }
 
   export let title: string;
   export let description = "";
-  export let closeLabel = "Fechar";
+  export let closeLabel = "";
   export let dismissible = true;
+  /** Override the generated ID if you need to reference it externally. */
+  export let titleId = `record-sheet-title-${nextUid()}`;
 
   const dispatch = createEventDispatcher<{
     close: { reason: string };
@@ -56,16 +68,16 @@
 <dialog
   bind:this={dialog}
   class="record-sheet"
-  aria-labelledby="record-sheet-title"
+  aria-labelledby={titleId}
   on:close={handleClose}
   on:cancel={handleCancel}
   on:click={onBackdropClick}
 >
-  <section class="record-sheet-panel" aria-labelledby="record-sheet-title">
+  <section class="record-sheet-panel" aria-labelledby={titleId}>
     <header class="record-sheet-header">
       <div class="flex items-center justify-between gap-4">
         <h2
-          id="record-sheet-title"
+          id={titleId}
           class="display text-2xl font-bold tracking-tight text-[var(--fg)]"
         >
           {title}
@@ -73,7 +85,7 @@
         <button
           type="button"
           class="focus-ring -mr-2 flex h-11 w-11 items-center justify-center rounded text-[var(--muted)] hover:text-[var(--fg)]"
-          aria-label={closeLabel}
+          aria-label={closeLabel || $t("common.close")}
           on:click={() => close("close-button")}
         >
           <X size={20} aria-hidden="true" />

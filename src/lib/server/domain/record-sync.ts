@@ -22,7 +22,7 @@ function stringValue(value: unknown) {
   return typeof value === "string" && value ? value : null;
 }
 
-function subtractDays(date: string, days: number) {
+export function subtractDays(date: string, days: number) {
   const value = new Date(`${date}T00:00:00.000Z`);
   value.setUTCDate(value.getUTCDate() - days);
   return value.toISOString().slice(0, 10);
@@ -168,13 +168,14 @@ export async function syncInsuranceReminder(
   policy: InsurancePolicyReminderInput,
 ) {
   const marker = `insurance:${policy.id}`;
+  const noticeDays = policy.notify_before_days ?? 30;
   const values = {
     owner_id: ownerId,
     motorcycle_id: policy.motorcycle_id,
     title: `Seguro: ${policy.provider}`,
     trigger_type: "by_date" as const,
-    trigger_value_days: policy.notify_before_days,
-    reference_date: policy.coverage_end,
+    trigger_value_days: 0,
+    reference_date: subtractDays(policy.coverage_end, noticeDays),
     is_active: true,
     send_email: true,
     send_push: true,

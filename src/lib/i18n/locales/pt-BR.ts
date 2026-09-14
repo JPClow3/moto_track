@@ -74,6 +74,15 @@ export const ptBR = {
     // so the two forms are separate keys rather than "1 registros".
     recordCountOne: "1 registro",
     recordCountOther: "{count} registros",
+    // Status/feedback messages — previously hardcoded Portuguese in FeaturePage.
+    operationComplete: "Operação concluída.",
+    operationFailed: "Não foi possível concluir.",
+    deleteComplete: "Registro excluído.",
+    deleteFailed: "Não foi possível excluir o registro.",
+    // Column header for the last-updated timestamp in record tables.
+    updatedAt: "Atualizado em",
+    // CTA inside the empty-state row so users don't have to scroll to the header.
+    addFirst: "Adicionar registro",
   },
   reminders: {
     snoozeDays: "+7 dias",
@@ -225,6 +234,10 @@ export const ptBR = {
     benchmarkConsent:
       "Concordo em compartilhar estes números anonimamente para melhorar o comparativo.",
     benchmarkActive: "Sua contribuição anônima está ativa.",
+    garageCount: "{count} motos",
+    benchmarkIntervals: "{count} intervalos de consumo",
+    benchmarkMaintenanceRecords: "{count} registros de manutenção",
+    benchmarkDistanceRecorded: "{distance} registrados",
   },
   catalog: {
     brandLabel: "Marca",
@@ -672,5 +685,19 @@ export const ptBR = {
     upgradeToPro: "Faça upgrade para Pro para adicionar mais motos",
     generateReport: "Gerar relatório",
     exportData: "Exportar dados",
+  },
+  onboarding: {
+    eyebrow: "Primeiros passos",
+    heading: "Vamos conhecer sua moto",
+    step: "ETAPA {step} DE 2",
+    nameLabel: "Nome",
+    catalogToggle: "Não encontrei minha moto no catálogo",
+    odometerLabel: "Odômetro atual",
+    continueToHistory: "Continuar para o histórico",
+    createBike: "Criar minha moto",
+    back: "Voltar",
+    demoAction: "Explorar com moto de demonstração",
+    noExactSchedule:
+      "Sem uma agenda exata selecionada, a moto será criada sem recomendações automáticas.",
   },
 } as const;

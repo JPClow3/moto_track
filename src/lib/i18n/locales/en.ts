@@ -68,6 +68,12 @@ export const en: Messages = {
     confirmDelete: "Delete this record? This can't be undone.",
     recordCountOne: "1 record",
     recordCountOther: "{count} records",
+    operationComplete: "Operation complete.",
+    operationFailed: "Could not complete the operation.",
+    deleteComplete: "Record deleted.",
+    deleteFailed: "Could not delete the record.",
+    updatedAt: "Updated",
+    addFirst: "Add record",
   },
   reminders: {
     snoozeDays: "+7 days",
@@ -221,6 +227,10 @@ export const en: Messages = {
     benchmarkConsent:
       "I agree to share these numbers anonymously to improve the benchmark.",
     benchmarkActive: "Your anonymous contribution is active.",
+    garageCount: "{count} bikes",
+    benchmarkIntervals: "{count} consumption intervals",
+    benchmarkMaintenanceRecords: "{count} maintenance records",
+    benchmarkDistanceRecorded: "{distance} recorded",
   },
   catalog: {
     brandLabel: "Brand",
@@ -661,5 +671,19 @@ export const en: Messages = {
     upgradeToPro: "Upgrade to Pro to add more motorcycles",
     generateReport: "Generate report",
     exportData: "Export data",
+  },
+  onboarding: {
+    eyebrow: "Getting started",
+    heading: "Let's set up your bike",
+    step: "STEP {step} OF 2",
+    nameLabel: "Name",
+    catalogToggle: "I can't find my bike in the catalogue",
+    odometerLabel: "Current odometer",
+    continueToHistory: "Continue to history",
+    createBike: "Create my bike",
+    back: "Back",
+    demoAction: "Explore with a demo bike",
+    noExactSchedule:
+      "No exact schedule selected — the bike will be created without automatic recommendations.",
   },
 };

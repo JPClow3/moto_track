@@ -33,9 +33,11 @@
 <section class="mx-auto grid max-w-xl gap-6">
   <header>
     <p class="eyebrow">
-      <span class="slash-rule" aria-hidden="true"></span>Primeiros passos
+      <span class="slash-rule" aria-hidden="true"></span>{$t(
+        "onboarding.eyebrow",
+      )}
     </p>
-    <h1 class="display text-4xl">Vamos conhecer sua moto</h1>
+    <h1 class="display text-4xl">{$t("onboarding.heading")}</h1>
   </header>
   {#if form?.message}<p
       class="rounded bg-danger/10 p-3 text-sm text-danger"
@@ -53,11 +55,11 @@
     bind:this={formElement}
   >
     <p class="label-tech text-[var(--accent)]" aria-live="polite">
-      ETAPA {step} DE 2
+      {$t("onboarding.step", { step: String(step) })}
     </p>
     {#if step === 1}
       <label class="text-sm">
-        Nome<input
+        {$t("onboarding.nameLabel")}<input
           class="field"
           name="name"
           bind:value={motorcycleName}
@@ -68,8 +70,8 @@
         <label
           class="flex min-h-11 items-center gap-2 rounded px-2 text-sm font-semibold"
         >
-          <input bind:checked={custom} type="checkbox" /> Não encontrei minha moto
-          no catálogo
+          <input bind:checked={custom} type="checkbox" />
+          {$t("onboarding.catalogToggle")}
         </label>
         {#if !custom}
           <p class="mt-1 text-xs text-[var(--muted)]">
@@ -88,7 +90,7 @@
           <input type="hidden" name="model_id" value="" />
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
             <label class="text-sm">
-              Marca<input
+              {$t("garage.brandLabel")}<input
                 class="field"
                 name="brand"
                 bind:value={customBrand}
@@ -96,7 +98,7 @@
               />
             </label>
             <label class="text-sm">
-              Modelo<input
+              {$t("garage.modelLabel")}<input
                 class="field"
                 name="model"
                 bind:value={customModel}
@@ -105,7 +107,7 @@
             </label>
           </div>
           <label class="mt-3 block text-sm">
-            Ano<input
+            {$t("garage.yearLabel")}<input
               class="field"
               name="year"
               type="number"
@@ -118,7 +120,7 @@
         {/if}
       </div>
       <label class="text-sm">
-        Odômetro atual<input
+        {$t("onboarding.odometerLabel")}<input
           class="field"
           name="current_odometer_km"
           type="number"
@@ -126,14 +128,13 @@
           bind:value={odometer}
         />
         <span class="mt-1 block text-xs text-[var(--muted)]">
-          Este valor não será tratado como prova de que uma revisão anterior foi
-          feita.
+          {$t("garage.odometerHint")}
         </span>
       </label>
       <button class="button-primary" type="button" on:click={openHistory}
         >{!custom && resolvedTemplate?.is_exact_schedule
-          ? "Continuar para o histórico"
-          : "Criar minha moto"}</button
+          ? $t("onboarding.continueToHistory")
+          : $t("onboarding.createBike")}</button
       >
     {:else}
       <input type="hidden" name="name" value={motorcycleName} />
@@ -161,25 +162,24 @@
         />
       {:else}
         <p class="bg-[var(--muted)]/10 rounded p-3 text-sm">
-          Sem uma agenda exata selecionada, a moto será criada sem recomendações
-          automáticas.
+          {$t("onboarding.noExactSchedule")}
         </p>
       {/if}
       <div class="flex gap-3">
         <button
           class="button-secondary"
           type="button"
-          on:click={() => (step = 1)}>Voltar</button
+          on:click={() => (step = 1)}>{$t("onboarding.back")}</button
         >
         <button class="button-primary flex-1" type="submit"
-          >Criar minha moto</button
+          >{$t("onboarding.createBike")}</button
         >
       </div>
     {/if}
   </form>
   <form method="POST" action="?/demo" use:enhance>
     <button class="button-secondary w-full" type="submit"
-      >Explorar com moto de demonstração</button
+      >{$t("onboarding.demoAction")}</button
     >
   </form>
 </section>

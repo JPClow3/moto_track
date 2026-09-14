@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { PublicTableName } from "$lib/types/database";
+import { parseLocalizedNumber } from "$server/domain/fuel";
 
 export type FieldKind =
   | "text"
@@ -342,7 +343,15 @@ export function schemaForFeature(feature: FeatureConfig) {
   for (const field of feature.fields) {
     let validator: z.ZodTypeAny;
     if (field.kind === "number" || field.kind === "money") {
-      validator = z.coerce.number().finite();
+      validator = z.preprocess((val) => {
+        if (typeof val === "string") {
+          const trimmed = val.trim();
+          if (!trimmed) return undefined;
+          const parsed = parseLocalizedNumber(trimmed);
+          return parsed !== null ? parsed : val;
+        }
+        return val;
+      }, z.coerce.number().finite());
     } else if (field.kind === "boolean") {
       validator = z.coerce.boolean().default(false);
     } else {

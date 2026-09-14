@@ -49,8 +49,16 @@ export const actions: Actions = {
     throw redirect(303, redirectTo);
   },
   google: async (event) => {
-    const { url } = event;
-    const callbackURL = `${url.origin}/auth/callback`;
+    const { request, url } = event;
+    const form = await request.formData().catch(() => new FormData());
+    const redirectTo = safeInternalRedirect(
+      String(
+        form.get("redirectTo") ??
+          url.searchParams.get("redirectTo") ??
+          "/dashboard",
+      ),
+    );
+    const callbackURL = `${url.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`;
     const { url: providerUrl, message } = await socialSignInUrl(
       event,
       "google",

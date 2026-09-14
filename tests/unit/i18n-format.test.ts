@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatDate,
   formatMoney,
   formatPreciseMoney,
   localeFromAcceptLanguage,
@@ -75,5 +76,18 @@ describe("translate", () => {
     // when one inevitably drifts.
     expect(translate("en", "nav.dashboard")).toBe("Dashboard");
     expect(translate("pt-BR", "nav.dashboard")).toBe("Painel");
+  });
+});
+
+describe("date formatting", () => {
+  it("formats date-only ISO strings without shifting the day in negative UTC timezones", () => {
+    const ptResult = formatDate("pt-BR", "2026-07-10");
+    expect(ptResult).toContain("10");
+    expect(ptResult.toLowerCase()).toContain("jul");
+
+    const enResult = formatDate("en", "2026-07-10");
+    expect(enResult).toContain("10");
+    expect(enResult).toContain("Jul");
+    expect(enResult).toContain("2026");
   });
 });

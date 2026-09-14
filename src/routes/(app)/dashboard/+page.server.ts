@@ -327,11 +327,13 @@ export async function load({ locals, url }) {
       label: tr("dashboard.metricBikes"),
       value: formatNumber(locale, motorcycleRows.length),
       detail: tr("dashboard.metricBikesDetail"),
+      href: "/garage",
     },
     {
       label: tr("dashboard.metricOdometer"),
       value: formatDistance(locale, Number(primary?.current_odometer_km ?? 0)),
       detail: String(primary?.name ?? tr("dashboard.noActiveBike")),
+      href: "/garage",
     },
     {
       label: tr("dashboard.metricConsumption"),
@@ -339,6 +341,7 @@ export async function load({ locals, url }) {
         ? `${formatNumber(locale, summary.average_consumption_km_l)} km/L`
         : tr("dashboard.noData"),
       detail: tr("dashboard.metricConsumptionDetail"),
+      href: "/fuel",
     },
     {
       label: tr("dashboard.metricCostPerKm"),
@@ -346,6 +349,7 @@ export async function load({ locals, url }) {
         ? formatMoney(locale, summary.cost_per_km * 100)
         : tr("dashboard.noData"),
       detail: tr("dashboard.metricCostPerKmDetail"),
+      href: "/fuel",
     },
   ];
 

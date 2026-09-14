@@ -1,6 +1,6 @@
 <script lang="ts" generics="T = Record<string, unknown>">
   export let title = "";
-  export let emptyMessage = "Nenhuma atividade registrada ainda.";
+  export let emptyMessage = "";
   export let items: T[] | null = null;
 </script>
 
@@ -13,7 +13,7 @@
   {/if}
 
   {#if items && items.length === 0}
-    <div class="timeline-empty panel p-8 text-center">
+    <div class="py-8 text-center">
       <slot name="empty">
         <p class="text-sm text-[var(--muted)]">
           {emptyMessage}

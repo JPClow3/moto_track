@@ -39,13 +39,43 @@ function supportedReceiptType(file: File) {
   return file.type === "application/pdf" || file.type.startsWith("image/");
 }
 
+export function parseLocalizedNumber(text: string): number | null {
+  const trimmed = text.trim().replace(/[.,]+$/, "");
+  if (!trimmed) return null;
+  if (trimmed.includes(".") && trimmed.includes(",")) {
+    const lastDot = trimmed.lastIndexOf(".");
+    const lastComma = trimmed.lastIndexOf(",");
+    if (lastDot < lastComma) {
+      const normalized = trimmed.replace(/\./g, "").replace(",", ".");
+      const val = Number(normalized);
+      return Number.isFinite(val) ? val : null;
+    } else {
+      const normalized = trimmed.replace(/,/g, "");
+      const val = Number(normalized);
+      return Number.isFinite(val) ? val : null;
+    }
+  }
+  if (trimmed.includes(",")) {
+    const normalized = trimmed.replace(/,/g, ".");
+    const val = Number(normalized);
+    return Number.isFinite(val) ? val : null;
+  }
+  const dotCount = (trimmed.match(/\./g) || []).length;
+  if (dotCount > 1) {
+    const normalized = trimmed.replace(/\./g, "");
+    const val = Number(normalized);
+    return Number.isFinite(val) ? val : null;
+  }
+  const val = Number(trimmed);
+  return Number.isFinite(val) ? val : null;
+}
+
 function numberFromMatch(text: string, patterns: RegExp[]) {
   for (const pattern of patterns) {
     const match = text.match(pattern);
     if (!match?.[1]) continue;
-    const normalized = match[1].replace(/\./g, "").replace(",", ".");
-    const value = Number(normalized);
-    if (Number.isFinite(value)) return value;
+    const value = parseLocalizedNumber(match[1]);
+    if (value !== null) return value;
   }
   return null;
 }
@@ -53,15 +83,15 @@ function numberFromMatch(text: string, patterns: RegExp[]) {
 export function parseReceiptText(text: string): FuelOcrResult {
   const normalized = text.toLowerCase();
   const liters = numberFromMatch(normalized, [
-    /(?:litros?|l)\s*[:=]?\s*(\d+(?:[,.]\d{1,3})?)/i,
-    /(\d+(?:[,.]\d{1,3})?)\s*l(?:itros?)?\b/i,
+    /(?:(?:volume|qtd|quantidade)\s*(?:\(l(?:itros?)?\))?|(?<!(?:pre[cç]o|valor|r\$|\/)\s*)(?:litros?|\bl\b))\s*[:=]?\s*([\d.,]+)/i,
+    /([\d.,]+)\s*l(?:itros?)?\b/i,
   ]);
   const total = numberFromMatch(normalized, [
-    /(?:total|valor)\s*[:=]?\s*r?\$?\s*(\d+(?:[,.]\d{2})?)/i,
-    /r\$\s*(\d+(?:[,.]\d{2})?)/i,
+    /(?:total|valor(?!\s*litro))\s*[:=]?\s*r?\$?\s*([\d.,]+)/i,
+    /r\$\s*([\d.,]+)/i,
   ]);
   const price = numberFromMatch(normalized, [
-    /(?:pre[cç]o|unit[aá]rio|litro)\s*[:=]?\s*r?\$?\s*(\d+(?:[,.]\d{2,3})?)/i,
+    /(?:pre[cç]o(?:\s*litro)?|unit[aá]rio|valor\s*litro)\s*[:=]?\s*r?\$?\s*([\d.,]+)/i,
   ]);
   const dateMatch = normalized.match(/(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})/);
   const date = dateMatch?.[1]?.includes("/")
@@ -336,7 +366,6 @@ export function detectFuelConsumptionAnomalies(
   const anomalies = new Map<string, string>();
   const byMotorcycle = new Map<string, typeof records>();
   for (const record of records) {
-    if (!record.tank_full) continue;
     const group = byMotorcycle.get(record.motorcycle_id) ?? [];
     group.push(record);
     byMotorcycle.set(record.motorcycle_id, group);
@@ -347,28 +376,38 @@ export function detectFuelConsumptionAnomalies(
       (a, b) => a.date.localeCompare(b.date) || a.odometer_km - b.odometer_km,
     );
     const consumptions: number[] = [];
-    for (let i = 1; i < ordered.length; i++) {
-      const distance = ordered[i].odometer_km - ordered[i - 1].odometer_km;
-      const liters = ordered[i].liters;
-      if (distance <= 0 || liters <= 0) continue;
-      const kmPerLiter = distance / liters;
+    let previousFull = -1;
 
-      const window = consumptions.slice(-CONSUMPTION_ANOMALY_WINDOW);
-      if (window.length > 0) {
-        const baseline =
-          window.reduce((sum, value) => sum + value, 0) / window.length;
-        if (
-          baseline > 0 &&
-          kmPerLiter <= baseline * (1 - CONSUMPTION_ANOMALY_THRESHOLD)
-        ) {
-          const percent = Math.round((1 - kmPerLiter / baseline) * 100);
-          anomalies.set(
-            ordered[i].id,
-            `Consumo abaixo do esperado: ${percent}% menor que a média recente.`,
-          );
+    for (let i = 0; i < ordered.length; i++) {
+      if (!ordered[i].tank_full) continue;
+      if (previousFull >= 0) {
+        const distance =
+          ordered[i].odometer_km - ordered[previousFull].odometer_km;
+        const liters = ordered
+          .slice(previousFull + 1, i + 1)
+          .reduce((sum, record) => sum + Number(record.liters || 0), 0);
+
+        if (distance > 0 && liters > 0) {
+          const kmPerLiter = distance / liters;
+          const window = consumptions.slice(-CONSUMPTION_ANOMALY_WINDOW);
+          if (window.length > 0) {
+            const baseline =
+              window.reduce((sum, value) => sum + value, 0) / window.length;
+            if (
+              baseline > 0 &&
+              kmPerLiter <= baseline * (1 - CONSUMPTION_ANOMALY_THRESHOLD)
+            ) {
+              const percent = Math.round((1 - kmPerLiter / baseline) * 100);
+              anomalies.set(
+                ordered[i].id,
+                `Consumo abaixo do esperado: ${percent}% menor que a média recente.`,
+              );
+            }
+          }
+          consumptions.push(kmPerLiter);
         }
       }
-      consumptions.push(kmPerLiter);
+      previousFull = i;
     }
   }
 

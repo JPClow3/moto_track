@@ -2,6 +2,7 @@ import { fail, type Actions } from "@sveltejs/kit";
 import type { Sql } from "postgres";
 import { getFeature, schemaForFeature, type FeatureConfig } from "./features";
 import { uploadObjectFile } from "$server/r2/files";
+import { parseLocalizedNumber } from "$server/domain/fuel";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
 import { syncLinkedReminder } from "$server/domain/record-sync";
 import {
@@ -21,6 +22,23 @@ function messageFrom(err: unknown) {
 function motorcycleIdFrom(payload: Record<string, unknown>) {
   const value = payload.motorcycle_id;
   return typeof value === "string" && value ? value : null;
+}
+
+export function parseFormNumber(value: unknown, fallback = 0): number {
+  if (typeof value === "string") {
+    const parsed = parseLocalizedNumber(value);
+    if (parsed !== null) return parsed;
+  }
+  const num = Number(value ?? fallback);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+export function parseMoneyCents(value: unknown, fallback = 0): number {
+  return Math.round(parseFormNumber(value, fallback) * 100);
+}
+
+export function parseMoneyMillicents(value: unknown, fallback = 0): number {
+  return Math.round(parseFormNumber(value, fallback) * 100000);
 }
 
 export async function syncRecordEffects({

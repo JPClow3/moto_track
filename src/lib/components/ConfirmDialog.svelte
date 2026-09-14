@@ -63,13 +63,12 @@
     <!-- method="dialog" closes the dialog and sets returnValue to the button's
          value, with no JS and no submit handler. -->
     <form method="dialog" class="mt-7 flex justify-end gap-2">
-      <button class="button-secondary min-h-11" value="cancel"
+      <button class="button-secondary min-h-11" value="cancel" data-autofocus
         >{$t("common.cancel")}</button
       >
       <button
         class={`${destructive ? "button-danger" : "button-primary"} min-h-11`}
         value="confirm"
-        data-autofocus
       >
         {confirmLabel || $t("common.confirm")}
       </button>

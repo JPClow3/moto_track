@@ -4,46 +4,66 @@
   export let label = "Mais ações";
   export let align: "left" | "right" = "right";
 
-  let details: HTMLDetailsElement;
+  let open = false;
+  let triggerButton: HTMLButtonElement;
+
+  function toggle() {
+    open = !open;
+  }
+
+  function close() {
+    open = false;
+  }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === "Escape" && details?.open) {
+    if (!open) return;
+    if (event.key === "Escape") {
       event.preventDefault();
-      details.open = false;
-      details.querySelector("summary")?.focus();
+      close();
+      triggerButton?.focus();
     }
   }
 
   function handleDocumentClick(event: MouseEvent) {
-    if (details?.open && !details.contains(event.target as Node)) {
-      details.open = false;
+    // Close if the click landed outside this component's subtree.
+    const root = triggerButton?.closest(".page-overflow-menu");
+    if (open && root && !root.contains(event.target as Node)) {
+      close();
     }
   }
 </script>
 
 <svelte:window on:keydown={handleKeydown} on:click={handleDocumentClick} />
 
-<details
-  bind:this={details}
-  class="page-overflow-menu relative inline-block text-left"
->
-  <summary
-    class="focus-ring flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded border border-[var(--line)] bg-[var(--panel)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--fg)] [&::-webkit-details-marker]:hidden"
+<div class="page-overflow-menu relative inline-block text-left">
+  <button
+    bind:this={triggerButton}
+    type="button"
+    class="focus-ring flex h-11 w-11 cursor-pointer items-center justify-center rounded border border-[var(--line)] bg-[var(--panel)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--fg)]"
+    aria-haspopup="menu"
+    aria-expanded={open}
     aria-label={label}
     title={label}
+    on:click={toggle}
   >
     <slot name="trigger">
       <Ellipsis size={18} aria-hidden="true" />
     </slot>
-  </summary>
+  </button>
 
-  <div
-    class="menu-content absolute top-full z-40 mt-1 min-w-[12rem] rounded border border-[var(--line)] bg-[var(--panel)] p-1.5 shadow-lift {align ===
-    'right'
-      ? 'right-0'
-      : 'left-0'}"
-    role="menu"
-  >
-    <slot />
-  </div>
-</details>
+  {#if open}
+    <div
+      class="menu-content absolute top-full z-40 mt-1 min-w-[12rem] rounded border border-[var(--line)] bg-[var(--panel)] p-1.5 shadow-lift {align ===
+      'right'
+        ? 'right-0'
+        : 'left-0'}"
+      role="menu"
+    >
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div on:click={close}>
+        <slot />
+      </div>
+    </div>
+  {/if}
+</div>

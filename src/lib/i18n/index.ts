@@ -184,5 +184,11 @@ export function formatDate(
     year: "numeric",
   },
 ) {
-  return new Intl.DateTimeFormat(locale, options).format(new Date(value));
+  const isDateOnly =
+    typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const resolvedOptions: Intl.DateTimeFormatOptions =
+    isDateOnly && !options.timeZone ? { ...options, timeZone: "UTC" } : options;
+  return new Intl.DateTimeFormat(locale, resolvedOptions).format(
+    new Date(value),
+  );
 }

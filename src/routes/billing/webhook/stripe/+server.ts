@@ -119,7 +119,13 @@ export async function POST({ request, platform }) {
 
   if (event.type === "invoice.payment_failed") {
     const invoice = event.data.object as Stripe.Invoice;
-    const subscriptionRef = invoice.parent?.subscription_details?.subscription;
+    const subscriptionRef =
+      invoice.parent?.subscription_details?.subscription ??
+      (
+        invoice as unknown as {
+          subscription?: string | Stripe.Subscription | null;
+        }
+      ).subscription;
     const subscriptionId =
       typeof subscriptionRef === "string"
         ? subscriptionRef
