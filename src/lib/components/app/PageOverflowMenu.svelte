@@ -1,7 +1,8 @@
 <script lang="ts">
   import Ellipsis from "lucide-svelte/icons/ellipsis";
+  import { t } from "$lib/i18n/store";
 
-  export let label = "Mais ações";
+  export let label = "";
   export let align: "left" | "right" = "right";
 
   let open = false;
@@ -42,8 +43,8 @@
     class="focus-ring flex h-11 w-11 cursor-pointer items-center justify-center rounded border border-[var(--line)] bg-[var(--panel)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--fg)]"
     aria-haspopup="menu"
     aria-expanded={open}
-    aria-label={label}
-    title={label}
+    aria-label={label || $t("authenticatedUx.moreActions")}
+    title={label || $t("authenticatedUx.moreActions")}
     on:click={toggle}
   >
     <slot name="trigger">

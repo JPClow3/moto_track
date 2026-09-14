@@ -1,16 +1,17 @@
 <script lang="ts">
   import Bike from "lucide-svelte/icons/bike";
+  import { t } from "$lib/i18n/store";
 
   export let name: string;
   export let model = "";
   export let odometerKm: number | string | null = null;
   export let imageUrl: string | null = null;
-  export let ariaLabel = "Garagem";
+  export let ariaLabel = "";
 </script>
 
 <div
   class="bike-context-bar panel flex flex-wrap items-center justify-between gap-3 p-3 sm:px-4 sm:py-3"
-  aria-label={ariaLabel}
+  aria-label={ariaLabel || $t("nav.garage")}
 >
   <div class="flex min-w-0 items-center gap-3">
     {#if imageUrl}
