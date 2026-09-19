@@ -19,6 +19,7 @@ localConnectionString = "postgresql://user:pass@127.0.0.1:1/postgres"
 [vars]
 PUBLIC_SITE_URL = "https://moto-track.net"
 PUBLIC_NEON_AUTH_URL = "https://ep-damp-bar-acu29m6g.neonauth.sa-east-1.aws.neon.tech/neondb/auth"
+PUBLIC_SENTRY_ENVIRONMENT = "production"
 
 # Values remain in the Pages production secret store. Listing their names makes
 # the checked-in Worker configuration the complete runtime contract without
@@ -32,6 +33,7 @@ required = [
   "PUBLIC_VAPID_KEY",
   "PUSH_ENCRYPTION_KEY",
   "SENTRY_DSN",
+  "PUBLIC_SENTRY_DSN",
   "SENTRY_ENVIRONMENT",
   "SENTRY_ORG",
   "SENTRY_PROJECT",

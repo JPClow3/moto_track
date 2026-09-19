@@ -60,6 +60,18 @@
     // marker instead of guessing when Svelte hydration has completed.
     document.documentElement.dataset.appReady = "true";
 
+    const dsn = import.meta.env.PUBLIC_SENTRY_DSN;
+    if (dsn) {
+      void import("@sentry/browser").then((Sentry) => {
+        Sentry.init({
+          dsn,
+          environment: import.meta.env.PUBLIC_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
+          tracesSampleRate: import.meta.env.PROD ? 0.1 : 1,
+          sendDefaultPii: false,
+        });
+      });
+    }
+
     if (!("serviceWorker" in navigator)) return;
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
 
