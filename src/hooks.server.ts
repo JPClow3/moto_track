@@ -69,10 +69,24 @@ export const handle: Handle = async ({ event, resolve }) => {
     );
   }
 
-  return resolve(event, {
+  const response = await resolve(event, {
     // app.html ships `lang="%lang%"`; without this the document would claim to
     // be pt-BR to screen readers and translation tools no matter the locale.
     transformPageChunk: ({ html }) =>
       html.replace("%lang%", event.locals.locale),
   });
+
+  response.headers.set(
+    "Strict-Transport-Security",
+    "max-age=63072000; includeSubDomains; preload",
+  );
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(self)",
+  );
+
+  return response;
 };

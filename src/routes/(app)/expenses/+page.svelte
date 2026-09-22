@@ -349,7 +349,7 @@
         <h2 class="display text-xl">{$t("expenses.policiesHeading")}</h2>
         <button
           type="button"
-          class="button-secondary flex min-h-8 items-center gap-1 px-2 py-1 text-xs"
+          class="button-secondary flex min-h-11 items-center gap-1 px-2 py-1 text-xs"
           on:click={() => policySheet?.open()}
         >
           <Plus size={14} />
@@ -376,7 +376,7 @@
             >
               <input type="hidden" name="id" value={p.id} />
               <button
-                class="button-danger min-h-9 px-2 py-1 text-xs"
+                class="button-danger min-h-11 px-2 py-1 text-xs"
                 disabled={formBusy}
               >
                 {$t("common.delete")}
@@ -397,7 +397,7 @@
         <h2 class="display text-xl">{$t("expenses.claimsHeading")}</h2>
         <button
           type="button"
-          class="button-secondary flex min-h-8 items-center gap-1 px-2 py-1 text-xs"
+          class="button-secondary flex min-h-11 items-center gap-1 px-2 py-1 text-xs"
           disabled={!hasPolicies}
           on:click={() => claimSheet?.open()}
         >
@@ -431,7 +431,7 @@
             >
               <input type="hidden" name="id" value={claim.id} />
               <button
-                class="button-danger min-h-9 px-2 py-1 text-xs"
+                class="button-danger min-h-11 px-2 py-1 text-xs"
                 disabled={formBusy}
               >
                 {$t("common.delete")}

@@ -1,16 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("language follows the reader", () => {
-  test("an English system language renders the app in English", async ({
+test.describe("released locale", () => {
+  test("an English system language stays in pt-BR until English is complete", async ({
     browser,
   }) => {
     const context = await browser.newContext({ locale: "en-US" });
     const page = await context.newPage();
     await page.goto("/precos");
 
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
     await expect(
-      page.getByRole("heading", { name: /choose your plan/i }),
+      page.getByRole("heading", { name: /escolha o seu plano/i }),
     ).toBeVisible();
     await context.close();
   });
@@ -39,29 +39,13 @@ test.describe("language follows the reader", () => {
     await context.close();
   });
 
-  test("an explicit choice overrides the system language and persists", async ({
-    browser,
-  }) => {
+  test("does not expose an unfinished locale selector", async ({ browser }) => {
     const context = await browser.newContext({ locale: "pt-BR" });
     const page = await context.newPage();
     await page.goto("/precos");
     await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
 
-    // The select submits its form from an on:change handler, which only exists
-    // once Svelte has hydrated. Without this wait the change fires against
-    // server-rendered HTML with no listener attached and is silently dropped.
-    await page.waitForLoadState("networkidle");
-    await page.selectOption("#locale-select", "en");
-
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(
-      page.getByRole("heading", { name: /choose your plan/i }),
-    ).toBeVisible();
-
-    // The cookie must outlive the navigation, or the choice resets on the next
-    // page — which is the whole point of storing it.
-    await page.goto("/roadmap");
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.locator("#locale-select")).toHaveCount(0);
     await context.close();
   });
 });

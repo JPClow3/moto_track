@@ -1,16 +1,5 @@
 import type { Locale } from "$lib/i18n";
-
-// TODO(auth): finalized in T3 — placeholder shapes until Neon Auth (Better
-// Auth) session/user types land.
-interface AuthSession {
-  [key: string]: unknown;
-}
-
-interface AuthUser {
-  id: string;
-  email?: string | null;
-  [key: string]: unknown;
-}
+import type { AuthSession, AuthUser } from "$server/auth/session";
 
 declare global {
   namespace App {
@@ -39,7 +28,6 @@ declare global {
 
     interface Locals {
       db: import("postgres").Sql;
-      // TODO(auth): finalized in T3
       safeGetSession: () => Promise<{
         session: AuthSession | null;
         user: AuthUser | null;

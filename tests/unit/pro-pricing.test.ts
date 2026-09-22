@@ -95,6 +95,20 @@ describe("fetchProPricing", () => {
     expect(retrieve).not.toHaveBeenCalled();
   });
 
+  it("treats example placeholder secrets as unconfigured", async () => {
+    const { fetchProPricing } = await loadBilling();
+    const pricing = await fetchProPricing({
+      env: {
+        STRIPE_SECRET_KEY: "sk_test_replace_me",
+        STRIPE_PRO_MONTHLY_PRICE_ID: "price_replace_me",
+        STRIPE_PRO_YEARLY_PRICE_ID: "price_replace_me",
+      },
+    } as unknown as App.Platform);
+
+    expect(pricing).toEqual({ monthly: null, yearly: null });
+    expect(retrieve).not.toHaveBeenCalled();
+  });
+
   it("ignores prices it cannot render as a single headline figure", async () => {
     // Tiered/metered prices carry a null unit_amount; archived ones are inactive.
     retrieve.mockImplementation(async (id: string) =>

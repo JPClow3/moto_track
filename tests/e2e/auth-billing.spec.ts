@@ -12,15 +12,7 @@ const hasAuthEnv = Boolean(
 test.describe("authenticated garage and billing", () => {
   test.skip(!hasAuthEnv, "Set E2E_USER_EMAIL and E2E_USER_PASSWORD to run.");
 
-  test("signs in and reaches garage + conta", async ({ page }) => {
-    await page.goto("/auth");
-    await page.locator('input[name="email"]').fill(process.env.E2E_USER_EMAIL!);
-    await page
-      .locator('input[name="password"]')
-      .fill(process.env.E2E_USER_PASSWORD!);
-    await page.locator('button[type="submit"]').first().click();
-
-    await page.waitForURL(/\/(dashboard|garage|onboarding)/);
+  test("reaches garage + conta with the CI session", async ({ page }) => {
     await page.goto("/garage");
     await expect(page.getByRole("heading").first()).toBeVisible();
 
@@ -37,6 +29,7 @@ test.describe("authenticated garage and billing", () => {
 test("billing portal redirects unauthenticated users to sign-in", async ({
   page,
 }) => {
+  await page.context().clearCookies();
   await page.goto("/billing/portal");
   await expect(page).toHaveURL(/\/auth\?redirectTo=/);
 });

@@ -6,6 +6,10 @@ export type { PlanPrice, ProPricing };
 
 export type BillingInterval = "monthly" | "yearly";
 
+function hasConfiguredStripeSecret(value: string | undefined): value is string {
+  return Boolean(value && !/(?:replace[-_ ]?me|placeholder)/i.test(value));
+}
+
 type StripeSubscriptionRecord = {
   id: string;
   customer: string | Stripe.Customer | Stripe.DeletedCustomer;
@@ -21,7 +25,7 @@ type StripeSubscriptionRecord = {
 
 export function stripeClient(platform?: App.Platform) {
   const runtime = runtimeEnv(platform);
-  if (!runtime.STRIPE_SECRET_KEY)
+  if (!hasConfiguredStripeSecret(runtime.STRIPE_SECRET_KEY))
     throw new Error("STRIPE_SECRET_KEY is not configured.");
   return new Stripe(runtime.STRIPE_SECRET_KEY, {
     apiVersion: "2026-02-25.clover" as Stripe.LatestApiVersion,
@@ -79,7 +83,8 @@ export async function fetchProPricing(
   if (pricingCache && pricingCache.expiresAt > now) return pricingCache.value;
 
   const runtime = runtimeEnv(platform);
-  if (!runtime.STRIPE_SECRET_KEY) return EMPTY_PRICING;
+  if (!hasConfiguredStripeSecret(runtime.STRIPE_SECRET_KEY))
+    return EMPTY_PRICING;
 
   let client: Stripe;
   try {

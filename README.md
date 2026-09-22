@@ -11,7 +11,7 @@ Moto Track is now a SvelteKit + Neon + Cloudflare application.
   only (every query filters by `owner_id` — there is no RLS on Neon)
 - Cloudflare Pages and R2 for deployment and object storage
 - Stripe billing
-- Resend for transactional app email (sent in-process, no Edge Function hop)
+- Cloudflare Email Sending for reminder email from the scheduled Worker
 
 ## Local Development
 

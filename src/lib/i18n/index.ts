@@ -6,6 +6,11 @@ import { en } from "./locales/en";
 export const LOCALES = ["pt-BR", "en"] as const;
 export type Locale = (typeof LOCALES)[number];
 
+// English catalogue work is intentionally kept in-tree, but several product
+// journeys still contain Portuguese-only copy. Do not advertise or negotiate
+// a partially translated experience as a released locale.
+export const RELEASED_LOCALES = ["pt-BR"] as const satisfies readonly Locale[];
+
 export const DEFAULT_LOCALE: Locale = "pt-BR";
 export const LOCALE_COOKIE = "locale";
 
@@ -51,6 +56,13 @@ export function normalizeLocale(value: unknown): Locale | null {
   return null;
 }
 
+export function normalizeReleasedLocale(value: unknown): Locale | null {
+  const locale = normalizeLocale(value);
+  return locale && (RELEASED_LOCALES as readonly Locale[]).includes(locale)
+    ? locale
+    : null;
+}
+
 /**
  * Picks the best locale from an Accept-Language header, honouring q-weights so
  * `en;q=0.8, pt-BR;q=0.9` resolves to pt-BR rather than to whichever came first.
@@ -72,7 +84,7 @@ export function localeFromAcceptLanguage(header: string | null): Locale | null {
     .sort((a, b) => b.quality - a.quality);
 
   for (const { tag } of ranked) {
-    const match = normalizeLocale(tag);
+    const match = normalizeReleasedLocale(tag);
     if (match) return match;
   }
   return null;
@@ -87,7 +99,7 @@ export function resolveLocale(
   acceptLanguage: string | null,
 ): Locale {
   return (
-    normalizeLocale(cookieValue) ??
+    normalizeReleasedLocale(cookieValue) ??
     localeFromAcceptLanguage(acceptLanguage) ??
     DEFAULT_LOCALE
   );

@@ -12,35 +12,35 @@ Configure the `R2_BUCKET` binding to the `moto-track-media` R2 bucket and the `H
 
 Add these as encrypted secrets:
 
-- `DATABASE_URL` (pooled endpoint; local dev/scripts only — Pages/Workers use the Hyperdrive binding instead)
 - `NEON_AUTH_JWKS_URL`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRO_MONTHLY_PRICE_ID`
 - `STRIPE_PRO_YEARLY_PRICE_ID`
 - `MISTRAL_API_KEY`
-- `RESEND_API_KEY`
-- `DEFAULT_FROM_EMAIL`
 - `VAPID_PRIVATE_KEY`
 - `PUSH_ENCRYPTION_KEY`
+- `PUBLIC_SENTRY_DSN` (client-visible DSN; configure as a plaintext variable)
+- `PUBLIC_SENTRY_ENVIRONMENT` (for example `production`)
 
 `MISTRAL_API_KEY` is server-only. Receipt image and PDF OCR fails clearly when it is absent; it never returns fabricated fuel values.
 
-`PUBLIC_VAPID_KEY` / `VAPID_PRIVATE_KEY` / `PUSH_ENCRYPTION_KEY` power browser push subscriptions and the reminder worker send path. `RESEND_API_KEY` is used in-process for transactional email (no Edge Function hop).
+`PUBLIC_VAPID_KEY` / `VAPID_PRIVATE_KEY` / `PUSH_ENCRYPTION_KEY` power browser push subscriptions and the reminder worker send path. Reminder email is sent by the scheduled Worker through its Cloudflare Email Sending `EMAIL` binding; configure `DEFAULT_FROM_EMAIL` on that Worker.
 
 ## Neon
 
 1. Run `npm run db:push` against the target Neon branch to apply everything under `db/migrations/`.
-2. Run `node scripts/generate-db-types.mjs` and commit any generated type changes.
+2. Update `src/lib/types/database.ts` by hand alongside every schema migration; the retired type generator intentionally exits with an error.
 3. Authorization is app-layer only — there is no RLS on Neon. Every owner-scoped query must filter by `owner_id`; there is no database-level safety net to fall back on.
 4. Confirm privileged columns stay locked: `profiles.is_staff` has no user-facing write path anywhere in the app (see the comment on `isStaffUser` in `src/lib/server/domain/staff.ts`) and `subscription_profiles` billing columns are written only by `billing/webhook/stripe`, `billing/checkout`, `billing/portal`, and the admin account-deletion action.
-5. Confirm the Neon Auth project trusts the Pages preview hostname, the production hostname, and `http://localhost:5173` as allowed origins. Email/password, OAuth, and password-reset flows funnel through `/auth/callback`.
+5. Confirm the Neon Auth project trusts the Pages preview hostname and the production hostname, and enables localhost origins for development (`http://localhost:5173`) and Playwright (`http://localhost:5187`). Email/password, OAuth, and password-reset flows funnel through `/auth/callback`.
+6. CI creates and deletes a disposable Neon branch, including branch-specific Auth, for every authenticated E2E run. Never point E2E at the primary production database.
 
 ## Stripe and reminders
 
 1. Create the monthly and yearly Pro prices and set their IDs as Pages secrets.
 2. Point the Stripe webhook to `/billing/webhook/stripe` and use the endpoint signing secret.
-3. Deploy the reminder worker with `npm run worker:deploy` after setting its Worker secrets in `workers/reminders/wrangler.toml` (email + VAPID keys for push) and confirming its Hyperdrive binding points at the same Neon database.
+3. Deploy the reminder worker with `npm run worker:deploy` after configuring its `EMAIL` binding, `DEFAULT_FROM_EMAIL`, VAPID/push secrets, trigger token, and confirming its Hyperdrive binding points at the same Neon database.
 
 ## Preview acceptance test
 

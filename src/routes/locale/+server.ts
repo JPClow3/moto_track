@@ -1,5 +1,5 @@
 import { error, redirect } from "@sveltejs/kit";
-import { LOCALE_COOKIE, normalizeLocale } from "$lib/i18n";
+import { LOCALE_COOKIE, normalizeReleasedLocale } from "$lib/i18n";
 
 /**
  * A plain form POST rather than a fetch, so switching language works with
@@ -8,7 +8,7 @@ import { LOCALE_COOKIE, normalizeLocale } from "$lib/i18n";
  */
 export async function POST({ request, cookies, url }) {
   const form = await request.formData();
-  const locale = normalizeLocale(form.get("locale"));
+  const locale = normalizeReleasedLocale(form.get("locale"));
   if (!locale) throw error(400, "Unsupported locale.");
 
   cookies.set(LOCALE_COOKIE, locale, {

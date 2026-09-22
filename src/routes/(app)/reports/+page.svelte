@@ -116,7 +116,7 @@
         </p>
       </div>
       <a
-        class="button-secondary flex min-h-9 shrink-0 items-center gap-1.5 px-3 py-1 text-xs"
+        class="button-secondary flex min-h-11 shrink-0 items-center gap-1.5 px-3 py-1 text-xs"
         href={form.publicUrl}
         target="_blank"
         rel="noreferrer"
@@ -226,7 +226,7 @@
               >
                 <input type="hidden" name="id" value={share.id} />
                 <button
-                  class="button-danger min-h-9 px-3 py-1 text-xs"
+                  class="button-danger min-h-11 px-3 py-1 text-xs"
                   disabled={formBusy}
                 >
                   Revogar
@@ -256,7 +256,7 @@
       </div>
       <button
         type="button"
-        class="button-secondary flex min-h-9 items-center gap-1.5 px-3 py-1 text-xs"
+        class="button-secondary flex min-h-11 items-center gap-1.5 px-3 py-1 text-xs"
         on:click={() => (filterOpen = !filterOpen)}
       >
         <Filter size={14} />
@@ -306,11 +306,11 @@
           />
         </div>
         <div class="flex justify-end gap-2 sm:col-span-3">
-          <a href="/reports" class="button-secondary min-h-9 px-3 py-1 text-xs"
+          <a href="/reports" class="button-secondary min-h-11 px-3 py-1 text-xs"
             >Limpar</a
           >
           <button
-            class="button-primary min-h-9 px-4 py-1 text-xs"
+            class="button-primary min-h-11 px-4 py-1 text-xs"
             type="submit"
             disabled={formBusy}
           >

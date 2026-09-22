@@ -5,7 +5,7 @@
     data,
     form,
   }: {
-    data: { redirectTo: string; message?: string };
+    data: { redirectTo: string; message?: string; errorMessage?: string };
     form: { message?: string; email?: string } | undefined;
   } = $props();
 
@@ -45,7 +45,7 @@
     </div>
 
     <div class="panel relative overflow-hidden p-6 shadow-lift sm:p-8">
-      {#if form?.message}
+      {#if form?.message || data.errorMessage}
         <!-- Errors use the danger token, not the accent. -->
         <div
           class="mb-6 flex items-start gap-3 rounded border border-danger/30 bg-danger/10 p-4 text-sm"
@@ -54,7 +54,7 @@
           tabindex="-1"
         >
           <ShieldAlert class="h-5 w-5 shrink-0 text-danger" />
-          <p>{form.message}</p>
+          <p>{form?.message ?? data.errorMessage}</p>
         </div>
       {:else if data.message}
         <div

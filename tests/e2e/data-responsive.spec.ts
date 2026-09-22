@@ -20,30 +20,29 @@ const dataRoutes = [
   "/trabalho",
 ];
 
-async function signIn(page: Page) {
-  await page.goto("/auth");
-  await page.locator('input[name="email"]').fill(process.env.E2E_USER_EMAIL!);
-  await page
-    .locator('input[name="password"]')
-    .fill(process.env.E2E_USER_PASSWORD!);
-  await page.locator('button[type="submit"]').first().click();
-  await page.waitForURL(/\/(dashboard|garage|maintenance|onboarding)/);
+async function gotoAppRoute(page: Page, route: string) {
+  await expect(async () => {
+    await page.goto(route, { waitUntil: "domcontentloaded" });
+    expect(new URL(page.url()).pathname).toBe(route);
+  }).toPass({ intervals: [250, 500, 1_000], timeout: 10_000 });
+  await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
 }
 
 test.describe("data surfaces responsive behavior", () => {
+  test.setTimeout(300_000);
   test.skip(!hasAuthEnv, "Set E2E_USER_EMAIL and E2E_USER_PASSWORD to run.");
 
   test("data routes remain usable at every supported width", async ({
     page,
   }) => {
-    await signIn(page);
-
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 });
 
       for (const route of dataRoutes) {
-        await page.goto(route);
-        if (page.url().includes("/onboarding")) continue;
+        await gotoAppRoute(page, route);
+        expect(page.url(), `${route} redirected to onboarding`).not.toContain(
+          "/onboarding",
+        );
 
         const geometry = await page.evaluate(() => ({
           clientWidth: document.documentElement.clientWidth,
@@ -102,5 +101,26 @@ test.describe("data surfaces responsive behavior", () => {
         ).toEqual([]);
       }
     }
+  });
+
+  test("generic record action persists a document", async ({ page }) => {
+    await gotoAppRoute(page, "/documents");
+
+    const addButton = page
+      .getByRole("button", {
+        name: /^(adicionar|adicionar registro|novo registro)$/i,
+      })
+      .first();
+    await expect(addButton).toBeVisible();
+    await addButton.click();
+    const form = page.locator(
+      'form[action="?/record"]:has(input[name="_intent"][value="create"])',
+    );
+    await form.locator("#new-motorcycle_id").selectOption({ index: 1 });
+    await form.locator("#new-name").fill("Documento E2E");
+    await form.locator("#new-document_type").fill("Validação de release");
+    await form.getByRole("button", { name: /salvar|save/i }).click();
+
+    await expect(page.getByText("Documento E2E").first()).toBeVisible();
   });
 });

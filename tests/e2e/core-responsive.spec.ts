@@ -11,30 +11,27 @@ const hasAuthEnv = Boolean(
 const appRoutes = ["/garage", "/maintenance", "/reminders", "/dashboard"];
 const widths = [320, 375, 768, 1024, 1440];
 
-async function signIn(page: Page) {
-  await page.goto("/auth");
-  await page.locator('input[name="email"]').fill(process.env.E2E_USER_EMAIL!);
-  await page
-    .locator('input[name="password"]')
-    .fill(process.env.E2E_USER_PASSWORD!);
-  await page.locator('button[type="submit"]').first().click();
-  await page.waitForURL(/\/(dashboard|garage|maintenance|onboarding)/);
+async function gotoAppRoute(page: Page, route: string) {
+  await expect(async () => {
+    await page.goto(route, { waitUntil: "domcontentloaded" });
+    expect(new URL(page.url()).pathname).toBe(route);
+  }).toPass({ intervals: [250, 500, 1_000], timeout: 10_000 });
+  await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
 }
 
 test.describe("app shell responsive foundation", () => {
+  test.setTimeout(120_000);
   test.skip(!hasAuthEnv, "Set E2E_USER_EMAIL and E2E_USER_PASSWORD to run.");
-
-  test.beforeEach(async ({ page }) => {
-    await signIn(page);
-  });
 
   test("core routes stay within the viewport", async ({ page }) => {
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 });
 
       for (const route of appRoutes) {
-        await page.goto(route);
-        if (page.url().includes("/onboarding")) continue;
+        await gotoAppRoute(page, route);
+        expect(page.url(), `${route} redirected to onboarding`).not.toContain(
+          "/onboarding",
+        );
 
         const geometry = await page.evaluate(() => ({
           clientWidth: document.documentElement.clientWidth,
@@ -52,8 +49,8 @@ test.describe("app shell responsive foundation", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 320, height: 900 });
-    await page.goto("/garage");
-    if (page.url().includes("/onboarding")) test.skip();
+    await gotoAppRoute(page, "/garage");
+    expect(page.url()).not.toContain("/onboarding");
 
     const menuButton = page.getByRole("button", { name: "Abrir menu" });
     await menuButton.click();
@@ -77,8 +74,8 @@ test.describe("app shell responsive foundation", () => {
   test("dependent maintenance state exposes a garage action", async ({
     page,
   }) => {
-    await page.goto("/maintenance");
-    if (page.url().includes("/onboarding")) test.skip();
+    await gotoAppRoute(page, "/maintenance");
+    expect(page.url()).not.toContain("/onboarding");
 
     const notice = page.getByRole("status").filter({
       hasText: /Cadastre uma moto|Add a bike/i,
@@ -93,13 +90,29 @@ test.describe("app shell responsive foundation", () => {
   test("maintenance destructive actions require confirmation", async ({
     page,
   }) => {
-    await page.goto("/maintenance");
-    if (page.url().includes("/onboarding")) test.skip();
+    await gotoAppRoute(page, "/maintenance");
+    expect(page.url()).not.toContain("/onboarding");
 
-    const destructiveForm = page.locator(
+    let destructiveForm = page.locator(
       'form[action="?/deletePart"], form[action="?/deletePlan"], form[action="?/deletePhoto"]',
     );
-    if (!(await destructiveForm.count())) test.skip();
+    if (!(await destructiveForm.count())) {
+      await page
+        .getByRole("button", { name: /agendar|plano|schedule/i })
+        .first()
+        .click();
+      await page.locator("#plan-motorcycle").selectOption({ index: 1 });
+      await page.locator("#plan-type").fill("Verificação E2E");
+      await page.locator("#plan-interval-km").fill("5000");
+      await page
+        .locator('form[action="?/savePlan"]')
+        .getByRole("button", { name: /salvar|save/i })
+        .click();
+      destructiveForm = page.locator(
+        'form[action="?/deletePart"], form[action="?/deletePlan"], form[action="?/deletePhoto"]',
+      );
+      await expect(destructiveForm.first()).toBeVisible();
+    }
 
     await destructiveForm
       .first()

@@ -34,7 +34,7 @@ async function currentOdometerFor(
 const baseActions = featureActions("reminders");
 
 export const actions = {
-  ...baseActions,
+  record: baseActions.default,
   snoozeDays: async ({ request, locals }) => {
     const form = await request.formData();
     const id = String(form.get("id") ?? "");

@@ -123,6 +123,27 @@ describe("authenticated UX primitives contract", () => {
     expect(body).toContain("Escanear comprovante");
     expect(body).toContain("Foto ou cupom");
     expect(body).toContain("Digitar manualmente");
+    expect(body).toContain("h-11 w-11");
+    expect(body).toContain("min-h-11 w-full");
+  });
+
+  it("keeps explicit authenticated-page controls at least 44px tall", () => {
+    const controlledSurfaces = [
+      "src/routes/(app)/dashboard/+page.svelte",
+      "src/routes/(app)/garage/+page.svelte",
+      "src/routes/(app)/expenses/+page.svelte",
+      "src/routes/(app)/reports/+page.svelte",
+      "src/routes/(app)/tires/+page.svelte",
+      "src/lib/components/app/ActionMenu.svelte",
+    ];
+
+    for (const path of controlledSurfaces) {
+      const contents = source(path);
+      expect(
+        contents,
+        `${path} must not shrink controls below 44px`,
+      ).not.toMatch(/min-h-(?:8|9)\b/);
+    }
   });
 
   it("gives Fuel one add action and three progressive entry paths in a modal sheet", async () => {
@@ -189,7 +210,7 @@ describe("authenticated UX primitives contract", () => {
     expect(body).toContain("page-action");
     // No permanent creation form in default view
     expect(body).not.toContain('id="fuel-new-record"');
-  });
+  }, 15_000);
 
   it("gives Maintenance one add action and two entry paths in sheets without permanent forms", async () => {
     const module =

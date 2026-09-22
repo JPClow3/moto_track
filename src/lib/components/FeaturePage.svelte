@@ -449,7 +449,11 @@
                   <!-- Deleting was a single unguarded click with no undo.
                        enhance awaits this callback before it fires the
                        request, so the dialog can gate the submit. -->
-                  <form method="POST" use:enhance={enhanceDelete}>
+                  <form
+                    method="POST"
+                    action="?/record"
+                    use:enhance={enhanceDelete}
+                  >
                     <input type="hidden" name="_intent" value="delete" />
                     <input
                       type="hidden"
@@ -505,6 +509,7 @@
     <form
       class="grid gap-4"
       method="POST"
+      action="?/record"
       enctype="multipart/form-data"
       use:enhance={enhanceCreate}
     >
@@ -645,6 +650,7 @@
         <form
           class="grid gap-4"
           method="POST"
+          action="?/record"
           enctype="multipart/form-data"
           use:enhance={enhanceUpdate}
         >
