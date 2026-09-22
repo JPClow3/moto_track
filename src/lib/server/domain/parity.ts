@@ -33,9 +33,13 @@ export function buildTimeline(
 ) {
   return events
     .filter((event) => !filters.source || event.source === filters.source)
-    .filter((event) => !filters.start || event.date >= filters.start)
-    .filter((event) => !filters.end || event.date <= filters.end)
-    .sort((left, right) => right.date.localeCompare(left.date));
+    .filter(
+      (event) => !filters.start || isoDateValue(event.date) >= filters.start,
+    )
+    .filter((event) => !filters.end || isoDateValue(event.date) <= filters.end)
+    .sort((left, right) =>
+      isoDateValue(right.date).localeCompare(isoDateValue(left.date)),
+    );
 }
 
 export function calculateWorkProfitability({
@@ -64,3 +68,4 @@ export function calculateWorkProfitability({
   const costCents = fuelSpentCents + fixedDailyCostCents + variableCostCents;
   return { revenueCents, costCents, profitCents: revenueCents - costCents };
 }
+import { isoDateValue } from "./date-value";
