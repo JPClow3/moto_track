@@ -7,6 +7,7 @@ describe("API write payloads", () => {
     const result = normalizeApiFeaturePayload(
       getFeature("fuel"),
       {
+        motorcycle_id: "motorcycle-1",
         date: "2026-07-16",
         odometer_km: 12500,
         liters: 12.5,
@@ -20,6 +21,7 @@ describe("API write payloads", () => {
       ok: true,
       payload: {
         owner_id: "owner-1",
+        motorcycle_id: "motorcycle-1",
         odometer_km: 12500,
         total_price_cents: 7500,
       },

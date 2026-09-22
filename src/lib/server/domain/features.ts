@@ -105,6 +105,7 @@ export const featureConfigs: Record<string, FeatureConfig> = {
     orderBy: "date.desc",
     icon: "Fuel",
     fields: [
+      motorcycle(),
       date("date", "Data"),
       number("odometer_km", "Odômetro", true),
       number("liters", "Litros", true),

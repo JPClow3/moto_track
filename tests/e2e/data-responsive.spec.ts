@@ -592,14 +592,20 @@ test.describe("data surfaces responsive behavior", () => {
         [100, 10],
         [300, 10],
       ] as const) {
-        const result = await createFuelRecord(page, {
-          motorcycleId: motorcycle.id,
+        const result = await apiCreate(page, "fuel-records", {
+          motorcycle_id: motorcycle.id,
           date: offset === 100 ? "2026-09-20" : "2026-09-21",
-          odometer: motorcycle.odometer + offset,
+          odometer_km: motorcycle.odometer + offset,
           liters,
-          marker: `${marker}-${offset}`,
+          total_price_cents: 60,
+          price_per_liter_millicents: 6,
+          fuel_type: "gasoline",
+          tank_full: true,
+          station_name: `${marker}-${offset}`,
+          notes: `${marker}-${offset}`,
         });
-        created.push(result.id);
+        expect(result.response.status(), await result.response.text()).toBe(201);
+        created.push(result.row!.id);
       }
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
