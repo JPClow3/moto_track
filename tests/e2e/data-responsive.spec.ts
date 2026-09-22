@@ -106,10 +106,13 @@ test.describe("data surfaces responsive behavior", () => {
   test("generic record action persists a document", async ({ page }) => {
     await gotoAppRoute(page, "/documents");
 
-    await page
-      .getByRole("button", { name: /adicionar registro|novo registro/i })
-      .first()
-      .click();
+    const addButton = page
+      .getByRole("button", {
+        name: /^(adicionar|adicionar registro|novo registro)$/i,
+      })
+      .first();
+    await expect(addButton).toBeVisible();
+    await addButton.click();
     const form = page.locator(
       'form[action="?/record"]:has(input[name="_intent"][value="create"])',
     );
