@@ -594,7 +594,7 @@ test.describe("data surfaces responsive behavior", () => {
       ] as const) {
         const result = await apiCreate(page, "fuel-records", {
           motorcycle_id: motorcycle.id,
-          date: offset === 100 ? "2026-09-20" : "2026-09-21",
+          date: offset === 100 ? "2099-12-30" : "2099-12-31",
           odometer_km: motorcycle.odometer + offset,
           liters,
           total_price_cents: 60,
@@ -625,6 +625,7 @@ test.describe("data surfaces responsive behavior", () => {
         await expect(benchmark).toBeVisible();
         await benchmark.locator('input[name="consent"]').check();
         const button = benchmark.getByRole("button");
+        await expect(button).toBeEnabled();
         const submitted = page.waitForResponse(
           (response) =>
             response.request().method() === "POST" &&
