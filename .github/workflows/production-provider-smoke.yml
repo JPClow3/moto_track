@@ -1,0 +1,66 @@
+name: Production provider smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-provider-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Production provider smoke
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      CI: true
+      E2E_BASE_URL: https://moto-track.net
+      E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      PRODUCTION_PROVIDER_SMOKE: true
+      PROVIDER_SMOKE_MARKER: PROVIDER-SMOKE-${{ github.run_id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Require smoke credentials
+        run: |
+          for value in E2E_USER_EMAIL E2E_USER_PASSWORD; do
+            if [ -z "${!value}" ]; then
+              echo "$value is required for production provider smoke." >&2
+              exit 1
+            fi
+          done
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run production provider smoke
+        run: >-
+          npx playwright test tests/e2e/production-provider-smoke.spec.ts
+          --project authenticated --workers 1 --trace retain-on-failure
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-provider-smoke-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

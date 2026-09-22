@@ -45,6 +45,7 @@ function createMockDatabase() {
   const state = {
     events: new Map<string, StoredEvent>(),
     profiles: new Map<string, Profile>(),
+    deletedOwners: new Set<string>(),
   };
   const queries: Query[] = [];
   let failNextProfileWrite = false;
@@ -81,6 +82,15 @@ function createMockDatabase() {
           (candidate) => candidate.stripe_subscription_id === subscriptionId,
         );
         return Promise.resolve(profile ? [{ owner_id: profile.owner_id }] : []);
+      }
+
+      if (
+        sql.startsWith("select exists") &&
+        sql.includes("account_deletion_tombstones")
+      ) {
+        return Promise.resolve([
+          { deleted: transactionState.deletedOwners.has(String(values[0])) },
+        ]);
       }
 
       if (sql.startsWith("insert into subscription_profiles")) {
@@ -166,11 +176,13 @@ function createMockDatabase() {
       profiles: new Map(
         [...state.profiles].map(([id, profile]) => [id, { ...profile }]),
       ),
+      deletedOwners: new Set(state.deletedOwners),
     };
     const tx = queryFunction(transactionState, true);
     const result = await callback(tx);
     state.events = transactionState.events;
     state.profiles = transactionState.profiles;
+    state.deletedOwners = transactionState.deletedOwners;
     return result;
   };
 
@@ -246,6 +258,7 @@ describe("Stripe webhook", () => {
     });
     expect(database.queries[0]).toMatchObject({ transaction: false });
     expect(database.queries[0].sql).toContain("processed_at");
+    expect(database.queries[0].sql).not.toContain("payload");
     const effect = database.queries.find((query) =>
       query.sql.startsWith("insert into subscription_profiles"),
     );
@@ -254,6 +267,23 @@ describe("Stripe webhook", () => {
     );
     expect(effect?.transaction).toBe(true);
     expect(marker?.transaction).toBe(true);
+  });
+
+  it("acknowledges a late checkout webhook without recreating a deleted account", async () => {
+    const database = createMockDatabase();
+    database.state.deletedOwners.add("owner-deleted");
+    mocks.getDb.mockReturnValue(database.db);
+    const event = stripeEvent("checkout.session.completed", {
+      metadata: { user_id: "owner-deleted" },
+      customer: "cus_deleted",
+      subscription: "sub_deleted",
+    });
+
+    const response = await deliver(event);
+
+    expect(response.status).toBe(200);
+    expect(database.state.profiles.has("owner-deleted")).toBe(false);
+    expect(database.state.events.get(event.id)?.processedAt).not.toBeNull();
   });
 
   it("acknowledges an already processed duplicate without replaying effects", async () => {

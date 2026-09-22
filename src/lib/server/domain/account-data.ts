@@ -27,6 +27,7 @@ export const ACCOUNT_EXPORT_TABLES = [
   "article_reactions",
   "client_submissions",
   "object_files",
+  "object_deletion_queue",
 ] as const;
 
 export function isDeletionConfirmation(value: string) {

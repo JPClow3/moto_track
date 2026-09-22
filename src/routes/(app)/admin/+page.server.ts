@@ -1,5 +1,10 @@
 import { fail } from "@sveltejs/kit";
 import { isStaffUser as staffState } from "$server/domain/staff";
+import {
+  deleteQueuedObjectsBestEffort,
+  enqueueObjectDeletions,
+} from "$server/r2/files";
+import { terminateStripeBillingForAccount } from "$server/domain/billing";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -93,20 +98,38 @@ export async function load({ locals }) {
 }
 
 export const actions = {
-  fulfillDataRequest: async ({ request, locals }) => {
+  fulfillDataRequest: async ({ request, locals, platform }) => {
     if (!(await staffState(locals)))
       return fail(403, { message: "Staff only." });
     const form = await request.formData();
     const id = String(form.get("id") ?? "");
 
     let existing:
-      { owner_id: string; request_type: string; status: string } | undefined;
+      | {
+          owner_id: string;
+          request_type: string;
+          status: string;
+          stripe_customer_id: string;
+          stripe_subscription_id: string;
+        }
+      | undefined;
     try {
       [existing] = await locals.db<
-        Array<{ owner_id: string; request_type: string; status: string }>
+        Array<{
+          owner_id: string;
+          request_type: string;
+          status: string;
+          stripe_customer_id: string;
+          stripe_subscription_id: string;
+        }>
       >`
-        select owner_id, request_type, status from account_data_requests
-        where id = ${id}
+        select request.owner_id, request.request_type, request.status,
+          coalesce(subscription.stripe_customer_id, '') as stripe_customer_id,
+          coalesce(subscription.stripe_subscription_id, '') as stripe_subscription_id
+        from account_data_requests request
+        left join subscription_profiles subscription
+          on subscription.owner_id = request.owner_id
+        where request.id = ${id}
       `;
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
@@ -117,18 +140,99 @@ export const actions = {
     }
 
     if (existing.request_type === "deletion") {
+      // Stripe is external to the Neon cascade and must be terminated first.
+      // A provider failure leaves the request open, preserving every local
+      // billing reference so staff can retry without orphaning live charges.
+      try {
+        await terminateStripeBillingForAccount(
+          {
+            customerId: existing.stripe_customer_id,
+            subscriptionId: existing.stripe_subscription_id,
+          },
+          platform,
+        );
+      } catch (err) {
+        const retryNote =
+          `Falha ao encerrar cobrança na Stripe; dados locais preservados. Tente novamente. ${messageFrom(err)}`.slice(
+            0,
+            1000,
+          );
+        await locals.db`
+          update account_data_requests
+          set notes = ${retryNote}
+          where id = ${id}
+            and owner_id = ${existing.owner_id}
+            and status = 'open'
+        `.catch(() => undefined);
+        return fail(502, {
+          message:
+            "Não foi possível encerrar a cobrança na Stripe. Os dados locais foram preservados e a solicitação continua aberta para nova tentativa.",
+        });
+      }
+
       // Every owner-scoped table (including profiles, subscription_profiles,
       // and this request row itself) references neon_auth."user"(id) with
       // `on delete cascade`, so removing the auth user row alone wipes the
       // account in one atomic statement — no per-table loop or separate
       // auth-admin call needed, unlike the old Supabase version.
+      let objectKeys: string[];
       try {
-        await locals.db`
-          delete from neon_auth."user" where id = ${existing.owner_id}
-        `;
+        objectKeys = await locals.db.begin(async (transaction) => {
+          const db = transaction as unknown as typeof locals.db;
+          const files = await db<Array<{ object_key: string }>>`
+            select object_key from object_files
+            where owner_id = ${existing.owner_id}
+            for update
+          `;
+          await enqueueObjectDeletions(
+            db,
+            existing.owner_id,
+            files.map((file) => file.object_key),
+          );
+          await db`
+            insert into account_deletion_tombstones (
+              owner_id,
+              stripe_customer_id,
+              stripe_subscription_id
+            ) values (
+              ${existing.owner_id},
+              ${existing.stripe_customer_id},
+              ${existing.stripe_subscription_id}
+            )
+            on conflict (owner_id) do update set
+              stripe_customer_id = excluded.stripe_customer_id,
+              stripe_subscription_id = excluded.stripe_subscription_id,
+              deleted_at = now()
+          `;
+          const deleted = await db<Array<{ id: string }>>`
+            delete from neon_auth."user" account
+            where account.id = ${existing.owner_id}
+              and exists (
+                select 1 from account_data_requests request
+                where request.id = ${id}
+                  and request.owner_id = account.id
+                and request.status = 'open'
+              )
+            returning account.id
+          `;
+          if (!deleted.length) {
+            throw new Error(
+              "A solicitação deixou de estar aberta antes da exclusão.",
+            );
+          }
+          return files.map((file) => file.object_key);
+        });
       } catch (err) {
-        return fail(400, { message: messageFrom(err) });
+        return fail(400, {
+          message: `A cobrança foi encerrada, mas a exclusão local falhou. A solicitação continua aberta e pode ser tentada novamente. ${messageFrom(err)}`,
+        });
       }
+      await deleteQueuedObjectsBestEffort({
+        db: locals.db,
+        objectKeys,
+        ownerId: existing.owner_id,
+        platform,
+      });
       return { ok: true };
     }
 

@@ -4,6 +4,7 @@ import {
   featureActions,
   parseFormNumber,
   parseMoneyCents,
+  syncRecordDeleteEffects,
 } from "$server/domain/crud";
 import { assertCanCreateUpload } from "$server/domain/entitlement-guards";
 import {
@@ -18,7 +19,13 @@ import {
   dueStateForPlan,
 } from "$server/domain/motorcycle-catalog";
 import { syncPlanReminder } from "$server/domain/record-sync";
-import { uploadObjectFile } from "$server/r2/files";
+import { getFeature } from "$server/domain/features";
+import {
+  deleteQueuedObjectsBestEffort,
+  enqueueObjectDeletions,
+  queueUploadedOrphansBestEffort,
+  uploadObjectFile,
+} from "$server/r2/files";
 
 type Row = Record<string, unknown>;
 
@@ -27,6 +34,7 @@ function messageFrom(err: unknown) {
 }
 
 const base = featureActions("maintenance");
+const maintenanceFeature = getFeature("maintenance");
 const v = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 function marketplaceDisplayQuery(value: unknown) {
@@ -38,7 +46,91 @@ function marketplaceDisplayQuery(value: unknown) {
 
 export const actions = {
   logCompleted: base.default,
-  deleteRecord: base.default,
+  deleteRecord: async ({ request, locals, platform }) => {
+    const f = await request.formData();
+    const id = v(f, "id");
+    const ownerId = locals.user!.id;
+    if (!id) return fail(400, { message: "Missing record id." });
+
+    let deleted:
+      | {
+          existing: { motorcycle_id: string | null } | undefined;
+          objectKeys: string[];
+        }
+      | undefined;
+    try {
+      deleted = await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as typeof locals.db;
+        const [existing] = await db<Array<{ motorcycle_id: string | null }>>`
+          select motorcycle_id from maintenance_records
+          where id = ${id} and owner_id = ${ownerId}
+          for update
+        `;
+        if (!existing) return { existing, objectKeys: [] };
+
+        const files = await db<Array<{ object_key: string }>>`
+          select object_key from object_files
+          where owner_id = ${ownerId}
+            and (
+              (source_table = 'maintenance_records' and source_id = ${id})
+              or (
+                source_table = 'maintenance_photos'
+                and source_id in (
+                  select id from maintenance_photos
+                  where owner_id = ${ownerId}
+                    and maintenance_record_id = ${id}
+                )
+              )
+            )
+        `;
+        await enqueueObjectDeletions(
+          db,
+          ownerId,
+          files.map((file) => file.object_key),
+        );
+        await db`
+          delete from object_files
+          where owner_id = ${ownerId}
+            and (
+              (source_table = 'maintenance_records' and source_id = ${id})
+              or (
+                source_table = 'maintenance_photos'
+                and source_id in (
+                  select id from maintenance_photos
+                  where owner_id = ${ownerId}
+                    and maintenance_record_id = ${id}
+                )
+              )
+            )
+        `;
+        await db`
+          delete from maintenance_records
+          where id = ${id} and owner_id = ${ownerId}
+        `;
+        return {
+          existing,
+          objectKeys: files.map((file) => file.object_key),
+        };
+      });
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+
+    await deleteQueuedObjectsBestEffort({
+      db: locals.db,
+      objectKeys: deleted.objectKeys,
+      ownerId,
+      platform,
+    });
+    await syncRecordDeleteEffects({
+      db: locals.db,
+      ownerId,
+      feature: maintenanceFeature,
+      recordId: id,
+      existing: (deleted.existing ?? {}) as Record<string, unknown>,
+    });
+    return { ok: true };
+  },
   savePart: async ({ request, locals }) => {
     const f = await request.formData();
     try {
@@ -275,45 +367,88 @@ export const actions = {
     });
     const photoId = crypto.randomUUID();
     try {
-      await locals.db`
-        insert into object_files ${locals.db({
-          owner_id: ownerId,
-          module: "maintenance",
-          source_table: "maintenance_photos",
-          source_id: photoId,
-          object_key: uploaded.objectKey,
-          filename: uploaded.filename,
-          content_type: uploaded.contentType,
-          byte_size: uploaded.byteSize,
-        })}
-      `;
+      await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as typeof locals.db;
+        await db`
+          insert into maintenance_photos ${db({
+            id: photoId,
+            owner_id: ownerId,
+            maintenance_record_id: recordId,
+            image_key: uploaded.objectKey,
+            caption,
+          })}
+        `;
+        await db`
+          insert into object_files ${db({
+            owner_id: ownerId,
+            module: "maintenance",
+            source_table: "maintenance_photos",
+            source_id: photoId,
+            object_key: uploaded.objectKey,
+            filename: uploaded.filename,
+            content_type: uploaded.contentType,
+            byte_size: uploaded.byteSize,
+          })}
+        `;
+      });
     } catch (err) {
-      return fail(400, { message: messageFrom(err) });
-    }
-    try {
-      await locals.db`
-        insert into maintenance_photos ${locals.db({
-          id: photoId,
-          owner_id: ownerId,
-          maintenance_record_id: recordId,
-          image_key: uploaded.objectKey,
-          caption,
-        })}
-      `;
-    } catch (err) {
+      await queueUploadedOrphansBestEffort({
+        db: locals.db,
+        objectKeys: [uploaded.objectKey],
+        ownerId,
+        platform,
+      });
       return fail(400, { message: messageFrom(err) });
     }
     return { ok: true };
   },
-  deletePhoto: async ({ request, locals }) => {
+  deletePhoto: async ({ request, locals, platform }) => {
     const f = await request.formData();
-    const error = await deleteOwnedRow(
-      locals.db,
-      "maintenance_photos",
-      v(f, "id"),
-      locals.user!.id,
-    );
-    return error ? fail(400, { message: error }) : { ok: true };
+    const id = v(f, "id");
+    const ownerId = locals.user!.id;
+    let objectKeys: string[];
+    try {
+      objectKeys = await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as typeof locals.db;
+        const [photo] = await db<Array<{ id: string }>>`
+          select id from maintenance_photos
+          where id = ${id} and owner_id = ${ownerId}
+          for update
+        `;
+        if (!photo) return [];
+        const files = await db<Array<{ object_key: string }>>`
+          select object_key from object_files
+          where owner_id = ${ownerId}
+            and source_table = 'maintenance_photos'
+            and source_id = ${id}
+        `;
+        await enqueueObjectDeletions(
+          db,
+          ownerId,
+          files.map((file) => file.object_key),
+        );
+        await db`
+          delete from maintenance_photos
+          where id = ${id} and owner_id = ${ownerId}
+        `;
+        await db`
+          delete from object_files
+          where owner_id = ${ownerId}
+            and source_table = 'maintenance_photos'
+            and source_id = ${id}
+        `;
+        return files.map((file) => file.object_key);
+      });
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+    await deleteQueuedObjectsBestEffort({
+      db: locals.db,
+      objectKeys,
+      ownerId,
+      platform,
+    });
+    return { ok: true };
   },
 };
 

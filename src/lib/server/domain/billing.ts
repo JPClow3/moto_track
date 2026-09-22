@@ -216,6 +216,53 @@ export async function createPortalSession(
   });
 }
 
+function isMissingStripeResource(err: unknown) {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    err.code === "resource_missing"
+  );
+}
+
+/**
+ * Permanently stops Stripe billing before an account is removed locally.
+ *
+ * Both operations are deliberately idempotent: a retry after Stripe succeeded
+ * but the Neon delete failed treats an already-removed Stripe resource as a
+ * success. Deleting the customer also cancels any additional subscriptions
+ * attached to it, so a stale local subscription id cannot leave billing live.
+ * Any other provider failure is propagated and must prevent local deletion.
+ */
+export async function terminateStripeBillingForAccount(
+  {
+    customerId,
+    subscriptionId,
+  }: { customerId?: string | null; subscriptionId?: string | null },
+  platform?: App.Platform,
+) {
+  const customer = customerId?.trim() ?? "";
+  const subscription = subscriptionId?.trim() ?? "";
+  if (!customer && !subscription) return;
+
+  const client = stripeClient(platform);
+  if (subscription) {
+    try {
+      await client.subscriptions.cancel(subscription);
+    } catch (err) {
+      if (!isMissingStripeResource(err)) throw err;
+    }
+  }
+
+  if (customer) {
+    try {
+      await client.customers.del(customer);
+    } catch (err) {
+      if (!isMissingStripeResource(err)) throw err;
+    }
+  }
+}
+
 export function constructStripeEvent(
   payload: string,
   signature: string,

@@ -13,16 +13,49 @@ function processingErrorMessage(error: unknown): string {
   return String(error);
 }
 
+async function accountWasDeleted(
+  tx: postgres.TransactionSql,
+  references: {
+    ownerId?: string | null;
+    customerId?: string | null;
+    subscriptionId?: string | null;
+  },
+) {
+  const ownerId = references.ownerId ?? "";
+  const customerId = references.customerId ?? "";
+  const subscriptionId = references.subscriptionId ?? "";
+  if (!ownerId && !customerId && !subscriptionId) return false;
+
+  const [row] = await tx<Array<{ deleted: boolean }>>`
+    select exists (
+      select 1 from account_deletion_tombstones
+      where (${ownerId} <> '' and owner_id = ${ownerId || null})
+        or (${customerId} <> '' and stripe_customer_id = ${customerId})
+        or (${subscriptionId} <> '' and stripe_subscription_id = ${subscriptionId})
+    ) as deleted
+  `;
+  return Boolean(row?.deleted);
+}
+
 async function processEvent(tx: postgres.TransactionSql, event: Stripe.Event) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.user_id || session.client_reference_id;
-    if (userId) {
+    const customerId = String(session.customer ?? "");
+    const subscriptionId = String(session.subscription ?? "");
+    if (
+      userId &&
+      !(await accountWasDeleted(tx, {
+        ownerId: userId,
+        customerId,
+        subscriptionId,
+      }))
+    ) {
       await tx`
         insert into subscription_profiles ${tx({
           owner_id: userId,
-          stripe_customer_id: String(session.customer ?? ""),
-          stripe_subscription_id: String(session.subscription ?? ""),
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscriptionId,
         })}
         on conflict (owner_id) do update set
           stripe_customer_id = excluded.stripe_customer_id,
@@ -48,7 +81,14 @@ async function processEvent(tx: postgres.TransactionSql, event: Stripe.Event) {
       `;
       ownerId = profile?.owner_id ?? "";
     }
-    if (ownerId) {
+    if (
+      ownerId &&
+      !(await accountWasDeleted(tx, {
+        ownerId,
+        customerId: String(subscription.customer ?? ""),
+        subscriptionId: subscription.id,
+      }))
+    ) {
       const update = subscriptionProfileUpdate(subscription);
       await tx`
         insert into subscription_profiles ${tx({
@@ -110,7 +150,6 @@ export async function POST({ request, platform }) {
   // Stripe calls this route without an application session, so use a raw,
   // request-scoped database handle rather than locals.db.
   const db = getDb(platform);
-  const serializedEvent = db.json(JSON.parse(JSON.stringify(event)));
 
   try {
     // Persist the delivery as pending before applying any customer-visible
@@ -120,13 +159,11 @@ export async function POST({ request, platform }) {
       insert into billing_events (
         stripe_event_id,
         event_type,
-        payload,
         processed_at,
         processing_error
       ) values (
         ${event.id},
         ${event.type},
-        ${serializedEvent},
         null,
         ''
       )

@@ -1995,6 +1995,60 @@ export type Database = {
         };
         Relationships: [];
       };
+      object_deletion_queue: {
+        Row: {
+          id: string;
+          owner_id: string;
+          object_key: string;
+          attempt_count: number;
+          next_attempt_at: string;
+          last_error: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          object_key: string;
+          attempt_count?: number;
+          next_attempt_at?: string;
+          last_error?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          owner_id?: string;
+          object_key?: string;
+          attempt_count?: number;
+          next_attempt_at?: string;
+          last_error?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      account_deletion_tombstones: {
+        Row: {
+          owner_id: string;
+          stripe_customer_id: string;
+          stripe_subscription_id: string;
+          deleted_at: string;
+        };
+        Insert: {
+          owner_id: string;
+          stripe_customer_id?: string;
+          stripe_subscription_id?: string;
+          deleted_at?: string;
+        };
+        Update: {
+          owner_id?: string;
+          stripe_customer_id?: string;
+          stripe_subscription_id?: string;
+          deleted_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
