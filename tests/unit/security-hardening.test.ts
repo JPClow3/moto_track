@@ -32,5 +32,8 @@ describe("browser security hardening", () => {
     expect(svelteConfig).toContain('"default-src": ["self"]');
     expect(svelteConfig).toContain('"frame-ancestors": ["none"]');
     expect(svelteConfig).toContain('"object-src": ["none"]');
+    expect(svelteConfig).toContain(
+      '"img-src": ["self", "data:", "blob:", "https:"]',
+    );
   });
 });

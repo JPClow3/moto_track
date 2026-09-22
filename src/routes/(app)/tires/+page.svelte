@@ -376,7 +376,11 @@
                 >
                   <Edit size={14} aria-hidden="true" />
                 </button>
-                <form method="POST" use:enhance={enhanceDelete}>
+                <form
+                  method="POST"
+                  action="?/deleteTire"
+                  use:enhance={enhanceDelete}
+                >
                   <input type="hidden" name="_intent" value="delete" />
                   <input type="hidden" name="id" value={String(tire.id)} />
                   <button
@@ -579,7 +583,11 @@
                   >
                     <Edit size={12} aria-hidden="true" />
                   </button>
-                  <form method="POST" use:enhance={enhanceDelete}>
+                  <form
+                    method="POST"
+                    action="?/deleteTire"
+                    use:enhance={enhanceDelete}
+                  >
                     <input type="hidden" name="_intent" value="delete" />
                     <input type="hidden" name="id" value={String(tire.id)} />
                     <button

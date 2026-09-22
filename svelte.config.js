@@ -18,7 +18,8 @@ const config = {
         "font-src": ["self", "data:"],
         "form-action": ["self"],
         "frame-ancestors": ["none"],
-        "img-src": ["self", "data:", "blob:"],
+        // Staff-authored Markdown supports remote HTTPS article images.
+        "img-src": ["self", "data:", "blob:", "https:"],
         "manifest-src": ["self"],
         "object-src": ["none"],
         "script-src": ["self"],

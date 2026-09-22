@@ -11,7 +11,10 @@ export const GET: RequestHandler = async (event) => {
     throw redirect(303, oauthFailureRedirect(redirectTo));
   }
 
-  const result = await completeSocialSignIn(event, verifier);
+  const result = await completeSocialSignIn(event, verifier).catch(() => ({
+    ok: false as const,
+    message: "OAuth session verification failed.",
+  }));
   if (!result.ok) {
     throw redirect(303, oauthFailureRedirect(redirectTo));
   }

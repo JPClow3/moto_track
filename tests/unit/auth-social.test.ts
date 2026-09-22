@@ -137,4 +137,25 @@ describe("social sign-in", () => {
       location: "/auth?redirectTo=%2Fdashboard&error=oauth_callback_failed",
     });
   });
+
+  it("recovers when the OAuth session exchange is unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+
+    await expect(
+      oauthCallback({
+        url: new URL(
+          "https://moto-track.net/auth/callback?neon_auth_session_verifier=verifier-value&next=%2Fgarage",
+        ),
+        platform: {
+          env: {
+            PUBLIC_NEON_AUTH_URL: "https://auth.example/neondb/auth",
+          },
+        },
+        cookies: { get: vi.fn().mockReturnValue("challenge-value") },
+      } as never),
+    ).rejects.toMatchObject({
+      status: 303,
+      location: "/auth?redirectTo=%2Fgarage&error=oauth_callback_failed",
+    });
+  });
 });
