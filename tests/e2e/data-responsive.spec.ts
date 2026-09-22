@@ -610,26 +610,34 @@ test.describe("data surfaces responsive behavior", () => {
         created.push(result.row!.id);
       }
 
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const contribution = await postAction(
-          page,
-          "/dashboard?/contributeBenchmark",
-          {
-            motorcycle_id: motorcycle.id,
-            consent: "on",
-          },
-        );
-        expect(contribution.status, contribution.body).toBe(200);
-      }
-
       await gotoAppRoute(
         page,
         `/dashboard?benchmark=${encodeURIComponent(motorcycle.id)}`,
       );
-      await page.locator("details.group\\/benchmark > summary").click();
-      await expect(
-        page.getByText(/contribuição anônima está ativa/i),
-      ).toBeVisible();
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const details = page.locator("details.group\\/benchmark");
+        if ((await details.getAttribute("open")) === null) {
+          await details.locator(":scope > summary").click();
+        }
+        const benchmark = page
+          .locator('form[action="?/contributeBenchmark"]')
+          .first();
+        await expect(benchmark).toBeVisible();
+        await benchmark.locator('input[name="consent"]').check();
+        const button = benchmark.getByRole("button");
+        const submitted = page.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            response.url().includes("/dashboard?/contributeBenchmark"),
+        );
+        await button.click();
+        const response = await submitted;
+        expect(response.ok(), await response.text()).toBe(true);
+        await expect(button).toBeEnabled();
+        await expect(
+          page.getByText(/contribuição anônima está ativa/i),
+        ).toBeVisible();
+      }
 
       const sampleText = await page
         .getByText(/Amostra: \d+ participantes/i)
