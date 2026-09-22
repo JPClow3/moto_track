@@ -77,6 +77,23 @@
     name="description"
     content="Controle de combustível, manutenção, pneus, documentos e lembretes para a sua moto."
   />
+  <link rel="canonical" href="https://moto-track.net/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Moto Track" />
+  <meta
+    property="og:title"
+    content="Moto Track — Centro de Comando da sua Moto"
+  />
+  <meta
+    property="og:description"
+    content="Controle de combustível, manutenção, pneus, documentos e lembretes para a sua moto."
+  />
+  <meta property="og:url" content="https://moto-track.net/" />
+  <meta
+    property="og:image"
+    content="https://moto-track.net/brand/og-card.png"
+  />
+  <meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 <div class="landing">

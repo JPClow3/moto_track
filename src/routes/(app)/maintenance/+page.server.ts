@@ -37,7 +37,6 @@ function marketplaceDisplayQuery(value: unknown) {
 }
 
 export const actions = {
-  ...base,
   logCompleted: base.default,
   deleteRecord: base.default,
   savePart: async ({ request, locals }) => {
@@ -119,6 +118,12 @@ export const actions = {
       Math.round(parseFormNumber(f.get("interval_km"), 0)) || null;
     const intervalDays =
       Math.round(parseFormNumber(f.get("interval_days"), 0)) || null;
+
+    if (!intervalKm && !intervalDays) {
+      return fail(400, {
+        message: "Informe um intervalo em quilômetros ou dias.",
+      });
+    }
 
     // Explicit onConflict target matching the schema's unique combo
     // (motorcycle_id, maintenance_type, is_severe_duty_override) so saving

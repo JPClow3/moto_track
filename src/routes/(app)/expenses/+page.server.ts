@@ -19,7 +19,7 @@ const base = featureActions("expenses");
 const v = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 export const actions = {
-  ...base,
+  record: base.default,
   savePolicy: async ({ request, locals }) => {
     const f = await request.formData();
     const id = v(f, "id") || crypto.randomUUID();

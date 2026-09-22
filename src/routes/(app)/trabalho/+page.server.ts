@@ -15,7 +15,7 @@ type Row = Record<string, unknown>;
 
 const base = featureActions("trabalho");
 export const actions = {
-  ...base,
+  record: base.default,
   saveCosts: async ({ request, locals }) => {
     const f = await request.formData();
     const motorcycleId = String(f.get("motorcycle_id") ?? "");

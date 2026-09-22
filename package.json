@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:push": "node db/apply.mjs",
+    "db:verify": "node db/verify-migrations.mjs",
     "import:legacy": "tsx scripts/import-legacy-data.ts",
     "worker:dev": "wrangler dev -c workers/reminders/wrangler.toml",
     "worker:deploy": "wrangler deploy -c workers/reminders/wrangler.toml"
@@ -60,7 +61,7 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.62.1",
     "vite": "^7.0.4",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.11",
     "wrangler": "^4.26.0"
   },
   "overrides": {
@@ -68,7 +69,7 @@
     "@better-auth/core": "1.6.25",
     "@better-auth/telemetry": "1.6.25",
     "@better-auth/passkey": "1.6.25",
-    "sharp": "0.35.3",
+    "sharp": "0.35.4",
     "@sveltejs/kit": {
       "cookie": "0.7.2"
     },

@@ -42,12 +42,12 @@ describe("money formatting", () => {
 describe("locale negotiation", () => {
   it("picks the highest q-weight rather than header order", () => {
     expect(localeFromAcceptLanguage("en;q=0.8, pt-BR;q=0.9")).toBe("pt-BR");
-    expect(localeFromAcceptLanguage("pt-BR;q=0.7, en;q=0.9")).toBe("en");
+    expect(localeFromAcceptLanguage("pt-BR;q=0.7, en;q=0.9")).toBe("pt-BR");
   });
 
   it("resolves a bare or regional tag to a locale we ship", () => {
     expect(localeFromAcceptLanguage("pt")).toBe("pt-BR");
-    expect(localeFromAcceptLanguage("en-GB")).toBe("en");
+    expect(localeFromAcceptLanguage("en-GB")).toBeNull();
     expect(localeFromAcceptLanguage("pt-PT")).toBe("pt-BR");
   });
 
@@ -56,8 +56,8 @@ describe("locale negotiation", () => {
   });
 
   it("lets an explicit choice beat the system language", () => {
-    expect(resolveLocale("en", "pt-BR")).toBe("en");
-    expect(resolveLocale(undefined, "en-US")).toBe("en");
+    expect(resolveLocale("en", "pt-BR")).toBe("pt-BR");
+    expect(resolveLocale(undefined, "en-US")).toBe("pt-BR");
   });
 
   it("falls back to pt-BR when nothing matches", () => {

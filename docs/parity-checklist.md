@@ -17,7 +17,7 @@ The Django runtime has been removed from the final tree; do not expect Django te
 - Reminder evaluation, odometer recomputation, fuel analytics, entitlements, and report summary domain modules.
 - Opt-in anonymous model benchmarks with account/model deduplication, per-metric five-participant privacy floors, and normalized consumption/maintenance comparisons.
 - Maintenance-part marketplace search with validated Mercado Livre deep links; live prices and availability remain on Mercado Livre until a complete provider OAuth lifecycle exists.
-- In-process transactional email via Resend (no Edge Function hop).
+- Reminder email through the Cloudflare Email Sending binding on the scheduled Worker.
 - Cloudflare scheduled Worker for reminder email/push processing.
 - Legacy import script with deterministic UUIDv5 mapping (`scripts/import-legacy-data.ts`).
 

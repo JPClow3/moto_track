@@ -80,7 +80,7 @@
         </h2>
         <button
           type="button"
-          class="focus-ring -mr-1 flex h-9 w-9 items-center justify-center rounded text-[var(--muted)] hover:text-[var(--fg)]"
+          class="focus-ring -mr-1 flex h-11 w-11 items-center justify-center rounded text-[var(--muted)] hover:text-[var(--fg)]"
           aria-label={closeLabel || $t("common.close")}
           on:click={close}
         >
@@ -93,7 +93,7 @@
       {#each choices as choice (choice.id)}
         <button
           type="button"
-          class="action-menu-item focus-ring flex w-full flex-col items-start rounded p-3 text-left transition hover:bg-[var(--panel-sunken)] disabled:cursor-not-allowed disabled:opacity-40"
+          class="action-menu-item focus-ring flex min-h-11 w-full flex-col items-start rounded p-3 text-left transition hover:bg-[var(--panel-sunken)] disabled:cursor-not-allowed disabled:opacity-40"
           disabled={choice.disabled}
           on:click={() => selectChoice(choice)}
         >

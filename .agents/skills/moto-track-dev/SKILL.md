@@ -14,7 +14,8 @@ This skill provides procedures and guidelines for developing and verifying the M
 - **Framework**: SvelteKit 2.x / Svelte 5 / TypeScript
 - **Styling**: TailwindCSS / PostCSS
 - **Edge Deployment**: Cloudflare Workers / Pages (`@sveltejs/adapter-cloudflare`)
-- **Database / Storage**: Cloudflare D1 / KV / R2
+- **Database / Storage**: Neon Postgres through Cloudflare Hyperdrive / R2
+- **Authentication**: Neon Auth (managed Better Auth)
 - **Testing**: Vitest (unit/component) + Playwright (e2e)
 - **Code Quality**: ESLint + Prettier + TypeScript compiler
 
@@ -51,21 +52,18 @@ npm run build
 npm run preview
 ```
 
-### Cloudflare D1 Migrations (via Wrangler)
+### Neon Postgres Migrations
 
 ```powershell
-# Apply local migrations
-npx wrangler d1 migrations apply DB --local
-
-# Apply production migrations
-npx wrangler d1 migrations apply DB --remote
+# Apply every pending db/migrations/*.sql file to DATABASE_URL
+npm run db:push
 ```
 
 ## 3. Development Guidelines
 
 1. **Edge Compatibility**: Keep dependencies compatible with Cloudflare Workers runtime (V8 isolates; no native Node C++ extensions).
 2. **Reactivity**: Follow modern Svelte runes / reactivity paradigms.
-3. **Data Integrity**: Validate all incoming telemetry data shapes before database insertion.
+3. **Data Integrity**: Validate all incoming telemetry data shapes before database insertion and keep `src/lib/types/database.ts` aligned with migrations.
 
 ## 4. Git Tagging & Release Workflow
 

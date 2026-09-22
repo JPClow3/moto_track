@@ -90,5 +90,16 @@ test.describe("public responsive foundation", () => {
 
     await page.goto("/auth?message=senha_atualizada");
     await expect(page.getByRole("status")).toContainText("Senha atualizada");
+
+    await page.goto(
+      "/auth?redirectTo=%2Fbilling%2Fcheckout&error=oauth_callback_failed",
+    );
+    await expect(page.getByRole("alert")).toContainText(
+      "Não foi possível concluir o acesso com o Google",
+    );
+    await expect(page.getByRole("alert")).toContainText("Tente novamente");
+    await expect(
+      page.locator('#auth-sign-in input[name="redirectTo"]').first(),
+    ).toHaveValue("/billing/checkout");
   });
 });

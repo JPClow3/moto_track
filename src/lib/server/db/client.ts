@@ -15,16 +15,19 @@ const POOLED_OPTIONS = {
 } satisfies postgres.Options<Record<string, never>>;
 
 function resolveConnectionString(platform?: App.Platform): string {
-  // Prefer DATABASE_URL whenever it is set. In local/CI, wrangler always
-  // exposes a Hyperdrive binding (and requires localConnectionString), which
-  // would otherwise shadow a real Neon URL from .env. Production Workers
-  // typically only have the Hyperdrive binding, so this still selects it.
+  // Production must use Hyperdrive even if a legacy DATABASE_URL secret is
+  // still present. Wrangler exposes the configured localConnectionString as a
+  // binding during local emulation; the port-1 sentinel is intentionally
+  // unusable, so local/CI falls back to the real DATABASE_URL from .env.
+  const hyperdriveUrl = platform?.env?.HYPERDRIVE?.connectionString;
   const directUrl = runtimeEnv(platform).DATABASE_URL;
+  if (hyperdriveUrl && !isLocalHyperdriveSentinel(hyperdriveUrl)) {
+    return hyperdriveUrl;
+  }
   if (directUrl) {
     return directUrl;
   }
 
-  const hyperdriveUrl = platform?.env?.HYPERDRIVE?.connectionString;
   if (hyperdriveUrl) {
     return hyperdriveUrl;
   }
@@ -34,17 +37,30 @@ function resolveConnectionString(platform?: App.Platform): string {
   );
 }
 
-// Whether to negotiate TLS is a property of the *endpoint*, not of how we got
-// the string. Neon requires TLS and its URLs carry `sslmode=require` — this is
-// true both for the direct DATABASE_URL and for the connection string Hyperdrive
-// hands back during LOCAL emulation (miniflare connects straight to Neon). In
-// production the real Hyperdrive proxy terminates TLS itself and its
-// connectionString carries no sslmode, so we leave TLS off there. Keying on the
-// sslmode param gets all three cases right.
+function isLocalHyperdriveSentinel(connectionString: string) {
+  try {
+    const url = new URL(connectionString);
+    return (
+      ["localhost", "127.0.0.1", "::1"].includes(url.hostname) &&
+      url.port === "1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+// Whether to negotiate TLS is a property of the endpoint, not of how we got
+// the string. Neon requires TLS. Some dashboard-issued URLs omit sslmode, so
+// recognise the Neon hostname as well as the explicit query parameter. The
+// production Hyperdrive proxy uses a non-Neon hostname and terminates TLS.
 function sslForConnection(connectionString: string): "require" | undefined {
   try {
-    const sslmode = new URL(connectionString).searchParams.get("sslmode");
-    return sslmode && sslmode !== "disable" ? "require" : undefined;
+    const url = new URL(connectionString);
+    const sslmode = url.searchParams.get("sslmode");
+    return (sslmode && sslmode !== "disable") ||
+      url.hostname.endsWith(".neon.tech")
+      ? "require"
+      : undefined;
   } catch {
     return undefined;
   }

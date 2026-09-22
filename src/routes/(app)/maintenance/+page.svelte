@@ -1209,6 +1209,7 @@
             id="plan-interval-km"
             name="interval_km"
             type="number"
+            min="1"
           />
         </div>
         <div class="field-group">
@@ -1220,6 +1221,7 @@
             id="plan-interval-days"
             name="interval_days"
             type="number"
+            min="1"
           />
         </div>
       </div>

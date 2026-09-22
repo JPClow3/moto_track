@@ -94,7 +94,7 @@
         <p class="mt-1 text-xs text-[var(--muted)]">{$t("garage.freeLimit")}</p>
       </div>
       <a
-        class="button-accent min-h-9 shrink-0 px-3 py-1 text-xs"
+        class="button-accent min-h-11 shrink-0 px-3 py-1 text-xs"
         href="/precos"
       >
         {$t("authenticatedUx.upgradeToPro")}
@@ -312,7 +312,7 @@
         >
           <button
             type="button"
-            class="button-secondary inline-flex min-h-9 items-center gap-1.5 px-3 text-xs"
+            class="button-secondary inline-flex min-h-11 items-center gap-1.5 px-3 text-xs"
             on:click={() => openEdit(motorcycle)}
           >
             <Edit size={13} aria-hidden="true" />
@@ -328,7 +328,7 @@
             >
               <input type="hidden" name="id" value={motorcycle.id} />
               <button
-                class="button-secondary inline-flex min-h-9 items-center gap-1.5 px-3 text-xs text-[var(--muted)]"
+                class="button-secondary inline-flex min-h-11 items-center gap-1.5 px-3 text-xs text-[var(--muted)]"
                 disabled={pendingAction === `archive:${motorcycle.id}`}
                 type="submit"
               >
@@ -345,7 +345,7 @@
             >
               <input type="hidden" name="id" value={motorcycle.id} />
               <button
-                class="button-primary inline-flex min-h-9 items-center gap-1.5 px-3 text-xs"
+                class="button-primary inline-flex min-h-11 items-center gap-1.5 px-3 text-xs"
                 disabled={pendingAction === `restore:${motorcycle.id}`}
                 type="submit"
               >

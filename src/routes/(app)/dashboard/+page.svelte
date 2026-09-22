@@ -192,7 +192,7 @@
             })}
           </span>
         {/if}
-        <a href="/garage" class="button-secondary min-h-9 px-3 py-1 text-xs">
+        <a href="/garage" class="button-secondary min-h-11 px-3 py-1 text-xs">
           {$t("dashboard.openGarage")}
         </a>
       </svelte:fragment>
@@ -369,7 +369,7 @@
     <!-- Telemetry + Health -->
     <details class="panel group/telemetry p-6" open>
       <summary
-        class="focus-ring flex cursor-pointer items-center justify-between gap-4 rounded"
+        class="focus-ring flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded"
       >
         <div>
           <h2 class="display text-2xl">
@@ -530,7 +530,7 @@
     <article class="panel p-6">
       <details class="group/benchmark">
         <summary
-          class="focus-ring flex cursor-pointer flex-wrap items-start justify-between gap-4 rounded"
+          class="focus-ring flex min-h-11 cursor-pointer flex-wrap items-start justify-between gap-4 rounded"
         >
           <span class="min-w-0">
             <span class="eyebrow block">
@@ -789,7 +789,7 @@
     <!-- Activity Heatmap, Costs & Monthly Spend -->
     <details class="panel group/finances p-6">
       <summary
-        class="focus-ring flex cursor-pointer items-center justify-between gap-4 rounded"
+        class="focus-ring flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded"
       >
         <div>
           <h2 class="display text-2xl">
@@ -859,7 +859,7 @@
     <!-- Garage Overview -->
     <details class="panel group/garage p-6">
       <summary
-        class="focus-ring flex cursor-pointer items-center justify-between gap-4 rounded"
+        class="focus-ring flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded"
       >
         <div>
           <h2 class="display text-2xl">{$t("nav.garage")}</h2>

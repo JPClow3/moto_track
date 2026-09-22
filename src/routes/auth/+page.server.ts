@@ -94,6 +94,10 @@ export async function load({ locals, url }) {
     );
   return {
     redirectTo: safeInternalRedirect(url.searchParams.get("redirectTo")),
+    errorMessage:
+      url.searchParams.get("error") === "oauth_callback_failed"
+        ? "Não foi possível concluir o acesso com o Google. Tente novamente ou entre com email e senha."
+        : undefined,
     message:
       url.searchParams.get("message") === "senha_atualizada"
         ? "Senha atualizada. Entre novamente para acessar sua garagem."

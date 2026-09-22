@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { socialSignInUrl } from "../../src/lib/server/auth/session";
+import { load as loadAuthPage } from "../../src/routes/auth/+page.server";
 import { GET as oauthCallback } from "../../src/routes/auth/callback/+server";
 
 describe("social sign-in", () => {
@@ -94,5 +95,46 @@ describe("social sign-in", () => {
       expect.objectContaining({ httpOnly: true, sameSite: "lax" }),
     );
     expect(del).toHaveBeenCalledWith("mt_oauth_challenge", { path: "/" });
+  });
+
+  it("returns a failed OAuth callback to sign-in with recoverable feedback and the intended destination", async () => {
+    await expect(
+      oauthCallback({
+        url: new URL(
+          "https://moto-track.net/auth/callback?next=%2Fbilling%2Fcheckout",
+        ),
+        cookies: { get: vi.fn() },
+      } as never),
+    ).rejects.toMatchObject({
+      status: 303,
+      location:
+        "/auth?redirectTo=%2Fbilling%2Fcheckout&error=oauth_callback_failed",
+    });
+
+    const data = await loadAuthPage({
+      locals: { user: null },
+      url: new URL(
+        "https://moto-track.net/auth?redirectTo=%2Fbilling%2Fcheckout&error=oauth_callback_failed",
+      ),
+    } as never);
+
+    expect(data).toMatchObject({
+      redirectTo: "/billing/checkout",
+      errorMessage: expect.stringContaining("Tente novamente"),
+    });
+  });
+
+  it("does not expose an external destination through a failed OAuth callback", async () => {
+    await expect(
+      oauthCallback({
+        url: new URL(
+          "https://moto-track.net/auth/callback?next=https%3A%2F%2Fevil.example",
+        ),
+        cookies: { get: vi.fn() },
+      } as never),
+    ).rejects.toMatchObject({
+      status: 303,
+      location: "/auth?redirectTo=%2Fdashboard&error=oauth_callback_failed",
+    });
   });
 });

@@ -65,7 +65,8 @@
       void import("@sentry/browser").then((Sentry) => {
         Sentry.init({
           dsn,
-          environment: import.meta.env.PUBLIC_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
+          environment:
+            import.meta.env.PUBLIC_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
           tracesSampleRate: import.meta.env.PROD ? 0.1 : 1,
           sendDefaultPii: false,
         });

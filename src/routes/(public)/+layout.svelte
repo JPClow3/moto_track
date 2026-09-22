@@ -7,6 +7,20 @@
   let { children }: { children: Snippet } = $props();
 </script>
 
+<svelte:head>
+  <meta property="og:site_name" content="Moto Track" />
+  <meta property="og:type" content="website" />
+  <meta
+    property="og:image"
+    content="https://moto-track.net/brand/og-card.png"
+  />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta
+    name="twitter:image"
+    content="https://moto-track.net/brand/og-card.png"
+  />
+</svelte:head>
+
 <div class="flex min-h-screen flex-col">
   <a class="skip-link" href="#main-content">{$t("a11y.skipToContent")}</a>
   <PublicHeader />

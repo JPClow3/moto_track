@@ -10,7 +10,7 @@ function messageFrom(err: unknown) {
 const base = featureActions("documents");
 
 export const actions = {
-  ...base,
+  record: base.default,
   createReminder: async ({ request, locals }) => {
     const f = await request.formData();
     const id = String(f.get("id") ?? "");

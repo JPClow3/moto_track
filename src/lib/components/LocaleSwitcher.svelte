@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { locale } from "$lib/i18n/store";
-  import { LOCALES, LOCALE_LABELS } from "$lib/i18n";
+  import { LOCALE_LABELS, RELEASED_LOCALES } from "$lib/i18n";
   import { Languages } from "lucide-svelte";
 
   // A form POST, so this still works with JS off. `use:enhance` is deliberately
@@ -17,33 +17,37 @@
   export let id = "locale-select";
 </script>
 
-<form method="POST" action="/locale" class="locale-switcher">
-  <input
-    type="hidden"
-    name="redirectTo"
-    value={$page.url.pathname + $page.url.search}
-  />
-  <Languages
-    class="pointer-events-none absolute left-2 h-3.5 w-3.5 text-[var(--muted)]"
-    aria-hidden="true"
-  />
-  <label class="sr-only" for={id}>{LOCALE_LABELS[$locale]}</label>
-  <select
-    {id}
-    name="locale"
-    class="focus-ring min-h-11 appearance-none bg-transparent py-1.5 pl-7 pr-6 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--fg)]"
-    value={$locale}
-    on:change={(event) => event.currentTarget.form?.requestSubmit()}
-  >
-    {#each LOCALES as option (option)}
-      <option value={option}>{LOCALE_LABELS[option]}</option>
-    {/each}
-  </select>
-  <!-- The submit button is the no-JS path; onchange covers everyone else. -->
-  <noscript>
-    <button class="button-secondary px-2 py-1 text-xs" type="submit">OK</button>
-  </noscript>
-</form>
+{#if RELEASED_LOCALES.length > 1}
+  <form method="POST" action="/locale" class="locale-switcher">
+    <input
+      type="hidden"
+      name="redirectTo"
+      value={$page.url.pathname + $page.url.search}
+    />
+    <Languages
+      class="pointer-events-none absolute left-2 h-3.5 w-3.5 text-[var(--muted)]"
+      aria-hidden="true"
+    />
+    <label class="sr-only" for={id}>{LOCALE_LABELS[$locale]}</label>
+    <select
+      {id}
+      name="locale"
+      class="focus-ring min-h-11 appearance-none bg-transparent py-1.5 pl-7 pr-6 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--fg)]"
+      value={$locale}
+      on:change={(event) => event.currentTarget.form?.requestSubmit()}
+    >
+      {#each RELEASED_LOCALES as option (option)}
+        <option value={option}>{LOCALE_LABELS[option]}</option>
+      {/each}
+    </select>
+    <!-- The submit button is the no-JS path; onchange covers everyone else. -->
+    <noscript>
+      <button class="button-secondary px-2 py-1 text-xs" type="submit"
+        >OK</button
+      >
+    </noscript>
+  </form>
+{/if}
 
 <style>
   /* .sr-only comes from app.css — it is shared with the skip link and the

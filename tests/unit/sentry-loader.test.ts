@@ -5,11 +5,16 @@ const appHtml = readFileSync(
   new URL("../../src/app.html", import.meta.url),
   "utf8",
 );
+const rootLayout = readFileSync(
+  new URL("../../src/routes/+layout.svelte", import.meta.url),
+  "utf8",
+);
 
-describe("Sentry loader", () => {
-  it("loads the configured browser SDK with anonymous CORS", () => {
-    expect(appHtml).toMatch(
-      /<script\s+src="https:\/\/js\.sentry-cdn\.com\/08e9ee7d9e7558988cd107dff4092f39\.min\.js"\s+crossorigin="anonymous"\s*><\/script>/,
-    );
+describe("Sentry browser integration", () => {
+  it("uses one DSN-gated SDK path without sending default PII", () => {
+    expect(appHtml).not.toContain("js.sentry-cdn.com");
+    expect(rootLayout).toContain("import.meta.env.PUBLIC_SENTRY_DSN");
+    expect(rootLayout).toContain('import("@sentry/browser")');
+    expect(rootLayout).toContain("sendDefaultPii: false");
   });
 });

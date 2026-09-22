@@ -42,7 +42,6 @@ const savePressureAction = async ({
 };
 
 export const actions = {
-  ...base,
   installTire: base.default,
   deleteTire: base.default,
   logPressure: savePressureAction,

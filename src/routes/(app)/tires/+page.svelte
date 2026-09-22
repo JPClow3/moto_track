@@ -226,7 +226,7 @@
     <svelte:fragment slot="overflow">
       <PageOverflowMenu label={$t("authenticatedUx.moreActions")}>
         <a
-          class="focus-ring flex items-center gap-2 rounded px-3 py-2 text-sm text-[var(--fg)] hover:bg-[var(--line)]"
+          class="focus-ring flex min-h-11 items-center gap-2 rounded px-3 py-2 text-sm text-[var(--fg)] hover:bg-[var(--line)]"
           href="/tires/export.csv"
         >
           <Download size={14} aria-hidden="true" />
@@ -234,7 +234,7 @@
         </a>
         <button
           type="button"
-          class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--line)]"
+          class="focus-ring flex min-h-11 w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--line)]"
           on:click={() => catalogSheet?.open()}
         >
           <BookOpen size={14} aria-hidden="true" />
@@ -327,7 +327,7 @@
       <h2 class="display text-2xl">{$t("tires.activeHeading")}</h2>
       <button
         type="button"
-        class="button-secondary min-h-9 px-3 py-1 text-xs"
+        class="button-secondary min-h-11 px-3 py-1 text-xs"
         on:click={() => installSheet?.open()}
         disabled={!hasMotorcycles || formBusy}
       >
@@ -370,7 +370,7 @@
               <div class="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
-                  class="button-secondary min-h-9 px-2 py-1 text-xs"
+                  class="button-secondary min-h-11 px-2 py-1 text-xs"
                   on:click={() => openEditTire(tire)}
                   title={$t("common.edit")}
                 >
@@ -380,7 +380,7 @@
                   <input type="hidden" name="_intent" value="delete" />
                   <input type="hidden" name="id" value={String(tire.id)} />
                   <button
-                    class="button-danger min-h-9 px-2 py-1 text-xs"
+                    class="button-danger min-h-11 px-2 py-1 text-xs"
                     type="submit"
                     disabled={formBusy}
                     title={$t("common.delete")}
@@ -477,7 +477,7 @@
       </div>
       <button
         type="button"
-        class="button-secondary min-h-9 px-3 py-1 text-xs"
+        class="button-secondary min-h-11 px-3 py-1 text-xs"
         on:click={() => pressureSheet?.open()}
         disabled={!hasMotorcycles || formBusy}
       >
@@ -506,7 +506,7 @@
           >
             <input type="hidden" name="id" value={String(pressure.id)} />
             <button
-              class="button-danger min-h-8 px-2 py-1 text-xs"
+              class="button-danger min-h-11 px-2 py-1 text-xs"
               disabled={formBusy}
               title={$t("common.delete")}
             >
@@ -573,7 +573,7 @@
                 <div class="flex items-center gap-2">
                   <button
                     type="button"
-                    class="button-secondary min-h-8 px-2 py-1 text-xs"
+                    class="button-secondary min-h-11 px-2 py-1 text-xs"
                     on:click={() => openEditTire(tire)}
                     title={$t("common.edit")}
                   >
@@ -583,7 +583,7 @@
                     <input type="hidden" name="_intent" value="delete" />
                     <input type="hidden" name="id" value={String(tire.id)} />
                     <button
-                      class="button-danger min-h-8 px-2 py-1 text-xs"
+                      class="button-danger min-h-11 px-2 py-1 text-xs"
                       type="submit"
                       disabled={formBusy}
                       title={$t("common.delete")}
@@ -1097,7 +1097,7 @@
               >
                 <input type="hidden" name="id" value={String(product.id)} />
                 <button
-                  class="button-danger min-h-8 px-2 py-1 text-xs"
+                  class="button-danger min-h-11 px-2 py-1 text-xs"
                   disabled={formBusy}
                   title={$t("common.delete")}
                 >

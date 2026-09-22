@@ -15,6 +15,20 @@ jobs:
   validate:
     name: Lint, Check, and Test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: moto_track_test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d moto_track_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,17 +54,55 @@ jobs:
       - name: Unit Tests
         run: npm run test:unit
 
+      - name: Verify database migrations
+        run: npm run db:verify
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/moto_track_test
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
+
+      - name: Require authenticated E2E credentials
+        env:
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          for value in E2E_USER_EMAIL E2E_USER_PASSWORD NEON_API_KEY NEON_PROJECT_ID; do
+            if [ -z "${!value}" ]; then
+              echo "$value is required for authenticated release coverage." >&2
+              exit 1
+            fi
+          done
+
+      - name: Create isolated Neon E2E branch
+        id: e2e-neon
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: ci-${{ github.run_id }}-${{ github.run_attempt }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          get_auth_url: true
 
       - name: E2E Tests
         run: npm run test:e2e
         env:
-          # Runtime needs DATABASE_URL (Neon Postgres) + PUBLIC_NEON_AUTH_URL/
-          # NEON_AUTH_JWKS_URL (Neon Auth) to be set for routes that touch the
-          # DB or auth; add them as repo/environment secrets here if/when the
-          # e2e suite starts exercising those paths.
           CI: true
+          DATABASE_URL: ${{ steps.e2e-neon.outputs.db_url }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+          NEON_AUTH_JWKS_URL: ${{ steps.e2e-neon.outputs.auth_url }}/.well-known/jwks.json
+          PUBLIC_NEON_AUTH_URL: ${{ steps.e2e-neon.outputs.auth_url }}
+          PUBLIC_SITE_URL: http://localhost:5187
 
       - name: Production Build
         run: npm run build
+
+      - name: Delete isolated Neon E2E branch
+        if: always() && steps.e2e-neon.outputs.branch_id != ''
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: ${{ steps.e2e-neon.outputs.branch_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}

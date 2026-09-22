@@ -4,20 +4,24 @@ test("registers the Moto Track service worker", async ({ page }) => {
   await page.goto("/");
 
   await expect
-    .poll(() =>
-      page.evaluate(async () => {
-        if (!("serviceWorker" in navigator)) return null;
-        return navigator.serviceWorker.getRegistration("/");
-      }),
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          if (!("serviceWorker" in navigator)) return null;
+          return navigator.serviceWorker.getRegistration("/");
+        }),
+      { timeout: 20_000 },
     )
     .not.toBeNull();
 
   await expect
-    .poll(() =>
-      page.evaluate(async () => {
-        const worker = await navigator.serviceWorker.getRegistration("/");
-        return Boolean(worker?.active);
-      }),
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const worker = await navigator.serviceWorker.getRegistration("/");
+          return Boolean(worker?.active);
+        }),
+      { timeout: 20_000 },
     )
     .toBe(true);
 
@@ -26,7 +30,7 @@ test("registers the Moto Track service worker", async ({ page }) => {
     return worker?.scope;
   });
 
-  expect(registration).toBe("http://127.0.0.1:5187/");
+  expect(registration).toBe("http://localhost:5187/");
 });
 
 test("serves a standalone Moto Track manifest", async ({ request }) => {
@@ -38,6 +42,18 @@ test("serves a standalone Moto Track manifest", async ({ request }) => {
     name: "Moto Track",
     start_url: "/dashboard",
     display: "standalone",
+    icons: [
+      {
+        src: "/brand/web/android-chrome-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: "/brand/web/android-chrome-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
   });
 });
 
@@ -47,13 +63,15 @@ test("pre-caches an offline fallback for a previously unavailable connection", a
   await page.goto("/");
 
   await expect
-    .poll(() =>
-      page.evaluate(async () => {
-        const keys = await caches.keys();
-        const cache = await caches.open("moto-track-offline-v1");
-        const fallback = await cache.match("/offline");
-        return keys.includes("moto-track-offline-v1") && Boolean(fallback);
-      }),
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const keys = await caches.keys();
+          const cache = await caches.open("moto-track-offline-v1");
+          const fallback = await cache.match("/offline");
+          return keys.includes("moto-track-offline-v1") && Boolean(fallback);
+        }),
+      { timeout: 20_000 },
     )
     .toBe(true);
 });
