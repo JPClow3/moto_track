@@ -125,7 +125,7 @@ async function activeMotorcycle(page: Page) {
   await expect(
     form,
     "The acceptance account needs an active motorcycle",
-  ).toBeVisible();
+  ).toHaveCount(1);
   return {
     id: await form.locator('input[name="motorcycle_id"]').inputValue(),
     odometer: Number(
@@ -553,7 +553,7 @@ test.describe("data surfaces responsive behavior", () => {
     );
 
     const response = await page.request.get("/billing/conta/export");
-    expect(response.status()).toBe(200);
+    expect(response.status(), await response.text()).toBe(200);
     expect(response.headers()["cache-control"]).toBe("no-store");
     expect(response.headers()["content-disposition"]).toContain(
       "moto-track-dados.json",

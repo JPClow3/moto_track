@@ -85,6 +85,11 @@ jobs:
           api_key: ${{ secrets.NEON_API_KEY }}
           get_auth_url: true
 
+      - name: Apply pending migrations to isolated Neon E2E branch
+        run: npm run db:push
+        env:
+          DATABASE_URL: ${{ steps.e2e-neon.outputs.db_url }}
+
       - name: E2E Tests
         run: npm run test:e2e
         env:
