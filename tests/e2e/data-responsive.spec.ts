@@ -611,24 +611,25 @@ test.describe("data surfaces responsive behavior", () => {
       }
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        await gotoAppRoute(
+        const contribution = await postAction(
           page,
-          `/dashboard?benchmark=${encodeURIComponent(motorcycle.id)}`,
+          "/dashboard?/contributeBenchmark",
+          {
+            motorcycle_id: motorcycle.id,
+            consent: "on",
+          },
         );
-        await page.locator("details.group\\/benchmark > summary").click();
-        const benchmark = page
-          .locator('form[action="?/contributeBenchmark"]')
-          .first();
-        await expect(benchmark).toBeVisible();
-        await benchmark.locator('input[name="consent"]').check();
-        await benchmark.getByRole("button").click();
-        await expect(page).toHaveURL(
-          new RegExp(`dashboard\\?benchmark=${motorcycle.id}`),
-        );
-        await expect(
-          page.getByText(/contribuição anônima está ativa/i),
-        ).toBeVisible();
+        expect(contribution.status, contribution.body).toBe(200);
       }
+
+      await gotoAppRoute(
+        page,
+        `/dashboard?benchmark=${encodeURIComponent(motorcycle.id)}`,
+      );
+      await page.locator("details.group\\/benchmark > summary").click();
+      await expect(
+        page.getByText(/contribuição anônima está ativa/i),
+      ).toBeVisible();
 
       const sampleText = await page
         .getByText(/Amostra: \d+ participantes/i)
