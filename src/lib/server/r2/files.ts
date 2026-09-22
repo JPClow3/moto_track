@@ -1,6 +1,15 @@
 import { error } from "@sveltejs/kit";
 import type { Sql } from "postgres";
 
+export async function lockObjectOwner(db: Sql, ownerId: string) {
+  const [owner] = await db<Array<{ id: string }>>`
+    select id from neon_auth."user"
+    where id = ${ownerId}
+    for update
+  `;
+  if (!owner) throw new Error("Account no longer exists.");
+}
+
 export async function requireR2Bucket(platform: App.Platform | undefined) {
   const bucket = platform?.env?.R2_BUCKET;
   if (!bucket) throw error(500, "R2_BUCKET binding is not configured.");

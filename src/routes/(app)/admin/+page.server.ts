@@ -3,6 +3,7 @@ import { isStaffUser as staffState } from "$server/domain/staff";
 import {
   deleteQueuedObjectsBestEffort,
   enqueueObjectDeletions,
+  lockObjectOwner,
 } from "$server/r2/files";
 import { terminateStripeBillingForAccount } from "$server/domain/billing";
 
@@ -179,6 +180,7 @@ export const actions = {
       try {
         objectKeys = await locals.db.begin(async (transaction) => {
           const db = transaction as unknown as typeof locals.db;
+          await lockObjectOwner(db, existing.owner_id);
           const files = await db<Array<{ object_key: string }>>`
             select object_key from object_files
             where owner_id = ${existing.owner_id}

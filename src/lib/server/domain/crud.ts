@@ -4,6 +4,7 @@ import { getFeature, schemaForFeature, type FeatureConfig } from "./features";
 import {
   deleteQueuedObjectsBestEffort,
   enqueueObjectDeletions,
+  lockObjectOwner,
   queueUploadedOrphansBestEffort,
   uploadObjectFile,
 } from "$server/r2/files";
@@ -225,6 +226,7 @@ export function featureActions(slug: string): Actions {
         try {
           deleted = await locals.db.begin(async (transaction) => {
             const db = transaction as unknown as typeof locals.db;
+            await lockObjectOwner(db, ownerId);
             const [existing] = await db<
               Array<{ motorcycle_id: string | null }>
             >`
@@ -349,7 +351,15 @@ export function featureActions(slug: string): Actions {
         replacedObjectKeys = await locals.db.begin(async (transaction) => {
           const db = transaction as unknown as typeof locals.db;
           let oldKeys: string[] = [];
+          if (uploadedObjects.length > 0) {
+            await lockObjectOwner(db, ownerId);
+          }
           if (uploadedObjects.length > 0 && intent === "update" && id) {
+            await db`
+              select id from ${db(feature.table)}
+              where id = ${id} and owner_id = ${ownerId}
+              for update
+            `;
             const oldFiles = await db<Array<{ object_key: string }>>`
               select object_key from object_files
               where owner_id = ${ownerId}

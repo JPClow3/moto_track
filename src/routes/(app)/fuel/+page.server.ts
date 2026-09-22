@@ -10,6 +10,7 @@ import { consumptionTrend } from "$server/domain/dashboard";
 import {
   deleteQueuedObjectsBestEffort,
   enqueueObjectDeletions,
+  lockObjectOwner,
   queueUploadedOrphansBestEffort,
   uploadObjectFile,
 } from "$server/r2/files";
@@ -98,6 +99,7 @@ async function createFuelRecord({
   try {
     await locals.db.begin(async (transaction) => {
       const db = transaction as unknown as typeof locals.db;
+      if (uploadedReceipt) await lockObjectOwner(db, user.id);
       await db`
         insert into fuel_records ${db(payload)}
       `;
@@ -264,6 +266,7 @@ export const actions: Actions = {
     try {
       deleted = await locals.db.begin(async (transaction) => {
         const db = transaction as unknown as typeof locals.db;
+        await lockObjectOwner(db, ownerId);
         const [existing] = await db<Array<{ motorcycle_id: string | null }>>`
           select motorcycle_id from fuel_records
           where owner_id = ${ownerId} and id = ${id}

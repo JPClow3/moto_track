@@ -188,15 +188,20 @@ describe("R2 object lifecycle", () => {
 
     for (const source of [crud, fuel, maintenance]) {
       expect(source).toContain(".begin(async (transaction)");
+      expect(source).toContain("lockObjectOwner");
       expect(source).toContain("enqueueObjectDeletions");
       expect(source).toContain("deleteQueuedObjectsBestEffort");
       expect(source).toContain("owner_id = ${ownerId}");
     }
     expect(admin).toContain(".begin(async (transaction)");
+    expect(admin).toContain("lockObjectOwner(db, existing.owner_id)");
     expect(admin).toContain("enqueueObjectDeletions");
     expect(admin).toContain("deleteQueuedObjectsBestEffort");
     expect(maintenance).toContain("source_table = 'maintenance_photos'");
     expect(admin).toContain("where owner_id = ${existing.owner_id}");
+    expect(
+      admin.indexOf("lockObjectOwner(db, existing.owner_id)"),
+    ).toBeLessThan(admin.indexOf("select object_key from object_files"));
     expect(migration).toContain(
       "create table if not exists public.object_deletion_queue",
     );

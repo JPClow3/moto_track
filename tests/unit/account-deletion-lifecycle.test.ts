@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   terminateStripeBillingForAccount: vi.fn(),
   deleteQueuedObjectsBestEffort: vi.fn(),
   enqueueObjectDeletions: vi.fn(),
+  lockObjectOwner: vi.fn(),
   isStaffUser: vi.fn(),
 }));
 
@@ -13,6 +14,7 @@ vi.mock("$server/domain/billing", () => ({
 vi.mock("$server/r2/files", () => ({
   deleteQueuedObjectsBestEffort: mocks.deleteQueuedObjectsBestEffort,
   enqueueObjectDeletions: mocks.enqueueObjectDeletions,
+  lockObjectOwner: mocks.lockObjectOwner,
 }));
 vi.mock("$server/domain/staff", () => ({
   isStaffUser: mocks.isStaffUser,
@@ -83,6 +85,7 @@ describe("LGPD account deletion lifecycle", () => {
       .mockReset()
       .mockResolvedValue(undefined);
     mocks.enqueueObjectDeletions.mockReset().mockResolvedValue([]);
+    mocks.lockObjectOwner.mockReset().mockResolvedValue(undefined);
   });
 
   it("preserves local data and the open request when Stripe termination fails", async () => {
@@ -122,6 +125,10 @@ describe("LGPD account deletion lifecycle", () => {
 
     expect(result).toEqual({ ok: true });
     expect(mocks.terminateStripeBillingForAccount).toHaveBeenCalledOnce();
+    expect(mocks.lockObjectOwner).toHaveBeenCalledWith(
+      expect.any(Function),
+      "owner-1",
+    );
     const deletion = queries.find((entry) =>
       entry.sql.includes('delete from neon_auth."user"'),
     );

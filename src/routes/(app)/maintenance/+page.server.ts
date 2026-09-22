@@ -23,6 +23,7 @@ import { getFeature } from "$server/domain/features";
 import {
   deleteQueuedObjectsBestEffort,
   enqueueObjectDeletions,
+  lockObjectOwner,
   queueUploadedOrphansBestEffort,
   uploadObjectFile,
 } from "$server/r2/files";
@@ -61,6 +62,7 @@ export const actions = {
     try {
       deleted = await locals.db.begin(async (transaction) => {
         const db = transaction as unknown as typeof locals.db;
+        await lockObjectOwner(db, ownerId);
         const [existing] = await db<Array<{ motorcycle_id: string | null }>>`
           select motorcycle_id from maintenance_records
           where id = ${id} and owner_id = ${ownerId}
@@ -369,6 +371,12 @@ export const actions = {
     try {
       await locals.db.begin(async (transaction) => {
         const db = transaction as unknown as typeof locals.db;
+        await lockObjectOwner(db, ownerId);
+        await db`
+          select id from maintenance_records
+          where id = ${recordId} and owner_id = ${ownerId}
+          for update
+        `;
         await db`
           insert into maintenance_photos ${db({
             id: photoId,
@@ -410,6 +418,7 @@ export const actions = {
     try {
       objectKeys = await locals.db.begin(async (transaction) => {
         const db = transaction as unknown as typeof locals.db;
+        await lockObjectOwner(db, ownerId);
         const [photo] = await db<Array<{ id: string }>>`
           select id from maintenance_photos
           where id = ${id} and owner_id = ${ownerId}
