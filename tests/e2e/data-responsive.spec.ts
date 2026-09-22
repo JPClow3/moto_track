@@ -628,7 +628,7 @@ test.describe("data surfaces responsive behavior", () => {
         const submitted = page.waitForResponse(
           (response) =>
             response.request().method() === "POST" &&
-            response.url().includes("/dashboard?/contributeBenchmark"),
+            new URL(response.url()).pathname === "/dashboard",
         );
         await button.click();
         const response = await submitted;
