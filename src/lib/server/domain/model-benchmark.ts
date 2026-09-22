@@ -1,4 +1,5 @@
 import type { FuelRecord } from "./fuel";
+import { isoDateValue } from "./date-value";
 
 /**
  * A cohort result is intentionally withheld until five different accounts
@@ -16,7 +17,7 @@ export type BenchmarkPosition =
   "sem comparação" | "acima da média" | "abaixo da média" | "na média";
 
 export type BenchmarkRawMaintenance = {
-  date?: string | null;
+  date?: string | Date | null;
   odometer_km?: number | string | null;
   cost_cents?: number | string | null;
 };
@@ -98,18 +99,20 @@ export function normalizeBenchmarkMetric(
 }
 
 function validFuelRecords(records: FuelRecord[]) {
-  return records.filter((record) => {
-    const date = String(record.date ?? "");
-    const odometer = finiteNumber(record.odometer_km);
-    const liters = finiteNumber(record.liters);
-    return (
-      /^\d{4}-\d{2}-\d{2}/.test(date) &&
-      odometer !== null &&
-      odometer >= 0 &&
-      liters !== null &&
-      liters > 0
-    );
-  });
+  return records
+    .map((record) => ({ ...record, date: isoDateValue(record.date) }))
+    .filter((record) => {
+      const date = record.date;
+      const odometer = finiteNumber(record.odometer_km);
+      const liters = finiteNumber(record.liters);
+      return (
+        /^\d{4}-\d{2}-\d{2}/.test(date) &&
+        odometer !== null &&
+        odometer >= 0 &&
+        liters !== null &&
+        liters > 0
+      );
+    });
 }
 
 function consumptionSummary(records: FuelRecord[]) {
@@ -173,18 +176,19 @@ export function comparableBenchmarkMetrics(
     2,
   );
 
-  const validMaintenance = maintenanceRecords.filter((record) => {
-    const date = String(record.date ?? "");
-    const odometer = finiteNumber(record.odometer_km);
-    const cost = finiteNumber(record.cost_cents);
-    return (
-      /^\d{4}-\d{2}-\d{2}/.test(date) &&
-      odometer !== null &&
-      odometer >= 0 &&
-      cost !== null &&
-      cost >= 0
-    );
-  });
+  const validMaintenance = maintenanceRecords
+    .map((record) => ({ ...record, date: isoDateValue(record.date) }))
+    .filter((record) => {
+      const odometer = finiteNumber(record.odometer_km);
+      const cost = finiteNumber(record.cost_cents);
+      return (
+        /^\d{4}-\d{2}-\d{2}/.test(record.date) &&
+        odometer !== null &&
+        odometer >= 0 &&
+        cost !== null &&
+        cost >= 0
+      );
+    });
 
   // Fuel and maintenance odometers are both event readings. Sort the merged
   // timeline, reject any rollback, and use only the represented distance.
