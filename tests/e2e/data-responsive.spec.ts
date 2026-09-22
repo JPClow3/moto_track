@@ -604,7 +604,9 @@ test.describe("data surfaces responsive behavior", () => {
           station_name: `${marker}-${offset}`,
           notes: `${marker}-${offset}`,
         });
-        expect(result.response.status(), await result.response.text()).toBe(201);
+        expect(result.response.status(), await result.response.text()).toBe(
+          201,
+        );
         created.push(result.row!.id);
       }
 
