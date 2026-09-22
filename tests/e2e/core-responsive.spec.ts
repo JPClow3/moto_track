@@ -20,7 +20,10 @@ async function gotoAppRoute(page: Page, route: string) {
 }
 
 test.describe("app shell responsive foundation", () => {
-  test.setTimeout(120_000);
+  // Twenty authenticated navigations across five viewport sizes can exceed
+  // two minutes while a newly created Neon branch is cold. Assertions retain
+  // their normal per-operation limits; only the aggregate matrix budget grows.
+  test.setTimeout(240_000);
   test.skip(!hasAuthEnv, "Set E2E_USER_EMAIL and E2E_USER_PASSWORD to run.");
 
   test("core routes stay within the viewport", async ({ page }) => {

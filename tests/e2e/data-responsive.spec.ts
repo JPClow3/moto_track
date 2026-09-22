@@ -21,9 +21,13 @@ const dataRoutes = [
 ];
 
 async function gotoAppRoute(page: Page, route: string) {
+  const expected = new URL(route, "http://localhost");
   await expect(async () => {
     await page.goto(route, { waitUntil: "domcontentloaded" });
-    expect(new URL(page.url()).pathname).toBe(route);
+    const current = new URL(page.url());
+    expect(`${current.pathname}${current.search}`).toBe(
+      `${expected.pathname}${expected.search}`,
+    );
   }).toPass({ intervals: [250, 500, 1_000], timeout: 10_000 });
   await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
 }
@@ -465,9 +469,11 @@ test.describe("data surfaces responsive behavior", () => {
         expect(synchronized[0]).toMatchObject({
           id: original!.id,
           title: linkedCase.title,
-          reference_date: linkedCase.referenceDate,
           is_active: true,
         });
+        expect(String(synchronized[0].reference_date).slice(0, 10)).toBe(
+          linkedCase.referenceDate,
+        );
       } finally {
         await apiDelete(page, linkedCase.resource, record.id);
       }
