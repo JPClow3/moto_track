@@ -38,6 +38,17 @@ describe("linked reminder definitions", () => {
     });
   });
 
+  it("accepts PostgreSQL Date values returned by API inserts", () => {
+    expect(
+      reminderForRecord("motorcycle_documents", "document-2", {
+        motorcycle_id: "moto-1",
+        name: "Licenciamento",
+        valid_until: new Date("2030-06-30T00:00:00.000Z"),
+        notify_before_days: 30,
+      }),
+    ).toMatchObject({ reference_date: "2030-05-31" });
+  });
+
   it("calculates subtractDays correctly across months and leap years", async () => {
     const { subtractDays } =
       await import("../../src/lib/server/domain/record-sync");

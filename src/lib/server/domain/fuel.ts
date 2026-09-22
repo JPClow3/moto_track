@@ -283,9 +283,15 @@ export function parseFuelCsv(text: string): FuelCsvPreviewRow[] {
   });
 }
 
+function sortableDate(value: unknown) {
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
 export function averageConsumption(records: FuelRecord[]) {
   const ordered = [...records].sort(
-    (a, b) => a.date.localeCompare(b.date) || a.odometer_km - b.odometer_km,
+    (a, b) =>
+      sortableDate(a.date).localeCompare(sortableDate(b.date)) ||
+      a.odometer_km - b.odometer_km,
   );
   const full = ordered.filter((record) => record.tank_full);
   if (full.length < 2) return null;

@@ -71,6 +71,24 @@ describe("fuel parsing", () => {
 });
 
 describe("fuel metrics", () => {
+  it("sorts PostgreSQL Date values when calculating consumption", () => {
+    const records = [
+      {
+        date: new Date("2026-09-02T00:00:00Z"),
+        odometer_km: 1200,
+        liters: 10,
+        tank_full: true,
+      },
+      {
+        date: new Date("2026-09-01T00:00:00Z"),
+        odometer_km: 1000,
+        liters: 10,
+        tank_full: true,
+      },
+    ] as unknown as Parameters<typeof averageConsumption>[0];
+    expect(averageConsumption(records)).toBe(20);
+  });
+
   it("calculates average consumption between full tanks", () => {
     const records = [
       { date: "2026-07-01", odometer_km: 1000, liters: 10, tank_full: true },

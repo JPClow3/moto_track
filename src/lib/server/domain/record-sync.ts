@@ -22,6 +22,13 @@ function stringValue(value: unknown) {
   return typeof value === "string" && value ? value : null;
 }
 
+function dateValue(value: unknown) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  return stringValue(value);
+}
+
 export function subtractDays(date: string, days: number) {
   const value = new Date(`${date}T00:00:00.000Z`);
   value.setUTCDate(value.getUTCDate() - days);
@@ -39,7 +46,7 @@ export function reminderForRecord(
     const intervalKm = numberValue(payload.interval_km);
     const intervalDays = numberValue(payload.interval_days);
     const referenceKm = numberValue(payload.odometer_km);
-    const referenceDate = stringValue(payload.date);
+    const referenceDate = dateValue(payload.date);
     if (!intervalKm && !intervalDays) return null;
     return {
       title: `Manutenção: ${stringValue(payload.maintenance_type) ?? "revisão"}`,
@@ -60,7 +67,7 @@ export function reminderForRecord(
   const isDocument = table === "motorcycle_documents";
   const isFee = table === "annual_fees";
   if (!isDocument && !isFee) return null;
-  const dueDate = stringValue(payload[isDocument ? "valid_until" : "due_date"]);
+  const dueDate = dateValue(payload[isDocument ? "valid_until" : "due_date"]);
   const noticeDays = numberValue(payload.notify_before_days) ?? 30;
   if (!dueDate) return null;
   return {
