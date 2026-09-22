@@ -649,9 +649,9 @@ test.describe("data surfaces responsive behavior", () => {
         await expect(
           page.getByText(/faltam .* participantes para liberar as médias/i),
         ).toBeVisible();
-        await expect(
-          page.getByText(/Amostra deste dado: \d+\/5/i),
-        ).toHaveCount(2);
+        await expect(page.getByText(/Amostra deste dado: \d+\/5/i)).toHaveCount(
+          2,
+        );
         await expect(
           page.getByText(/^(acima da média|abaixo da média|na média)$/i),
         ).toHaveCount(0);
