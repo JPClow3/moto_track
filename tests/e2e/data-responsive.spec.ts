@@ -22,13 +22,26 @@ const dataRoutes = [
 
 async function gotoAppRoute(page: Page, route: string) {
   const expected = new URL(route, "http://localhost");
-  await expect(async () => {
-    await page.goto(route, { waitUntil: "domcontentloaded" });
-    const current = new URL(page.url());
-    expect(`${current.pathname}${current.search}`).toBe(
-      `${expected.pathname}${expected.search}`,
+  let lastPath = "(navigation did not start)";
+  let lastStatus: number | undefined;
+  try {
+    await expect(async () => {
+      const response = await page.goto(route, {
+        waitUntil: "domcontentloaded",
+      });
+      const current = new URL(page.url());
+      lastPath = current.pathname;
+      lastStatus = response?.status();
+      expect(`${current.pathname}${current.search}`).toBe(
+        `${expected.pathname}${expected.search}`,
+      );
+    }).toPass({ intervals: [250, 500, 1_000], timeout: 10_000 });
+  } catch (error) {
+    throw new Error(
+      `Could not navigate to ${expected.pathname}; last path was ${lastPath}${lastStatus === undefined ? "" : ` (HTTP ${lastStatus})`}.`,
+      { cause: error },
     );
-  }).toPass({ intervals: [250, 500, 1_000], timeout: 10_000 });
+  }
   await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
 }
 
