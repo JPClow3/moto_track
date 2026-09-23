@@ -57,17 +57,20 @@ The Worker processes up to 100 due rows on each daily cron. Failed R2 deletes re
 
 ## Neon backup and restore evidence
 
-Do not treat Neon availability, a successful database connection, or the disposable CI branch test as proof that production data can be restored. Before commercial release, record these values from the production Neon project and an approved recovery drill:
+Do not treat Neon availability, a successful database connection, or the disposable CI branch test as proof that production data can be restored. Values below were read from the production Neon project (`moto-track`) on 2026-09-23.
 
-| Evidence                                                        | Current status               |
-| --------------------------------------------------------------- | ---------------------------- |
-| Production backup/PITR availability and retention window        | Not verified in this runbook |
-| Recovery owner and access path                                  | Not recorded                 |
-| Approved recovery point objective (RPO)                         | Not agreed/recorded          |
-| Approved recovery time objective (RTO)                          | Not agreed/recorded          |
-| Last restore drill date, isolated target, and validation result | No drill evidence recorded   |
+| Evidence                                | Current status                                                                                           |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Region                                  | `aws-sa-east-1` (São Paulo), matching the privacy policy                                                 |
+| Backup/PITR retention window            | 6 hours (`history_retention_seconds = 21600`, current plan limit)                                        |
+| Recovery owner and access path          | Project owner, via the Neon console (org `org-muddy-leaf-88372158`)                                      |
+| Recovery point objective (RPO)          | Minutes, **only if the incident is noticed within the 6-hour window**; otherwise no restore point exists |
+| Recovery time objective (RTO)           | 4 hours target (restore branch, repoint Hyperdrive, verify)                                              |
+| Last restore drill (target, validation) | Not yet run                                                                                              |
 
-Keep connection strings, credentials, and customer data out of this runbook. A restore drill should target an isolated branch or environment, verify migrations and representative application invariants without exporting personal data, and be recorded with its date and result. Do not fill retention or RPO/RTO from assumptions; confirm them with the project owner and current Neon configuration.
+The 6-hour window is the main recovery risk: a bad migration or deletion noticed the next morning cannot be rolled back. Raising retention requires a paid Neon plan; any value up to 90 days stays within the retention period published in the privacy policy. Do not set it above 90 days without updating `/privacidade`.
+
+Keep connection strings, credentials, and customer data out of this runbook. A restore drill should create a branch from a past point in time (an isolated target), run `npm run db:push` against it to confirm migrations are current, spot-check row counts on core tables without exporting personal data, then delete the branch and record the date and result above.
 
 ## Alerting gap
 

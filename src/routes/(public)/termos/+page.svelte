@@ -1,13 +1,15 @@
 <script lang="ts">
-  import { FileText, Mail, Printer, Scale } from "lucide-svelte";
+  import { ArrowRight, FileText, Mail, Printer, Scale } from "lucide-svelte";
 
-  const sections = [
+  let { data } = $props();
+  const { companyName, supportEmail } = $derived(data.contact);
+
+  const sections = $derived([
     {
       id: "aceitacao",
       title: "Aceitação dos termos",
       paragraphs: [
-        "Ao criar uma conta ou usar o Moto Track, você concorda com estes Termos de Uso e com a nossa Política de Privacidade. Se você não concordar com algum ponto, não utilize o serviço.",
-        "Este documento ainda é uma minuta e precisa de revisão jurídica antes do lançamento comercial.",
+        `Ao criar uma conta ou usar o Moto Track, você concorda com estes Termos de Uso e com a nossa Política de Privacidade. O serviço é oferecido por ${companyName}. Se você não concordar com algum ponto, não utilize o serviço.`,
       ],
     },
     {
@@ -39,7 +41,8 @@
       title: "Assinatura Pro e cobrança",
       paragraphs: [
         "O plano Pro é cobrado de forma recorrente pela Stripe. Os valores, a periodicidade e os métodos de pagamento aceitos são exibidos antes da confirmação da assinatura. A área Conta direciona ao Portal de cobrança para gerenciar a assinatura.",
-        "As regras aplicáveis ao cancelamento, ao período de acesso e a eventuais reembolsos precisam ser confirmadas e revisadas juridicamente antes do lançamento comercial; estes termos não estabelecem uma renúncia a direitos previstos em lei.",
+        "Você pode cancelar a assinatura a qualquer momento pelo Portal de cobrança. O acesso Pro continua até o fim do período já pago e não há cobrança seguinte.",
+        `Na primeira contratação, você pode desistir em até 7 dias e receber o reembolso integral, conforme o art. 49 do Código de Defesa do Consumidor; para isso, escreva para ${supportEmail}. Fora desse prazo, não há reembolso proporcional do período em curso, salvo quando exigido por lei.`,
       ],
     },
     {
@@ -54,14 +57,14 @@
       title: "Limitações e responsabilidade",
       paragraphs: [
         "O Moto Track é fornecido 'como está', sem garantia de disponibilidade ininterrupta ou de ausência total de falhas. Registros como odômetro, consumo, custos e previsões de manutenção são estimativas e não substituem o manual do fabricante ou a avaliação de um profissional qualificado.",
-        "Mantenha cópias próprias de informações críticas quando possível. Qualquer limitação de responsabilidade precisa ser validada juridicamente e não pretende afastar direitos que a legislação aplicável não permita limitar.",
+        "Na máxima medida permitida por lei, não respondemos por danos indiretos ou lucros cessantes decorrentes do uso ou da impossibilidade de uso do serviço. Nada nestes termos afasta direitos do consumidor que a legislação não permite limitar. Mantenha cópias próprias de informações críticas quando possível.",
       ],
     },
     {
       id: "rescisao",
       title: "Encerramento da conta",
       paragraphs: [
-        "A área Conta permite baixar um arquivo JSON e registrar solicitações de exportação ou exclusão. O pedido de exclusão é encaminhado à equipe e não remove os dados imediatamente. O cancelamento de uma assinatura é gerenciado separadamente pelo Portal de cobrança. Podemos suspender ou encerrar contas em caso de violação destes termos ou risco de segurança, observadas as regras aplicáveis.",
+        "A área Conta permite baixar um arquivo JSON e registrar solicitações de exportação ou exclusão. O pedido de exclusão é atendido pela equipe em até 15 dias. O cancelamento de uma assinatura é gerenciado separadamente pelo Portal de cobrança. Podemos suspender ou encerrar contas em caso de violação destes termos ou risco de segurança, observadas as regras aplicáveis.",
       ],
     },
     {
@@ -75,10 +78,10 @@
       id: "contato",
       title: "Contato",
       paragraphs: [
-        "Um canal monitorado para dúvidas sobre estes termos ainda não foi publicado. Não inclua dados pessoais em uma issue aberta nem use o formulário de segurança do GitHub para solicitações de consumo.",
+        `Para dúvidas sobre estes termos, pedidos de reembolso ou outras solicitações, escreva para ${supportEmail}.`,
       ],
     },
-  ];
+  ]);
 </script>
 
 <svelte:head>
@@ -150,13 +153,14 @@
       <div class="flex gap-3">
         <FileText class="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
         <p class="text-sm leading-relaxed text-[var(--muted)]">
-          Minuta pendente de revisão jurídica antes do lançamento comercial.
+          Desistência com reembolso integral em até 7 dias na primeira
+          contratação.
         </p>
       </div>
       <div class="flex gap-3">
         <Scale class="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
         <p class="text-sm leading-relaxed text-[var(--muted)]">
-          Cancele a assinatura Pro quando quiser, pela área Conta.
+          Cancele a assinatura Pro quando quiser, pelo Portal de cobrança.
         </p>
       </div>
     </div>
@@ -183,10 +187,14 @@
         <div>
           <h2 class="display text-2xl">Dúvidas sobre os termos</h2>
           <p class="mt-2 text-sm leading-relaxed text-paper/65">
-            Um canal monitorado para dúvidas sobre estes termos ainda não foi
-            publicado. Não inclua dados pessoais em uma issue aberta nem use o
-            formulário de segurança do GitHub para solicitações de consumo.
+            Fale com o suporte em {supportEmail}. Não inclua dados pessoais em
+            uma issue aberta.
           </p>
+          <a
+            class="focus-ring mt-4 inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
+            href={`mailto:${supportEmail}`}
+            >Enviar e-mail <ArrowRight class="h-4 w-4" /></a
+          >
         </div>
       </div>
     </div>

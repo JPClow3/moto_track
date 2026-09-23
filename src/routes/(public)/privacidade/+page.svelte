@@ -7,14 +7,16 @@
     ShieldCheck,
   } from "lucide-svelte";
 
-  const sections = [
+  let { data } = $props();
+  const { companyName, supportEmail } = $derived(data.contact);
+
+  const sections = $derived([
     {
       id: "dados",
       title: "Dados que podemos tratar",
       paragraphs: [
         "Para criar e manter sua conta, podemos tratar dados de identificação e contato, como e-mail. Quando você usa o produto, também tratamos os registros que você escolhe adicionar: dados da moto, abastecimentos, manutenções, documentos, despesas, lembretes e preferências.",
-        "Também podem ser tratados dados técnicos necessários para segurança e funcionamento, como registros de acesso, dispositivo, navegador e eventos de erro. Se a integração de Sentry estiver configurada, o navegador envia telemetria de erro e desempenho; a configuração do SDK desativa o envio padrão de dados pessoais, mas isso não substitui uma análise dos dados presentes em cada evento.",
-        "A autenticação e o banco da aplicação usam Neon; arquivos enviados ficam no Cloudflare R2; cobranças recorrentes usam Stripe. Quando você solicita a leitura de um comprovante, o arquivo é enviado ao Mistral para OCR. Esses fornecedores podem tratar dados técnicos conforme suas configurações e contratos; os locais de processamento e prazos de retenção de cada fornecedor ainda precisam ser confirmados nesta versão.",
+        "Também tratamos dados técnicos necessários para segurança e funcionamento, como registros de acesso, dispositivo, navegador e eventos de erro. A telemetria de erro e desempenho enviada ao Sentry é configurada para não incluir dados pessoais por padrão.",
       ],
     },
     {
@@ -29,7 +31,8 @@
       id: "compartilhamento",
       title: "Compartilhamento",
       paragraphs: [
-        "Além dos serviços indicados acima, o Worker do Cloudflare pode enviar lembretes por e-mail e notificações push aos destinos configurados pelo usuário. Notificações push dependem do navegador e do serviço push associado ao dispositivo. Não publicamos aqui uma lista exaustiva de suboperadores nem as respectivas localidades de tratamento; essas informações precisam ser verificadas antes do lançamento comercial.",
+        "Usamos os seguintes operadores, que tratam dados em nosso nome: Neon (autenticação e banco de dados, em São Paulo, Brasil); Cloudflare (hospedagem, arquivos enviados no R2 e envio de lembretes por e-mail, em rede global); Stripe (cobrança da assinatura, Estados Unidos); Mistral AI (leitura de comprovantes por OCR, somente quando você solicita, União Europeia); e Sentry (telemetria de erros, Estados Unidos). Notificações push são entregues pelo serviço push do navegador do seu dispositivo.",
+        "Quando o tratamento ocorre fora do Brasil, a transferência internacional se apoia nas garantias contratuais desses fornecedores e na execução do serviço que você contratou, nos termos do art. 33 da LGPD.",
         "Não vendemos dados pessoais. Dados podem ser compartilhados quando você solicitar, quando forem necessários para executar o serviço, para cumprir obrigação legal ou para proteger a segurança de pessoas e sistemas.",
       ],
     },
@@ -38,7 +41,8 @@
       title: "Segurança e retenção",
       paragraphs: [
         "Adotamos medidas técnicas e organizacionais proporcionais para reduzir riscos de acesso indevido, alteração, perda ou divulgação. Nenhum ambiente conectado à internet é completamente imune a riscos; por isso, use uma senha forte e mantenha seus dispositivos protegidos.",
-        "Ainda não publicamos prazos fixos de retenção por categoria de dado ou fornecedor. Os dados da conta são removidos quando uma solicitação de exclusão é atendida; a exclusão física de arquivos pode permanecer em uma fila operacional até que o Worker conclua a limpeza. Prazos de cópias de segurança, registros de cobrança e fornecedores precisam ser confirmados antes do lançamento comercial.",
+        "Mantemos seus registros enquanto sua conta estiver ativa. Quando uma solicitação de exclusão é atendida, os dados da conta são removidos do banco de dados imediatamente, e cópias residuais — arquivos em fila de remoção, cópias de segurança e registros técnicos — são eliminadas em até 90 dias.",
+        "Registros de cobrança mantidos pela Stripe e dados que precisamos guardar para cumprir obrigação legal ou regulatória, como documentos fiscais, são conservados pelo prazo exigido pela lei aplicável.",
       ],
     },
     {
@@ -46,7 +50,7 @@
       title: "Seus direitos pela LGPD",
       paragraphs: [
         "Nos termos da Lei Geral de Proteção de Dados, você pode solicitar confirmação de tratamento, acesso, correção, anonimização, bloqueio, eliminação, portabilidade, informação sobre compartilhamentos e revisão de decisões automatizadas, observados os limites legais.",
-        "A área Conta oferece download direto de um arquivo JSON e também permite registrar solicitações de exportação ou exclusão para atendimento pela equipe. Uma solicitação de exclusão não apaga os dados imediatamente. Um canal monitorado para os demais direitos ainda não foi publicado nesta versão.",
+        `A área Conta oferece download direto de um arquivo JSON e permite registrar pedidos de exportação ou exclusão, que são atendidos pela equipe. Para os demais direitos, escreva para ${supportEmail}. Respondemos em até 15 dias e podemos pedir a confirmação da sua identidade antes de atender.`,
       ],
     },
     {
@@ -61,11 +65,11 @@
       id: "contato",
       title: "Contato e atualizações",
       paragraphs: [
-        "Este texto ainda precisa de revisão jurídica. A identificação do controlador, um contato monitorado para privacidade, prazos de retenção e localidades de processamento ainda não foram informados nesta versão e precisam ser publicados antes do lançamento comercial. Quando esta política mudar de forma relevante, a data nesta página será atualizada.",
-        "Para baixar seus dados ou registrar um pedido de exclusão, use a área Conta. O canal GitHub de relatos de segurança não é um canal de atendimento de direitos de privacidade; não envie dados pessoais em issues ou avisos públicos.",
+        `O controlador dos dados é ${companyName}. O canal do encarregado pelo tratamento de dados pessoais é o e-mail ${supportEmail}, o mesmo do suporte.`,
+        "Quando esta política mudar de forma relevante, a data nesta página será atualizada e poderemos avisar pelo serviço ou por e-mail. Não envie dados pessoais em issues ou avisos públicos.",
       ],
     },
-  ];
+  ]);
 </script>
 
 <svelte:head>
@@ -170,16 +174,20 @@
         <div>
           <h2 class="display text-2xl">Solicitações de privacidade</h2>
           <p class="mt-2 text-sm leading-relaxed text-paper/65">
-            Você pode baixar uma cópia JSON ou registrar um pedido de exclusão
-            na área Conta. Um canal monitorado para outros pedidos ainda não foi
-            publicado. Não use o formulário de segurança do GitHub nem uma issue
-            pública para enviar dados pessoais.
+            Baixe uma cópia JSON ou registre um pedido de exclusão na área
+            Conta. Para outros pedidos, escreva para {supportEmail} — respondemos
+            em até 15 dias.
           </p>
           <div class="mt-4 flex flex-wrap gap-4">
             <a
               class="focus-ring inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
               href="/billing/conta"
               >Gerenciar dados da conta <ArrowRight class="h-4 w-4" /></a
+            >
+            <a
+              class="focus-ring inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
+              href={`mailto:${supportEmail}`}
+              >Enviar e-mail <ArrowRight class="h-4 w-4" /></a
             >
           </div>
         </div>

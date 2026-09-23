@@ -24,8 +24,13 @@ describe("public surface contracts", () => {
     expect(terms).toContain("Limitações e responsabilidade");
     expect(privacy).toContain("Seus direitos pela LGPD");
     expect(privacy).toContain('href="/billing/conta"');
-    // The GitHub security advisory form is not a privacy/consumer channel.
+    // The GitHub security advisory form is not a privacy/consumer channel;
+    // both documents route requests to the support email instead.
     expect(`${terms}\n${privacy}`).not.toContain("security/advisories/new");
+    expect(terms).toContain("href={`mailto:${supportEmail}`}");
+    expect(privacy).toContain("href={`mailto:${supportEmail}`}");
+    expect(privacy).toContain("em até 90 dias");
+    expect(`${terms}\n${privacy}`).not.toMatch(/minuta|revisão jurídica/i);
     expect(`${terms}\n${privacy}`).not.toContain("privacidade@moto-track.app");
   });
 
