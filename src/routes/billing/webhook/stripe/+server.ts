@@ -6,11 +6,18 @@ import {
   constructStripeEvent,
   graceUntilFrom,
   subscriptionProfileUpdate,
+  terminateStripeBillingForAccount,
 } from "$server/domain/billing";
 
 function processingErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function stripeResourceId(
+  resource: string | { id: string } | null | undefined,
+) {
+  return typeof resource === "string" ? resource : (resource?.id ?? "");
 }
 
 async function accountWasDeleted(
@@ -37,20 +44,31 @@ async function accountWasDeleted(
   return Boolean(row?.deleted);
 }
 
-async function processEvent(tx: postgres.TransactionSql, event: Stripe.Event) {
+async function processEvent(
+  tx: postgres.TransactionSql,
+  event: Stripe.Event,
+  platform?: App.Platform,
+) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.user_id || session.client_reference_id;
-    const customerId = String(session.customer ?? "");
-    const subscriptionId = String(session.subscription ?? "");
-    if (
-      userId &&
-      !(await accountWasDeleted(tx, {
-        ownerId: userId,
-        customerId,
-        subscriptionId,
-      }))
-    ) {
+    const customerId = stripeResourceId(session.customer);
+    const subscriptionId = stripeResourceId(session.subscription);
+    const deleted = await accountWasDeleted(tx, {
+      ownerId: userId,
+      customerId,
+      subscriptionId,
+    });
+    if (deleted) {
+      // Checkout may have completed before account deletion but its webhook
+      // arrived later, after the local subscription profile was cascaded away.
+      // Cancel the provider resources before acknowledging so a retry can
+      // finish cleanup if Stripe is temporarily unavailable.
+      await terminateStripeBillingForAccount(
+        { customerId, subscriptionId },
+        platform,
+      );
+    } else if (userId) {
       await tx`
         insert into subscription_profiles ${tx({
           owner_id: userId,
@@ -191,7 +209,7 @@ export async function POST({ request, platform }) {
       }
       if (storedEvent.processed_at) return;
 
-      await processEvent(tx, event);
+      await processEvent(tx, event, platform);
       await tx`
         update billing_events
         set processed_at = ${new Date().toISOString()}, processing_error = ''

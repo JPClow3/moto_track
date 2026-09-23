@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   constructStripeEvent: vi.fn(),
   getDb: vi.fn(),
   graceUntilFrom: vi.fn(() => "2026-09-25T12:00:00.000Z"),
+  terminateStripeBillingForAccount: vi.fn(),
   subscriptionProfileUpdate: vi.fn(() => ({
     stripe_subscription_status: "active",
     plan: "pro",
@@ -21,6 +22,7 @@ vi.mock("$server/db/client", () => ({ getDb: mocks.getDb }));
 vi.mock("$server/domain/billing", () => ({
   constructStripeEvent: mocks.constructStripeEvent,
   graceUntilFrom: mocks.graceUntilFrom,
+  terminateStripeBillingForAccount: mocks.terminateStripeBillingForAccount,
   subscriptionProfileUpdate: mocks.subscriptionProfileUpdate,
 }));
 
@@ -275,15 +277,61 @@ describe("Stripe webhook", () => {
     mocks.getDb.mockReturnValue(database.db);
     const event = stripeEvent("checkout.session.completed", {
       metadata: { user_id: "owner-deleted" },
-      customer: "cus_deleted",
-      subscription: "sub_deleted",
+      customer: { id: "cus_deleted" },
+      subscription: { id: "sub_deleted" },
     });
 
     const response = await deliver(event);
 
     expect(response.status).toBe(200);
     expect(database.state.profiles.has("owner-deleted")).toBe(false);
+    expect(mocks.terminateStripeBillingForAccount).toHaveBeenNthCalledWith(
+      1,
+      { customerId: "cus_deleted", subscriptionId: "sub_deleted" },
+      { env: {} },
+    );
     expect(database.state.events.get(event.id)?.processedAt).not.toBeNull();
+    expect(mocks.terminateStripeBillingForAccount).toHaveBeenCalledWith(
+      { customerId: "cus_deleted", subscriptionId: "sub_deleted" },
+      { env: {} },
+    );
+  });
+
+  it("leaves a tombstoned checkout pending and retries Stripe termination after provider failure", async () => {
+    const database = createMockDatabase();
+    database.state.deletedOwners.add("owner-deleted");
+    mocks.getDb.mockReturnValue(database.db);
+    mocks.terminateStripeBillingForAccount
+      .mockRejectedValueOnce(new Error("Stripe unavailable"))
+      .mockResolvedValueOnce(undefined);
+    const event = stripeEvent("checkout.session.completed", {
+      metadata: { user_id: "owner-deleted" },
+      customer: "cus_deleted",
+      subscription: "sub_deleted",
+    });
+
+    const failed = await deliver(event);
+    expect(failed.status).toBe(500);
+    expect(database.state.events.get(event.id)).toEqual({
+      processedAt: null,
+      processingError: "Stripe unavailable",
+    });
+    expect(database.state.profiles.has("owner-deleted")).toBe(false);
+    expect(mocks.terminateStripeBillingForAccount).toHaveBeenNthCalledWith(
+      1,
+      { customerId: "cus_deleted", subscriptionId: "sub_deleted" },
+      { env: {} },
+    );
+
+    const retried = await deliver(event);
+    expect(retried.status).toBe(200);
+    expect(database.state.events.get(event.id)?.processedAt).not.toBeNull();
+    expect(database.state.profiles.has("owner-deleted")).toBe(false);
+    expect(mocks.terminateStripeBillingForAccount).toHaveBeenNthCalledWith(
+      2,
+      { customerId: "cus_deleted", subscriptionId: "sub_deleted" },
+      { env: {} },
+    );
   });
 
   it("acknowledges an already processed duplicate without replaying effects", async () => {
