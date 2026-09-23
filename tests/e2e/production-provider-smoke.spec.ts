@@ -36,93 +36,6 @@ test.describe("production provider acceptance", () => {
       expect(String(statusBody.pushPublicKey ?? "").length).toBeGreaterThan(20);
     });
 
-    let fileUrl = "";
-    let cleanupDocument = false;
-    await test.step("R2 upload is owner-only and deletion removes it", async () => {
-      try {
-        await page.goto("/documents", { waitUntil: "networkidle" });
-        await page
-          .getByRole("button", {
-            name: /^(adicionar|adicionar registro|novo registro)$/i,
-          })
-          .first()
-          .click();
-        const form = page.locator(
-          'form[action="?/record"]:has(input[name="_intent"][value="create"])',
-        );
-        const motorcycle = form.locator("#new-motorcycle_id");
-        if ((await motorcycle.locator("option").count()) > 1) {
-          await motorcycle.selectOption({ index: 1 });
-        }
-        await form.locator("#new-name").fill(marker);
-        await form.locator("#new-document_type").fill("Provider smoke");
-        await form.locator("#new-file_key").setInputFiles(receiptPath);
-        // Arm cleanup before submitting: the server may persist the record
-        // even if the confirmation row fails to render or the response times out.
-        cleanupDocument = true;
-        await form.getByRole("button", { name: /salvar|save/i }).click();
-
-        const row = page.locator("tbody tr").filter({ hasText: marker });
-        await expect(row).toBeVisible();
-        fileUrl = (await row
-          .getByRole("link", { name: /abrir|open/i })
-          .getAttribute("href"))!;
-        expect(fileUrl).toMatch(/^\/files\//);
-
-        const ownerDownload = await page.request.get(fileUrl);
-        expect(ownerDownload.ok()).toBe(true);
-        expect((await ownerDownload.body()).length).toBeGreaterThan(100);
-
-        const anonymous = await page.context().browser()!.newContext({
-          baseURL: process.env.E2E_BASE_URL,
-        });
-        try {
-          const strangerDownload = await anonymous.request.get(fileUrl);
-          expect([401, 404]).toContain(strangerDownload.status());
-        } finally {
-          await anonymous.close();
-        }
-
-        await row.getByRole("button", { name: /excluir|delete/i }).click();
-        const dialog = page.getByRole("dialog");
-        await dialog
-          .getByRole("button", { name: /confirmar|excluir|delete|confirm/i })
-          .click();
-        await expect(row).toHaveCount(0);
-        const deletedDownload = await page.request.get(fileUrl);
-        expect(deletedDownload.status()).toBe(404);
-        cleanupDocument = false;
-      } finally {
-        if (cleanupDocument) {
-          await page.goto("/documents", { waitUntil: "networkidle" });
-          await page.locator("tbody").waitFor({ state: "visible" });
-          const leftover = page.locator("tbody tr").filter({ hasText: marker });
-          while ((await leftover.count()) > 0) {
-            const countBeforeDelete = await leftover.count();
-            const row = leftover.first();
-            await row.getByRole("button", { name: /excluir|delete/i }).click();
-            await page
-              .getByRole("dialog")
-              .getByRole("button", {
-                name: /confirmar|excluir|delete|confirm/i,
-              })
-              .click();
-            await expect(leftover).toHaveCount(countBeforeDelete - 1);
-          }
-          await expect(leftover).toHaveCount(0);
-        }
-      }
-    });
-
-    await test.step("LGPD export is downloadable and excludes credentials", async () => {
-      const response = await page.request.get("/billing/conta/export");
-      expect(response.ok()).toBe(true);
-      expect(response.headers()["content-disposition"]).toContain("attachment");
-      const body = await response.text();
-      expect(body).not.toMatch(/password|secret|credential/i);
-      expect(() => JSON.parse(body)).not.toThrow();
-    });
-
     await test.step("Mistral OCR populates review fields without persisting", async () => {
       // The production Pages response can arrive before its client-side
       // handlers hydrate; wait for the module requests before using the menu.
@@ -154,8 +67,117 @@ test.describe("production provider acceptance", () => {
         .click();
     });
 
+    let fileUrl = "";
+    let cleanupDocument = false;
+    await test.step("R2 upload is owner-only and deletion removes it", async () => {
+      try {
+        await page.goto("/documents", { waitUntil: "networkidle" });
+        // A prior interrupted smoke may have persisted its upload before the
+        // browser timed out. Clear only smoke-owned rows on this dedicated
+        // disposable account before creating another one.
+        const stale = page.locator("tbody tr").filter({
+          hasText: /PROVIDER-SMOKE-\d+-\d+/,
+        });
+        while ((await stale.count()) > 0) {
+          const countBeforeDelete = await stale.count();
+          await stale
+            .first()
+            .getByRole("button", { name: /excluir|delete/i })
+            .click();
+          await page
+            .getByRole("dialog")
+            .getByRole("button", { name: /confirmar|excluir|delete|confirm/i })
+            .click();
+          await expect(stale).toHaveCount(countBeforeDelete - 1, {
+            timeout: 30_000,
+          });
+        }
+        await page
+          .getByRole("button", {
+            name: /^(adicionar|adicionar registro|novo registro)$/i,
+          })
+          .first()
+          .click();
+        const form = page.locator(
+          'form[action="?/record"]:has(input[name="_intent"][value="create"])',
+        );
+        const motorcycle = form.locator("#new-motorcycle_id");
+        if ((await motorcycle.locator("option").count()) > 1) {
+          await motorcycle.selectOption({ index: 1 });
+        }
+        await form.locator("#new-name").fill(marker);
+        await form.locator("#new-document_type").fill("Provider smoke");
+        await form.locator("#new-file_key").setInputFiles(receiptPath);
+        // Arm cleanup before submitting: the server may persist the record
+        // even if the confirmation row fails to render or the response times out.
+        cleanupDocument = true;
+        await form.getByRole("button", { name: /salvar|save/i }).click();
+
+        const row = page.locator("tbody tr").filter({ hasText: marker });
+        await expect(row).toBeVisible({ timeout: 30_000 });
+        fileUrl = (await row
+          .getByRole("link", { name: /abrir|open/i })
+          .getAttribute("href"))!;
+        expect(fileUrl).toMatch(/^\/files\//);
+
+        const ownerDownload = await page.request.get(fileUrl);
+        expect(ownerDownload.ok()).toBe(true);
+        expect((await ownerDownload.body()).length).toBeGreaterThan(100);
+
+        const anonymous = await page.context().browser()!.newContext({
+          baseURL: process.env.E2E_BASE_URL,
+        });
+        try {
+          const strangerDownload = await anonymous.request.get(fileUrl);
+          expect([401, 404]).toContain(strangerDownload.status());
+        } finally {
+          await anonymous.close();
+        }
+
+        await row.getByRole("button", { name: /excluir|delete/i }).click();
+        const dialog = page.getByRole("dialog");
+        await dialog
+          .getByRole("button", { name: /confirmar|excluir|delete|confirm/i })
+          .click();
+        await expect(row).toHaveCount(0, { timeout: 30_000 });
+        const deletedDownload = await page.request.get(fileUrl);
+        expect(deletedDownload.status()).toBe(404);
+        cleanupDocument = false;
+      } finally {
+        if (cleanupDocument) {
+          await page.goto("/documents", { waitUntil: "networkidle" });
+          await page.locator("tbody").waitFor({ state: "visible" });
+          const leftover = page.locator("tbody tr").filter({ hasText: marker });
+          while ((await leftover.count()) > 0) {
+            const countBeforeDelete = await leftover.count();
+            const row = leftover.first();
+            await row.getByRole("button", { name: /excluir|delete/i }).click();
+            await page
+              .getByRole("dialog")
+              .getByRole("button", {
+                name: /confirmar|excluir|delete|confirm/i,
+              })
+              .click();
+            await expect(leftover).toHaveCount(countBeforeDelete - 1, {
+              timeout: 30_000,
+            });
+          }
+          await expect(leftover).toHaveCount(0);
+        }
+      }
+    });
+
+    await test.step("LGPD export is downloadable and excludes credentials", async () => {
+      const response = await page.request.get("/billing/conta/export");
+      expect(response.ok()).toBe(true);
+      expect(response.headers()["content-disposition"]).toContain("attachment");
+      const body = await response.text();
+      expect(body).not.toMatch(/password|secret|credential/i);
+      expect(() => JSON.parse(body)).not.toThrow();
+    });
+
     // Checkout is last so an externally paused Stripe account cannot hide
-    // the independent production checks for storage, export, and OCR.
+    // the independent production checks for OCR, storage, and export.
     await test.step("Stripe creates the explicitly authorized live checkout session", async () => {
       await page.goto("/billing/checkout?interval=monthly", {
         waitUntil: "domcontentloaded",
