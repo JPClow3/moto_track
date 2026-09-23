@@ -29,7 +29,7 @@ Add these as encrypted secrets:
 
 ## Neon
 
-1. Run `npm run db:push` against the target Neon branch to apply everything under `db/migrations/`.
+1. Run `npm run db:push` against the target Neon branch to apply everything under `db/migrations/`. For Neon, configure `DATABASE_URL_UNPOOLED` with the direct (non-pooler) connection string; the migration runner prefers it over `DATABASE_URL`, which can remain pooled for app traffic.
 2. Update `src/lib/types/database.ts` by hand alongside every schema migration; the retired type generator intentionally exits with an error.
 3. Authorization is app-layer only — there is no RLS on Neon. Every owner-scoped query must filter by `owner_id`; there is no database-level safety net to fall back on.
 4. Confirm privileged columns stay locked: `profiles.is_staff` has no user-facing write path anywhere in the app (see the comment on `isStaffUser` in `src/lib/server/domain/staff.ts`) and `subscription_profiles` billing columns are written only by `billing/webhook/stripe`, `billing/checkout`, `billing/portal`, and the admin account-deletion action.

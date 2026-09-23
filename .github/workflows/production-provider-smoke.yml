@@ -2,6 +2,19 @@ name: Production provider smoke
 
 on:
   workflow_dispatch:
+    inputs:
+      target_account_confirmation:
+        description: >-
+          Type I CONFIRM THIS IS A DEDICATED DISPOSABLE PRODUCTION ACCOUNT
+          to authorize destructive smoke-test cleanup on that account.
+        required: true
+        type: string
+      stripe_mode_confirmation:
+        description: >-
+          Type I AUTHORIZE LIVE-MODE STRIPE CHECKOUT SESSION CREATION WITHOUT PAYMENT
+          to confirm the production run may create a live-mode Checkout session.
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -24,6 +37,8 @@ jobs:
       E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
       PRODUCTION_PROVIDER_SMOKE: true
       PROVIDER_SMOKE_MARKER: PROVIDER-SMOKE-${{ github.run_id }}
+      TARGET_ACCOUNT_CONFIRMATION: ${{ inputs.target_account_confirmation }}
+      STRIPE_MODE_CONFIRMATION: ${{ inputs.stripe_mode_confirmation }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -36,12 +51,21 @@ jobs:
 
       - name: Require smoke credentials
         run: |
+          if [ "$TARGET_ACCOUNT_CONFIRMATION" != "I CONFIRM THIS IS A DEDICATED DISPOSABLE PRODUCTION ACCOUNT" ]; then
+            echo "Confirm the target is a dedicated disposable production account before running this workflow." >&2
+            exit 1
+          fi
+          if [ "$STRIPE_MODE_CONFIRMATION" != "I AUTHORIZE LIVE-MODE STRIPE CHECKOUT SESSION CREATION WITHOUT PAYMENT" ]; then
+            echo "Explicit confirmation of live-mode Checkout creation is required." >&2
+            exit 1
+          fi
           for value in E2E_USER_EMAIL E2E_USER_PASSWORD; do
             if [ -z "${!value}" ]; then
               echo "$value is required for production provider smoke." >&2
               exit 1
             fi
           done
+          echo "Preflight confirmations passed: dedicated disposable production account; live-mode Checkout session creation authorized. No payment will be completed."
 
       - name: Install dependencies
         run: npm ci

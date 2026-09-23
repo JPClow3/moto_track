@@ -63,7 +63,7 @@ test.describe("production provider acceptance", () => {
         .click();
     });
 
-    await test.step("Stripe creates a hosted test checkout", async () => {
+    await test.step("Stripe creates the explicitly authorized live checkout session", async () => {
       await page.goto("/billing/checkout?interval=monthly", {
         waitUntil: "domcontentloaded",
       });

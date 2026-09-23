@@ -1,6 +1,6 @@
 // Applies db/migrations/*.sql files (in filename order) to the Neon database
-// referenced by DATABASE_URL. Applied filenames are recorded in
-// public.schema_migrations so a rerun only replays files added since the
+// referenced by DATABASE_URL_UNPOOLED or DATABASE_URL. Applied filenames
+// are recorded in public.schema_migrations so a rerun only replays files added since the
 // last run — some migrations (e.g. `create type ... as enum`) can't be
 // written to tolerate a second execution, so replaying everything on every
 // run isn't safe. Each pending file runs in its own transaction, so one
@@ -71,8 +71,26 @@ export function postgresOptions(databaseUrl) {
   return { prepare: false, ssl: "require" };
 }
 
+/**
+ * Prefer Neon's direct URL for schema operations while allowing CI and local
+ * disposable databases to keep using DATABASE_URL when no separate URL is set.
+ * @param {Record<string, string | undefined>} env
+ */
+export function migrationDatabaseUrl(env = process.env) {
+  const directUrl = env.DATABASE_URL_UNPOOLED?.trim();
+  if (directUrl) return directUrl;
+
+  const fallbackUrl = env.DATABASE_URL?.trim();
+  if (fallbackUrl && new URL(fallbackUrl).hostname.includes("-pooler.")) {
+    throw new Error(
+      "DATABASE_URL_UNPOOLED is required for Neon migrations; DATABASE_URL uses a pooled endpoint.",
+    );
+  }
+  return fallbackUrl;
+}
+
 export async function applyMigrations({
-  databaseUrl = process.env.DATABASE_URL,
+  databaseUrl = migrationDatabaseUrl(),
   logger = console,
 } = {}) {
   if (!databaseUrl) {
