@@ -9,6 +9,10 @@ Configure the `R2_BUCKET` binding to the `moto-track-media` R2 bucket and the `H
 - `PUBLIC_NEON_AUTH_URL`
 - `PUBLIC_SITE_URL`
 - `PUBLIC_VAPID_KEY`
+- `PUBLIC_SENTRY_DSN` (optional; client-visible DSN, and omitting it disables browser Sentry)
+- `PUBLIC_SENTRY_ENVIRONMENT` (for example `production`)
+
+Set both Sentry variables in the Pages project's **Settings > Variables and Secrets** for each deployed environment (Production and, if used, Preview), then rebuild. They are read through `import.meta.env` by the browser bundle, so a Pages runtime binding alone is not sufficient. The DSN is intentionally public, not a credential; do not configure either value as an encrypted secret.
 
 Add these as encrypted secrets:
 
@@ -20,8 +24,6 @@ Add these as encrypted secrets:
 - `MISTRAL_API_KEY`
 - `VAPID_PRIVATE_KEY`
 - `PUSH_ENCRYPTION_KEY`
-- `PUBLIC_SENTRY_DSN` (client-visible DSN; configure as a plaintext variable)
-- `PUBLIC_SENTRY_ENVIRONMENT` (for example `production`)
 
 `MISTRAL_API_KEY` is server-only. Receipt image and PDF OCR fails clearly when it is absent; it never returns fabricated fuel values.
 
