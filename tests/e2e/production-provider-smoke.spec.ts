@@ -37,14 +37,18 @@ test.describe("production provider acceptance", () => {
     });
 
     await test.step("Mistral OCR populates review fields without persisting", async () => {
-      await page.goto("/fuel");
+      // The production Pages response can arrive before its client-side
+      // handlers hydrate; wait for the module requests before using the menu.
+      await page.goto("/fuel", { waitUntil: "networkidle" });
       await page
         .getByRole("button", { name: /novo abastecimento|new fuel/i })
         .first()
         .click();
-      await page
-        .getByRole("button", { name: /escanear comprovante|scan receipt/i })
-        .click();
+      const scanChoice = page.getByRole("button", {
+        name: /escanear comprovante|scan receipt/i,
+      });
+      await expect(scanChoice).toBeVisible({ timeout: 10_000 });
+      await scanChoice.click();
       await page.locator("#fuel-ocr-file").setInputFiles(receiptPath);
       await page
         .locator('form[action="?/ocrScan"]')
