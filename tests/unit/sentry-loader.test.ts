@@ -13,7 +13,9 @@ const rootLayout = readFileSync(
 describe("Sentry browser integration", () => {
   it("uses one DSN-gated SDK path without sending default PII", () => {
     expect(appHtml).not.toContain("js.sentry-cdn.com");
-    expect(rootLayout).toContain("import.meta.env.PUBLIC_SENTRY_DSN");
+    expect(rootLayout).toContain('from "$env/dynamic/public"');
+    expect(rootLayout).toContain("env.PUBLIC_SENTRY_DSN");
+    expect(rootLayout).not.toContain("import.meta.env.PUBLIC_SENTRY_DSN");
     expect(rootLayout).toContain('import("@sentry/browser")');
     expect(rootLayout).toContain("sendDefaultPii: false");
   });

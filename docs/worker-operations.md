@@ -5,7 +5,7 @@ This runbook covers production checks for scheduled reminders and R2 object clea
 ## Check a scheduled run
 
 1. In Cloudflare Dashboard, open **Workers & Pages → moto-track-reminders → Observability → Logs**. Select the time window around the most recent 08:00 UTC cron and inspect invocation errors/exceptions. The Worker also emits `Reminder email delivery failed.` when the Email binding rejects a send; that message intentionally omits the recipient address. Check the Worker’s **Triggers** settings to confirm the daily cron is still `0 8 * * *`.
-2. A completed reminder pass returns aggregate `due`, `emailed`, and `pushed` counts; the deletion pass returns `attempted`, `deleted`, and `failed`. These counts are returned by the optional manual endpoint, not written to a durable application run-history table. Do not treat absence of an email-failure log as proof that every scheduled run succeeded.
+2. Inspect the non-PII aggregate history in `public.reminder_worker_runs`. It records scheduled/manual source, status, counts, and constrained failure codes; it retains 90 days and the next invocation marks runs stuck in `running` for over an hour as failed. If Neon is unavailable before the history insert/update, only Cloudflare invocation logs can show that execution. Do not treat an empty history or absence of an email-failure log as proof that every scheduled run succeeded.
 3. If the cron is absent or invocations are failing, verify the production Worker’s `HYPERDRIVE` points to the intended Neon database, `R2_BUCKET` is bound to `moto-track-media`, and the Email binding plus `DEFAULT_FROM_EMAIL` are configured. For push delivery, check `PUBLIC_VAPID_KEY`, `VAPID_PRIVATE_KEY`, and `PUSH_ENCRYPTION_KEY`; push is skipped if required configuration is absent. Review the latest deployment in **Workers & Pages → moto-track-reminders → Deployments** and the failed GitHub Actions run for the [Deploy reminder Worker workflow](../.github/workflows/deploy-reminders.yml).
 
 The authenticated Worker fetch endpoint executes the same real reminder and deletion work as cron. It can send real email/push and delete R2 objects. It is disabled (404) unless `REMINDERS_TRIGGER_TOKEN` is set and otherwise requires a matching bearer token (401 on mismatch). Do not use it as a read-only health check or against real users; only invoke it when an explicitly approved production smoke is intended.
@@ -35,8 +35,26 @@ order by attempt_count desc, queued desc;
 
 These queries require migration `20260922090000_index_object_file_lifecycle.sql`, which creates `public.object_deletion_queue` and its due index. If the table is missing, first verify the migration ledger and apply the repository migration through the established production migration procedure; do not create or edit the table manually.
 
+## Review reminder Worker run history
+
+The aggregate history requires migration `20260923150000_reminder_worker_run_history.sql`; apply it to production before deploying a Worker version that writes to the table. This read-only query reports daily outcomes without exposing user, recipient, or object identifiers:
+
+```sql
+select
+  date_trunc('day', started_at) as run_day,
+  trigger_source,
+  status,
+  count(*) as runs,
+  count(*) filter (where cardinality(failure_codes) > 0) as runs_with_failures
+from public.reminder_worker_runs
+where started_at >= now() - interval '30 days'
+group by 1, 2, 3
+order by 1 desc, 2, 3;
+```
+
+The scheduled and authenticated manual paths both record aggregate outcomes. The manual endpoint returns HTTP 500 when a tracked component fails, but it is not a read-only health check and still performs real email/push delivery and R2 deletion. If a run remains `running`, wait until the next successful Worker invocation; runs older than one hour are then marked failed with a generic code. History older than 90 days is pruned by the next invocation.
 The Worker processes up to 100 due rows on each daily cron. Failed R2 deletes remain queued, increment `attempt_count`, record a generic `last_error`, and receive exponential retry delay (starting at five minutes, capped at 24 hours). Because the scheduled pass is daily, actual retries normally wait until the next cron even when `next_attempt_at` is earlier. A successful R2 delete removes its queue row. Compare aggregate counts and oldest age across scheduled runs; a persistent or growing due backlog warrants checking R2 binding/availability, Worker exceptions, and Hyperdrive/database connectivity. Do not delete queue rows to make the backlog appear healthy. The next scheduled pass is the normal retry path; if an operator needs to accelerate recovery, follow the existing production-change approval and use only the guarded Worker execution path after verifying its real-send/delete effects.
 
 ## Alerting gap
 
-Persisted Worker logs and traces are enabled, but the repository contains no configured alert destination, threshold, notification rule, durable cron-run history, or queue-backlog alarm. Failures therefore require an operator to inspect Cloudflare observability and the Neon aggregate queries above; this runbook does not claim automated alerting.
+Persisted Worker logs and traces plus a bounded aggregate run-history table are enabled, but the repository contains no configured alert destination, threshold, notification rule, or queue-backlog alarm. Failures therefore require an operator to inspect Cloudflare observability and the Neon aggregate queries above; this runbook does not claim automated alerting.

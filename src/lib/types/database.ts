@@ -2028,6 +2028,57 @@ export type Database = {
         };
         Relationships: [];
       };
+      reminder_worker_runs: {
+        Row: {
+          id: string;
+          trigger_source: "scheduled" | "manual";
+          status: "running" | "succeeded" | "failed";
+          started_at: string;
+          finished_at: string | null;
+          reminders_due: number | null;
+          reminders_emailed: number | null;
+          reminders_pushed: number | null;
+          reminders_email_failed: number | null;
+          reminders_push_failed: number | null;
+          deletions_attempted: number | null;
+          deletions_succeeded: number | null;
+          deletions_failed: number | null;
+          failure_codes: string[];
+        };
+        Insert: {
+          id?: string;
+          trigger_source: "scheduled" | "manual";
+          status: "running" | "succeeded" | "failed";
+          started_at?: string;
+          finished_at?: string | null;
+          reminders_due?: number | null;
+          reminders_emailed?: number | null;
+          reminders_pushed?: number | null;
+          reminders_email_failed?: number | null;
+          reminders_push_failed?: number | null;
+          deletions_attempted?: number | null;
+          deletions_succeeded?: number | null;
+          deletions_failed?: number | null;
+          failure_codes?: string[];
+        };
+        Update: {
+          id?: string;
+          trigger_source?: "scheduled" | "manual";
+          status?: "running" | "succeeded" | "failed";
+          started_at?: string;
+          finished_at?: string | null;
+          reminders_due?: number | null;
+          reminders_emailed?: number | null;
+          reminders_pushed?: number | null;
+          reminders_email_failed?: number | null;
+          reminders_push_failed?: number | null;
+          deletions_attempted?: number | null;
+          deletions_succeeded?: number | null;
+          deletions_failed?: number | null;
+          failure_codes?: string[];
+        };
+        Relationships: [];
+      };
       account_deletion_tombstones: {
         Row: {
           owner_id: string;
