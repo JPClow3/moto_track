@@ -49,7 +49,7 @@ test.describe("production provider acceptance", () => {
     let cleanupDocument = false;
     await test.step("R2 upload is owner-only and deletion removes it", async () => {
       try {
-        await page.goto("/documents");
+        await page.goto("/documents", { waitUntil: "networkidle" });
         await page
           .getByRole("button", {
             name: /^(adicionar|adicionar registro|novo registro)$/i,
@@ -103,7 +103,7 @@ test.describe("production provider acceptance", () => {
         cleanupDocument = false;
       } finally {
         if (cleanupDocument) {
-          await page.goto("/documents");
+          await page.goto("/documents", { waitUntil: "networkidle" });
           await page.locator("tbody").waitFor({ state: "visible" });
           const leftover = page.locator("tbody tr").filter({ hasText: marker });
           while ((await leftover.count()) > 0) {
