@@ -158,6 +158,15 @@ export async function parseReceiptFile(
   });
 
   if (!response.ok) {
+    // Keep receipt content and provider credentials out of logs. The HTTP
+    // status and request ID are enough to diagnose provider configuration,
+    // quota, and validation failures from production telemetry.
+    console.error("Mistral OCR request failed", {
+      status: response.status,
+      requestId:
+        response.headers.get("x-request-id") ??
+        response.headers.get("x-mistral-request-id"),
+    });
     throw new Error(
       "Não foi possível ler o comprovante agora. Tente de novo em instantes.",
     );
