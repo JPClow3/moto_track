@@ -33,11 +33,15 @@ export function forecastMaintenance({
 }) {
   if (!lastService) return null;
   const dates = [...odometerSamples, lastService].sort(
-    (a, b) => a.date.localeCompare(b.date) || a.odometer_km - b.odometer_km,
+    (a, b) =>
+      isoDateValue(a.date).localeCompare(isoDateValue(b.date)) ||
+      a.odometer_km - b.odometer_km,
   );
   const first = dates[0];
   const latest = dates[dates.length - 1];
-  const days = first ? dayDifference(first.date, latest.date) : 0;
+  const days = first
+    ? dayDifference(isoDateValue(first.date), isoDateValue(latest.date))
+    : 0;
   const kmPerDay =
     days > 0
       ? Math.max(0, (latest.odometer_km - first.odometer_km) / days)
@@ -45,7 +49,9 @@ export function forecastMaintenance({
   const dueByKm =
     intervalKm === null ? null : lastService.odometer_km + intervalKm;
   const dueByDate =
-    intervalDays === null ? null : addDays(lastService.date, intervalDays);
+    intervalDays === null
+      ? null
+      : addDays(isoDateValue(lastService.date), intervalDays);
   const predictedDateByKm =
     dueByKm !== null && kmPerDay && kmPerDay > 0
       ? addDays(today, Math.max(0, (dueByKm - currentKm) / kmPerDay))
@@ -59,3 +65,4 @@ export function forecastMaintenance({
     kmPerDay,
   };
 }
+import { isoDateValue } from "./date-value";

@@ -67,6 +67,29 @@ describe("comparableBenchmarkMetrics", () => {
     expect(hasComparableBenchmarkMetric(metrics)).toBe(true);
   });
 
+  it("accepts PostgreSQL date values returned as Date objects", () => {
+    const metrics = comparableBenchmarkMetrics(
+      [
+        {
+          date: new Date("2026-01-01T00:00:00.000Z"),
+          odometer_km: 10_000,
+          liters: 10,
+          tank_full: true,
+        },
+        {
+          date: new Date("2026-02-01T00:00:00.000Z"),
+          odometer_km: 10_500,
+          liters: 10,
+          tank_full: true,
+        },
+      ] as never,
+      [],
+    );
+
+    expect(metrics.consumptionKmL).toBe(50);
+    expect(metrics.consumptionIntervals).toBe(1);
+  });
+
   it("withholds consumption after an odometer rollback", () => {
     const metrics = comparableBenchmarkMetrics(
       [

@@ -22,7 +22,10 @@ describe("public surface contracts", () => {
     expect(terms).toContain("Última atualização: 16 de julho de 2026");
     expect(terms).toContain("Limitações e responsabilidade");
     expect(privacy).toContain("Seus direitos pela LGPD");
-    expect(privacy).toContain("privacidade@moto-track.app");
+    expect(privacy).toContain('href="/billing/conta"');
+    expect(privacy).toContain("security/advisories/new");
+    expect(terms).toContain("security/advisories/new");
+    expect(`${terms}\n${privacy}`).not.toContain("privacidade@moto-track.app");
   });
 
   it("exposes an accessible sign-in and registration mode switch", () => {

@@ -561,8 +561,11 @@ export const en: Messages = {
     themeLight: "Light",
     themeDark: "Dark",
     enablePush: "Enable push notifications",
+    disablePush: "Disable push notifications",
     pushEnabled: "Push notifications enabled.",
+    pushDisabled: "Push notifications disabled.",
     pushFailed: "Could not enable notifications.",
+    pushDisableFailed: "Could not disable notifications.",
     personalData: "Personal data",
     personalDataHint:
       "Download a copy of your data now, or open an LGPD request for the team to process.",

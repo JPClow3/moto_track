@@ -1,4 +1,5 @@
 import type { FuelRecord } from "./fuel";
+import { isoDateValue } from "./date-value";
 
 export type SpendEvent = { date: string; amountCents: number };
 
@@ -13,7 +14,10 @@ export type ActivityCell = { date: string; count: number };
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function byDateThenOdometer(a: FuelRecord, b: FuelRecord) {
-  return a.date.localeCompare(b.date) || a.odometer_km - b.odometer_km;
+  return (
+    isoDateValue(a.date).localeCompare(isoDateValue(b.date)) ||
+    a.odometer_km - b.odometer_km
+  );
 }
 
 /**
@@ -41,7 +45,7 @@ export function consumptionTrend(
         .reduce((sum, record) => sum + Number(record.liters || 0), 0);
       if (distance > 0 && liters > 0) {
         points.push({
-          date: ordered[i].date,
+          date: isoDateValue(ordered[i].date),
           kmPerLiter: Math.round((distance / liters) * 10) / 10,
         });
       }

@@ -575,8 +575,11 @@ export const ptBR = {
     themeLight: "Claro",
     themeDark: "Escuro",
     enablePush: "Ativar notificações push",
+    disablePush: "Desativar notificações push",
     pushEnabled: "Notificações push ativadas.",
+    pushDisabled: "Notificações push desativadas.",
     pushFailed: "Não foi possível ativar as notificações.",
+    pushDisableFailed: "Não foi possível desativar as notificações.",
     personalData: "Dados pessoais",
     personalDataHint:
       "Baixe uma cópia imediata dos seus dados ou abra um pedido LGPD para a equipe processar.",

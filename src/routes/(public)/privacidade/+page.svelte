@@ -61,7 +61,7 @@
       title: "Contato e atualizações",
       paragraphs: [
         "Este é um documento genérico de operação e deve passar por revisão jurídica antes de um lançamento comercial definitivo. Quando esta política mudar de forma relevante, atualizaremos a data nesta página e poderemos avisar pelo serviço ou por e-mail.",
-        "Para exercer seus direitos ou tirar dúvidas sobre privacidade, escreva para privacidade@moto-track.app.",
+        "Para solicitar exportação ou exclusão dos dados da sua conta, use a área Conta. Para outras questões confidenciais de privacidade, use o canal privado indicado nesta página.",
       ],
     },
   ];
@@ -169,14 +169,23 @@
         <div>
           <h2 class="display text-2xl">Canal de privacidade</h2>
           <p class="mt-2 text-sm leading-relaxed text-paper/65">
-            Envie sua solicitação com o e-mail da sua conta para conseguirmos
-            localizar o pedido com segurança.
+            Solicitações de exportação e exclusão ficam registradas na área
+            Conta. Para outra questão confidencial, envie um relato privado —
+            nunca publique dados pessoais em uma issue aberta.
           </p>
-          <a
-            class="focus-ring mt-4 inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
-            href="mailto:privacidade@moto-track.app"
-            >privacidade@moto-track.app <ArrowRight class="h-4 w-4" /></a
-          >
+          <div class="mt-4 flex flex-wrap gap-4">
+            <a
+              class="focus-ring inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
+              href="/billing/conta"
+              >Gerenciar dados da conta <ArrowRight class="h-4 w-4" /></a
+            >
+            <a
+              class="focus-ring inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
+              href="https://github.com/JPClow3/moto_track/security/advisories/new"
+              rel="noopener noreferrer"
+              >Abrir relato confidencial <ArrowRight class="h-4 w-4" /></a
+            >
+          </div>
         </div>
       </div>
     </div>

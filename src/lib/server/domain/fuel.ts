@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isoDateValue } from "$server/domain/date-value";
 
 export type FuelRecord = {
   date: string;
@@ -285,7 +286,9 @@ export function parseFuelCsv(text: string): FuelCsvPreviewRow[] {
 
 export function averageConsumption(records: FuelRecord[]) {
   const ordered = [...records].sort(
-    (a, b) => a.date.localeCompare(b.date) || a.odometer_km - b.odometer_km,
+    (a, b) =>
+      isoDateValue(a.date).localeCompare(isoDateValue(b.date)) ||
+      a.odometer_km - b.odometer_km,
   );
   const full = ordered.filter((record) => record.tank_full);
   if (full.length < 2) return null;
@@ -330,7 +333,9 @@ export function detectFuelPriceAnomalies(
   }[],
 ): Map<string, string> {
   const anomalies = new Map<string, string>();
-  const ordered = [...records].sort((a, b) => a.date.localeCompare(b.date));
+  const ordered = [...records].sort((a, b) =>
+    isoDateValue(a.date).localeCompare(isoDateValue(b.date)),
+  );
   for (let i = 1; i < ordered.length; i++) {
     const window = ordered.slice(Math.max(0, i - PRICE_ANOMALY_WINDOW), i);
     const baseline =
@@ -373,7 +378,9 @@ export function detectFuelConsumptionAnomalies(
 
   for (const group of byMotorcycle.values()) {
     const ordered = [...group].sort(
-      (a, b) => a.date.localeCompare(b.date) || a.odometer_km - b.odometer_km,
+      (a, b) =>
+        isoDateValue(a.date).localeCompare(isoDateValue(b.date)) ||
+        a.odometer_km - b.odometer_km,
     );
     const consumptions: number[] = [];
     let previousFull = -1;

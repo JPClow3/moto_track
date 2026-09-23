@@ -75,7 +75,7 @@
       id: "contato",
       title: "Contato",
       paragraphs: [
-        "Para dúvidas sobre estes Termos de Uso, escreva para privacidade@moto-track.app.",
+        "Para dúvidas confidenciais sobre estes Termos de Uso, use o canal privado indicado nesta página.",
       ],
     },
   ];
@@ -183,12 +183,14 @@
         <div>
           <h2 class="display text-2xl">Dúvidas sobre os termos</h2>
           <p class="mt-2 text-sm leading-relaxed text-paper/65">
-            Escreva para o mesmo canal usado para solicitações de privacidade.
+            Use o mesmo canal privado das questões de privacidade. Não inclua
+            dados pessoais em uma issue aberta.
           </p>
           <a
             class="focus-ring mt-4 inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
-            href="mailto:privacidade@moto-track.app"
-            >privacidade@moto-track.app <ArrowRight class="h-4 w-4" /></a
+            href="https://github.com/JPClow3/moto_track/security/advisories/new"
+            rel="noopener noreferrer"
+            >Abrir relato confidencial <ArrowRight class="h-4 w-4" /></a
           >
         </div>
       </div>

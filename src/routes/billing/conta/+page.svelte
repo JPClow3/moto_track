@@ -1,7 +1,11 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { onMount } from "svelte";
-  import { enablePushNotifications } from "$lib/utils/push";
+  import {
+    disablePushNotifications,
+    enablePushNotifications,
+    pushNotificationsEnabled,
+  } from "$lib/utils/push";
   import { t } from "$lib/i18n/store";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
 
@@ -21,6 +25,8 @@
 
   let pushMessage = "";
   let pushBusy = false;
+  let pushEnabled: boolean | null = null;
+  let pushStatusRole: "status" | "alert" = "status";
   let deletionConfirmation = "";
   let tokenMessage = "";
   let tokenBusy = false;
@@ -108,17 +114,49 @@
 
   onMount(() => {
     void loadTokens();
+    void loadPushState();
   });
+
+  async function loadPushState() {
+    try {
+      pushEnabled = await pushNotificationsEnabled();
+    } catch {
+      // Treat an unavailable service worker as disabled. The activation path
+      // still reports a detailed compatibility/configuration error.
+      pushEnabled = false;
+    }
+  }
 
   async function enablePush() {
     pushBusy = true;
     pushMessage = "";
     try {
       await enablePushNotifications();
+      pushEnabled = true;
+      pushStatusRole = "status";
       pushMessage = $t("conta.pushEnabled");
     } catch (error) {
+      pushStatusRole = "alert";
       pushMessage =
         error instanceof Error ? error.message : $t("conta.pushFailed");
+    } finally {
+      pushBusy = false;
+    }
+  }
+
+  async function disablePush() {
+    pushBusy = true;
+    pushMessage = "";
+    try {
+      await disablePushNotifications();
+      pushEnabled = false;
+      pushStatusRole = "status";
+      pushMessage = $t("conta.pushDisabled");
+    } catch (error) {
+      pushStatusRole = "alert";
+      pushMessage =
+        error instanceof Error ? error.message : $t("conta.pushDisableFailed");
+      await loadPushState();
     } finally {
       pushBusy = false;
     }
@@ -246,17 +284,18 @@
       <button
         class="button-secondary self-end"
         type="button"
-        disabled={pushBusy}
-        on:click={enablePush}
+        disabled={pushBusy || pushEnabled === null}
+        on:click={pushEnabled ? disablePush : enablePush}
       >
-        {$t("conta.enablePush")}
+        {pushEnabled ? $t("conta.disablePush") : $t("conta.enablePush")}
       </button>
     </div>
     {#if pushMessage}
       <p
         class="mt-3 text-sm text-[var(--muted)]"
-        role="status"
-        aria-live="polite"
+        class:text-danger={pushStatusRole === "alert"}
+        role={pushStatusRole}
+        aria-live={pushStatusRole === "alert" ? "assertive" : "polite"}
       >
         {pushMessage}
       </p>

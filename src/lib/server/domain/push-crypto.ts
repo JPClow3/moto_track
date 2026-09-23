@@ -52,6 +52,16 @@ export async function decryptPushField(value: string, secret: string) {
   return decoder.decode(plain);
 }
 
+export async function pushEndpointHash(endpoint: string) {
+  return Array.from(
+    new Uint8Array(
+      await crypto.subtle.digest("SHA-256", encoder.encode(endpoint)),
+    ),
+  )
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /** Known browser push providers only — blocks SSRF via Conta subscribe. */
 const ALLOWED_PUSH_HOST_SUFFIXES = [
   ".googleapis.com",

@@ -5,9 +5,14 @@ import {
   isAllowedPushEndpoint,
 } from "../../src/lib/server/domain/push-crypto";
 import { sendWebPush, type WebPushConfig } from "./web-push";
+import {
+  processObjectDeletionRows,
+  type ObjectDeletionRow,
+} from "./object-deletion";
 
 export interface Env {
   HYPERDRIVE: Hyperdrive;
+  R2_BUCKET: R2Bucket;
   EMAIL: SendEmail;
   DEFAULT_FROM_EMAIL: string;
   REMINDERS_TRIGGER_TOKEN: string;
@@ -45,7 +50,7 @@ type PushSubscriptionRow = {
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(processReminders(env));
+    ctx.waitUntil(processScheduledWork(env));
   },
   // Manual trigger for testing the cron path. It sends real email/push and
   // writes to the database, so it stays closed unless REMINDERS_TRIGGER_TOKEN
@@ -60,10 +65,55 @@ export default {
     ) {
       return new Response("Unauthorized", { status: 401 });
     }
-    const result = await processReminders(env);
+    const result = await processScheduledWork(env);
     return Response.json(result);
   },
 };
+
+export async function processScheduledWork(env: Env) {
+  const [reminders, objectDeletions] = await Promise.all([
+    processReminders(env),
+    drainObjectDeletionQueue(env),
+  ]);
+  return { ...reminders, objectDeletions };
+}
+
+export async function drainObjectDeletionQueue(env: Env) {
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    prepare: false,
+    max: 1,
+  });
+  try {
+    const rows = await sql<ObjectDeletionRow[]>`
+      select id, owner_id, object_key, attempt_count
+      from object_deletion_queue
+      where next_attempt_at <= now()
+      order by next_attempt_at, created_at
+      limit 100
+    `;
+    return processObjectDeletionRows(rows, env.R2_BUCKET, {
+      deleted: async (row) => {
+        await sql`
+          delete from object_deletion_queue
+          where id = ${row.id} and object_key = ${row.object_key}
+        `;
+      },
+      failed: async (row, reason) => {
+        await sql`
+          update object_deletion_queue
+          set attempt_count = attempt_count + 1,
+            next_attempt_at = now()
+              + least(interval '24 hours', interval '5 minutes' * power(2, least(attempt_count, 8))),
+            last_error = ${reason},
+            updated_at = now()
+          where id = ${row.id} and object_key = ${row.object_key}
+        `;
+      },
+    });
+  } finally {
+    await sql.end();
+  }
+}
 
 function webPushConfig(env: Env): WebPushConfig | null {
   if (!env.PUBLIC_VAPID_KEY || !env.VAPID_PRIVATE_KEY) return null;
