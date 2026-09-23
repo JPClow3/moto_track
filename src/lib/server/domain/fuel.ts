@@ -26,7 +26,7 @@ type MistralOcrResponse = {
   message?: string;
 };
 
-const MAX_RECEIPT_OCR_BYTES = 10 * 1024 * 1024;
+export const MAX_RECEIPT_OCR_BYTES = 10 * 1024 * 1024;
 
 function toBase64(bytes: ArrayBuffer) {
   let binary = "";
@@ -37,7 +37,16 @@ function toBase64(bytes: ArrayBuffer) {
 }
 
 function supportedReceiptType(file: File) {
-  return file.type === "application/pdf" || file.type.startsWith("image/");
+  return (
+    file.type === "application/pdf" ||
+    [
+      "image/avif",
+      "image/gif",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ].includes(file.type)
+  );
 }
 
 export function parseLocalizedNumber(text: string): number | null {
@@ -112,14 +121,14 @@ export async function parseReceiptFile(
   file: File,
   { apiKey, fetch: fetchImpl = globalThis.fetch }: ReceiptOcrOptions = {},
 ): Promise<FuelOcrResult> {
-  if (file.type.startsWith("text/")) {
+  if (file.size > MAX_RECEIPT_OCR_BYTES) {
+    throw new Error("O comprovante excede o limite de 10 MB para OCR.");
+  }
+  if (file.type === "text/plain") {
     return parseReceiptText(await file.text());
   }
   if (!supportedReceiptType(file)) {
     throw new Error("Formato de comprovante não suportado para OCR.");
-  }
-  if (file.size > MAX_RECEIPT_OCR_BYTES) {
-    throw new Error("O comprovante excede o limite de 10 MB para OCR.");
   }
   if (!apiKey) {
     throw new Error(
@@ -141,6 +150,9 @@ export async function parseReceiptFile(
     body: JSON.stringify({
       model: "mistral-ocr-latest",
       document,
+      // Fuel receipts fit on one page. Limit PDF processing so a multi-page
+      // upload cannot turn one scan into an unbounded per-page provider bill.
+      ...(file.type === "application/pdf" ? { pages: [0] } : {}),
       confidence_scores_granularity: "page",
     }),
   });

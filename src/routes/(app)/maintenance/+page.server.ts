@@ -13,7 +13,11 @@ import {
   marketplaceSearchUrl,
   normalizeMarketplaceQuery,
 } from "$server/domain/marketplace";
-import { validateMaintenancePhoto } from "$server/domain/maintenance-photos";
+import {
+  MAINTENANCE_PHOTO_CONTENT_TYPES,
+  MAX_MAINTENANCE_PHOTO_BYTES,
+  validateMaintenancePhoto,
+} from "$server/domain/maintenance-photos";
 import {
   initialHistoryStatus,
   dueStateForPlan,
@@ -361,12 +365,21 @@ export const actions = {
     const blocked = await assertCanCreateUpload(locals.db, ownerId);
     if (blocked) return fail(403, { message: blocked });
 
-    const uploaded = await uploadObjectFile({
-      file: validation.file,
-      module: "maintenance",
-      ownerId,
-      platform,
-    });
+    let uploaded;
+    try {
+      uploaded = await uploadObjectFile({
+        file: validation.file,
+        module: "maintenance",
+        ownerId,
+        platform,
+        policy: {
+          maxBytes: MAX_MAINTENANCE_PHOTO_BYTES,
+          allowedContentTypes: MAINTENANCE_PHOTO_CONTENT_TYPES,
+        },
+      });
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     const photoId = crypto.randomUUID();
     try {
       await locals.db.begin(async (transaction) => {

@@ -564,6 +564,9 @@
                 id={`new-${field.key}`}
                 name={field.key}
                 type="file"
+                accept={routeSlug === "documents"
+                  ? "application/pdf,image/avif,image/gif,image/jpeg,image/png,image/webp"
+                  : undefined}
                 required={field.required}
               />
             {:else if field.kind === "select"}
@@ -703,6 +706,9 @@
                     id={`edit-${field.key}`}
                     name={field.key}
                     type="file"
+                    accept={routeSlug === "documents"
+                      ? "application/pdf,image/avif,image/gif,image/jpeg,image/png,image/webp"
+                      : undefined}
                   />
                 {:else if field.kind === "select"}
                   {#if routeSlug === "reminders" && field.key === "trigger_type"}

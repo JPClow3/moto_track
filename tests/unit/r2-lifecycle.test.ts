@@ -3,9 +3,12 @@ import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { Sql } from "postgres";
 import {
+  DOCUMENT_UPLOAD_CONTENT_TYPES,
+  MAX_DOCUMENT_UPLOAD_BYTES,
   deleteOwnedObjectsBestEffort,
   deleteQueuedObjectsBestEffort,
   queueUploadedOrphansBestEffort,
+  uploadObjectFile,
 } from "../../src/lib/server/r2/files";
 import {
   processObjectDeletionRows,
@@ -16,6 +19,14 @@ function platformWithDelete(deleteObject: (keys: string[]) => Promise<void>) {
   return {
     env: {
       R2_BUCKET: { delete: deleteObject },
+    },
+  } as unknown as App.Platform;
+}
+
+function platformWithPut(putObject: (...args: unknown[]) => Promise<void>) {
+  return {
+    env: {
+      R2_BUCKET: { put: putObject },
     },
   } as unknown as App.Platform;
 }
@@ -39,6 +50,56 @@ function database() {
 }
 
 describe("R2 object lifecycle", () => {
+  it("rejects oversized and unsupported uploads before writing to R2", async () => {
+    const put = vi.fn(async () => undefined);
+    const platform = platformWithPut(put);
+    const policy = {
+      maxBytes: MAX_DOCUMENT_UPLOAD_BYTES,
+      allowedContentTypes: DOCUMENT_UPLOAD_CONTENT_TYPES,
+    };
+    const oversized = {
+      name: "large.pdf",
+      type: "application/pdf",
+      size: MAX_DOCUMENT_UPLOAD_BYTES + 1,
+      stream: vi.fn(),
+    } as unknown as File;
+    const unsupported = new File(["content"], "script.html", {
+      type: "text/html",
+    });
+    const falseImage = new File(["not an image"], "photo.png", {
+      type: "image/png",
+    });
+
+    await expect(
+      uploadObjectFile({
+        file: oversized,
+        module: "documents",
+        ownerId: "owner-a",
+        platform,
+        policy,
+      }),
+    ).rejects.toThrow("excede o limite de 20 MB");
+    await expect(
+      uploadObjectFile({
+        file: unsupported,
+        module: "documents",
+        ownerId: "owner-a",
+        platform,
+        policy,
+      }),
+    ).rejects.toThrow("Formato de arquivo não suportado");
+    await expect(
+      uploadObjectFile({
+        file: falseImage,
+        module: "documents",
+        ownerId: "owner-a",
+        platform,
+        policy,
+      }),
+    ).rejects.toThrow("não corresponde ao formato informado");
+    expect(put).not.toHaveBeenCalled();
+  });
+
   it("deletes each owned key once and refuses keys outside the owner prefix", async () => {
     const deleteObject = vi.fn(async (keys: string[]) => {
       void keys;

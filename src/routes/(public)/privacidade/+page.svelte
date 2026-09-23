@@ -7,13 +7,16 @@
     ShieldCheck,
   } from "lucide-svelte";
 
-  const sections = [
+  let { data } = $props();
+  const { companyName, supportEmail } = $derived(data.contact);
+
+  const sections = $derived([
     {
       id: "dados",
       title: "Dados que podemos tratar",
       paragraphs: [
         "Para criar e manter sua conta, podemos tratar dados de identificação e contato, como e-mail. Quando você usa o produto, também tratamos os registros que você escolhe adicionar: dados da moto, abastecimentos, manutenções, documentos, despesas, lembretes e preferências.",
-        "Também podem ser registrados dados técnicos necessários para segurança e funcionamento, como registros de acesso, dispositivo, navegador e eventos de erro.",
+        "Também tratamos dados técnicos necessários para segurança e funcionamento, como registros de acesso, dispositivo, navegador e eventos de erro. A telemetria de erro e desempenho enviada ao Sentry é configurada para não incluir dados pessoais por padrão.",
       ],
     },
     {
@@ -28,7 +31,8 @@
       id: "compartilhamento",
       title: "Compartilhamento",
       paragraphs: [
-        "O Moto Track utiliza fornecedores de infraestrutura, autenticação, armazenamento, cobrança e comunicação que tratam dados em nosso nome e sob instruções compatíveis com esta política.",
+        "Usamos os seguintes operadores, que tratam dados em nosso nome: Neon (autenticação e banco de dados, em São Paulo, Brasil); Cloudflare (hospedagem, arquivos enviados no R2 e envio de lembretes por e-mail, em rede global); Stripe (cobrança da assinatura, Estados Unidos); Mistral AI (leitura de comprovantes por OCR, somente quando você solicita, União Europeia); e Sentry (telemetria de erros, Estados Unidos). Notificações push são entregues pelo serviço push do navegador do seu dispositivo.",
+        "Quando o tratamento ocorre fora do Brasil, a transferência internacional se apoia nas garantias contratuais desses fornecedores e na execução do serviço que você contratou, nos termos do art. 33 da LGPD.",
         "Não vendemos dados pessoais. Dados podem ser compartilhados quando você solicitar, quando forem necessários para executar o serviço, para cumprir obrigação legal ou para proteger a segurança de pessoas e sistemas.",
       ],
     },
@@ -37,7 +41,8 @@
       title: "Segurança e retenção",
       paragraphs: [
         "Adotamos medidas técnicas e organizacionais proporcionais para reduzir riscos de acesso indevido, alteração, perda ou divulgação. Nenhum ambiente conectado à internet é completamente imune a riscos; por isso, use uma senha forte e mantenha seus dispositivos protegidos.",
-        "Mantemos os dados pelo tempo necessário para fornecer o serviço, atender obrigações legais, resolver disputas e aplicar estes termos. Depois disso, os dados podem ser excluídos ou anonimizados conforme aplicável.",
+        "Mantemos seus registros enquanto sua conta estiver ativa. Quando uma solicitação de exclusão é atendida, os dados da conta são removidos do banco de dados imediatamente, e cópias residuais — arquivos em fila de remoção, cópias de segurança e registros técnicos — são eliminadas em até 90 dias.",
+        "Registros de cobrança mantidos pela Stripe e dados que precisamos guardar para cumprir obrigação legal ou regulatória, como documentos fiscais, são conservados pelo prazo exigido pela lei aplicável.",
       ],
     },
     {
@@ -45,26 +50,26 @@
       title: "Seus direitos pela LGPD",
       paragraphs: [
         "Nos termos da Lei Geral de Proteção de Dados, você pode solicitar confirmação de tratamento, acesso, correção, anonimização, bloqueio, eliminação, portabilidade, informação sobre compartilhamentos e revisão de decisões automatizadas, observados os limites legais.",
-        "A área Conta oferece caminhos para pedir exportação ou exclusão. Para outras solicitações, use o canal informado abaixo. Podemos precisar confirmar sua identidade antes de responder.",
+        `A área Conta oferece download direto de um arquivo JSON e permite registrar pedidos de exportação ou exclusão, que são atendidos pela equipe. Para os demais direitos, escreva para ${supportEmail}. Respondemos em até 15 dias e podemos pedir a confirmação da sua identidade antes de atender.`,
       ],
     },
     {
       id: "cookies",
       title: "Cookies e serviços de terceiros",
       paragraphs: [
-        "Usamos tecnologias necessárias para manter sessão, segurança e preferências de uso. Serviços de terceiros podem definir tecnologias próprias para os recursos que fornecem, como autenticação e cobrança.",
-        "Você pode configurar o navegador para limitar cookies, mas isso pode impedir partes do Moto Track de funcionar corretamente.",
+        "A aplicação usa o cookie mt_session para manter a sessão por até sete dias e o cookie mt_oauth_challenge por até dez minutos durante o login social. A preferência de idioma fica em um cookie por até um ano; a preferência de tema é salva no localStorage do navegador. Ao usar o modo offline, o service worker armazena a página offline e o manifesto no Cache API, e envios de abastecimento aguardando sincronização ficam no IndexedDB até o envio ser concluído ou os dados locais serem removidos.",
+        "O navegador também pode armazenar cookies ou dados próprios dos serviços de autenticação, cobrança, telemetria e notificações que você usar. Você pode limitar o armazenamento pelo navegador, mas isso pode impedir partes do Moto Track de funcionar corretamente.",
       ],
     },
     {
       id: "contato",
       title: "Contato e atualizações",
       paragraphs: [
-        "Este é um documento genérico de operação e deve passar por revisão jurídica antes de um lançamento comercial definitivo. Quando esta política mudar de forma relevante, atualizaremos a data nesta página e poderemos avisar pelo serviço ou por e-mail.",
-        "Para solicitar exportação ou exclusão dos dados da sua conta, use a área Conta. Para outras questões confidenciais de privacidade, use o canal privado indicado nesta página.",
+        `O controlador dos dados é ${companyName}. O canal do encarregado pelo tratamento de dados pessoais é o e-mail ${supportEmail}, o mesmo do suporte.`,
+        "Quando esta política mudar de forma relevante, a data nesta página será atualizada e poderemos avisar pelo serviço ou por e-mail. Não envie dados pessoais em issues ou avisos públicos.",
       ],
     },
-  ];
+  ]);
 </script>
 
 <svelte:head>
@@ -104,7 +109,7 @@
     <p
       class="label-tech mt-10 border-t border-[var(--line)] pt-5 text-[var(--muted)]"
     >
-      Última atualização: 16 de julho de 2026
+      Última atualização: 23 de setembro de 2026
     </p>
   </div>
 </section>
@@ -167,11 +172,11 @@
       <div class="relative flex gap-4">
         <Mail class="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
         <div>
-          <h2 class="display text-2xl">Canal de privacidade</h2>
+          <h2 class="display text-2xl">Solicitações de privacidade</h2>
           <p class="mt-2 text-sm leading-relaxed text-paper/65">
-            Solicitações de exportação e exclusão ficam registradas na área
-            Conta. Para outra questão confidencial, envie um relato privado —
-            nunca publique dados pessoais em uma issue aberta.
+            Baixe uma cópia JSON ou registre um pedido de exclusão na área
+            Conta. Para outros pedidos, escreva para {supportEmail} — respondemos
+            em até 15 dias.
           </p>
           <div class="mt-4 flex flex-wrap gap-4">
             <a
@@ -181,9 +186,8 @@
             >
             <a
               class="focus-ring inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
-              href="https://github.com/JPClow3/moto_track/security/advisories/new"
-              rel="noopener noreferrer"
-              >Abrir relato confidencial <ArrowRight class="h-4 w-4" /></a
+              href={`mailto:${supportEmail}`}
+              >Enviar e-mail <ArrowRight class="h-4 w-4" /></a
             >
           </div>
         </div>

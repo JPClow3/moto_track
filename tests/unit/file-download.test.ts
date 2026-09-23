@@ -7,5 +7,6 @@ describe("private file downloads", () => {
 
     expect(headers.get("content-disposition")).toContain("attachment");
     expect(headers.get("x-content-type-options")).toBe("nosniff");
+    expect(headers.get("cache-control")).toBe("private, no-store");
   });
 });

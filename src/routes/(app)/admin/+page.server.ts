@@ -6,6 +6,7 @@ import {
   lockObjectOwner,
 } from "$server/r2/files";
 import { terminateStripeBillingForAccount } from "$server/domain/billing";
+import { getWorkerOperationsSummary } from "$server/domain/worker-operations";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -27,6 +28,7 @@ export async function load({ locals }) {
   }
 
   const db = locals.db;
+  const workerOperations = await getWorkerOperationsSummary(db);
   const [
     [{ count: users }],
     [{ count: articlesCount }],
@@ -95,6 +97,7 @@ export async function load({ locals }) {
       events,
       requests: requestsCount,
     },
+    workerOperations,
   };
 }
 
@@ -171,11 +174,10 @@ export const actions = {
         });
       }
 
-      // Every owner-scoped table (including profiles, subscription_profiles,
-      // and this request row itself) references neon_auth."user"(id) with
-      // `on delete cascade`, so removing the auth user row alone wipes the
-      // account in one atomic statement — no per-table loop or separate
-      // auth-admin call needed, unlike the old Supabase version.
+      // Most owner-scoped tables cascade from neon_auth."user". Benchmark
+      // contributions intentionally have no owner_id, so remove only samples
+      // reached through this owner's guard rows before the auth cascade erases
+      // that reversible association.
       let objectKeys: string[];
       try {
         objectKeys = await locals.db.begin(async (transaction) => {
@@ -191,6 +193,13 @@ export const actions = {
             existing.owner_id,
             files.map((file) => file.object_key),
           );
+          await db`
+            delete from anonymous_model_benchmark_contributions contribution
+            using model_benchmark_submission_guards guard
+            where guard.owner_id = ${existing.owner_id}
+              and guard.contribution_id = contribution.id
+              and guard.model_key = contribution.model_key
+          `;
           await db`
             insert into account_deletion_tombstones (
               owner_id,

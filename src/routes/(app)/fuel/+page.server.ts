@@ -8,11 +8,14 @@ import {
 } from "$server/domain/fuel";
 import { consumptionTrend } from "$server/domain/dashboard";
 import {
+  MAX_RECEIPT_UPLOAD_BYTES,
+  RECEIPT_UPLOAD_CONTENT_TYPES,
   deleteQueuedObjectsBestEffort,
   enqueueObjectDeletions,
   lockObjectOwner,
   queueUploadedOrphansBestEffort,
   uploadObjectFile,
+  validateObjectUpload,
 } from "$server/r2/files";
 import { runtimeEnv } from "$server/runtime";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
@@ -61,14 +64,27 @@ async function createFuelRecord({
       }
     | undefined;
   if (receipt instanceof File && receipt.size > 0) {
+    const validation = await validateObjectUpload(receipt, {
+      maxBytes: MAX_RECEIPT_UPLOAD_BYTES,
+      allowedContentTypes: RECEIPT_UPLOAD_CONTENT_TYPES,
+    });
+    if (!validation.ok) return fail(400, { message: validation.message });
     const blocked = await assertCanCreateUpload(locals.db, user.id);
     if (blocked) return fail(403, { message: blocked });
-    uploadedReceipt = await uploadObjectFile({
-      file: receipt,
-      module: "fuel",
-      ownerId: user.id,
-      platform,
-    });
+    try {
+      uploadedReceipt = await uploadObjectFile({
+        file: receipt,
+        module: "fuel",
+        ownerId: user.id,
+        platform,
+        policy: {
+          maxBytes: MAX_RECEIPT_UPLOAD_BYTES,
+          allowedContentTypes: RECEIPT_UPLOAD_CONTENT_TYPES,
+        },
+      });
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     receiptFileKey = uploadedReceipt.objectKey;
   }
 

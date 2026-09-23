@@ -53,7 +53,24 @@ order by 1 desc, 2, 3;
 ```
 
 The scheduled and authenticated manual paths both record aggregate outcomes. The manual endpoint returns HTTP 500 when a tracked component fails, but it is not a read-only health check and still performs real email/push delivery and R2 deletion. If a run remains `running`, wait until the next successful Worker invocation; runs older than one hour are then marked failed with a generic code. History older than 90 days is pruned by the next invocation.
-The Worker processes up to 100 due rows on each daily cron. Failed R2 deletes remain queued, increment `attempt_count`, record a generic `last_error`, and receive exponential retry delay (starting at five minutes, capped at 24 hours). Because the scheduled pass is daily, actual retries normally wait until the next cron even when `next_attempt_at` is earlier. A successful R2 delete removes its queue row. Compare aggregate counts and oldest age across scheduled runs; a persistent or growing due backlog warrants checking R2 binding/availability, Worker exceptions, and Hyperdrive/database connectivity. Do not delete queue rows to make the backlog appear healthy. The next scheduled pass is the normal retry path; if an operator needs to accelerate recovery, follow the existing production-change approval and use only the guarded Worker execution path after verifying its real-send/delete effects.
+The Worker processes up to 100 due rows on each daily cron. Failed R2 deletes remain queued, increment `attempt_count`, record a generic `last_error`, and receive exponential retry delay (`5 minutes * 2^attempt_count`, with the exponent capped at 8). The maximum delay is therefore 21 hours 20 minutes. Because the scheduled pass is daily, actual retries normally wait until the next cron even when `next_attempt_at` is earlier. A successful R2 delete removes its queue row. Compare aggregate counts and oldest age across scheduled runs; a persistent or growing due backlog warrants checking R2 binding/availability, Worker exceptions, and Hyperdrive/database connectivity. Do not delete queue rows to make the backlog appear healthy. The next scheduled pass is the normal retry path; if an operator needs to accelerate recovery, follow the existing production-change approval and use only the guarded Worker execution path after verifying its real-send/delete effects.
+
+## Neon backup and restore evidence
+
+Do not treat Neon availability, a successful database connection, or the disposable CI branch test as proof that production data can be restored. Values below were read from the production Neon project (`moto-track`) on 2026-09-23.
+
+| Evidence                                | Current status                                                                                           |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Region                                  | `aws-sa-east-1` (São Paulo), matching the privacy policy                                                 |
+| Backup/PITR retention window            | 6 hours (`history_retention_seconds = 21600`, current plan limit)                                        |
+| Recovery owner and access path          | Project owner, via the Neon console (org `org-muddy-leaf-88372158`)                                      |
+| Recovery point objective (RPO)          | Minutes, **only if the incident is noticed within the 6-hour window**; otherwise no restore point exists |
+| Recovery time objective (RTO)           | 4 hours target (restore branch, repoint Hyperdrive, verify)                                              |
+| Last restore drill (target, validation) | Not yet run                                                                                              |
+
+The 6-hour window is the main recovery risk: a bad migration or deletion noticed the next morning cannot be rolled back. Raising retention requires a paid Neon plan; any value up to 90 days stays within the retention period published in the privacy policy. Do not set it above 90 days without updating `/privacidade`.
+
+Keep connection strings, credentials, and customer data out of this runbook. A restore drill should create a branch from a past point in time (an isolated target), run `npm run db:push` against it to confirm migrations are current, spot-check row counts on core tables without exporting personal data, then delete the branch and record the date and result above.
 
 ## Alerting gap
 

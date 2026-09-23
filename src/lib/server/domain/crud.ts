@@ -2,6 +2,8 @@ import { fail, type Actions } from "@sveltejs/kit";
 import type { Sql } from "postgres";
 import { getFeature, schemaForFeature, type FeatureConfig } from "./features";
 import {
+  DOCUMENT_UPLOAD_CONTENT_TYPES,
+  MAX_DOCUMENT_UPLOAD_BYTES,
   deleteQueuedObjectsBestEffort,
   enqueueObjectDeletions,
   lockObjectOwner,
@@ -332,6 +334,10 @@ export function featureActions(slug: string): Actions {
             module: feature.slug,
             ownerId,
             platform,
+            policy: {
+              maxBytes: MAX_DOCUMENT_UPLOAD_BYTES,
+              allowedContentTypes: DOCUMENT_UPLOAD_CONTENT_TYPES,
+            },
           });
         } catch (err) {
           await queueUploadedOrphansBestEffort({

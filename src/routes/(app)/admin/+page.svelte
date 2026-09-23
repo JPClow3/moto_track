@@ -88,6 +88,175 @@
       <MetricCard label="Dados" value={String(data.counts.requests ?? 0)} />
     </div>
 
+    <section class="panel grid gap-4 p-4" aria-labelledby="worker-ops-heading">
+      <div>
+        <h2 id="worker-ops-heading" class="display text-xl">
+          Lembretes e limpeza de arquivos
+        </h2>
+        <p class="mt-1 text-sm text-[var(--muted)]">
+          Resumo operacional sem dados de conta ou identificadores de arquivos.
+        </p>
+      </div>
+
+      {#if !data.workerOperations.available}
+        <p class="rounded border border-warning/30 bg-warning/10 p-3 text-sm">
+          Histórico operacional indisponível. Confirme as migrações e a conexão
+          do Worker.
+        </p>
+      {:else}
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="rounded border border-[var(--line)] p-3">
+            <h3 class="text-sm font-semibold">Fila de exclusão no R2</h3>
+            <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+              <dt class="text-[var(--muted)]">Na fila</dt>
+              <dd>{data.workerOperations.deletionBacklog?.queued ?? 0}</dd>
+              <dt class="text-[var(--muted)]">Prontos para tentar</dt>
+              <dd>{data.workerOperations.deletionBacklog?.due_now ?? 0}</dd>
+              <dt class="text-[var(--muted)]">Mais tentativas</dt>
+              <dd>
+                {data.workerOperations.deletionBacklog?.highest_attempt_count ??
+                  0}
+              </dd>
+              <dt class="text-[var(--muted)]">Idade do item mais antigo</dt>
+              <dd>
+                {#if data.workerOperations.deletionBacklog?.oldest_item_age_seconds != null}
+                  {Math.floor(
+                    data.workerOperations.deletionBacklog
+                      .oldest_item_age_seconds / 3600,
+                  )}h
+                {:else}
+                  —
+                {/if}
+              </dd>
+            </dl>
+          </div>
+
+          <div class="rounded border border-[var(--line)] p-3">
+            <h3 class="text-sm font-semibold">Execução mais recente</h3>
+            {#if data.workerOperations.recentRuns[0]}
+              {@const run = data.workerOperations.recentRuns[0]}
+              <p class="mt-2 text-sm">
+                {run.trigger_source === "scheduled" ? "Agendada" : "Manual"}
+                · {run.status} · {new Date(run.started_at).toLocaleString()}
+              </p>
+              {#if run.failure_codes.length}
+                <p class="mt-1 text-sm text-danger">
+                  Falhas: {run.failure_codes.join(", ")}
+                </p>
+              {/if}
+              <p class="mt-1 text-xs text-[var(--muted)]">
+                Lembretes: {run.reminders_emailed ?? 0} enviados por email,
+                {run.reminders_pushed ?? 0} por push; exclusões R2: {run.deletions_succeeded ??
+                  0}/{run.deletions_attempted ?? 0} concluídas.
+              </p>
+            {:else}
+              <p class="mt-2 text-sm text-[var(--muted)]">
+                Nenhuma execução registrada.
+              </p>
+            {/if}
+          </div>
+        </div>
+
+        <div class="rounded border border-[var(--line)] p-3">
+          <h3 class="text-sm font-semibold">Execução cron agendada</h3>
+          <p class="mt-2 text-sm">
+            Horário de referência: 08:00 UTC ·
+            {new Date(data.workerOperations.expectedLatestScheduledSlotAt)
+              .toISOString()
+              .slice(0, 10)}
+          </p>
+          {#if data.workerOperations.latestScheduledRun}
+            <p class="mt-1 text-sm">
+              Último registro:
+              {new Date(
+                data.workerOperations.latestScheduledRun.started_at,
+              ).toLocaleString()}
+              · {data.workerOperations.latestScheduledRun.status}
+            </p>
+          {:else}
+            <p class="mt-1 text-sm text-[var(--muted)]">
+              Nenhuma execução cron registrada.
+            </p>
+          {/if}
+          <p
+            class="mt-1 text-sm"
+            class:text-warning={!data.workerOperations
+              .latestScheduledSlotRecorded}
+          >
+            {data.workerOperations.latestScheduledSlotRecorded
+              ? "Há um registro no horário de referência."
+              : "O horário de referência ainda não aparece no histórico."}
+          </p>
+          <p class="mt-1 text-xs text-[var(--muted)]">
+            Comparação direta, sem janela de tolerância configurada; confirme
+            atrasos e falhas nos logs do Cloudflare.
+          </p>
+        </div>
+
+        <details>
+          <summary class="cursor-pointer text-sm font-medium">
+            Últimas execuções
+          </summary>
+          <div class="mt-2 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead>
+                <tr class="text-xs text-[var(--muted)]">
+                  <th class="py-1 pr-4 font-medium">Início</th>
+                  <th class="py-1 pr-4 font-medium">Origem</th>
+                  <th class="py-1 pr-4 font-medium">Estado</th>
+                  <th class="py-1 pr-4 font-medium">Vencimentos</th>
+                  <th class="py-1 pr-4 font-medium">Exclusões</th>
+                  <th class="py-1 font-medium">Falhas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each data.workerOperations.recentRuns as run (run.started_at)}
+                  <tr class="border-t border-[var(--line)]">
+                    <td class="py-1.5 pr-4">
+                      {new Date(run.started_at).toLocaleString()}
+                    </td>
+                    <td class="py-1.5 pr-4">
+                      {run.trigger_source === "scheduled"
+                        ? "Agendada"
+                        : "Manual"}
+                    </td>
+                    <td class="py-1.5 pr-4">{run.status}</td>
+                    <td class="py-1.5 pr-4">
+                      {run.reminders_due ?? "—"}
+                      ({run.reminders_emailed ?? 0} email /
+                      {run.reminders_pushed ?? 0} push)
+                    </td>
+                    <td class="py-1.5 pr-4">
+                      {run.deletions_succeeded ?? 0}/{run.deletions_attempted ??
+                        0} ({run.deletions_failed ?? 0} falhas)
+                    </td>
+                    <td class="py-1.5">
+                      {run.failure_codes.length
+                        ? run.failure_codes.join(", ")
+                        : "—"}
+                    </td>
+                  </tr>
+                {:else}
+                  <tr>
+                    <td
+                      colspan="6"
+                      class="py-4 text-center text-[var(--muted)]"
+                    >
+                      Nenhuma execução registrada.
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </details>
+        <p class="text-xs text-[var(--muted)]">
+          Esta tela não envia alertas; revise os dados e os logs do Worker
+          conforme o runbook operacional.
+        </p>
+      {/if}
+    </section>
+
     <div class="grid gap-6 xl:grid-cols-2">
       <form
         class="panel grid gap-3 p-4"

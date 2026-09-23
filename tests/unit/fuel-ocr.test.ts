@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  MAX_RECEIPT_OCR_BYTES,
   parseReceiptFile,
   parseReceiptText,
 } from "../../src/lib/server/domain/fuel";
@@ -38,6 +39,7 @@ describe("receipt OCR", () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
       model: "mistral-ocr-latest",
       document: { type: "document_url" },
+      pages: [0],
     });
   });
 
@@ -91,6 +93,30 @@ describe("receipt OCR", () => {
 
     await expect(parseReceiptFile(receipt, { apiKey: "" })).rejects.toThrow(
       "OCR de comprovante ainda não está configurado",
+    );
+  });
+
+  it("rejects oversized text receipts before reading their contents", async () => {
+    const text = vi.fn(async () => "Total: R$ 5,00");
+    const receipt = {
+      type: "text/plain",
+      size: MAX_RECEIPT_OCR_BYTES + 1,
+      text,
+    } as unknown as File;
+
+    await expect(parseReceiptFile(receipt)).rejects.toThrow(
+      "excede o limite de 10 MB",
+    );
+    expect(text).not.toHaveBeenCalled();
+  });
+
+  it("rejects unlisted text content types", async () => {
+    const receipt = new File(["Total: R$ 5,00"], "receipt.html", {
+      type: "text/html",
+    });
+
+    await expect(parseReceiptFile(receipt)).rejects.toThrow(
+      "Formato de comprovante não suportado",
     );
   });
 });

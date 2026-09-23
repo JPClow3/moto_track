@@ -19,12 +19,18 @@ describe("public surface contracts", () => {
     const terms = source("src/routes/(public)/termos/+page.svelte");
     const privacy = source("src/routes/(public)/privacidade/+page.svelte");
 
-    expect(terms).toContain("Última atualização: 16 de julho de 2026");
+    expect(terms).toContain("Última atualização: 23 de setembro de 2026");
+    expect(privacy).toContain("Última atualização: 23 de setembro de 2026");
     expect(terms).toContain("Limitações e responsabilidade");
     expect(privacy).toContain("Seus direitos pela LGPD");
     expect(privacy).toContain('href="/billing/conta"');
-    expect(privacy).toContain("security/advisories/new");
-    expect(terms).toContain("security/advisories/new");
+    // The GitHub security advisory form is not a privacy/consumer channel;
+    // both documents route requests to the support email instead.
+    expect(`${terms}\n${privacy}`).not.toContain("security/advisories/new");
+    expect(terms).toContain("href={`mailto:${supportEmail}`}");
+    expect(privacy).toContain("href={`mailto:${supportEmail}`}");
+    expect(privacy).toContain("em até 90 dias");
+    expect(`${terms}\n${privacy}`).not.toMatch(/minuta|revisão jurídica/i);
     expect(`${terms}\n${privacy}`).not.toContain("privacidade@moto-track.app");
   });
 
