@@ -22,7 +22,7 @@ Use this file for agent-specific repo workflows. Keep broader product and fronte
 - **Cloudflare Worker Development**:
   - `npm run worker:dev`
 - **Database (Neon Postgres)**:
-  - Apply `db/migrations/*.sql` to the live Neon database: `npm run db:push`
+- Apply `db/migrations/*.sql` to the target Neon database: `npm run db:push` (prefers direct `DATABASE_URL_UNPOOLED`; otherwise uses `DATABASE_URL`)
   - `src/lib/types/database.ts` is hand-maintained — update it alongside new migrations
   - Auth is Neon Auth (managed Better Auth); `DATABASE_URL`/`PUBLIC_NEON_AUTH_URL`/`NEON_AUTH_JWKS_URL` are required at runtime
 - **CI Pipeline**:
