@@ -15,8 +15,21 @@ export type ReminderRunCounts = {
   emailed: number;
   pushed: number;
   emailFailed: number;
+  /** Due reminders with no successfully delivered push subscription. */
   pushFailed: number;
 };
+
+export function summarizePushAttempt(
+  delivered: boolean,
+  hadFailure: boolean,
+): Pick<ReminderRunCounts, "pushed" | "pushFailed"> {
+  return {
+    pushed: delivered ? 1 : 0,
+    // A delivery to one of several subscriptions is still a successful
+    // reminder; count a failed push only when none of its subscriptions worked.
+    pushFailed: !delivered && hadFailure ? 1 : 0,
+  };
+}
 
 export type ObjectDeletionRunCounts = {
   attempted: number;

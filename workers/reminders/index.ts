@@ -13,6 +13,7 @@ import {
   trackWorkerRun,
   type WorkerRunOutcome,
   type WorkerRunSource,
+  summarizePushAttempt,
   summarizeWorkerTasks,
 } from "./run-history";
 
@@ -205,6 +206,8 @@ export async function processReminders(env: Env) {
     let emailed = 0;
     let pushed = 0;
     let emailFailed = 0;
+    // Push outcomes are counted per reminder. A failed secondary device must
+    // not mark a reminder failed when another subscription received it.
     let pushFailed = 0;
     for (const reminder of rows) {
       // evaluateReminder's INPUT CONTRACT expects a `motorcycles` embed shape;
@@ -259,6 +262,7 @@ export async function processReminders(env: Env) {
       ) {
         const ownerSubs = subscriptionsByOwner.get(reminder.owner_id) ?? [];
         let delivered = false;
+        let hadFailure = false;
         for (const sub of ownerSubs) {
           try {
             const endpoint = await decryptPushField(
@@ -294,12 +298,14 @@ export async function processReminders(env: Env) {
             if (status === "404" || status === "410") {
               await sql`delete from push_subscriptions where id = ${sub.id}`;
             } else {
-              pushFailed += 1;
+              hadFailure = true;
             }
           }
         }
+        const pushOutcome = summarizePushAttempt(delivered, hadFailure);
+        pushed += pushOutcome.pushed;
+        pushFailed += pushOutcome.pushFailed;
         if (delivered) {
-          pushed += 1;
           updates.last_push_notified_at = now;
           updates.last_notified_at = updates.last_notified_at ?? now;
         }

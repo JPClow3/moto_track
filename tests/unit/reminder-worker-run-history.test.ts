@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Sql } from "postgres";
 import {
+  summarizePushAttempt,
   summarizeWorkerTasks,
   trackWorkerRun,
   type ObjectDeletionRunCounts,
@@ -38,6 +39,21 @@ const deletionCounts: ObjectDeletionRunCounts = {
 };
 
 describe("reminder Worker run history", () => {
+  it("counts partial push success as a delivered reminder", () => {
+    expect(summarizePushAttempt(true, true)).toEqual({
+      pushed: 1,
+      pushFailed: 0,
+    });
+    expect(summarizePushAttempt(false, true)).toEqual({
+      pushed: 0,
+      pushFailed: 1,
+    });
+    expect(summarizePushAttempt(false, false)).toEqual({
+      pushed: 0,
+      pushFailed: 0,
+    });
+  });
+
   it("records a successful run with aggregate counts and source", async () => {
     const { sql, calls } = fakeSql();
     const result = await trackWorkerRun(sql, "scheduled", async () => ({
@@ -121,5 +137,37 @@ describe("reminder Worker run history", () => {
       objectDeletions: deletionCounts,
       failures: ["reminders_task_failed", "object_deletion_failed"],
     });
+  });
+
+  it("does not fail a reminder when one subscription succeeds and another fails", () => {
+    const partiallyDelivered = {
+      ...reminderCounts,
+      emailFailed: 0,
+      pushed: 1,
+      pushFailed: 0,
+    };
+
+    expect(
+      summarizeWorkerTasks(
+        { status: "fulfilled", value: partiallyDelivered },
+        { status: "fulfilled", value: { ...deletionCounts, failed: 0 } },
+      ).failures,
+    ).toEqual([]);
+  });
+
+  it("fails a reminder when every push subscription fails", () => {
+    const undelivered = {
+      ...reminderCounts,
+      emailFailed: 0,
+      pushed: 0,
+      pushFailed: 1,
+    };
+
+    expect(
+      summarizeWorkerTasks(
+        { status: "fulfilled", value: undelivered },
+        { status: "fulfilled", value: { ...deletionCounts, failed: 0 } },
+      ).failures,
+    ).toEqual(["push_delivery_failed"]);
   });
 });
