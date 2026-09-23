@@ -76,6 +76,29 @@ describe("initial Neon schema", () => {
   });
 });
 
+describe("reminder Worker run history migration", () => {
+  const runHistory = readFileSync(
+    new URL(
+      "../../db/migrations/20260923150000_reminder_worker_run_history.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  it("stores only aggregate, non-PII outcomes with constrained status codes", () => {
+    expect(runHistory).toContain(
+      "create table if not exists public.reminder_worker_runs",
+    );
+    expect(runHistory).toContain("failure_codes text[] not null default '{}'");
+    expect(runHistory).toContain("'running', 'succeeded', 'failed'");
+    expect(runHistory).toContain("'email_delivery_failed'");
+    expect(runHistory).toContain("'object_deletion_failed'");
+    expect(runHistory).not.toContain("owner_id");
+    expect(runHistory).not.toContain("object_key");
+    expect(runHistory).not.toContain("recipient");
+  });
+});
+
 describe("sale report share hardening", () => {
   it("does not recreate the token-hash constraint already supplied by the initial schema", () => {
     expect(saleReportHardeningCode).toContain(

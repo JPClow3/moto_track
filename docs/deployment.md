@@ -4,15 +4,15 @@ Moto Track runs server-rendered SvelteKit routes on Cloudflare Pages/Workers. Ru
 
 ## Pages bindings
 
-Configure the `R2_BUCKET` binding to the `moto-track-media` R2 bucket and the `HYPERDRIVE` binding to the Hyperdrive config pointing at Neon (`DATABASE_URL_DIRECT`, non-pooler host). Add these plaintext variables:
+Configure the `R2_BUCKET` binding to the `moto-track-media` R2 bucket and the `HYPERDRIVE` binding to the Hyperdrive config pointing at Neon (`DATABASE_URL_DIRECT`, non-pooler host). Add these public runtime variables:
 
 - `PUBLIC_NEON_AUTH_URL`
 - `PUBLIC_SITE_URL`
 - `PUBLIC_VAPID_KEY`
-- `PUBLIC_SENTRY_DSN` (optional; client-visible DSN, and omitting it disables browser Sentry)
+- `PUBLIC_SENTRY_DSN` (optional; client-visible DSN, and omitting it disables browser Sentry; it may be stored as an encrypted Pages secret)
 - `PUBLIC_SENTRY_ENVIRONMENT` (for example `production`)
 
-Set both Sentry variables in the Pages project's **Settings > Variables and Secrets** for each deployed environment (Production and, if used, Preview), then rebuild. They are read through `import.meta.env` by the browser bundle, so a Pages runtime binding alone is not sufficient. The DSN is intentionally public, not a credential; do not configure either value as an encrypted secret.
+Set the Sentry variables in the Pages project's **Settings > Variables and Secrets** for each deployed environment (Production and, if used, Preview). The browser reads them through SvelteKit's `$env/dynamic/public`, so they are supplied by the Pages runtime; an encrypted `PUBLIC_SENTRY_DSN` secret is supported and does not need to be decrypted or checked into `wrangler.toml`. The DSN is intentionally public once sent to the browser, not an authorization credential. Never put private credentials or other secrets behind the `PUBLIC_` prefix because SvelteKit exposes that namespace to the client.
 
 Add these as encrypted secrets:
 
@@ -42,7 +42,7 @@ Add these as encrypted secrets:
 
 1. Create the monthly and yearly Pro prices and set their IDs as Pages secrets.
 2. Point the Stripe webhook to `/billing/webhook/stripe` and use the endpoint signing secret.
-3. Deploy the reminder worker with `npm run worker:deploy` after configuring its `EMAIL` binding, `DEFAULT_FROM_EMAIL`, VAPID/push secrets, trigger token, and confirming its Hyperdrive binding points at the same Neon database.
+3. Apply all pending Neon migrations (including `20260923150000_reminder_worker_run_history.sql`) before deploying Worker code that writes the history table. Then deploy the reminder worker with `npm run worker:deploy` after configuring its `EMAIL` binding, `DEFAULT_FROM_EMAIL`, VAPID/push secrets, trigger token, and confirming its Hyperdrive binding points at the same Neon database.
 
 ## Preview acceptance test
 

@@ -9,6 +9,12 @@ import {
   processObjectDeletionRows,
   type ObjectDeletionRow,
 } from "./object-deletion";
+import {
+  trackWorkerRun,
+  type WorkerRunOutcome,
+  type WorkerRunSource,
+  summarizeWorkerTasks,
+} from "./run-history";
 
 export interface Env {
   HYPERDRIVE: Hyperdrive;
@@ -50,7 +56,7 @@ type PushSubscriptionRow = {
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(processScheduledWork(env));
+    ctx.waitUntil(runTrackedWork(env, "scheduled"));
   },
   // Manual trigger for testing the cron path. It sends real email/push and
   // writes to the database, so it stays closed unless REMINDERS_TRIGGER_TOKEN
@@ -65,17 +71,48 @@ export default {
     ) {
       return new Response("Unauthorized", { status: 401 });
     }
-    const result = await processScheduledWork(env);
-    return Response.json(result);
+    const result = await runTrackedWork(env, "manual");
+    return Response.json(
+      {
+        runId: result.runId,
+        status: result.status,
+        failures: result.failures,
+        due: result.reminders?.due ?? null,
+        emailed: result.reminders?.emailed ?? null,
+        pushed: result.reminders?.pushed ?? null,
+        emailFailed: result.reminders?.emailFailed ?? null,
+        pushFailed: result.reminders?.pushFailed ?? null,
+        objectDeletions: result.objectDeletions,
+      },
+      {
+        status: result.status === "failed" ? 500 : 200,
+      },
+    );
   },
 };
 
-export async function processScheduledWork(env: Env) {
-  const [reminders, objectDeletions] = await Promise.all([
+export async function runTrackedWork(env: Env, triggerSource: WorkerRunSource) {
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    prepare: false,
+    max: 1,
+  });
+  try {
+    return await trackWorkerRun(sql, triggerSource, () =>
+      processScheduledWork(env),
+    );
+  } finally {
+    await sql.end();
+  }
+}
+
+export async function processScheduledWork(
+  env: Env,
+): Promise<WorkerRunOutcome> {
+  const [remindersResult, objectDeletionsResult] = await Promise.allSettled([
     processReminders(env),
     drainObjectDeletionQueue(env),
   ]);
-  return { ...reminders, objectDeletions };
+  return summarizeWorkerTasks(remindersResult, objectDeletionsResult);
 }
 
 export async function drainObjectDeletionQueue(env: Env) {
@@ -167,6 +204,8 @@ export async function processReminders(env: Env) {
     let due = 0;
     let emailed = 0;
     let pushed = 0;
+    let emailFailed = 0;
+    let pushFailed = 0;
     for (const reminder of rows) {
       // evaluateReminder's INPUT CONTRACT expects a `motorcycles` embed shape;
       // rebuild it from the joined columns instead of changing that function.
@@ -207,6 +246,8 @@ export async function processReminders(env: Env) {
           emailed += 1;
           updates.last_email_notified_at = now;
           updates.last_notified_at = now;
+        } else {
+          emailFailed += 1;
         }
       }
 
@@ -252,6 +293,8 @@ export async function processReminders(env: Env) {
             // renew them instead of retrying a dead endpoint forever.
             if (status === "404" || status === "410") {
               await sql`delete from push_subscriptions where id = ${sub.id}`;
+            } else {
+              pushFailed += 1;
             }
           }
         }
@@ -271,7 +314,7 @@ export async function processReminders(env: Env) {
       }
     }
 
-    return { due, emailed, pushed };
+    return { due, emailed, pushed, emailFailed, pushFailed };
   } finally {
     await sql.end();
   }

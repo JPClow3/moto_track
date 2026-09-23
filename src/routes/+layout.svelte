@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { env } from "$env/dynamic/public";
   import "../app.css";
   import { onMount } from "svelte";
   import type { Snippet } from "svelte";
@@ -60,13 +61,12 @@
     // marker instead of guessing when Svelte hydration has completed.
     document.documentElement.dataset.appReady = "true";
 
-    const dsn = import.meta.env.PUBLIC_SENTRY_DSN;
+    const dsn = env.PUBLIC_SENTRY_DSN;
     if (dsn) {
       void import("@sentry/browser").then((Sentry) => {
         Sentry.init({
           dsn,
-          environment:
-            import.meta.env.PUBLIC_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
+          environment: env.PUBLIC_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
           tracesSampleRate: import.meta.env.PROD ? 0.1 : 1,
           sendDefaultPii: false,
         });
