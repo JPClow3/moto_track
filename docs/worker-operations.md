@@ -53,7 +53,6 @@ order by 1 desc, 2, 3;
 ```
 
 The scheduled and authenticated manual paths both record aggregate outcomes. The manual endpoint returns HTTP 500 when a tracked component fails, but it is not a read-only health check and still performs real email/push delivery and R2 deletion. If a run remains `running`, wait until the next successful Worker invocation; runs older than one hour are then marked failed with a generic code. History older than 90 days is pruned by the next invocation.
-
 The Worker processes up to 100 due rows on each daily cron. Failed R2 deletes remain queued, increment `attempt_count`, record a generic `last_error`, and receive exponential retry delay (starting at five minutes, capped at 24 hours). Because the scheduled pass is daily, actual retries normally wait until the next cron even when `next_attempt_at` is earlier. A successful R2 delete removes its queue row. Compare aggregate counts and oldest age across scheduled runs; a persistent or growing due backlog warrants checking R2 binding/availability, Worker exceptions, and Hyperdrive/database connectivity. Do not delete queue rows to make the backlog appear healthy. The next scheduled pass is the normal retry path; if an operator needs to accelerate recovery, follow the existing production-change approval and use only the guarded Worker execution path after verifying its real-send/delete effects.
 
 ## Alerting gap
