@@ -36,15 +36,6 @@ test.describe("production provider acceptance", () => {
       expect(String(statusBody.pushPublicKey ?? "").length).toBeGreaterThan(20);
     });
 
-    await test.step("Stripe creates the explicitly authorized live checkout session", async () => {
-      await page.goto("/billing/checkout?interval=monthly", {
-        waitUntil: "domcontentloaded",
-      });
-      expect(new URL(page.url()).hostname).toMatch(
-        /(^|\.)checkout\.stripe\.com$/,
-      );
-    });
-
     let fileUrl = "";
     let cleanupDocument = false;
     await test.step("R2 upload is owner-only and deletion removes it", async () => {
@@ -161,6 +152,17 @@ test.describe("production provider acceptance", () => {
         .getByRole("button", { name: /fechar|close/i })
         .last()
         .click();
+    });
+
+    // Checkout is last so an externally paused Stripe account cannot hide
+    // the independent production checks for storage, export, and OCR.
+    await test.step("Stripe creates the explicitly authorized live checkout session", async () => {
+      await page.goto("/billing/checkout?interval=monthly", {
+        waitUntil: "domcontentloaded",
+      });
+      expect(new URL(page.url()).hostname).toMatch(
+        /(^|\.)checkout\.stripe\.com$/,
+      );
     });
   });
 });
