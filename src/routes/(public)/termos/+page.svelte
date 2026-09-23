@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowRight, FileText, Mail, Printer, Scale } from "lucide-svelte";
+  import { FileText, Mail, Printer, Scale } from "lucide-svelte";
 
   const sections = [
     {
@@ -7,7 +7,7 @@
       title: "Aceitação dos termos",
       paragraphs: [
         "Ao criar uma conta ou usar o Moto Track, você concorda com estes Termos de Uso e com a nossa Política de Privacidade. Se você não concordar com algum ponto, não utilize o serviço.",
-        "Este é um documento operacional genérico e deve passar por revisão jurídica antes de um lançamento comercial definitivo.",
+        "Este documento ainda é uma minuta e precisa de revisão jurídica antes do lançamento comercial.",
       ],
     },
     {
@@ -38,15 +38,15 @@
       id: "assinatura",
       title: "Assinatura Pro e cobrança",
       paragraphs: [
-        "O plano Pro é cobrado de forma recorrente pelo processador de pagamentos utilizado pelo Moto Track. Os valores, a periodicidade e os métodos de pagamento aceitos são exibidos antes da confirmação da assinatura.",
-        "Você pode cancelar a assinatura a qualquer momento pela área Conta; o acesso Pro permanece ativo até o fim do período já pago, sem reembolso proporcional, salvo quando exigido por lei.",
+        "O plano Pro é cobrado de forma recorrente pela Stripe. Os valores, a periodicidade e os métodos de pagamento aceitos são exibidos antes da confirmação da assinatura. A área Conta direciona ao Portal de cobrança para gerenciar a assinatura.",
+        "As regras aplicáveis ao cancelamento, ao período de acesso e a eventuais reembolsos precisam ser confirmadas e revisadas juridicamente antes do lançamento comercial; estes termos não estabelecem uma renúncia a direitos previstos em lei.",
       ],
     },
     {
       id: "propriedade",
       title: "Propriedade intelectual",
       paragraphs: [
-        "O Moto Track, sua marca, interface e código são de titularidade de seus desenvolvedores. Os dados que você cadastra sobre suas motocicletas continuam sendo seus; usamos esses dados apenas para fornecer o serviço, conforme a Política de Privacidade.",
+        "Antes de enviar documentos, fotos ou outros conteúdos, verifique se você tem autorização para armazená-los no serviço. O Moto Track processa registros enviados para fornecer os recursos solicitados, conforme a Política de Privacidade. A titularidade de marcas, software e conteúdos de terceiros depende dos respectivos direitos e licenças.",
       ],
     },
     {
@@ -54,14 +54,14 @@
       title: "Limitações e responsabilidade",
       paragraphs: [
         "O Moto Track é fornecido 'como está', sem garantia de disponibilidade ininterrupta ou de ausência total de falhas. Registros como odômetro, consumo, custos e previsões de manutenção são estimativas e não substituem o manual do fabricante ou a avaliação de um profissional qualificado.",
-        "Na máxima medida permitida por lei, não respondemos por danos indiretos, lucros cessantes ou perda de dados decorrentes do uso ou da impossibilidade de uso do serviço. Mantenha backups próprios de informações críticas quando possível.",
+        "Mantenha cópias próprias de informações críticas quando possível. Qualquer limitação de responsabilidade precisa ser validada juridicamente e não pretende afastar direitos que a legislação aplicável não permita limitar.",
       ],
     },
     {
       id: "rescisao",
       title: "Encerramento da conta",
       paragraphs: [
-        "Você pode encerrar sua conta a qualquer momento pela área Conta, que também permite solicitar exportação dos seus dados antes da exclusão. Podemos suspender ou encerrar contas em caso de violação destes termos, fraude ou inatividade prolongada, mediante aviso quando exigido por lei.",
+        "A área Conta permite baixar um arquivo JSON e registrar solicitações de exportação ou exclusão. O pedido de exclusão é encaminhado à equipe e não remove os dados imediatamente. O cancelamento de uma assinatura é gerenciado separadamente pelo Portal de cobrança. Podemos suspender ou encerrar contas em caso de violação destes termos ou risco de segurança, observadas as regras aplicáveis.",
       ],
     },
     {
@@ -75,7 +75,7 @@
       id: "contato",
       title: "Contato",
       paragraphs: [
-        "Para dúvidas confidenciais sobre estes Termos de Uso, use o canal privado indicado nesta página.",
+        "Um canal monitorado para dúvidas sobre estes termos ainda não foi publicado. Não inclua dados pessoais em uma issue aberta nem use o formulário de segurança do GitHub para solicitações de consumo.",
       ],
     },
   ];
@@ -118,7 +118,7 @@
     <p
       class="label-tech mt-10 border-t border-[var(--line)] pt-5 text-[var(--muted)]"
     >
-      Última atualização: 16 de julho de 2026
+      Última atualização: 23 de setembro de 2026
     </p>
   </div>
 </section>
@@ -150,7 +150,7 @@
       <div class="flex gap-3">
         <FileText class="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
         <p class="text-sm leading-relaxed text-[var(--muted)]">
-          Documento genérico, revisado antes de qualquer lançamento comercial.
+          Minuta pendente de revisão jurídica antes do lançamento comercial.
         </p>
       </div>
       <div class="flex gap-3">
@@ -183,15 +183,10 @@
         <div>
           <h2 class="display text-2xl">Dúvidas sobre os termos</h2>
           <p class="mt-2 text-sm leading-relaxed text-paper/65">
-            Use o mesmo canal privado das questões de privacidade. Não inclua
-            dados pessoais em uma issue aberta.
+            Um canal monitorado para dúvidas sobre estes termos ainda não foi
+            publicado. Não inclua dados pessoais em uma issue aberta nem use o
+            formulário de segurança do GitHub para solicitações de consumo.
           </p>
-          <a
-            class="focus-ring mt-4 inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
-            href="https://github.com/JPClow3/moto_track/security/advisories/new"
-            rel="noopener noreferrer"
-            >Abrir relato confidencial <ArrowRight class="h-4 w-4" /></a
-          >
         </div>
       </div>
     </div>

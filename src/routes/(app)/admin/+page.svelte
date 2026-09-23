@@ -157,6 +157,42 @@
           </div>
         </div>
 
+        <div class="rounded border border-[var(--line)] p-3">
+          <h3 class="text-sm font-semibold">Execução cron agendada</h3>
+          <p class="mt-2 text-sm">
+            Horário de referência: 08:00 UTC ·
+            {new Date(data.workerOperations.expectedLatestScheduledSlotAt)
+              .toISOString()
+              .slice(0, 10)}
+          </p>
+          {#if data.workerOperations.latestScheduledRun}
+            <p class="mt-1 text-sm">
+              Último registro:
+              {new Date(
+                data.workerOperations.latestScheduledRun.started_at,
+              ).toLocaleString()}
+              · {data.workerOperations.latestScheduledRun.status}
+            </p>
+          {:else}
+            <p class="mt-1 text-sm text-[var(--muted)]">
+              Nenhuma execução cron registrada.
+            </p>
+          {/if}
+          <p
+            class="mt-1 text-sm"
+            class:text-warning={!data.workerOperations
+              .latestScheduledSlotRecorded}
+          >
+            {data.workerOperations.latestScheduledSlotRecorded
+              ? "Há um registro no horário de referência."
+              : "O horário de referência ainda não aparece no histórico."}
+          </p>
+          <p class="mt-1 text-xs text-[var(--muted)]">
+            Comparação direta, sem janela de tolerância configurada; confirme
+            atrasos e falhas nos logs do Cloudflare.
+          </p>
+        </div>
+
         <details>
           <summary class="cursor-pointer text-sm font-medium">
             Últimas execuções

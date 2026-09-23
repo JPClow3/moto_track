@@ -53,7 +53,21 @@ order by 1 desc, 2, 3;
 ```
 
 The scheduled and authenticated manual paths both record aggregate outcomes. The manual endpoint returns HTTP 500 when a tracked component fails, but it is not a read-only health check and still performs real email/push delivery and R2 deletion. If a run remains `running`, wait until the next successful Worker invocation; runs older than one hour are then marked failed with a generic code. History older than 90 days is pruned by the next invocation.
-The Worker processes up to 100 due rows on each daily cron. Failed R2 deletes remain queued, increment `attempt_count`, record a generic `last_error`, and receive exponential retry delay (starting at five minutes, capped at 24 hours). Because the scheduled pass is daily, actual retries normally wait until the next cron even when `next_attempt_at` is earlier. A successful R2 delete removes its queue row. Compare aggregate counts and oldest age across scheduled runs; a persistent or growing due backlog warrants checking R2 binding/availability, Worker exceptions, and Hyperdrive/database connectivity. Do not delete queue rows to make the backlog appear healthy. The next scheduled pass is the normal retry path; if an operator needs to accelerate recovery, follow the existing production-change approval and use only the guarded Worker execution path after verifying its real-send/delete effects.
+The Worker processes up to 100 due rows on each daily cron. Failed R2 deletes remain queued, increment `attempt_count`, record a generic `last_error`, and receive exponential retry delay (`5 minutes * 2^attempt_count`, with the exponent capped at 8). The maximum delay is therefore 21 hours 20 minutes. Because the scheduled pass is daily, actual retries normally wait until the next cron even when `next_attempt_at` is earlier. A successful R2 delete removes its queue row. Compare aggregate counts and oldest age across scheduled runs; a persistent or growing due backlog warrants checking R2 binding/availability, Worker exceptions, and Hyperdrive/database connectivity. Do not delete queue rows to make the backlog appear healthy. The next scheduled pass is the normal retry path; if an operator needs to accelerate recovery, follow the existing production-change approval and use only the guarded Worker execution path after verifying its real-send/delete effects.
+
+## Neon backup and restore evidence
+
+Do not treat Neon availability, a successful database connection, or the disposable CI branch test as proof that production data can be restored. Before commercial release, record these values from the production Neon project and an approved recovery drill:
+
+| Evidence                                                        | Current status               |
+| --------------------------------------------------------------- | ---------------------------- |
+| Production backup/PITR availability and retention window        | Not verified in this runbook |
+| Recovery owner and access path                                  | Not recorded                 |
+| Approved recovery point objective (RPO)                         | Not agreed/recorded          |
+| Approved recovery time objective (RTO)                          | Not agreed/recorded          |
+| Last restore drill date, isolated target, and validation result | No drill evidence recorded   |
+
+Keep connection strings, credentials, and customer data out of this runbook. A restore drill should target an isolated branch or environment, verify migrations and representative application invariants without exporting personal data, and be recorded with its date and result. Do not fill retention or RPO/RTO from assumptions; confirm them with the project owner and current Neon configuration.
 
 ## Alerting gap
 

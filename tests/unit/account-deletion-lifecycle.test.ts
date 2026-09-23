@@ -132,6 +132,9 @@ describe("LGPD account deletion lifecycle", () => {
     const deletion = queries.find((entry) =>
       entry.sql.includes('delete from neon_auth."user"'),
     );
+    const benchmarkCleanup = queries.find((entry) =>
+      entry.sql.includes("delete from anonymous_model_benchmark_contributions"),
+    );
     const tombstone = queries.find((entry) =>
       entry.sql.includes("insert into account_deletion_tombstones"),
     );
@@ -141,6 +144,16 @@ describe("LGPD account deletion lifecycle", () => {
     });
     expect(deletion).toMatchObject({ transaction: true });
     expect(deletion?.sql).toContain("request.status = 'open'");
+    expect(benchmarkCleanup).toMatchObject({
+      transaction: true,
+      values: ["owner-1"],
+    });
+    expect(benchmarkCleanup?.sql).toContain(
+      "guard.contribution_id = contribution.id",
+    );
+    expect(queries.indexOf(benchmarkCleanup!)).toBeLessThan(
+      queries.indexOf(deletion!),
+    );
     expect(mocks.deleteQueuedObjectsBestEffort).toHaveBeenCalledWith({
       db,
       objectKeys: [],
