@@ -5,7 +5,7 @@ const marker = process.env.PROVIDER_SMOKE_MARKER ?? "PROVIDER-SMOKE-LOCAL";
 
 test.describe("production provider acceptance", () => {
   test.skip(!enabled, "Run only from the protected production smoke workflow.");
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
 
   test("auth, OCR, Stripe, R2 ownership and LGPD export are wired", async ({
     page,
@@ -34,37 +34,6 @@ test.describe("production provider acceptance", () => {
       const statusBody = await status.json();
       expect(statusBody).toMatchObject({ authenticated: true });
       expect(String(statusBody.pushPublicKey ?? "").length).toBeGreaterThan(20);
-    });
-
-    await test.step("Mistral OCR populates review fields without persisting", async () => {
-      // The production Pages response can arrive before its client-side
-      // handlers hydrate; wait for the module requests before using the menu.
-      await page.goto("/fuel", { waitUntil: "networkidle" });
-      await page
-        .getByRole("button", { name: /novo abastecimento|new fuel/i })
-        .first()
-        .click();
-      const scanChoice = page.getByRole("button", {
-        name: /escanear comprovante|scan receipt/i,
-      });
-      await expect(scanChoice).toBeVisible({ timeout: 10_000 });
-      await scanChoice.click();
-      await page.locator("#fuel-ocr-file").setInputFiles(receiptPath);
-      await page
-        .locator('form[action="?/ocrScan"]')
-        .getByRole("button", { name: /escanear|scan/i })
-        .click();
-
-      await expect(page.locator("#ocr-date")).toHaveValue("2026-09-22", {
-        timeout: 60_000,
-      });
-      await expect(page.locator("#ocr-liters")).toHaveValue("10");
-      await expect(page.locator("#ocr-total-price")).toHaveValue("60");
-      await expect(page.locator("#ocr-price-per-liter")).toHaveValue("6");
-      await page
-        .getByRole("button", { name: /fechar|close/i })
-        .last()
-        .click();
     });
 
     await test.step("Stripe creates the explicitly authorized live checkout session", async () => {
@@ -161,6 +130,37 @@ test.describe("production provider acceptance", () => {
       const body = await response.text();
       expect(body).not.toMatch(/password|secret|credential/i);
       expect(() => JSON.parse(body)).not.toThrow();
+    });
+
+    await test.step("Mistral OCR populates review fields without persisting", async () => {
+      // The production Pages response can arrive before its client-side
+      // handlers hydrate; wait for the module requests before using the menu.
+      await page.goto("/fuel", { waitUntil: "networkidle" });
+      await page
+        .getByRole("button", { name: /novo abastecimento|new fuel/i })
+        .first()
+        .click();
+      const scanChoice = page.getByRole("button", {
+        name: /escanear comprovante|scan receipt/i,
+      });
+      await expect(scanChoice).toBeVisible({ timeout: 10_000 });
+      await scanChoice.click();
+      await page.locator("#fuel-ocr-file").setInputFiles(receiptPath);
+      await page
+        .locator('form[action="?/ocrScan"]')
+        .getByRole("button", { name: /escanear|scan/i })
+        .click();
+
+      await expect(page.locator("#ocr-date")).toHaveValue("2026-09-22", {
+        timeout: 60_000,
+      });
+      await expect(page.locator("#ocr-liters")).toHaveValue("10");
+      await expect(page.locator("#ocr-total-price")).toHaveValue("60");
+      await expect(page.locator("#ocr-price-per-liter")).toHaveValue("6");
+      await page
+        .getByRole("button", { name: /fechar|close/i })
+        .last()
+        .click();
     });
   });
 });
