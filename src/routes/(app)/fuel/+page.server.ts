@@ -71,16 +71,20 @@ async function createFuelRecord({
     if (!validation.ok) return fail(400, { message: validation.message });
     const blocked = await assertCanCreateUpload(locals.db, user.id);
     if (blocked) return fail(403, { message: blocked });
-    uploadedReceipt = await uploadObjectFile({
-      file: receipt,
-      module: "fuel",
-      ownerId: user.id,
-      platform,
-      policy: {
-        maxBytes: MAX_RECEIPT_UPLOAD_BYTES,
-        allowedContentTypes: RECEIPT_UPLOAD_CONTENT_TYPES,
-      },
-    });
+    try {
+      uploadedReceipt = await uploadObjectFile({
+        file: receipt,
+        module: "fuel",
+        ownerId: user.id,
+        platform,
+        policy: {
+          maxBytes: MAX_RECEIPT_UPLOAD_BYTES,
+          allowedContentTypes: RECEIPT_UPLOAD_CONTENT_TYPES,
+        },
+      });
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
     receiptFileKey = uploadedReceipt.objectKey;
   }
 
