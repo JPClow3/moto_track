@@ -11,6 +11,16 @@ test("authenticate the shared CI account once", async ({ page }) => {
   test.skip(!hasAuthEnv, "Set E2E_USER_EMAIL and E2E_USER_PASSWORD to run.");
 
   await page.goto("/auth");
+  const pageText = await page.locator("body").innerText();
+  if (
+    /performing security verification|executando verificação de segurança/i.test(
+      pageText,
+    )
+  ) {
+    throw new Error(
+      "Cloudflare browser verification blocked automated production auth. Playwright is not supported for solving production challenges; use a staging target or an explicitly approved Cloudflare access policy.",
+    );
+  }
   await page.locator("#email").fill(process.env.E2E_USER_EMAIL!);
   await page.locator("#password").fill(process.env.E2E_USER_PASSWORD!);
   await page.locator('button[type="submit"]').first().click();

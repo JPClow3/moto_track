@@ -73,7 +73,7 @@ test.describe("production provider acceptance", () => {
     });
 
     let fileUrl = "";
-    let documentCreated = false;
+    let cleanupDocument = false;
     await test.step("R2 upload is owner-only and deletion removes it", async () => {
       try {
         await page.goto("/documents");
@@ -93,11 +93,13 @@ test.describe("production provider acceptance", () => {
         await form.locator("#new-name").fill(marker);
         await form.locator("#new-document_type").fill("Provider smoke");
         await form.locator("#new-file_key").setInputFiles(receiptPath);
+        // Arm cleanup before submitting: the server may persist the record
+        // even if the confirmation row fails to render or the response times out.
+        cleanupDocument = true;
         await form.getByRole("button", { name: /salvar|save/i }).click();
 
         const row = page.locator("tbody tr").filter({ hasText: marker });
         await expect(row).toBeVisible();
-        documentCreated = true;
         fileUrl = (await row
           .getByRole("link", { name: /abrir|open/i })
           .getAttribute("href"))!;
@@ -123,24 +125,27 @@ test.describe("production provider acceptance", () => {
           .getByRole("button", { name: /confirmar|excluir|delete|confirm/i })
           .click();
         await expect(row).toHaveCount(0);
-        documentCreated = false;
         const deletedDownload = await page.request.get(fileUrl);
         expect(deletedDownload.status()).toBe(404);
+        cleanupDocument = false;
       } finally {
-        if (documentCreated) {
+        if (cleanupDocument) {
           await page.goto("/documents");
+          await page.locator("tbody").waitFor({ state: "visible" });
           const leftover = page.locator("tbody tr").filter({ hasText: marker });
-          if (await leftover.isVisible()) {
-            await leftover
-              .getByRole("button", { name: /excluir|delete/i })
-              .click();
+          while ((await leftover.count()) > 0) {
+            const countBeforeDelete = await leftover.count();
+            const row = leftover.first();
+            await row.getByRole("button", { name: /excluir|delete/i }).click();
             await page
               .getByRole("dialog")
               .getByRole("button", {
                 name: /confirmar|excluir|delete|confirm/i,
               })
               .click();
+            await expect(leftover).toHaveCount(countBeforeDelete - 1);
           }
+          await expect(leftover).toHaveCount(0);
         }
       }
     });
