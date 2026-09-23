@@ -124,10 +124,17 @@ test.describe("production provider acceptance", () => {
         expect(ownerDownload.ok()).toBe(true);
         expect((await ownerDownload.body()).length).toBeGreaterThan(100);
 
-        const anonymous = await page.context().browser()!.newContext({
-          baseURL: process.env.E2E_BASE_URL,
-        });
+        const anonymous = await page
+          .context()
+          .browser()!
+          .newContext({
+            baseURL: process.env.E2E_BASE_URL,
+            // Playwright's project storageState also applies to browser.newContext.
+            // Explicitly clear it so this request proves anonymous access.
+            storageState: { cookies: [], origins: [] },
+          });
         try {
+          expect(await anonymous.cookies()).toHaveLength(0);
           const strangerDownload = await anonymous.request.get(fileUrl);
           expect([401, 404]).toContain(strangerDownload.status());
         } finally {
