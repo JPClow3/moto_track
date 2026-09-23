@@ -39,6 +39,7 @@ describe("receipt OCR", () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
       model: "mistral-ocr-latest",
       document: { type: "document_url" },
+      pages: [0],
     });
   });
 

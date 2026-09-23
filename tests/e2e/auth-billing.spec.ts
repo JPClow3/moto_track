@@ -33,3 +33,13 @@ test("billing portal redirects unauthenticated users to sign-in", async ({
   await page.goto("/billing/portal");
   await expect(page).toHaveURL(/\/auth\?redirectTo=/);
 });
+
+test("yearly checkout keeps its billing interval through sign-in", async ({
+  page,
+}) => {
+  await page.context().clearCookies();
+  await page.goto("/billing/checkout?interval=yearly");
+  await expect(page).toHaveURL(
+    /\/auth\?redirectTo=%2Fbilling%2Fcheckout%3Finterval%3Dyearly/,
+  );
+});

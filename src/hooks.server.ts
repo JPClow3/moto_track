@@ -65,7 +65,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   ) {
     throw redirect(
       303,
-      `/auth?redirectTo=${encodeURIComponent(event.url.pathname)}`,
+      `/auth?redirectTo=${encodeURIComponent(event.url.pathname + event.url.search)}`,
     );
   }
 

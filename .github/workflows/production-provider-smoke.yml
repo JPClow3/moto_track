@@ -32,7 +32,9 @@ jobs:
     environment: production
     env:
       CI: true
-      E2E_BASE_URL: https://moto-track.net
+      # The production Pages hostname serves the same main deployment and
+      # bindings without the custom zone's bot challenge for CI browsers.
+      E2E_BASE_URL: https://moto-track.pages.dev
       E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
       E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
       PRODUCTION_PROVIDER_SMOKE: true

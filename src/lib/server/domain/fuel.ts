@@ -150,6 +150,9 @@ export async function parseReceiptFile(
     body: JSON.stringify({
       model: "mistral-ocr-latest",
       document,
+      // Fuel receipts fit on one page. Limit PDF processing so a multi-page
+      // upload cannot turn one scan into an unbounded per-page provider bill.
+      ...(file.type === "application/pdf" ? { pages: [0] } : {}),
       confidence_scores_granularity: "page",
     }),
   });
