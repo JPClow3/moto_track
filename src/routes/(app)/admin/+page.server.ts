@@ -6,6 +6,7 @@ import {
   lockObjectOwner,
 } from "$server/r2/files";
 import { terminateStripeBillingForAccount } from "$server/domain/billing";
+import { getWorkerOperationsSummary } from "$server/domain/worker-operations";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -27,6 +28,7 @@ export async function load({ locals }) {
   }
 
   const db = locals.db;
+  const workerOperations = await getWorkerOperationsSummary(db);
   const [
     [{ count: users }],
     [{ count: articlesCount }],
@@ -95,6 +97,7 @@ export async function load({ locals }) {
       events,
       requests: requestsCount,
     },
+    workerOperations,
   };
 }
 

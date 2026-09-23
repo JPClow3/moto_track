@@ -13,7 +13,11 @@ import {
   marketplaceSearchUrl,
   normalizeMarketplaceQuery,
 } from "$server/domain/marketplace";
-import { validateMaintenancePhoto } from "$server/domain/maintenance-photos";
+import {
+  MAINTENANCE_PHOTO_CONTENT_TYPES,
+  MAX_MAINTENANCE_PHOTO_BYTES,
+  validateMaintenancePhoto,
+} from "$server/domain/maintenance-photos";
 import {
   initialHistoryStatus,
   dueStateForPlan,
@@ -366,6 +370,10 @@ export const actions = {
       module: "maintenance",
       ownerId,
       platform,
+      policy: {
+        maxBytes: MAX_MAINTENANCE_PHOTO_BYTES,
+        allowedContentTypes: MAINTENANCE_PHOTO_CONTENT_TYPES,
+      },
     });
     const photoId = crypto.randomUUID();
     try {
