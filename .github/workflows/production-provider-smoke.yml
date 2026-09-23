@@ -36,7 +36,7 @@ jobs:
       E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
       E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
       PRODUCTION_PROVIDER_SMOKE: true
-      PROVIDER_SMOKE_MARKER: PROVIDER-SMOKE-${{ github.run_id }}
+      PROVIDER_SMOKE_MARKER: PROVIDER-SMOKE-${{ github.run_id }}-${{ github.run_attempt }}
       TARGET_ACCOUNT_CONFIRMATION: ${{ inputs.target_account_confirmation }}
       STRIPE_MODE_CONFIRMATION: ${{ inputs.stripe_mode_confirmation }}
     steps:
