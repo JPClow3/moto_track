@@ -562,6 +562,8 @@ export const ptBR = {
     checkoutCancelled: "Checkout cancelado. Nenhuma cobrança foi realizada.",
     currentPlan: "Plano atual",
     billingInterval: "Cobrança {interval}.",
+    trialActive:
+      "Seu teste grátis de 7 dias está ativo. Depois, a cobrança do plano escolhido será automática até o cancelamento.",
     cancelPending: " Seu plano permanece ativo até o fim do período atual.",
     graceUntil: " Acesso Pro em carência até {date}.",
     pastDue:
@@ -619,6 +621,8 @@ export const ptBR = {
     priceConfirmedAtCheckout: "Preço confirmado no checkout",
     perMonth: "por mês",
     annualSaves: "anual economiza {amount}",
+    trialDisclosure:
+      "Novos clientes Stripe: informe a forma de pagamento no checkout e não pague nada por 7 dias. Depois, o plano escolhido será cobrado e renovado automaticamente até o cancelamento. Clientes Stripe que já assinaram pagam no checkout.",
     proCta: "Continuar para checkout",
     freeFeature1Prefix: "Gestão de ",
     freeFeature1Bold: "1 moto ativa",

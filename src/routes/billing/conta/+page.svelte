@@ -22,6 +22,7 @@
   $: hasStripeCustomer = Boolean(data.profile?.stripe_customer_id);
   $: isCancelling = data.profile?.cancel_at_period_end === true;
   $: isPastDue = data.profile?.stripe_subscription_status === "past_due";
+  $: isTrialing = data.profile?.stripe_subscription_status === "trialing";
 
   let pushMessage = "";
   let pushBusy = false;
@@ -244,6 +245,11 @@
             date: String(data.profile.grace_until).slice(0, 10),
           })}{/if}
       </p>
+      {#if isTrialing}
+        <p class="mt-2 text-sm text-[var(--muted)]">
+          {$t("conta.trialActive")}
+        </p>
+      {/if}
     {:else if isPastDue}
       <p class="mt-2 text-sm text-[var(--muted)]">
         {$t("conta.pastDue")}

@@ -41,8 +41,9 @@ Add these as encrypted secrets:
 ## Stripe and reminders
 
 1. Create the monthly and yearly Pro prices and set their IDs as Pages secrets.
-2. Point the Stripe webhook to `/billing/webhook/stripe` and use the endpoint signing secret.
-3. Apply all pending Neon migrations (including `20260923150000_reminder_worker_run_history.sql`) before deploying Worker code that writes the history table. Then deploy the reminder worker with `npm run worker:deploy` after configuring its `EMAIL` binding, `DEFAULT_FROM_EMAIL`, VAPID/push secrets, trigger token, and confirming its Hyperdrive binding points at the same Neon database.
+2. New Stripe customers choosing Pro get a 7-day trial. Checkout collects a payment method at signup; Stripe bills the selected monthly or yearly Price after the trial and renews automatically. A trial without a payment method is canceled when it ends. Returning Stripe customers can subscribe again but are charged at checkout instead of receiving another trial.
+3. Point the Stripe webhook to `/billing/webhook/stripe` and use the endpoint signing secret. The webhook provisions Pro while the subscription is `trialing` and applies later subscription and invoice status changes.
+4. Apply all pending Neon migrations (including `20260923150000_reminder_worker_run_history.sql`) before deploying Worker code that writes the history table. Then deploy the reminder worker with `npm run worker:deploy` after configuring its `EMAIL` binding, `DEFAULT_FROM_EMAIL`, VAPID/push secrets, trigger token, and confirming its Hyperdrive binding points at the same Neon database.
 
 ## Preview acceptance test
 

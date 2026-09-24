@@ -5,6 +5,7 @@ import type { PlanPrice, ProPricing } from "$types/billing";
 export type { PlanPrice, ProPricing };
 
 export type BillingInterval = "monthly" | "yearly";
+export const PRO_TRIAL_DAYS = 7;
 
 function hasConfiguredStripeSecret(value: string | undefined): value is string {
   return Boolean(value && !/(?:replace[-_ ]?me|placeholder)/i.test(value));
@@ -158,6 +159,48 @@ export function subscriptionProfileUpdate(
   } as const;
 }
 
+/** Build one subscription Checkout Session for the selected recurring Price. */
+export function buildCheckoutSessionParams({
+  email,
+  userId,
+  customerId,
+  interval,
+  priceId,
+  siteUrl,
+}: {
+  email: string;
+  userId: string;
+  customerId?: string;
+  interval: BillingInterval;
+  priceId: string;
+  siteUrl: string;
+}): Stripe.Checkout.SessionCreateParams {
+  const customer = customerId?.trim();
+  const subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData =
+    {
+      metadata: { user_id: userId, interval },
+    };
+  if (!customer) {
+    subscriptionData.trial_period_days = PRO_TRIAL_DAYS;
+    subscriptionData.trial_settings = {
+      end_behavior: { missing_payment_method: "cancel" },
+    };
+  }
+  const session: Stripe.Checkout.SessionCreateParams = {
+    mode: "subscription",
+    payment_method_collection: "always",
+    client_reference_id: userId,
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${siteUrl}/billing/conta?checkout=success`,
+    cancel_url: `${siteUrl}/precos?checkout=cancelled`,
+    metadata: { user_id: userId, interval },
+    subscription_data: subscriptionData,
+  };
+  if (customer) session.customer = customer;
+  else session.customer_email = email;
+  return session;
+}
+
 export async function createCheckoutSession({
   email,
   userId,
@@ -175,18 +218,15 @@ export async function createCheckoutSession({
   const price = priceIdForInterval(interval, platform);
   if (!price) throw new Error("Stripe price ID is not configured.");
   const customer = customerId?.trim();
-  const session: Stripe.Checkout.SessionCreateParams = {
-    mode: "subscription",
-    client_reference_id: userId,
-    line_items: [{ price, quantity: 1 }],
-    success_url: `${runtime.PUBLIC_SITE_URL || "http://localhost:5173"}/billing/conta?checkout=success`,
-    cancel_url: `${runtime.PUBLIC_SITE_URL || "http://localhost:5173"}/precos?checkout=cancelled`,
-    metadata: { user_id: userId, interval },
-    subscription_data: { metadata: { user_id: userId, interval } },
-  };
+  const session = buildCheckoutSessionParams({
+    email,
+    userId,
+    customerId: customer,
+    interval,
+    priceId: price,
+    siteUrl: runtime.PUBLIC_SITE_URL || "http://localhost:5173",
+  });
   const client = stripeClient(platform);
-  if (customer) session.customer = customer;
-  else session.customer_email = email;
   try {
     return await client.checkout.sessions.create(session);
   } catch (err) {
