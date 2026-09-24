@@ -608,8 +608,8 @@ export const en: Messages = {
     perMonth: "per month",
     annualSaves: "yearly saves {amount}",
     trialDisclosure:
-      "Add a payment method at checkout. We won’t charge you for 7 days; then the selected plan will be charged and renew automatically until you cancel.",
-    proCta: "Start 7-day free trial",
+      "New Stripe customers: add a payment method at checkout and pay nothing for 7 days. After that, the selected plan is charged and renews automatically until you cancel. Returning Stripe customers are charged at checkout.",
+    proCta: "Continue to checkout",
     freeFeature1Prefix: "Manage ",
     freeFeature1Bold: "1 active bike",
     freeFeature2: "Up to 3 receipt and photo uploads",

@@ -622,8 +622,8 @@ export const ptBR = {
     perMonth: "por mês",
     annualSaves: "anual economiza {amount}",
     trialDisclosure:
-      "Informe a forma de pagamento no checkout. Você não será cobrado por 7 dias; depois, o plano escolhido será cobrado e renovado automaticamente até o cancelamento.",
-    proCta: "Experimentar 7 dias grátis",
+      "Novos clientes Stripe: informe a forma de pagamento no checkout e não pague nada por 7 dias. Depois, o plano escolhido será cobrado e renovado automaticamente até o cancelamento. Clientes Stripe que já assinaram pagam no checkout.",
+    proCta: "Continuar para checkout",
     freeFeature1Prefix: "Gestão de ",
     freeFeature1Bold: "1 moto ativa",
     freeFeature2: "Até 3 uploads de recibos e fotos",

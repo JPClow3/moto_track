@@ -176,6 +176,16 @@ export function buildCheckoutSessionParams({
   siteUrl: string;
 }): Stripe.Checkout.SessionCreateParams {
   const customer = customerId?.trim();
+  const subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData =
+    {
+      metadata: { user_id: userId, interval },
+    };
+  if (!customer) {
+    subscriptionData.trial_period_days = PRO_TRIAL_DAYS;
+    subscriptionData.trial_settings = {
+      end_behavior: { missing_payment_method: "cancel" },
+    };
+  }
   const session: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     payment_method_collection: "always",
@@ -184,13 +194,7 @@ export function buildCheckoutSessionParams({
     success_url: `${siteUrl}/billing/conta?checkout=success`,
     cancel_url: `${siteUrl}/precos?checkout=cancelled`,
     metadata: { user_id: userId, interval },
-    subscription_data: {
-      trial_period_days: PRO_TRIAL_DAYS,
-      trial_settings: {
-        end_behavior: { missing_payment_method: "cancel" },
-      },
-      metadata: { user_id: userId, interval },
-    },
+    subscription_data: subscriptionData,
   };
   if (customer) session.customer = customer;
   else session.customer_email = email;

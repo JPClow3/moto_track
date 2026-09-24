@@ -24,9 +24,8 @@ test.describe("public smoke", () => {
       1,
     );
     await expect(
-      page.getByRole("button", {
-        name: /start 7-day free trial|experimentar 7 dias grátis/i,
-      }),
+      page.getByRole("button", { name: /continuar para checkout/i }),
     ).toBeVisible();
+    await expect(page.getByText(/novos clientes stripe/i)).toBeVisible();
   });
 });

@@ -41,6 +41,23 @@ describe("Stripe billing", () => {
     expect(params.payment_method_types).toBeUndefined();
   });
 
+  it("does not restart the free trial for an existing Stripe customer", () => {
+    const params = buildCheckoutSessionParams({
+      email: "rider@example.com",
+      userId: "user_123",
+      customerId: "cus_existing",
+      interval: "monthly",
+      priceId: "price_monthly",
+      siteUrl: "https://moto-track.net",
+    });
+    expect(params.customer).toBe("cus_existing");
+    expect(params.subscription_data).toMatchObject({
+      metadata: { user_id: "user_123", interval: "monthly" },
+    });
+    expect(params.subscription_data?.trial_period_days).toBeUndefined();
+    expect(params.subscription_data?.trial_settings).toBeUndefined();
+  });
+
   it("keeps Pro during past_due and opens a grace window", () => {
     const now = new Date("2026-07-23T12:00:00.000Z");
     expect(
