@@ -173,6 +173,10 @@
             {/if}
           </div>
 
+          <p class="mb-6 text-sm text-paper/70">
+            {$t("pricing.trialDisclosure")}
+          </p>
+
           <ul class="mb-8 flex-1 space-y-3.5">
             {#each proPlan as item, i (i)}
               <li class="flex items-start gap-3 text-sm text-paper/80">

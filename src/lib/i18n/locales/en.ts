@@ -547,6 +547,8 @@ export const en: Messages = {
     checkoutCancelled: "Checkout cancelled. No charge was made.",
     currentPlan: "Current plan",
     billingInterval: "{interval} billing.",
+    trialActive:
+      "Your 7-day free trial is active. The selected plan will be charged automatically after the trial until you cancel.",
     cancelPending:
       " Your plan stays active until the end of the current period.",
     graceUntil: " Pro access in grace until {date}.",
@@ -605,7 +607,9 @@ export const en: Messages = {
     priceConfirmedAtCheckout: "Price confirmed at checkout",
     perMonth: "per month",
     annualSaves: "yearly saves {amount}",
-    proCta: "Continue to checkout",
+    trialDisclosure:
+      "Add a payment method at checkout. We won’t charge you for 7 days; then the selected plan will be charged and renew automatically until you cancel.",
+    proCta: "Start 7-day free trial",
     freeFeature1Prefix: "Manage ",
     freeFeature1Bold: "1 active bike",
     freeFeature2: "Up to 3 receipt and photo uploads",

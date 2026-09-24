@@ -562,6 +562,8 @@ export const ptBR = {
     checkoutCancelled: "Checkout cancelado. Nenhuma cobrança foi realizada.",
     currentPlan: "Plano atual",
     billingInterval: "Cobrança {interval}.",
+    trialActive:
+      "Seu teste grátis de 7 dias está ativo. Depois, a cobrança do plano escolhido será automática até o cancelamento.",
     cancelPending: " Seu plano permanece ativo até o fim do período atual.",
     graceUntil: " Acesso Pro em carência até {date}.",
     pastDue:
@@ -619,7 +621,9 @@ export const ptBR = {
     priceConfirmedAtCheckout: "Preço confirmado no checkout",
     perMonth: "por mês",
     annualSaves: "anual economiza {amount}",
-    proCta: "Continuar para checkout",
+    trialDisclosure:
+      "Informe a forma de pagamento no checkout. Você não será cobrado por 7 dias; depois, o plano escolhido será cobrado e renovado automaticamente até o cancelamento.",
+    proCta: "Experimentar 7 dias grátis",
     freeFeature1Prefix: "Gestão de ",
     freeFeature1Bold: "1 moto ativa",
     freeFeature2: "Até 3 uploads de recibos e fotos",

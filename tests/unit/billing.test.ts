@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCheckoutSessionParams,
   parseBillingInterval,
+  PRO_TRIAL_DAYS,
   subscriptionProfileUpdate,
 } from "$server/domain/billing";
 
@@ -10,6 +12,33 @@ describe("Stripe billing", () => {
     expect(parseBillingInterval("yearly")).toBe("yearly");
     expect(parseBillingInterval("weekly")).toBe("monthly");
     expect(parseBillingInterval(null)).toBe("monthly");
+  });
+
+  it("starts a seven-day trial on the selected auto-renewing Price", () => {
+    expect(PRO_TRIAL_DAYS).toBe(7);
+    const params = buildCheckoutSessionParams({
+      email: "rider@example.com",
+      userId: "user_123",
+      interval: "yearly",
+      priceId: "price_yearly",
+      siteUrl: "https://moto-track.net",
+    });
+    expect(params).toMatchObject({
+      mode: "subscription",
+      payment_method_collection: "always",
+      customer_email: "rider@example.com",
+      line_items: [{ price: "price_yearly", quantity: 1 }],
+      success_url: "https://moto-track.net/billing/conta?checkout=success",
+      cancel_url: "https://moto-track.net/precos?checkout=cancelled",
+      subscription_data: {
+        trial_period_days: 7,
+        trial_settings: {
+          end_behavior: { missing_payment_method: "cancel" },
+        },
+        metadata: { user_id: "user_123", interval: "yearly" },
+      },
+    });
+    expect(params.payment_method_types).toBeUndefined();
   });
 
   it("keeps Pro during past_due and opens a grace window", () => {
@@ -69,6 +98,30 @@ describe("Stripe billing", () => {
       billing_interval: "yearly",
       cancel_at_period_end: true,
       current_period_end: "2027-01-15T08:00:00.000Z",
+    });
+  });
+
+  it("grants Pro during a Stripe trial", () => {
+    expect(
+      subscriptionProfileUpdate({
+        id: "sub_trialing",
+        customer: "cus_trial",
+        status: "trialing",
+        cancel_at_period_end: false,
+        items: {
+          data: [
+            {
+              price: { recurring: { interval: "month" } },
+              current_period_end: 1_800_000_000,
+            },
+          ],
+        },
+      }),
+    ).toMatchObject({
+      stripe_subscription_status: "trialing",
+      plan: "pro",
+      grace_until: null,
+      billing_interval: "monthly",
     });
   });
 });
