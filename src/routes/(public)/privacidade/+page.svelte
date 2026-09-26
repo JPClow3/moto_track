@@ -74,6 +74,7 @@
 
 <svelte:head>
   <title>Política de Privacidade · Moto Track</title>
+  <link rel="canonical" href="https://moto-track.net/privacidade" />
   <meta
     name="description"
     content="Política de Privacidade e informações LGPD do Moto Track."

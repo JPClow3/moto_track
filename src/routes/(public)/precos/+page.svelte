@@ -56,7 +56,10 @@
   $: formattedAnnualSavings = formatMoney($locale, annualSavings);
 </script>
 
-<svelte:head><title>{$t("pricing.title")} · Moto Track</title></svelte:head>
+<svelte:head>
+  <title>{$t("pricing.title")} · Moto Track</title>
+  <link rel="canonical" href="https://moto-track.net/precos" />
+</svelte:head>
 
 <div class="relative overflow-hidden px-6 py-24">
   <div class="grid-backdrop" aria-hidden="true"></div>

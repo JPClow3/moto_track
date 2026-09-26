@@ -26,6 +26,7 @@
 
 <svelte:head>
   <title>Blog · Guias de manutenção de moto — Moto Track</title>
+  <link rel="canonical" href="https://moto-track.net/blog" />
   <meta
     name="description"
     content="Guias práticos de manutenção de moto: troca de óleo, corrente, freios, pneus e consumo. Passo a passo com especificações reais por modelo."

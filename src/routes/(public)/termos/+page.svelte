@@ -86,6 +86,7 @@
 
 <svelte:head>
   <title>Termos de Uso · Moto Track</title>
+  <link rel="canonical" href="https://moto-track.net/termos" />
   <meta
     name="description"
     content="Termos de Uso do Moto Track: assinatura, responsabilidades e limitações do serviço."
