@@ -1,4 +1,7 @@
-<svelte:head><title>Cancelamento · Moto Track</title></svelte:head>
+<svelte:head>
+  <title>Cancelamento · Moto Track</title>
+  <link rel="canonical" href="https://moto-track.net/cancelamento" />
+</svelte:head>
 
 <section class="relative overflow-hidden border-b border-[var(--line)]">
   <div class="grid-backdrop" aria-hidden="true"></div>

@@ -286,6 +286,7 @@
 
 <svelte:head>
   <title>Roadmap · Moto Track</title>
+  <link rel="canonical" href="https://moto-track.net/roadmap" />
   <meta
     name="description"
     content="O que já funciona no Moto Track, o que vem a seguir e o que ainda está em estudo. Roadmap público e atualizado pela equipe."
