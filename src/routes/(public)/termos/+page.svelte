@@ -40,7 +40,8 @@
       id: "assinatura",
       title: "Assinatura Pro e cobrança",
       paragraphs: [
-        "O plano Pro é cobrado de forma recorrente pela Stripe. Os valores, a periodicidade e os métodos de pagamento aceitos são exibidos antes da confirmação da assinatura. A área Conta direciona ao Portal de cobrança para gerenciar a assinatura.",
+        "O plano Pro é cobrado de forma recorrente pela Dodo Payments, que atua como comerciante responsável pela venda (Merchant of Record). Os valores, a periodicidade, os tributos aplicáveis e os métodos de pagamento aceitos são exibidos antes da confirmação da assinatura. A área Conta direciona ao Portal de cobrança para gerenciar a assinatura.",
+        "A primeira assinatura Pro inclui um teste grátis de 7 dias com forma de pagamento informada no checkout. Ao fim do teste, o plano escolhido é cobrado e renovado automaticamente. Cancele antes da primeira cobrança para não pagar pelo plano. Uma nova assinatura após já ter contratado Pro não concede outro teste grátis.",
         "Você pode cancelar a assinatura a qualquer momento pelo Portal de cobrança. O acesso Pro continua até o fim do período já pago e não há cobrança seguinte.",
         `Na primeira contratação, você pode desistir em até 7 dias e receber o reembolso integral, conforme o art. 49 do Código de Defesa do Consumidor; para isso, escreva para ${supportEmail}. Fora desse prazo, não há reembolso proporcional do período em curso, salvo quando exigido por lei.`,
       ],
@@ -122,7 +123,7 @@
     <p
       class="label-tech mt-10 border-t border-[var(--line)] pt-5 text-[var(--muted)]"
     >
-      Última atualização: 23 de setembro de 2026
+      Última atualização: 29 de setembro de 2026
     </p>
   </div>
 </section>

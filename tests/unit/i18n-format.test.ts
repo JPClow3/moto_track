@@ -23,7 +23,7 @@ describe("money formatting", () => {
   });
 
   it("keeps the amount in BRL for an English reader and only changes separators", () => {
-    // The point of the currency decision: Stripe charges BRL, so an English
+    // The point of the currency decision: Dodo Payments charges BRL, so an English
     // reader must still see a BRL figure — never a converted one.
     const formatted = plain(formatMoney("en", 1990));
     expect(formatted).toContain("19.90");

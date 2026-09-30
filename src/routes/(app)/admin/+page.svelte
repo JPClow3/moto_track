@@ -82,7 +82,7 @@
       <MetricCard label="Usuários" value={String(data.counts.users ?? 0)} />
       <MetricCard label="Artigos" value={String(data.counts.articles ?? 0)} />
       <MetricCard
-        label="Eventos Stripe"
+        label="Eventos Dodo Payments"
         value={String(data.counts.events ?? 0)}
       />
       <MetricCard label="Dados" value={String(data.counts.requests ?? 0)} />

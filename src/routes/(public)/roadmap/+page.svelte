@@ -93,7 +93,7 @@
         },
         {
           title: "Assinatura Pro",
-          body: "Checkout Pro, portal Stripe e atualização automática do status da assinatura.",
+          body: "Checkout Pro, portal Dodo Payments e atualização automática do status da assinatura.",
         },
         {
           title: "Conta e pedidos de dados",
@@ -466,7 +466,7 @@
   }
 
   /* Segmented gauge. The ticks are painted in --bg *over* both the fill and the
-     empty track, so they read as physical gaps in a dial instead of stripes. */
+     empty track, so they read as physical gaps in a dial instead of bands. */
   .gauge .track {
     position: relative;
     height: 0.75rem;

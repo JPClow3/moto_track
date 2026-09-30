@@ -9,9 +9,9 @@ on:
           to authorize destructive smoke-test cleanup on that account.
         required: true
         type: string
-      stripe_mode_confirmation:
+      dodo_mode_confirmation:
         description: >-
-          Type I AUTHORIZE LIVE-MODE STRIPE CHECKOUT SESSION CREATION WITHOUT PAYMENT
+          Type I AUTHORIZE LIVE-MODE DODO CHECKOUT SESSION CREATION WITHOUT PAYMENT
           to confirm the production run may create a live-mode Checkout session.
         required: true
         type: string
@@ -40,7 +40,7 @@ jobs:
       PRODUCTION_PROVIDER_SMOKE: true
       PROVIDER_SMOKE_MARKER: PROVIDER-SMOKE-${{ github.run_id }}-${{ github.run_attempt }}
       TARGET_ACCOUNT_CONFIRMATION: ${{ inputs.target_account_confirmation }}
-      STRIPE_MODE_CONFIRMATION: ${{ inputs.stripe_mode_confirmation }}
+      DODO_MODE_CONFIRMATION: ${{ inputs.dodo_mode_confirmation }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -57,7 +57,7 @@ jobs:
             echo "Confirm the target is a dedicated disposable production account before running this workflow." >&2
             exit 1
           fi
-          if [ "$STRIPE_MODE_CONFIRMATION" != "I AUTHORIZE LIVE-MODE STRIPE CHECKOUT SESSION CREATION WITHOUT PAYMENT" ]; then
+          if [ "$DODO_MODE_CONFIRMATION" != "I AUTHORIZE LIVE-MODE DODO CHECKOUT SESSION CREATION WITHOUT PAYMENT" ]; then
             echo "Explicit confirmation of live-mode Checkout creation is required." >&2
             exit 1
           fi

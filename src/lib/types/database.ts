@@ -9,6 +9,12 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      billing_configuration: {
+        Row: { id: number; environment: "test_mode" | "live_mode" };
+        Insert: { id?: number; environment?: "test_mode" | "live_mode" };
+        Update: { id?: number; environment?: "test_mode" | "live_mode" };
+        Relationships: [];
+      };
       legacy_id_map: {
         Row: {
           source_table: string;
@@ -1547,15 +1553,20 @@ export type Database = {
       };
       subscription_profiles: {
         Row: {
+          billing_provider: "dodo" | "legacy";
+          billing_environment: "test_mode" | "live_mode" | null;
+          billing_checkout_session_id: string;
+          billing_checkout_url: string;
+          billing_checkout_created_at: string | null;
           id: string;
           owner_id: string;
           plan: Database["public"]["Enums"]["billing_plan"];
           billing_interval:
             Database["public"]["Enums"]["billing_interval"] | null;
-          stripe_customer_id: string;
-          stripe_subscription_id: string;
-          stripe_subscription_status: string;
-          stripe_price_id: string;
+          billing_customer_id: string;
+          billing_subscription_id: string;
+          billing_subscription_status: string;
+          billing_product_id: string;
           current_period_end: string | null;
           cancel_at_period_end: boolean;
           grace_until: string | null;
@@ -1569,15 +1580,20 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          billing_provider?: "dodo" | "legacy";
+          billing_environment?: "test_mode" | "live_mode" | null;
+          billing_checkout_session_id?: string;
+          billing_checkout_url?: string;
+          billing_checkout_created_at?: string | null;
           id?: string;
           owner_id: string;
           plan?: Database["public"]["Enums"]["billing_plan"];
           billing_interval?:
             Database["public"]["Enums"]["billing_interval"] | null;
-          stripe_customer_id?: string;
-          stripe_subscription_id?: string;
-          stripe_subscription_status?: string;
-          stripe_price_id?: string;
+          billing_customer_id?: string;
+          billing_subscription_id?: string;
+          billing_subscription_status?: string;
+          billing_product_id?: string;
           current_period_end?: string | null;
           cancel_at_period_end?: boolean;
           grace_until?: string | null;
@@ -1591,15 +1607,20 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          billing_provider?: "dodo" | "legacy";
+          billing_environment?: "test_mode" | "live_mode" | null;
+          billing_checkout_session_id?: string;
+          billing_checkout_url?: string;
+          billing_checkout_created_at?: string | null;
           id?: string;
           owner_id?: string;
           plan?: Database["public"]["Enums"]["billing_plan"];
           billing_interval?:
             Database["public"]["Enums"]["billing_interval"] | null;
-          stripe_customer_id?: string;
-          stripe_subscription_id?: string;
-          stripe_subscription_status?: string;
-          stripe_price_id?: string;
+          billing_customer_id?: string;
+          billing_subscription_id?: string;
+          billing_subscription_status?: string;
+          billing_product_id?: string;
           current_period_end?: string | null;
           cancel_at_period_end?: boolean;
           grace_until?: string | null;
@@ -1616,8 +1637,9 @@ export type Database = {
       };
       billing_events: {
         Row: {
+          billing_provider: "dodo" | "legacy";
           id: string;
-          stripe_event_id: string;
+          billing_event_id: string;
           event_type: string;
           payload: Json;
           processed_at: string | null;
@@ -1626,8 +1648,9 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          billing_provider?: "dodo" | "legacy";
           id?: string;
-          stripe_event_id: string;
+          billing_event_id: string;
           event_type: string;
           payload?: Json;
           processed_at?: string | null;
@@ -1636,8 +1659,9 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          billing_provider?: "dodo" | "legacy";
           id?: string;
-          stripe_event_id?: string;
+          billing_event_id?: string;
           event_type?: string;
           payload?: Json;
           processed_at?: string | null;
@@ -2081,21 +2105,27 @@ export type Database = {
       };
       account_deletion_tombstones: {
         Row: {
+          billing_provider: "dodo" | "legacy";
+          billing_environment: "test_mode" | "live_mode" | null;
           owner_id: string;
-          stripe_customer_id: string;
-          stripe_subscription_id: string;
+          billing_customer_id: string;
+          billing_subscription_id: string;
           deleted_at: string;
         };
         Insert: {
+          billing_provider?: "dodo" | "legacy";
+          billing_environment?: "test_mode" | "live_mode" | null;
           owner_id: string;
-          stripe_customer_id?: string;
-          stripe_subscription_id?: string;
+          billing_customer_id?: string;
+          billing_subscription_id?: string;
           deleted_at?: string;
         };
         Update: {
+          billing_provider?: "dodo" | "legacy";
+          billing_environment?: "test_mode" | "live_mode" | null;
           owner_id?: string;
-          stripe_customer_id?: string;
-          stripe_subscription_id?: string;
+          billing_customer_id?: string;
+          billing_subscription_id?: string;
           deleted_at?: string;
         };
         Relationships: [];

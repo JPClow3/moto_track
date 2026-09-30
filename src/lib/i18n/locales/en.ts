@@ -543,17 +543,18 @@ export const en: Messages = {
     eyebrow: "Subscription",
     heading: "Account and billing",
     checkoutPending:
-      "Payment received. We are confirming your subscription with Stripe — refresh this page in a moment.",
+      "You're back from checkout. We are checking your subscription with Dodo Payments — refresh this page in a moment.",
     checkoutCancelled: "Checkout cancelled. No charge was made.",
     currentPlan: "Current plan",
     billingInterval: "{interval} billing.",
+    nextBillingDate: "Next billing date: {date}.",
     trialActive:
       "Your 7-day free trial is active. The selected plan will be charged automatically after the trial until you cancel.",
     cancelPending:
       " Your plan stays active until the end of the current period.",
     graceUntil: " Pro access in grace until {date}.",
     pastDue:
-      "There is a problem with your payment. Update your payment method in the Stripe portal.",
+      "There is a problem with your payment. Update your payment method in the Dodo Payments portal.",
     manageSubscription: "Manage subscription",
     upgrade: "Upgrade to Pro",
     updatePayment: "Update payment",
@@ -608,7 +609,7 @@ export const en: Messages = {
     perMonth: "per month",
     annualSaves: "yearly saves {amount}",
     trialDisclosure:
-      "New Stripe customers: add a payment method at checkout and pay nothing for 7 days. After that, the selected plan is charged and renews automatically until you cancel. Returning Stripe customers are charged at checkout.",
+      "First Pro subscription: add a payment method at the Dodo Payments checkout and pay nothing for 7 days. After that, the selected plan is charged and renews automatically until you cancel. Returning Pro subscribers are charged at checkout.",
     proCta: "Continue to checkout",
     freeFeature1Prefix: "Manage ",
     freeFeature1Bold: "1 active bike",
@@ -623,7 +624,7 @@ export const en: Messages = {
     proFeature4Suffix: " for professionals",
     proFeature5: "Sale report with the Pro seal",
     checkoutError:
-      "We couldn't start the checkout just now. Try again in a moment, or contact support if it keeps happening.",
+      "We couldn't open checkout. Contact support to check your subscription before trying again.",
     checkoutCancelled:
       "Checkout cancelled. You can try again whenever you like.",
   },

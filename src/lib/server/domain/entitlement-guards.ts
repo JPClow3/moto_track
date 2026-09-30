@@ -1,4 +1,5 @@
 import type { Sql } from "postgres";
+import { runtimeEnv } from "$server/runtime";
 import {
   FREE_REMINDER_LIMIT,
   FREE_UPLOAD_LIMIT,
@@ -19,16 +20,28 @@ export async function loadSubscriptionProfile(
   ownerId: string,
 ): Promise<SubscriptionProfile | null> {
   const [profile] = await db<SubscriptionProfile[]>`
-    select plan, stripe_subscription_status, grace_until
+    select plan, billing_provider, billing_environment, billing_subscription_status, grace_until,
+      (select environment from billing_configuration where id = 1) as entitlement_environment
     from subscription_profiles
     where owner_id = ${ownerId}
   `.catch(() => [] as SubscriptionProfile[]);
   return profile ?? null;
 }
 
-export async function assertCanCreateUpload(db: Sql, ownerId: string) {
+export async function assertCanCreateUpload(
+  db: Sql,
+  ownerId: string,
+  platform?: App.Platform,
+) {
   const profile = await loadSubscriptionProfile(db, ownerId);
-  if (hasProAccess(profile)) return null;
+  if (
+    hasProAccess(
+      profile,
+      new Date(),
+      runtimeEnv(platform).DODO_PAYMENTS_ENVIRONMENT ?? "live_mode",
+    )
+  )
+    return null;
   const [{ count }] = await db<Array<{ count: number }>>`
     select count(*)::int from object_files where owner_id = ${ownerId}
   `;
@@ -38,9 +51,20 @@ export async function assertCanCreateUpload(db: Sql, ownerId: string) {
   return null;
 }
 
-export async function assertCanCreateReminder(db: Sql, ownerId: string) {
+export async function assertCanCreateReminder(
+  db: Sql,
+  ownerId: string,
+  platform?: App.Platform,
+) {
   const profile = await loadSubscriptionProfile(db, ownerId);
-  if (hasProAccess(profile)) return null;
+  if (
+    hasProAccess(
+      profile,
+      new Date(),
+      runtimeEnv(platform).DODO_PAYMENTS_ENVIRONMENT ?? "live_mode",
+    )
+  )
+    return null;
   const [{ count }] = await db<Array<{ count: number }>>`
     select count(*)::int from reminders
     where owner_id = ${ownerId} and is_active = true
@@ -55,9 +79,17 @@ export async function assertCanCreateWorkSession(
   db: Sql,
   ownerId: string,
   now = new Date(),
+  platform?: App.Platform,
 ) {
   const profile = await loadSubscriptionProfile(db, ownerId);
-  if (hasProAccess(profile)) return null;
+  if (
+    hasProAccess(
+      profile,
+      now,
+      runtimeEnv(platform).DODO_PAYMENTS_ENVIRONMENT ?? "live_mode",
+    )
+  )
+    return null;
   const monthStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
   )

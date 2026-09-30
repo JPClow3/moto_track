@@ -23,6 +23,11 @@ test.describe("authenticated garage and billing", () => {
     await expect(
       page.getByRole("link", { name: /export|exportação/i }),
     ).toBeVisible();
+
+    await page.goto("/billing/conta?checkout=returned");
+    await expect(
+      page.getByText(/estamos verificando sua assinatura/i),
+    ).toBeVisible();
   });
 });
 

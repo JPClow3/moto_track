@@ -5,7 +5,7 @@ import {
   enqueueObjectDeletions,
   lockObjectOwner,
 } from "$server/r2/files";
-import { terminateStripeBillingForAccount } from "$server/domain/billing";
+import { terminateBillingForAccount } from "$server/domain/billing";
 import { getWorkerOperationsSummary } from "$server/domain/worker-operations";
 
 function messageFrom(err: unknown) {
@@ -113,8 +113,10 @@ export const actions = {
           owner_id: string;
           request_type: string;
           status: string;
-          stripe_customer_id: string;
-          stripe_subscription_id: string;
+          billing_provider: "dodo" | "legacy";
+          billing_environment: "test_mode" | "live_mode" | null;
+          billing_customer_id: string;
+          billing_subscription_id: string;
         }
       | undefined;
     try {
@@ -123,13 +125,17 @@ export const actions = {
           owner_id: string;
           request_type: string;
           status: string;
-          stripe_customer_id: string;
-          stripe_subscription_id: string;
+          billing_provider: "dodo" | "legacy";
+          billing_environment: "test_mode" | "live_mode" | null;
+          billing_customer_id: string;
+          billing_subscription_id: string;
         }>
       >`
         select request.owner_id, request.request_type, request.status,
-          coalesce(subscription.stripe_customer_id, '') as stripe_customer_id,
-          coalesce(subscription.stripe_subscription_id, '') as stripe_subscription_id
+          coalesce(subscription.billing_provider, 'dodo') as billing_provider,
+          subscription.billing_environment,
+          coalesce(subscription.billing_customer_id, '') as billing_customer_id,
+          coalesce(subscription.billing_subscription_id, '') as billing_subscription_id
         from account_data_requests request
         left join subscription_profiles subscription
           on subscription.owner_id = request.owner_id
@@ -144,45 +150,60 @@ export const actions = {
     }
 
     if (existing.request_type === "deletion") {
-      // Stripe is external to the Neon cascade and must be terminated first.
-      // A provider failure leaves the request open, preserving every local
-      // billing reference so staff can retry without orphaning live charges.
-      try {
-        await terminateStripeBillingForAccount(
-          {
-            customerId: existing.stripe_customer_id,
-            subscriptionId: existing.stripe_subscription_id,
-          },
-          platform,
-        );
-      } catch (err) {
-        const retryNote =
-          `Falha ao encerrar cobrança na Stripe; dados locais preservados. Tente novamente. ${messageFrom(err)}`.slice(
-            0,
-            1000,
-          );
-        await locals.db`
-          update account_data_requests
-          set notes = ${retryNote}
-          where id = ${id}
-            and owner_id = ${existing.owner_id}
-            and status = 'open'
-        `.catch(() => undefined);
-        return fail(502, {
-          message:
-            "Não foi possível encerrar a cobrança na Stripe. Os dados locais foram preservados e a solicitação continua aberta para nova tentativa.",
-        });
-      }
-
-      // Most owner-scoped tables cascade from neon_auth."user". Benchmark
-      // contributions intentionally have no owner_id, so remove only samples
-      // reached through this owner's guard rows before the auth cascade erases
-      // that reversible association.
+      const deletionOwnerId = existing.owner_id;
+      // Checkout, webhooks, and account deletion share the same owner lock.
+      // Provider termination must use a fresh profile while holding this lock;
+      // otherwise a checkout can commit a new customer between cancellation
+      // and the local cascade. Provider failures roll back every local change.
       let objectKeys: string[];
+      let billingTerminationStarted = false;
+      let billingTerminated = false;
       try {
         objectKeys = await locals.db.begin(async (transaction) => {
           const db = transaction as unknown as typeof locals.db;
-          await lockObjectOwner(db, existing.owner_id);
+          await db`select pg_advisory_xact_lock(hashtextextended(${deletionOwnerId}, 0))`;
+          await lockObjectOwner(db, deletionOwnerId);
+          const [fresh] = await db<Array<NonNullable<typeof existing>>>`
+            select request.owner_id, request.request_type, request.status,
+              coalesce(subscription.billing_provider, 'dodo') as billing_provider,
+              subscription.billing_environment,
+              coalesce(subscription.billing_customer_id, '') as billing_customer_id,
+              coalesce(subscription.billing_subscription_id, '') as billing_subscription_id
+            from account_data_requests request
+            left join subscription_profiles subscription
+              on subscription.owner_id = request.owner_id
+            where request.id = ${id} and request.owner_id = ${deletionOwnerId}
+            for update of request
+          `;
+          if (
+            !fresh ||
+            fresh.status !== "open" ||
+            fresh.request_type !== "deletion"
+          ) {
+            throw new Error(
+              "A solicitação deixou de estar aberta antes da exclusão.",
+            );
+          }
+          existing = fresh;
+          billingTerminationStarted = true;
+          if (
+            existing.billing_provider !== "dodo" &&
+            (existing.billing_customer_id || existing.billing_subscription_id)
+          ) {
+            throw new Error(
+              "Confirme o encerramento da cobrança anterior antes de excluir esta conta.",
+            );
+          }
+          await terminateBillingForAccount(
+            {
+              customerId: existing.billing_customer_id,
+              subscriptionId: existing.billing_subscription_id,
+              environment: existing.billing_environment,
+            },
+            platform,
+          );
+          billingTerminated = true;
+          // Keep benchmark associations until after billing is blocked/canceled.
           const files = await db<Array<{ object_key: string }>>`
             select object_key from object_files
             where owner_id = ${existing.owner_id}
@@ -203,16 +224,22 @@ export const actions = {
           await db`
             insert into account_deletion_tombstones (
               owner_id,
-              stripe_customer_id,
-              stripe_subscription_id
+              billing_provider,
+              billing_environment,
+              billing_customer_id,
+              billing_subscription_id
             ) values (
               ${existing.owner_id},
-              ${existing.stripe_customer_id},
-              ${existing.stripe_subscription_id}
+              ${existing.billing_provider},
+              ${existing.billing_environment},
+              ${existing.billing_customer_id},
+              ${existing.billing_subscription_id}
             )
             on conflict (owner_id) do update set
-              stripe_customer_id = excluded.stripe_customer_id,
-              stripe_subscription_id = excluded.stripe_subscription_id,
+              billing_provider = excluded.billing_provider,
+              billing_environment = excluded.billing_environment,
+              billing_customer_id = excluded.billing_customer_id,
+              billing_subscription_id = excluded.billing_subscription_id,
               deleted_at = now()
           `;
           const deleted = await db<Array<{ id: string }>>`
@@ -234,9 +261,21 @@ export const actions = {
           return files.map((file) => file.object_key);
         });
       } catch (err) {
-        return fail(400, {
-          message: `A cobrança foi encerrada, mas a exclusão local falhou. A solicitação continua aberta e pode ser tentada novamente. ${messageFrom(err)}`,
-        });
+        const retryNote = (
+          billingTerminated
+            ? `A cobrança foi encerrada, mas a exclusão local falhou. A solicitação continua aberta e pode ser tentada novamente. ${messageFrom(err)}`
+            : `Não foi possível concluir a exclusão e encerrar a cobrança. Os dados locais foram preservados e a solicitação continua aberta. ${messageFrom(err)}`
+        ).slice(0, 1000);
+        await locals.db`
+          update account_data_requests set notes = ${retryNote}
+          where id = ${id} and owner_id = ${existing.owner_id} and status = 'open'
+        `.catch(() => undefined);
+        return fail(
+          billingTerminationStarted && !billingTerminated ? 502 : 400,
+          {
+            message: retryNote,
+          },
+        );
       }
       await deleteQueuedObjectsBestEffort({
         db: locals.db,

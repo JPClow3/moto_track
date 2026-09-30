@@ -24,25 +24,27 @@ create index if not exists object_deletion_queue_due_idx
   on public.object_deletion_queue (next_attempt_at, created_at);
 
 -- Keep a minimal, non-PII provider tombstone after the auth-user cascade so
--- late Stripe cancellation webhooks become successful no-ops instead of
+-- late Dodo Payments cancellation webhooks become successful no-ops instead of
 -- repeatedly attempting to recreate a profile for a deleted owner.
 create table if not exists public.account_deletion_tombstones (
   owner_id uuid primary key,
-  stripe_customer_id text not null default '',
-  stripe_subscription_id text not null default '',
+  billing_provider text not null default 'dodo' check (billing_provider in ('dodo', 'legacy')),
+  billing_environment text check (billing_environment in ('test_mode', 'live_mode')),
+  billing_customer_id text not null default '',
+  billing_subscription_id text not null default '',
   deleted_at timestamptz not null default now()
 );
 
 create index if not exists account_deletion_tombstones_customer_idx
-  on public.account_deletion_tombstones (stripe_customer_id)
-  where stripe_customer_id <> '';
+  on public.account_deletion_tombstones (billing_customer_id)
+  where billing_customer_id <> '';
 
 create index if not exists account_deletion_tombstones_subscription_idx
-  on public.account_deletion_tombstones (stripe_subscription_id)
-  where stripe_subscription_id <> '';
+  on public.account_deletion_tombstones (billing_subscription_id)
+  where billing_subscription_id <> '';
 
 -- Webhook idempotency only needs the event id/type and processing status.
--- Historical raw Stripe payloads can contain customer contact data and must
+-- Historical raw provider payloads can contain customer contact data and must
 -- not outlive an account without an owner relationship.
 update public.billing_events
 set payload = '{}'::jsonb

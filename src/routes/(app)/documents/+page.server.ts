@@ -11,12 +11,12 @@ const base = featureActions("documents");
 
 export const actions = {
   record: base.default,
-  createReminder: async ({ request, locals }) => {
+  createReminder: async ({ request, locals, platform }) => {
     const f = await request.formData();
     const id = String(f.get("id") ?? "");
     const ownerId = locals.user!.id;
 
-    const blocked = await assertCanCreateReminder(locals.db, ownerId);
+    const blocked = await assertCanCreateReminder(locals.db, ownerId, platform);
     if (blocked) return fail(403, { message: blocked });
 
     let doc:

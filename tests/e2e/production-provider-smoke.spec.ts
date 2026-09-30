@@ -7,7 +7,7 @@ test.describe("production provider acceptance", () => {
   test.skip(!enabled, "Run only from the protected production smoke workflow.");
   test.setTimeout(240_000);
 
-  test("auth, OCR, Stripe, R2 ownership and LGPD export are wired", async ({
+  test("auth, OCR, Dodo Payments, R2 ownership and LGPD export are wired", async ({
     page,
   }, testInfo) => {
     const receiptPath = testInfo.outputPath("provider-receipt.png");
@@ -183,14 +183,17 @@ test.describe("production provider acceptance", () => {
       expect(() => JSON.parse(body)).not.toThrow();
     });
 
-    // Checkout is last so an externally paused Stripe account cannot hide
+    // Checkout is last so unavailable payment configuration cannot hide
     // the independent production checks for OCR, storage, and export.
-    await test.step("Stripe creates the explicitly authorized live checkout session", async () => {
+    await test.step("Dodo Payments creates the explicitly authorized live checkout session", async () => {
+      expect(process.env.DODO_MODE_CONFIRMATION).toBe(
+        "I AUTHORIZE LIVE-MODE DODO CHECKOUT SESSION CREATION WITHOUT PAYMENT",
+      );
       await page.goto("/billing/checkout?interval=monthly", {
         waitUntil: "domcontentloaded",
       });
       expect(new URL(page.url()).hostname).toMatch(
-        /(^|\.)checkout\.stripe\.com$/,
+        /^checkout\.dodopayments\.com$/,
       );
     });
   });

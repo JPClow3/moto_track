@@ -558,16 +558,17 @@ export const ptBR = {
     eyebrow: "Assinatura",
     heading: "Conta e assinatura",
     checkoutPending:
-      "Pagamento recebido. Estamos confirmando sua assinatura com a Stripe — atualize esta página em alguns instantes.",
+      "Você voltou do checkout. Estamos verificando sua assinatura com a Dodo Payments — atualize esta página em alguns instantes.",
     checkoutCancelled: "Checkout cancelado. Nenhuma cobrança foi realizada.",
     currentPlan: "Plano atual",
     billingInterval: "Cobrança {interval}.",
+    nextBillingDate: "Próxima cobrança: {date}.",
     trialActive:
       "Seu teste grátis de 7 dias está ativo. Depois, a cobrança do plano escolhido será automática até o cancelamento.",
     cancelPending: " Seu plano permanece ativo até o fim do período atual.",
     graceUntil: " Acesso Pro em carência até {date}.",
     pastDue:
-      "Há um problema com o pagamento. Atualize sua forma de pagamento no portal Stripe.",
+      "Há um problema com o pagamento. Atualize sua forma de pagamento no portal Dodo Payments.",
     manageSubscription: "Gerenciar assinatura",
     upgrade: "Assinar Pro",
     updatePayment: "Atualizar pagamento",
@@ -622,7 +623,7 @@ export const ptBR = {
     perMonth: "por mês",
     annualSaves: "anual economiza {amount}",
     trialDisclosure:
-      "Novos clientes Stripe: informe a forma de pagamento no checkout e não pague nada por 7 dias. Depois, o plano escolhido será cobrado e renovado automaticamente até o cancelamento. Clientes Stripe que já assinaram pagam no checkout.",
+      "Primeira assinatura Pro: informe a forma de pagamento no checkout da Dodo Payments e não pague nada por 7 dias. Depois, o plano escolhido será cobrado e renovado automaticamente até o cancelamento. Quem já assinou Pro paga no checkout.",
     proCta: "Continuar para checkout",
     freeFeature1Prefix: "Gestão de ",
     freeFeature1Bold: "1 moto ativa",
@@ -637,7 +638,7 @@ export const ptBR = {
     proFeature4Suffix: " para profissionais",
     proFeature5: "Relatório de venda com selo Pro",
     checkoutError:
-      "Não foi possível iniciar o checkout agora. Tente novamente em instantes ou fale com o suporte se o problema continuar.",
+      "Não foi possível abrir o checkout. Fale com o suporte para verificar sua assinatura antes de tentar novamente.",
     checkoutCancelled:
       "Checkout cancelado. Você pode tentar novamente quando quiser.",
   },

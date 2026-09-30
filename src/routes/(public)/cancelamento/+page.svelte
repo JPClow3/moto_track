@@ -12,8 +12,13 @@
     </p>
     <h1 class="display mt-5 text-5xl sm:text-6xl">Cancelamento</h1>
     <p class="mt-5 max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
-      Assinaturas Pro são gerenciadas diretamente pelo portal do Stripe —
-      cancele quando quiser, sem burocracia e sem precisar falar com ninguém.
+      Assinaturas Pro são gerenciadas pelo portal da Dodo Payments — cancele
+      quando quiser, sem burocracia e sem precisar falar com ninguém.
+    </p>
+    <p class="mt-4 max-w-2xl leading-relaxed text-[var(--muted)]">
+      O cancelamento impede a próxima renovação. Seu acesso Pro continua até o
+      fim do período atual. Durante o teste grátis de 7 dias, cancele antes da
+      primeira cobrança para não pagar pelo plano.
     </p>
     <a href="/billing/portal" class="button-secondary mt-8"
       >Abrir portal de cobrança</a

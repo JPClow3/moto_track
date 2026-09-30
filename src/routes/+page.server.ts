@@ -29,7 +29,7 @@ async function fetchLatestArticles(
 export async function load({ platform, locals }) {
   // The landing page is a pitch to people who don't have an account. Someone
   // who is already signed in wants their garage, not the pitch — so `/` is the
-  // dashboard for them. Redirect before the Stripe/articles fetches so we don't
+  // dashboard for them. Redirect before the Dodo Payments/articles fetches so we don't
   // pay for work whose output is thrown away.
   if (locals.user) throw redirect(303, "/dashboard");
 

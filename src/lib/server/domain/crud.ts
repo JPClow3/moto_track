@@ -306,11 +306,20 @@ export function featureActions(slug: string): Actions {
 
       const creating = !(intent === "update" && id);
       if (creating && feature.slug === "reminders") {
-        const blocked = await assertCanCreateReminder(locals.db, ownerId);
+        const blocked = await assertCanCreateReminder(
+          locals.db,
+          ownerId,
+          platform,
+        );
         if (blocked) return fail(403, { message: blocked });
       }
       if (creating && feature.slug === "trabalho") {
-        const blocked = await assertCanCreateWorkSession(locals.db, ownerId);
+        const blocked = await assertCanCreateWorkSession(
+          locals.db,
+          ownerId,
+          new Date(),
+          platform,
+        );
         if (blocked) return fail(403, { message: blocked });
       }
 
@@ -325,7 +334,11 @@ export function featureActions(slug: string): Actions {
       )) {
         const file = formData.get(field.key);
         if (!(file instanceof File) || file.size === 0) continue;
-        const blocked = await assertCanCreateUpload(locals.db, ownerId);
+        const blocked = await assertCanCreateUpload(
+          locals.db,
+          ownerId,
+          platform,
+        );
         if (blocked) return fail(403, { message: blocked });
         let uploaded;
         try {
