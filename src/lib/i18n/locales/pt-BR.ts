@@ -558,7 +558,7 @@ export const ptBR = {
     eyebrow: "Assinatura",
     heading: "Conta e assinatura",
     checkoutPending:
-      "Checkout concluído. Estamos confirmando sua assinatura com a Dodo Payments — atualize esta página em alguns instantes.",
+      "Você voltou do checkout. Estamos verificando sua assinatura com a Dodo Payments — atualize esta página em alguns instantes.",
     checkoutCancelled: "Checkout cancelado. Nenhuma cobrança foi realizada.",
     currentPlan: "Plano atual",
     billingInterval: "Cobrança {interval}.",
@@ -638,7 +638,7 @@ export const ptBR = {
     proFeature4Suffix: " para profissionais",
     proFeature5: "Relatório de venda com selo Pro",
     checkoutError:
-      "Não foi possível iniciar o checkout agora. Tente novamente em instantes ou fale com o suporte se o problema continuar.",
+      "Não foi possível abrir o checkout. Fale com o suporte para verificar sua assinatura antes de tentar novamente.",
     checkoutCancelled:
       "Checkout cancelado. Você pode tentar novamente quando quiser.",
   },

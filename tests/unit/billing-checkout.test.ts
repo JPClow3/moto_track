@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   productRetrieve: vi.fn(),
   checkoutCreate: vi.fn(),
   checkoutRetrieve: vi.fn(),
+  paymentList: vi.fn(),
+  paymentRetrieve: vi.fn(),
 }));
 vi.mock("$env/dynamic/private", () => ({ env: {} }));
 vi.mock("$env/dynamic/public", () => ({ env: {} }));
@@ -23,6 +25,7 @@ vi.mock("dodopayments", () => ({
       retrieve: mocks.subscriptionRetrieve,
     };
     products = { retrieve: mocks.productRetrieve };
+    payments = { list: mocks.paymentList, retrieve: mocks.paymentRetrieve };
     checkoutSessions = {
       create: mocks.checkoutCreate,
       retrieve: mocks.checkoutRetrieve,
@@ -32,6 +35,7 @@ vi.mock("dodopayments", () => ({
 import {
   ensureBillingCustomer,
   createCheckoutSession,
+  DODO_CHECKOUT_SESSION_TTL_MS,
 } from "$server/domain/billing";
 import { GET } from "../../src/routes/billing/checkout/+server";
 const platform = {
@@ -60,6 +64,24 @@ const product = {
     trial_payment_method_optional: false,
   },
 };
+function ownSubscription(id: string, status = "active") {
+  return {
+    subscription_id: id,
+    status,
+    customer: { customer_id: customer.customer_id },
+    product_id: "pdt_yearly",
+    metadata: { user_id: "owner", environment: "test_mode", app: "moto_track" },
+  };
+}
+function successfulPayment(ids = ["sub_new"]) {
+  return {
+    payment_id: "pay_new",
+    checkout_session_id: "cks_owner",
+    status: "succeeded",
+    customer: { customer_id: customer.customer_id },
+    subscription_ids: ids,
+  };
+}
 function iterate<T>(items: T[]) {
   return (async function* () {
     for (const item of items) yield item;
@@ -120,6 +142,7 @@ function database() {
             ...current.profile,
             billing_checkout_session_id: values[0],
             billing_checkout_url: values[1],
+            billing_checkout_created_at: values[2],
           };
       } else throw new Error(`Unexpected query ${sql}`);
       return Promise.resolve([]);
@@ -155,6 +178,24 @@ function request(
     platform,
   } as unknown as Parameters<typeof GET>[0];
 }
+function storedCheckout(
+  createdAt = new Date(
+    Date.now() - DODO_CHECKOUT_SESSION_TTL_MS - 3_600_000,
+  ).toISOString(),
+) {
+  const db = database();
+  db.state.profile = {
+    owner_id: "owner",
+    billing_provider: "dodo",
+    billing_environment: "test_mode",
+    billing_customer_id: customer.customer_id,
+    billing_subscription_id: "",
+    billing_checkout_session_id: "cks_owner",
+    billing_checkout_url: "https://checkout.dodopayments.com/session/old",
+    billing_checkout_created_at: createdAt,
+  };
+  return db;
+}
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -162,16 +203,25 @@ beforeEach(() => {
   mocks.customerRetrieve.mockResolvedValue(customer);
   mocks.customerList.mockImplementation(() => iterate([]));
   mocks.subscriptionList.mockImplementation(() => iterate([]));
-  mocks.subscriptionRetrieve.mockResolvedValue({
-    status: "active",
-    customer: { customer_id: customer.customer_id },
-  });
+  mocks.subscriptionRetrieve.mockImplementation(async (id) =>
+    ownSubscription(id),
+  );
   mocks.productRetrieve.mockResolvedValue(product);
   mocks.checkoutCreate.mockResolvedValue({
     session_id: "cks_owner",
     checkout_url: "https://checkout.dodopayments.com/session/cks_owner",
   });
-  mocks.checkoutRetrieve.mockResolvedValue({ payment_status: null });
+  mocks.checkoutRetrieve.mockResolvedValue({
+    id: "cks_owner",
+    created_at: new Date(Date.now() - 1000).toISOString(),
+    payment_status: null,
+    payment_id: null,
+  });
+  mocks.paymentList.mockImplementation(() => iterate([]));
+  mocks.paymentRetrieve.mockResolvedValue({
+    customer: { customer_id: customer.customer_id },
+    status: "failed",
+  });
 });
 describe("Dodo checkout identity and provider lifecycle", () => {
   it("commits customer and durable intent before creating a payable session", async () => {
@@ -196,8 +246,10 @@ describe("Dodo checkout identity and provider lifecycle", () => {
       status: 303,
       location: "https://checkout.dodopayments.com/session/cks_owner",
     });
+    const confirmed = await mocks.checkoutRetrieve.mock.results[0].value;
     expect(db.state.profile).toMatchObject({
       billing_checkout_session_id: "cks_owner",
+      billing_checkout_created_at: confirmed.created_at,
     });
     expect(mocks.checkoutCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -222,6 +274,200 @@ describe("Dodo checkout identity and provider lifecycle", () => {
     expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
     expect(mocks.customerCreate).toHaveBeenCalledTimes(1);
   });
+  it("renews an abandoned hosted checkout only after the documented 24-hour expiry", async () => {
+    const db = storedCheckout();
+    mocks.checkoutRetrieve.mockResolvedValueOnce({
+      id: "cks_owner",
+      created_at: db.state.profile!.billing_checkout_created_at,
+      payment_id: null,
+      payment_status: null,
+    });
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "https://checkout.dodopayments.com/session/cks_owner",
+    });
+    expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.paymentRetrieve).not.toHaveBeenCalled();
+  });
+  it("keeps the same abandoned link before expiry", async () => {
+    const createdAt = new Date(
+      Date.now() - DODO_CHECKOUT_SESSION_TTL_MS + 3_600_000,
+    ).toISOString();
+    const db = storedCheckout(createdAt);
+    mocks.checkoutRetrieve.mockResolvedValueOnce({
+      id: "cks_owner",
+      created_at: createdAt,
+      payment_id: null,
+      payment_status: null,
+    });
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "https://checkout.dodopayments.com/session/old",
+    });
+    expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+  });
+  it.each(["failed", "cancelled"])(
+    "renews an expired checkout with a canonically %s payment",
+    async (status) => {
+      const db = storedCheckout();
+      mocks.checkoutRetrieve.mockResolvedValueOnce({
+        id: "cks_owner",
+        created_at: db.state.profile!.billing_checkout_created_at,
+        payment_id: "pay_old",
+        payment_status: status,
+      });
+      mocks.paymentRetrieve.mockResolvedValueOnce({
+        customer: { customer_id: customer.customer_id },
+        status,
+      });
+      await expect(GET(request(db.db))).rejects.toMatchObject({
+        location: "https://checkout.dodopayments.com/session/cks_owner",
+      });
+      expect(mocks.paymentRetrieve).toHaveBeenCalledWith("pay_old");
+      expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each([
+    "succeeded",
+    "processing",
+    "requires_customer_action",
+    "requires_capture",
+    null,
+  ])(
+    "does not replace an expired checkout while its canonical payment is %s",
+    async (status) => {
+      const db = storedCheckout();
+      mocks.checkoutRetrieve.mockResolvedValueOnce({
+        id: "cks_owner",
+        created_at: db.state.profile!.billing_checkout_created_at,
+        payment_id: "pay_old",
+        payment_status: "failed",
+      });
+      mocks.paymentRetrieve.mockResolvedValueOnce({
+        customer: { customer_id: customer.customer_id },
+        status,
+      });
+      await expect(GET(request(db.db))).rejects.toMatchObject({
+        location: "/precos?checkout=error",
+      });
+      expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+    },
+  );
+  it("fails closed for expired processing without a payment reference", async () => {
+    const db = storedCheckout();
+    mocks.checkoutRetrieve.mockResolvedValueOnce({
+      id: "cks_owner",
+      created_at: db.state.profile!.billing_checkout_created_at,
+      payment_id: null,
+      payment_status: "processing",
+    });
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "/precos?checkout=error",
+    });
+    expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+  });
+  it("recovers a purged 404 after proven expiry only after enumerating customer payments", async () => {
+    const db = storedCheckout();
+    mocks.checkoutRetrieve.mockRejectedValueOnce(
+      Object.assign(new Error("purged"), { status: 404 }),
+    );
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "https://checkout.dodopayments.com/session/cks_owner",
+    });
+    expect(mocks.paymentList).toHaveBeenCalledWith({
+      customer_id: customer.customer_id,
+      created_at_gte: db.commits[0]!.billing_checkout_created_at,
+    });
+    expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
+  });
+  it.each(["recent", "unknown"])(
+    "never replaces a missing %s checkout based on a 404 alone",
+    async (age) => {
+      const db = storedCheckout(
+        age === "recent" ? new Date().toISOString() : "invalid timestamp",
+      );
+      mocks.checkoutRetrieve.mockRejectedValueOnce(
+        Object.assign(new Error("missing"), { status: 404 }),
+      );
+      await expect(GET(request(db.db))).rejects.toMatchObject({
+        location: "/precos?checkout=error",
+      });
+      expect(mocks.paymentList).not.toHaveBeenCalled();
+      expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["succeeded", "processing", null])(
+    "blocks purged-checkout replacement for a later-page canonical %s payment",
+    async (status) => {
+      const db = storedCheckout();
+      mocks.checkoutRetrieve.mockRejectedValueOnce(
+        Object.assign(new Error("purged"), { status: 404 }),
+      );
+      mocks.paymentList.mockImplementation(() =>
+        iterate([
+          {
+            payment_id: "pay_failed",
+            customer: { customer_id: customer.customer_id },
+          },
+          {
+            payment_id: "pay_later_page",
+            customer: { customer_id: customer.customer_id },
+          },
+        ]),
+      );
+      mocks.paymentRetrieve.mockImplementation(async (id) => ({
+        customer: { customer_id: customer.customer_id },
+        status: id === "pay_failed" ? "failed" : status,
+      }));
+      await expect(GET(request(db.db))).rejects.toMatchObject({
+        location: "/precos?checkout=error",
+      });
+      expect(mocks.paymentRetrieve).toHaveBeenCalledWith("pay_later_page");
+      expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+    },
+  );
+  it("renews a purged expired checkout when all canonical payments are failed/cancelled", async () => {
+    const db = storedCheckout();
+    mocks.checkoutRetrieve.mockRejectedValueOnce(
+      Object.assign(new Error("purged"), { status: 404 }),
+    );
+    mocks.paymentList.mockImplementation(() =>
+      iterate([
+        {
+          payment_id: "pay_old",
+          customer: { customer_id: customer.customer_id },
+        },
+      ]),
+    );
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "https://checkout.dodopayments.com/session/cks_owner",
+    });
+    expect(mocks.paymentRetrieve).toHaveBeenCalledWith("pay_old");
+  });
+  it.each(["list", "retrieve"])(
+    "blocks purged-checkout replacement if canonical payment %s fails",
+    async (failure) => {
+      const db = storedCheckout();
+      mocks.checkoutRetrieve.mockRejectedValueOnce(
+        Object.assign(new Error("purged"), { status: 404 }),
+      );
+      mocks.paymentList.mockImplementation(() =>
+        (async function* () {
+          yield {
+            payment_id: "pay_old",
+            customer: { customer_id: customer.customer_id },
+          };
+          if (failure === "list") throw new Error("later page unavailable");
+        })(),
+      );
+      if (failure === "retrieve")
+        mocks.paymentRetrieve.mockRejectedValueOnce(
+          new Error("payment unavailable"),
+        );
+      await expect(GET(request(db.db))).rejects.toMatchObject({
+        location: "/precos?checkout=error",
+      });
+      expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+    },
+  );
   it("retains an ambiguous session creation intent and never blindly retries CREATE", async () => {
     const db = database();
     mocks.checkoutCreate.mockRejectedValue(new Error("response lost"));
@@ -238,26 +484,40 @@ describe("Dodo checkout identity and provider lifecycle", () => {
   it("does not remint a successful checkout before subscription indexing/webhook delivery", async () => {
     const db = database();
     await expect(GET(request(db.db))).rejects.toMatchObject({ status: 303 });
-    mocks.checkoutRetrieve.mockResolvedValue({ payment_status: "succeeded" });
+    mocks.checkoutRetrieve.mockResolvedValue({
+      id: "cks_owner",
+      created_at: new Date().toISOString(),
+      payment_status: "succeeded",
+    });
     await expect(GET(request(db.db))).rejects.toMatchObject({
       location: "/precos?checkout=error",
     });
     expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
     expect(db.state.profile?.billing_checkout_session_id).toBe("cks_owner");
   });
-  it("permits returning customers only after a known prior subscription is canonically terminal", async () => {
+  it("permits returning customers only after THIS checkout's subscription is canonically terminal", async () => {
     const db = database();
     await expect(GET(request(db.db))).rejects.toMatchObject({ status: 303 });
     db.state.profile!.billing_subscription_id = "sub_previous";
-    mocks.checkoutRetrieve.mockResolvedValue({ payment_status: "succeeded" });
+    mocks.checkoutRetrieve.mockResolvedValue({
+      id: "cks_owner",
+      created_at: new Date().toISOString(),
+      payment_status: "succeeded",
+      payment_id: "pay_new",
+    });
+    mocks.paymentRetrieve.mockResolvedValue(successfulPayment());
+    mocks.subscriptionRetrieve.mockImplementation(async (id) =>
+      ownSubscription(id, id === "sub_previous" ? "cancelled" : "active"),
+    );
     await expect(GET(request(db.db))).rejects.toMatchObject({
       location: "/billing/portal",
     });
     expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
-    mocks.subscriptionRetrieve.mockResolvedValue({
-      status: "cancelled",
-      customer: { customer_id: customer.customer_id },
-    });
+    expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith("sub_new");
+    expect(mocks.subscriptionRetrieve).not.toHaveBeenCalledWith("sub_previous");
+    mocks.subscriptionRetrieve.mockImplementation(async (id) =>
+      ownSubscription(id, "cancelled"),
+    );
     await expect(GET(request(db.db))).rejects.toMatchObject({
       status: 303,
       location: "https://checkout.dodopayments.com/session/cks_owner",
@@ -266,6 +526,93 @@ describe("Dodo checkout identity and provider lifecycle", () => {
     expect(
       mocks.checkoutCreate.mock.calls[1][0].subscription_data.trial_period_days,
     ).toBe(0);
+  });
+  it("does not rely on an old cancelled subscription when a newer successful checkout is unindexed", async () => {
+    const db = storedCheckout();
+    db.state.profile!.billing_subscription_id = "sub_old";
+    mocks.subscriptionList.mockImplementation(() =>
+      iterate([ownSubscription("sub_old", "cancelled")]),
+    );
+    mocks.checkoutRetrieve.mockResolvedValueOnce({
+      id: "cks_owner",
+      created_at: db.state.profile!.billing_checkout_created_at,
+      payment_id: "pay_new",
+      payment_status: "succeeded",
+    });
+    mocks.paymentRetrieve.mockResolvedValueOnce(successfulPayment([]));
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "/precos?checkout=error",
+    });
+    expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+    expect(mocks.subscriptionRetrieve).not.toHaveBeenCalledWith("sub_old");
+    expect(db.state.profile?.billing_checkout_session_id).toBe("cks_owner");
+  });
+  it("allows a new purchase after a successfully mapped subscription ended and never repeats its trial", async () => {
+    const db = storedCheckout();
+    mocks.checkoutRetrieve.mockResolvedValueOnce({
+      id: "cks_owner",
+      created_at: db.state.profile!.billing_checkout_created_at,
+      payment_id: "pay_new",
+      payment_status: "succeeded",
+    });
+    mocks.paymentRetrieve.mockResolvedValueOnce(successfulPayment());
+    mocks.subscriptionRetrieve.mockResolvedValueOnce(
+      ownSubscription("sub_new", "cancelled"),
+    );
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "https://checkout.dodopayments.com/session/cks_owner",
+    });
+    expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
+    expect(
+      mocks.checkoutCreate.mock.calls[0][0].subscription_data.trial_period_days,
+    ).toBe(0);
+  });
+  it.each([
+    { customer: { customer_id: "cus_other" } },
+    { checkout_session_id: "cks_other" },
+    { payment_id: "pay_other" },
+    { status: "processing" },
+  ])(
+    "rejects successful checkout payment linkage mismatches %j",
+    async (changes) => {
+      const db = storedCheckout();
+      mocks.checkoutRetrieve.mockResolvedValueOnce({
+        id: "cks_owner",
+        created_at: db.state.profile!.billing_checkout_created_at,
+        payment_id: "pay_new",
+        payment_status: "succeeded",
+      });
+      mocks.paymentRetrieve.mockResolvedValueOnce({
+        ...successfulPayment(),
+        ...changes,
+      });
+      await expect(GET(request(db.db))).rejects.toMatchObject({
+        location: "/precos?checkout=error",
+      });
+      expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+    },
+  );
+  it("rejects a successful payment mapped to a subscription outside the current Moto account", async () => {
+    const db = storedCheckout();
+    mocks.checkoutRetrieve.mockResolvedValueOnce({
+      id: "cks_owner",
+      created_at: db.state.profile!.billing_checkout_created_at,
+      payment_id: "pay_new",
+      payment_status: "succeeded",
+    });
+    mocks.paymentRetrieve.mockResolvedValueOnce(successfulPayment());
+    mocks.subscriptionRetrieve.mockResolvedValueOnce({
+      ...ownSubscription("sub_new", "cancelled"),
+      metadata: {
+        user_id: "other",
+        environment: "test_mode",
+        app: "moto_track",
+      },
+    });
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "/precos?checkout=error",
+    });
+    expect(mocks.checkoutCreate).not.toHaveBeenCalled();
   });
   it("recovers a customer created before a lost provider response by exact metadata", async () => {
     const db = database();

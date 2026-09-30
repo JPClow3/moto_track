@@ -1,12 +1,16 @@
 import { redirect } from "@sveltejs/kit";
 import type postgres from "postgres";
+import type { CheckoutSessionStatus } from "dodopayments/resources/checkout-sessions";
 import {
   billingEnvironment,
+  assertExpiredCheckoutCanBeReplaced,
+  checkoutSessionHasExpired,
   createCheckoutSession,
   customerSubscriptionHistory,
   dodoClient,
   ensureBillingCustomer,
   ExistingSubscriptionError,
+  intervalForProduct,
   parseBillingInterval,
   TERMINAL_SUBSCRIPTION_STATUSES,
   type BillingEnvironment,
@@ -19,6 +23,7 @@ type Profile = {
   billing_environment: string | null;
   billing_checkout_session_id: string | null;
   billing_checkout_url: string | null;
+  billing_checkout_created_at: string | Date | null;
 };
 
 async function lockAccount(
@@ -50,7 +55,7 @@ async function lockAccount(
 async function readProfile(tx: postgres.TransactionSql, ownerId: string) {
   const [profile] = await tx<Profile[]>`
     select billing_customer_id, billing_subscription_id, billing_provider,
-      billing_environment, billing_checkout_session_id, billing_checkout_url
+      billing_environment, billing_checkout_session_id, billing_checkout_url, billing_checkout_created_at
     from subscription_profiles where owner_id = ${ownerId} for update
   `;
   return profile;
@@ -130,6 +135,7 @@ export async function GET({ locals, url, platform }) {
           attemptId: null,
           trialEligible: false,
         };
+      let previouslyCompletedCheckout = false;
       if (profile.billing_checkout_session_id) {
         if (profile.billing_checkout_session_id.startsWith("pending:"))
           throw new Error(
@@ -137,33 +143,112 @@ export async function GET({ locals, url, platform }) {
           );
         if (!profile.billing_checkout_url)
           throw new Error("Stored checkout URL missing.");
-        const session = await dodoClient(platform).checkoutSessions.retrieve(
-          profile.billing_checkout_session_id,
-        );
-        if (session.payment_status !== "succeeded")
+        let session: CheckoutSessionStatus | null = null;
+        try {
+          session = await dodoClient(platform).checkoutSessions.retrieve(
+            profile.billing_checkout_session_id,
+          );
+        } catch (error) {
+          if (
+            typeof error !== "object" ||
+            error === null ||
+            !("status" in error) ||
+            error.status !== 404 ||
+            !checkoutSessionHasExpired(profile.billing_checkout_created_at)
+          )
+            throw error;
+          await assertExpiredCheckoutCanBeReplaced(
+            { customerId, createdAt: profile.billing_checkout_created_at! },
+            platform,
+          );
+        }
+        if (
+          session &&
+          (session.id !== profile.billing_checkout_session_id ||
+            !Number.isFinite(Date.parse(session.created_at)))
+        )
+          throw new Error(
+            "Stored checkout provider identity or creation time is invalid.",
+          );
+        if (
+          session?.payment_status !== "succeeded" &&
+          session &&
+          !checkoutSessionHasExpired(session.created_at)
+        )
           return {
             destination: profile.billing_checkout_url,
             attemptId: null,
             trialEligible: false,
           };
-        if (history.length === 0) {
-          // A successful checkout can precede subscription indexing/webhook
-          // delivery. Never mint another payable link during that gap.
-          if (!profile.billing_subscription_id)
+        if (
+          session &&
+          session.payment_status !== "succeeded" &&
+          checkoutSessionHasExpired(session.created_at)
+        ) {
+          if (session.payment_id)
+            await assertExpiredCheckoutCanBeReplaced(
+              {
+                customerId,
+                createdAt: session.created_at,
+                paymentId: session.payment_id,
+              },
+              platform,
+            );
+          else if (
+            session.payment_status !== null &&
+            session.payment_status !== undefined
+          )
+            throw new Error(
+              "Expired checkout has an unresolved payment without a payment reference.",
+            );
+        }
+        if (session?.payment_status === "succeeded") {
+          // Resolve THIS checkout's payment and subscription. A returning
+          // customer's older cancelled profile/history proves nothing about a
+          // new successful checkout whose subscription has not been indexed.
+          if (!session.payment_id)
             throw new Error(
               "Successful checkout is awaiting subscription reconciliation.",
             );
-          const previous = await dodoClient(platform).subscriptions.retrieve(
-            profile.billing_subscription_id,
-          );
-          if (previous.customer.customer_id !== customerId)
-            throw new Error("Previous subscription customer binding mismatch.");
+          const client = dodoClient(platform);
+          const payment = await client.payments.retrieve(session.payment_id);
+          if (
+            payment.payment_id !== session.payment_id ||
+            payment.customer.customer_id !== customerId ||
+            payment.status !== "succeeded" ||
+            (payment.checkout_session_id &&
+              payment.checkout_session_id !== session.id)
+          )
+            throw new Error(
+              "Successful checkout payment linkage is not confirmed.",
+            );
+          const subscriptionIds = new Set(payment.subscription_ids ?? []);
+          if (payment.subscription_id)
+            subscriptionIds.add(payment.subscription_id);
+          if (subscriptionIds.size !== 1)
+            throw new Error(
+              "Successful checkout is awaiting its own subscription mapping.",
+            );
+          const [subscriptionId] = [...subscriptionIds];
+          const previous = await client.subscriptions.retrieve(subscriptionId);
+          if (
+            previous.subscription_id !== subscriptionId ||
+            previous.customer.customer_id !== customerId ||
+            !intervalForProduct(previous.product_id, platform) ||
+            previous.metadata.user_id !== user.id ||
+            previous.metadata.environment !== environment ||
+            previous.metadata.app !== "moto_track"
+          )
+            throw new Error(
+              "Successful checkout subscription linkage is not confirmed.",
+            );
           if (!TERMINAL_SUBSCRIPTION_STATUSES.includes(previous.status))
             return {
               destination: "/billing/portal",
               attemptId: null,
               trialEligible: false,
             };
+          previouslyCompletedCheckout = true;
         }
       }
       const attemptId = `pending:${crypto.randomUUID()}`;
@@ -174,7 +259,10 @@ export async function GET({ locals, url, platform }) {
       return {
         destination: null,
         attemptId,
-        trialEligible: history.length === 0 && !profile.billing_subscription_id,
+        trialEligible:
+          !previouslyCompletedCheckout &&
+          history.length === 0 &&
+          !profile.billing_subscription_id,
       };
     });
     if (intent.destination) destination = intent.destination;
@@ -199,9 +287,22 @@ export async function GET({ locals, url, platform }) {
         });
         if (!session.checkout_url)
           throw new Error("Dodo checkout URL missing.");
+        // Persist the provider timestamp, not the earlier local intent time.
+        // That timestamp is the evidence required for safe purged-404 recovery.
+        const confirmed = await dodoClient(platform).checkoutSessions.retrieve(
+          session.session_id,
+        );
+        if (
+          confirmed.id !== session.session_id ||
+          !Number.isFinite(Date.parse(confirmed.created_at))
+        )
+          throw new Error(
+            "Created checkout provider identity or creation time is invalid.",
+          );
         await tx`
           update subscription_profiles set billing_checkout_session_id = ${session.session_id},
-            billing_checkout_url = ${session.checkout_url} where owner_id = ${user.id}
+            billing_checkout_url = ${session.checkout_url}, billing_checkout_created_at = ${confirmed.created_at}
+          where owner_id = ${user.id}
         `;
         return session.checkout_url;
       });

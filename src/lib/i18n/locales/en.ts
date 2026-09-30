@@ -543,7 +543,7 @@ export const en: Messages = {
     eyebrow: "Subscription",
     heading: "Account and billing",
     checkoutPending:
-      "Checkout completed. We are confirming your subscription with Dodo Payments — refresh this page in a moment.",
+      "You're back from checkout. We are checking your subscription with Dodo Payments — refresh this page in a moment.",
     checkoutCancelled: "Checkout cancelled. No charge was made.",
     currentPlan: "Current plan",
     billingInterval: "{interval} billing.",
@@ -624,7 +624,7 @@ export const en: Messages = {
     proFeature4Suffix: " for professionals",
     proFeature5: "Sale report with the Pro seal",
     checkoutError:
-      "We couldn't start the checkout just now. Try again in a moment, or contact support if it keeps happening.",
+      "We couldn't open checkout. Contact support to check your subscription before trying again.",
     checkoutCancelled:
       "Checkout cancelled. You can try again whenever you like.",
   },

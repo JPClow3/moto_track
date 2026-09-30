@@ -4,7 +4,10 @@
   import { t, locale } from "$lib/i18n/store";
   import { formatMoney } from "$lib/i18n";
 
-  export let data: { pricing: ProPricing };
+  export let data: {
+    pricing: ProPricing;
+    contact: { supportEmail: string };
+  };
 
   // Formatted here rather than on the server: the pricing lookup is cached
   // process-wide, so a string baked in there would pin one reader's locale for
@@ -79,6 +82,11 @@
           role="alert"
         >
           {$t("pricing.checkoutError")}
+          <a
+            class="focus-ring mt-2 block underline"
+            href={`mailto:${data.contact.supportEmail}`}
+            >{data.contact.supportEmail}</a
+          >
         </p>
       {:else if checkoutState === "cancelled"}
         <p

@@ -10,6 +10,75 @@ export type BillingInterval = "monthly" | "yearly";
 export type BillingEnvironment = "test_mode" | "live_mode";
 export const PRO_TRIAL_DAYS = 7;
 export const PAYMENT_FAILURE_GRACE_DAYS = 3;
+// Hosted sessions (confirm:false) expire after 24 hours per the provider:
+// https://docs.dodopayments.com/developer-resources/checkout-session
+export const DODO_CHECKOUT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function checkoutSessionHasExpired(
+  createdAt: string | Date | null | undefined,
+  now = Date.now(),
+) {
+  const created =
+    createdAt instanceof Date
+      ? createdAt.getTime()
+      : Date.parse(createdAt ?? "");
+  return (
+    Number.isFinite(created) && now > created + DODO_CHECKOUT_SESSION_TTL_MS
+  );
+}
+
+async function assertCheckoutPaymentTerminal(
+  paymentId: string,
+  customerId: string,
+  platform?: App.Platform,
+) {
+  const payment = await dodoClient(platform).payments.retrieve(paymentId);
+  if (
+    payment.customer.customer_id !== customerId ||
+    !["failed", "cancelled"].includes(payment.status ?? "")
+  )
+    throw new Error(
+      "Previous checkout payment is not confirmed failed or cancelled.",
+    );
+}
+
+export async function assertExpiredCheckoutCanBeReplaced(
+  {
+    customerId,
+    createdAt,
+    paymentId,
+  }: {
+    customerId: string;
+    createdAt: string | Date;
+    paymentId?: string | null;
+  },
+  platform?: App.Platform,
+) {
+  if (!checkoutSessionHasExpired(createdAt))
+    throw new Error("Previous checkout has not expired.");
+  if (paymentId) {
+    await assertCheckoutPaymentTerminal(paymentId, customerId, platform);
+    return;
+  }
+  // A purged session cannot disclose whether a payment started before expiry.
+  // Enumerate all pages, then retrieve each canonical payment. Any settlement,
+  // processing, unknown state or provider failure blocks a replacement.
+  for await (const payment of dodoClient(platform).payments.list({
+    customer_id: customerId,
+    created_at_gte:
+      createdAt instanceof Date
+        ? createdAt.toISOString()
+        : new Date(createdAt).toISOString(),
+  })) {
+    if (payment.customer.customer_id !== customerId)
+      throw new Error("Dodo payment customer filter mismatch.");
+    await assertCheckoutPaymentTerminal(
+      payment.payment_id,
+      customerId,
+      platform,
+    );
+  }
+}
 
 function configured(value: string | undefined): value is string {
   return Boolean(value && !/(?:replace[-_ ]?me|placeholder)/i.test(value));
@@ -282,6 +351,7 @@ export function buildCheckoutSessionParams({
 }): CheckoutSessionCreateParams {
   return {
     product_cart: [{ product_id: productId, quantity: 1 }],
+    confirm: false,
     billing_currency: "BRL",
     customer: customerId
       ? { customer_id: customerId }

@@ -214,7 +214,7 @@
   {/if}
 
   <div class="panel p-5">
-    {#if data.checkout === "success" && !isPro}
+    {#if data.checkout === "returned" && !isPro}
       <p
         class="bg-[var(--accent)]/10 mb-4 rounded-md p-3 text-sm text-[var(--fg)]"
       >

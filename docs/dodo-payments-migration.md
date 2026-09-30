@@ -36,15 +36,16 @@ seven trial days, and a required payment method; recurring base amounts are
 BRL 1490 and 9900 minor units respectively. These sessions do not prove a
 paid charge or completed trial activation.
 
-The provider API key and webhook signing secret are configured as encrypted
-Cloudflare Production runtime secrets. The production webhook destination
-was created and remains disabled until the new endpoint is deployed.
-Production Neon inventory found nine Free profiles, no linked billing
+At setup, the provider API key and webhook signing secret were configured as
+encrypted Cloudflare Production runtime secrets. The production webhook
+destination was created disabled for activation after the new endpoint deployment.
+The initial production Neon inventory found nine Free profiles, no linked billing
 customers/subscriptions, and no billing events. A disposable validation
 database branch passed the schema upgrade. These results establish setup
-and an empty existing billable-subscription handover; application deployment,
-live webhook activation/delivery, and completed provider acceptance remain pending until
-their evidence is recorded here.
+and an empty existing billable-subscription handover. This is the setup snapshot;
+the [migration PR and production cutover record](https://github.com/JPClow3/moto_track/pull/41)
+record the deployed revision, database upgrade, live webhook activation/delivery,
+and the limits of completed provider acceptance.
 
 ## Product and account setup
 
@@ -188,6 +189,13 @@ An operator must reconcile that intent with provider records, its customer,
 and any created session before resolving it. Do not clear the marker or
 retry checkout creation without establishing the outcome. A known unfinished
 session is reused instead of minting another link.
+
+Hosted sessions use Dodo's 24-hour lifetime. Replacement requires proven expiry
+and no successful or unresolved payment. If a session was purged, the app
+reconciles all customer payments since its provider creation time; missing,
+processing, or uncertain records require support review. A completed checkout
+is tied to its own canonical payment and subscription before another checkout
+can be issued. An older cancelled subscription never proves the new one ended.
 
 ## Existing subscription handover
 
