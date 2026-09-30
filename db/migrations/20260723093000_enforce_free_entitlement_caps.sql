@@ -17,7 +17,7 @@ as $$
     where sp.owner_id = p_owner
       and sp.plan = 'pro'
       and (
-        sp.stripe_subscription_status in ('active', 'trialing')
+        sp.billing_subscription_status in ('active', 'trialing')
         or (sp.grace_until is not null and sp.grace_until >= now())
       )
   );

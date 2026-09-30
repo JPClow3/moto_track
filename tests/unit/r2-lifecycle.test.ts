@@ -255,14 +255,14 @@ describe("R2 object lifecycle", () => {
       expect(source).toContain("owner_id = ${ownerId}");
     }
     expect(admin).toContain(".begin(async (transaction)");
-    expect(admin).toContain("lockObjectOwner(db, existing.owner_id)");
+    expect(admin).toContain("lockObjectOwner(db, deletionOwnerId)");
     expect(admin).toContain("enqueueObjectDeletions");
     expect(admin).toContain("deleteQueuedObjectsBestEffort");
     expect(maintenance).toContain("source_table = 'maintenance_photos'");
     expect(admin).toContain("where owner_id = ${existing.owner_id}");
-    expect(
-      admin.indexOf("lockObjectOwner(db, existing.owner_id)"),
-    ).toBeLessThan(admin.indexOf("select object_key from object_files"));
+    expect(admin.indexOf("lockObjectOwner(db, deletionOwnerId)")).toBeLessThan(
+      admin.indexOf("select object_key from object_files"),
+    );
     expect(migration).toContain(
       "create table if not exists public.object_deletion_queue",
     );

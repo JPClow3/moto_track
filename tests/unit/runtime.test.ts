@@ -9,14 +9,16 @@ describe("runtime bindings", () => {
         PUBLIC_NEON_AUTH_URL: "https://bound.neonauth.example",
         NEON_AUTH_JWKS_URL:
           "https://bound.neonauth.example/.well-known/jwks.json",
-        STRIPE_SECRET_KEY: "bound-stripe-key",
+        DODO_PAYMENTS_API_KEY: "bound-dodo-key",
+        DODO_PAYMENTS_ENVIRONMENT: "test_mode",
       },
       {
         DATABASE_URL: "postgres://fallback.example/db",
         PUBLIC_NEON_AUTH_URL: "https://fallback.neonauth.example",
         NEON_AUTH_JWKS_URL:
           "https://fallback.neonauth.example/.well-known/jwks.json",
-        STRIPE_SECRET_KEY: "fallback-stripe-key",
+        DODO_PAYMENTS_API_KEY: "fallback-dodo-key",
+        DODO_PAYMENTS_ENVIRONMENT: "live_mode",
       },
     );
 
@@ -25,7 +27,8 @@ describe("runtime bindings", () => {
     expect(runtime.NEON_AUTH_JWKS_URL).toBe(
       "https://bound.neonauth.example/.well-known/jwks.json",
     );
-    expect(runtime.STRIPE_SECRET_KEY).toBe("bound-stripe-key");
+    expect(runtime.DODO_PAYMENTS_API_KEY).toBe("bound-dodo-key");
+    expect(runtime.DODO_PAYMENTS_ENVIRONMENT).toBe("test_mode");
   });
 
   it("falls back to the local source when no binding is provided", () => {
@@ -43,5 +46,15 @@ describe("runtime bindings", () => {
     expect(runtime.NEON_AUTH_JWKS_URL).toBe(
       "https://fallback.neonauth.example/.well-known/jwks.json",
     );
+  });
+
+  it("never invents a billing environment or accepts an invalid one", () => {
+    expect(resolveRuntimeEnv({}).DODO_PAYMENTS_ENVIRONMENT).toBeUndefined();
+    expect(
+      resolveRuntimeEnv(
+        { DODO_PAYMENTS_ENVIRONMENT: "production" },
+        { DODO_PAYMENTS_ENVIRONMENT: "live_mode" },
+      ).DODO_PAYMENTS_ENVIRONMENT,
+    ).toBeUndefined();
   });
 });

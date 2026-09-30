@@ -34,7 +34,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 };
 
 /**
- * Money stays in BRL in every locale: Stripe charges in BRL, so showing a
+ * Money stays in BRL in every locale: Dodo Payments charges in BRL, so showing a
  * converted figure would be a number we don't actually bill. Only the
  * *formatting* (separators, symbol placement) follows the locale.
  */

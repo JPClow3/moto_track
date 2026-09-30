@@ -31,7 +31,8 @@
       id: "compartilhamento",
       title: "Compartilhamento",
       paragraphs: [
-        "Usamos os seguintes operadores, que tratam dados em nosso nome: Neon (autenticação e banco de dados, em São Paulo, Brasil); Cloudflare (hospedagem, arquivos enviados no R2 e envio de lembretes por e-mail, em rede global); Stripe (cobrança da assinatura, Estados Unidos); Mistral AI (leitura de comprovantes por OCR, somente quando você solicita, União Europeia); e Sentry (telemetria de erros, Estados Unidos). Notificações push são entregues pelo serviço push do navegador do seu dispositivo.",
+        "Usamos os seguintes operadores, que tratam dados em nosso nome: Neon (autenticação e banco de dados, em São Paulo, Brasil); Cloudflare (hospedagem, arquivos enviados no R2 e envio de lembretes por e-mail, em rede global); Mistral AI (leitura de comprovantes por OCR, somente quando você solicita, União Europeia); e Sentry (telemetria de erros, Estados Unidos). Notificações push são entregues pelo serviço push do navegador do seu dispositivo.",
+        "Para contratar Pro, compartilhamos identificação da conta e e-mail com a Dodo Payments. Ela atua como comerciante responsável pela venda (Merchant of Record) e trata dados de pagamento, faturamento, prevenção a fraudes e obrigações tributárias conforme sua própria política de privacidade. Dados completos do cartão são informados no checkout da Dodo Payments e não são armazenados pelo Moto Track.",
         "Quando o tratamento ocorre fora do Brasil, a transferência internacional se apoia nas garantias contratuais desses fornecedores e na execução do serviço que você contratou, nos termos do art. 33 da LGPD.",
         "Não vendemos dados pessoais. Dados podem ser compartilhados quando você solicitar, quando forem necessários para executar o serviço, para cumprir obrigação legal ou para proteger a segurança de pessoas e sistemas.",
       ],
@@ -42,7 +43,7 @@
       paragraphs: [
         "Adotamos medidas técnicas e organizacionais proporcionais para reduzir riscos de acesso indevido, alteração, perda ou divulgação. Nenhum ambiente conectado à internet é completamente imune a riscos; por isso, use uma senha forte e mantenha seus dispositivos protegidos.",
         "Mantemos seus registros enquanto sua conta estiver ativa. Quando uma solicitação de exclusão é atendida, os dados da conta são removidos do banco de dados imediatamente, e cópias residuais — arquivos em fila de remoção, cópias de segurança e registros técnicos — são eliminadas em até 90 dias.",
-        "Registros de cobrança mantidos pela Stripe e dados que precisamos guardar para cumprir obrigação legal ou regulatória, como documentos fiscais, são conservados pelo prazo exigido pela lei aplicável.",
+        "Registros de cobrança mantidos pela Dodo Payments e dados que precisamos guardar para cumprir obrigação legal ou regulatória, como documentos fiscais, são conservados pelo prazo exigido pela lei aplicável.",
       ],
     },
     {
@@ -110,7 +111,7 @@
     <p
       class="label-tech mt-10 border-t border-[var(--line)] pt-5 text-[var(--muted)]"
     >
-      Última atualização: 23 de setembro de 2026
+      Última atualização: 29 de setembro de 2026
     </p>
   </div>
 </section>

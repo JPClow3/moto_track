@@ -26,6 +26,6 @@ test.describe("public smoke", () => {
     await expect(
       page.getByRole("button", { name: /continuar para checkout/i }),
     ).toBeVisible();
-    await expect(page.getByText(/novos clientes stripe/i)).toBeVisible();
+    await expect(page.getByText(/primeira assinatura pro/i)).toBeVisible();
   });
 });

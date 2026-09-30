@@ -10,7 +10,7 @@ Moto Track is now a SvelteKit + Neon + Cloudflare application.
 - Neon Auth (managed Better Auth) for authentication; authorization is app-layer
   only (every query filters by `owner_id` — there is no RLS on Neon)
 - Cloudflare Pages and R2 for deployment and object storage
-- Stripe billing
+- Dodo Payments billing
 - Cloudflare Email Sending for reminder email from the scheduled Worker
 
 ## Local Development
@@ -47,6 +47,12 @@ for why there's no auto-generation step).
 ## Deployment
 
 See [`docs/deployment.md`](docs/deployment.md) for Pages bindings, server-only secrets, and the required preview acceptance test.
+
+Billing uses Dodo Payments hosted checkout and customer portal. Configure the
+server-only `DODO_PAYMENTS_*` and `DODO_PRO_*` variables from `.env.example` in
+the same provider mode. See [`docs/dodo-payments-migration.md`](docs/dodo-payments-migration.md)
+for product setup, signed webhook acceptance, existing subscription handover,
+and production cutover checks.
 
 ## Legacy Reference
 

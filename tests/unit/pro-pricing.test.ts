@@ -1,154 +1,142 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const retrieve = vi.fn();
-
-vi.mock("stripe", () => ({
+const retrieve = vi.hoisted(() => vi.fn());
+vi.mock("dodopayments", () => ({
   default: class {
-    prices = { retrieve };
+    products = { retrieve };
   },
 }));
-
-// Keep these tests hermetic: fetchProPricing resolves secrets via runtimeEnv,
-// which otherwise falls back to the ambient $env (a developer's local .env).
-// Blanking the fallback makes the `platform.env` passed in each test the only
-// source of Stripe config, so the "secret key absent" case is genuinely absent.
 vi.mock("$env/dynamic/private", () => ({ env: {} }));
 vi.mock("$env/dynamic/public", () => ({ env: {} }));
-
 const platform = {
   env: {
-    STRIPE_SECRET_KEY: "sk_test_x",
-    STRIPE_PRO_MONTHLY_PRICE_ID: "price_monthly",
-    STRIPE_PRO_YEARLY_PRICE_ID: "price_yearly",
+    DODO_PAYMENTS_API_KEY: "test_key",
+    DODO_PAYMENTS_ENVIRONMENT: "test_mode",
+    DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_monthly",
+    DODO_PRO_YEARLY_PRODUCT_ID: "pdt_yearly",
   },
 } as unknown as App.Platform;
-
-const monthlyPrice = {
-  active: true,
-  unit_amount: 1990,
-  currency: "brl",
-  recurring: { interval: "month" },
+const monthly = {
+  is_recurring: true,
+  price: {
+    type: "recurring_price",
+    price: 1990,
+    currency: "BRL",
+    payment_frequency_count: 1,
+    payment_frequency_interval: "Month",
+  },
 };
-const yearlyPrice = {
-  active: true,
-  unit_amount: 19900,
-  currency: "brl",
-  recurring: { interval: "year" },
+const yearly = {
+  is_recurring: true,
+  price: { ...monthly.price, price: 19900, payment_frequency_interval: "Year" },
 };
-
-/** Fresh module each time, so the in-module price cache never leaks across tests. */
 async function loadBilling() {
   vi.resetModules();
   return import("$server/domain/billing");
 }
-
 beforeEach(() => {
-  retrieve.mockReset();
+  retrieve
+    .mockReset()
+    .mockImplementation(async (id) =>
+      id === "pdt_monthly" ? monthly : yearly,
+    );
 });
-
-describe("fetchProPricing", () => {
-  // These used to assert a pre-formatted "R$ 19,90" string built here. That
-  // string is gone on purpose: this lookup is cached process-wide, so a locale
-  // baked in at this layer would be served to every reader. Formatting is now
-  // the renderer's job and is covered in i18n-format.test.ts.
-  it("returns the live Stripe prices as raw amounts for the caller to format", async () => {
-    retrieve.mockImplementation(async (id: string) =>
-      id === "price_monthly" ? monthlyPrice : yearlyPrice,
-    );
-
+describe("Dodo Pro pricing", () => {
+  it("returns locale-neutral live product amounts", async () => {
     const { fetchProPricing } = await loadBilling();
-    const pricing = await fetchProPricing(platform);
-
-    expect(pricing.monthly).toEqual({
-      amountCents: 1990,
-      currency: "brl",
-      interval: "month",
-    });
-    expect(pricing.yearly).toEqual({
-      amountCents: 19900,
-      currency: "brl",
-      interval: "year",
+    expect(await fetchProPricing(platform)).toEqual({
+      monthly: { amountCents: 1990, currency: "brl", interval: "month" },
+      yearly: { amountCents: 19900, currency: "brl", interval: "year" },
     });
   });
-
-  it("keeps the monthly price when the yearly lookup fails", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    retrieve.mockImplementation(async (id: string) => {
-      if (id === "price_monthly") return monthlyPrice;
-      throw new Error("No such price: price_yearly");
+  it("preserves a healthy interval when the other lookup fails", async () => {
+    retrieve.mockImplementation(async (id) => {
+      if (id === "pdt_monthly") return monthly;
+      throw new Error("provider unavailable");
     });
-
     const { fetchProPricing } = await loadBilling();
-    const pricing = await fetchProPricing(platform);
-
-    expect(pricing.monthly!.amountCents).toBe(1990);
-    expect(pricing.yearly).toBeNull();
+    expect(await fetchProPricing(platform)).toMatchObject({
+      monthly: { amountCents: 1990 },
+      yearly: null,
+    });
   });
-
-  it("returns no prices, and never calls Stripe, when the secret key is absent", async () => {
+  it.each([
+    {},
+    {
+      DODO_PAYMENTS_API_KEY: "replace_me",
+      DODO_PAYMENTS_ENVIRONMENT: "test_mode",
+    },
+    { DODO_PAYMENTS_API_KEY: "key" },
+  ])("returns fallback with missing/placeholder configuration", async (env) => {
     const { fetchProPricing } = await loadBilling();
-    const pricing = await fetchProPricing({
-      env: {},
-    } as unknown as App.Platform);
-
-    expect(pricing).toEqual({ monthly: null, yearly: null });
+    expect(await fetchProPricing({ env } as App.Platform)).toEqual({
+      monthly: null,
+      yearly: null,
+    });
     expect(retrieve).not.toHaveBeenCalled();
   });
-
-  it("treats example placeholder secrets as unconfigured", async () => {
-    const { fetchProPricing } = await loadBilling();
-    const pricing = await fetchProPricing({
-      env: {
-        STRIPE_SECRET_KEY: "sk_test_replace_me",
-        STRIPE_PRO_MONTHLY_PRICE_ID: "price_replace_me",
-        STRIPE_PRO_YEARLY_PRICE_ID: "price_replace_me",
-      },
-    } as unknown as App.Platform);
-
-    expect(pricing).toEqual({ monthly: null, yearly: null });
-    expect(retrieve).not.toHaveBeenCalled();
-  });
-
-  it("ignores prices it cannot render as a single headline figure", async () => {
-    // Tiered/metered prices carry a null unit_amount; archived ones are inactive.
-    retrieve.mockImplementation(async (id: string) =>
-      id === "price_monthly"
-        ? { ...monthlyPrice, unit_amount: null }
-        : { ...yearlyPrice, active: false },
-    );
-
-    const { fetchProPricing } = await loadBilling();
-    const pricing = await fetchProPricing(platform);
-
-    expect(pricing).toEqual({ monthly: null, yearly: null });
-  });
-
-  it("serves the cached prices rather than hitting Stripe on every render", async () => {
-    retrieve.mockImplementation(async (id: string) =>
-      id === "price_monthly" ? monthlyPrice : yearlyPrice,
-    );
-
-    const { fetchProPricing } = await loadBilling();
-    await fetchProPricing(platform);
-    await fetchProPricing(platform);
-
-    expect(retrieve).toHaveBeenCalledTimes(2); // one monthly + one yearly, not four
-  });
-
-  it("does not cache a failed lookup, so a Stripe outage cannot pin the placeholder", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    retrieve.mockRejectedValue(new Error("Stripe is down"));
-
+  it("rejects usage-based, unsupported frequency, and country-varying products", async () => {
+    retrieve
+      .mockResolvedValueOnce({
+        ...monthly,
+        price: { ...monthly.price, type: "usage_based_price" },
+      })
+      .mockResolvedValueOnce({
+        ...yearly,
+        price: { ...yearly.price, payment_frequency_count: 2 },
+      });
     const { fetchProPricing } = await loadBilling();
     expect(await fetchProPricing(platform)).toEqual({
       monthly: null,
       yearly: null,
     });
-
-    retrieve.mockImplementation(async (id: string) =>
-      id === "price_monthly" ? monthlyPrice : yearlyPrice,
+    retrieve.mockResolvedValue({
+      ...monthly,
+      price: { ...monthly.price, purchasing_power_parity: true },
+    });
+    expect(await fetchProPricing(platform)).toEqual({
+      monthly: null,
+      yearly: null,
+    });
+  });
+  it("applies configured product discounts in basis points", async () => {
+    retrieve.mockResolvedValue({
+      ...monthly,
+      price: { ...monthly.price, discount_bps: 1250 },
+    });
+    const { fetchProPricing } = await loadBilling();
+    expect((await fetchProPricing(platform)).monthly?.amountCents).toBe(1741);
+  });
+  it("caches pricing for the same account/configuration", async () => {
+    const { fetchProPricing } = await loadBilling();
+    await fetchProPricing(platform);
+    await fetchProPricing(platform);
+    expect(retrieve).toHaveBeenCalledTimes(2);
+  });
+  it.each([
+    { DODO_PAYMENTS_ENVIRONMENT: "live_mode" },
+    { DODO_PAYMENTS_API_KEY: "another_account" },
+    { DODO_PRO_MONTHLY_PRODUCT_ID: "another_product" },
+  ])(
+    "does not reuse pricing across mode/account/product configuration",
+    async (change) => {
+      const { fetchProPricing } = await loadBilling();
+      await fetchProPricing(platform);
+      await fetchProPricing({
+        env: { ...platform.env, ...change },
+      } as App.Platform);
+      expect(retrieve).toHaveBeenCalledTimes(4);
+    },
+  );
+  it("does not cache a total outage", async () => {
+    retrieve.mockRejectedValue(new Error("provider unavailable"));
+    const { fetchProPricing } = await loadBilling();
+    expect(await fetchProPricing(platform)).toEqual({
+      monthly: null,
+      yearly: null,
+    });
+    retrieve.mockImplementation(async (id) =>
+      id === "pdt_monthly" ? monthly : yearly,
     );
-    const recovered = await fetchProPricing(platform);
-    expect(recovered.monthly!.amountCents).toBe(1990);
+    expect((await fetchProPricing(platform)).monthly?.amountCents).toBe(1990);
   });
 });

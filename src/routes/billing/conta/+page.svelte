@@ -19,10 +19,11 @@
   export let form: { ok?: boolean; message?: string } | null;
 
   $: isPro = data.hasProAccess;
-  $: hasStripeCustomer = Boolean(data.profile?.stripe_customer_id);
+  $: hasBillingCustomer = Boolean(data.profile?.billing_customer_id);
   $: isCancelling = data.profile?.cancel_at_period_end === true;
-  $: isPastDue = data.profile?.stripe_subscription_status === "past_due";
-  $: isTrialing = data.profile?.stripe_subscription_status === "trialing";
+  $: isPastDue = ["past_due", "on_hold"].includes(
+    String(data.profile?.billing_subscription_status),
+  );
 
   let pushMessage = "";
   let pushBusy = false;
@@ -245,9 +246,11 @@
             date: String(data.profile.grace_until).slice(0, 10),
           })}{/if}
       </p>
-      {#if isTrialing}
+      {#if !isCancelling && data.profile?.current_period_end}
         <p class="mt-2 text-sm text-[var(--muted)]">
-          {$t("conta.trialActive")}
+          {$t("conta.nextBillingDate", {
+            date: String(data.profile.current_period_end).slice(0, 10),
+          })}
         </p>
       {/if}
     {:else if isPastDue}
@@ -262,7 +265,7 @@
         >
       {:else}
         <a class="button-primary" href="/precos">{$t("conta.upgrade")}</a>
-        {#if hasStripeCustomer}
+        {#if hasBillingCustomer}
           <a class="button-secondary" href="/billing/portal"
             >{$t("conta.updatePayment")}</a
           >

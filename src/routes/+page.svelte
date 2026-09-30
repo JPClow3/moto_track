@@ -344,8 +344,8 @@
             <p class="mt-2 text-sm text-paper/60">
               Sem limites para quem usa a moto como ferramenta.
             </p>
-            <!-- Live from Stripe. Falls back to a placeholder rather than a made-up
-               number if Stripe is unconfigured or unreachable. -->
+            <!-- Live from Dodo Payments. Falls back to a placeholder rather than a made-up
+               number if Dodo Payments is unconfigured or unreachable. -->
             <div class="my-8">
               {#if data.pricing.monthly}
                 <p class="display numeric text-6xl text-[var(--accent)]">

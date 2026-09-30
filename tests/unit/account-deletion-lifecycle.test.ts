@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  terminateStripeBillingForAccount: vi.fn(),
+  terminateBillingForAccount: vi.fn(),
   deleteQueuedObjectsBestEffort: vi.fn(),
   enqueueObjectDeletions: vi.fn(),
   lockObjectOwner: vi.fn(),
@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("$server/domain/billing", () => ({
-  terminateStripeBillingForAccount: mocks.terminateStripeBillingForAccount,
+  terminateBillingForAccount: mocks.terminateBillingForAccount,
 }));
 vi.mock("$server/r2/files", () => ({
   deleteQueuedObjectsBestEffort: mocks.deleteQueuedObjectsBestEffort,
@@ -31,7 +31,11 @@ function request() {
   });
 }
 
-function database() {
+function database(
+  provider: "dodo" | "legacy" = "dodo",
+  freshOverrides: Record<string, unknown> = {},
+  failLocalDeletion = false,
+) {
   const queries: Array<{
     sql: string;
     values: unknown[];
@@ -51,13 +55,17 @@ function database() {
           owner_id: "owner-1",
           request_type: "deletion",
           status: "open",
-          stripe_customer_id: "cus_owner",
-          stripe_subscription_id: "sub_owner",
+          billing_provider: provider,
+          billing_environment: "test_mode",
+          billing_customer_id: "cus_owner",
+          billing_subscription_id: "sub_owner",
+          ...(transaction ? freshOverrides : {}),
         },
       ];
     }
     if (sql.startsWith("select object_key")) return [];
     if (sql.startsWith('delete from neon_auth."user"')) {
+      if (failLocalDeletion) throw new Error("Local deletion unavailable");
       return [{ id: "owner-1" }];
     }
     return [];
@@ -78,9 +86,7 @@ function database() {
 describe("LGPD account deletion lifecycle", () => {
   beforeEach(() => {
     mocks.isStaffUser.mockReset().mockResolvedValue(true);
-    mocks.terminateStripeBillingForAccount
-      .mockReset()
-      .mockResolvedValue(undefined);
+    mocks.terminateBillingForAccount.mockReset().mockResolvedValue(undefined);
     mocks.deleteQueuedObjectsBestEffort
       .mockReset()
       .mockResolvedValue(undefined);
@@ -88,10 +94,10 @@ describe("LGPD account deletion lifecycle", () => {
     mocks.lockObjectOwner.mockReset().mockResolvedValue(undefined);
   });
 
-  it("preserves local data and the open request when Stripe termination fails", async () => {
+  it("preserves local data and the open request when Dodo Payments termination fails", async () => {
     const { db, queries } = database();
-    mocks.terminateStripeBillingForAccount.mockRejectedValue(
-      new Error("Stripe unavailable"),
+    mocks.terminateBillingForAccount.mockRejectedValue(
+      new Error("Dodo Payments unavailable"),
     );
 
     const result = await actions.fulfillDataRequest({
@@ -101,8 +107,12 @@ describe("LGPD account deletion lifecycle", () => {
     } as never);
 
     expect(result).toMatchObject({ status: 502 });
-    expect(mocks.terminateStripeBillingForAccount).toHaveBeenCalledWith(
-      { customerId: "cus_owner", subscriptionId: "sub_owner" },
+    expect(mocks.terminateBillingForAccount).toHaveBeenCalledWith(
+      {
+        customerId: "cus_owner",
+        subscriptionId: "sub_owner",
+        environment: "test_mode",
+      },
       expect.anything(),
     );
     expect(queries.some((entry) => entry.sql.includes("set notes"))).toBe(true);
@@ -114,7 +124,7 @@ describe("LGPD account deletion lifecycle", () => {
     expect(mocks.deleteQueuedObjectsBestEffort).not.toHaveBeenCalled();
   });
 
-  it("only starts the irreversible local cascade after Stripe succeeds", async () => {
+  it("only starts the irreversible local cascade after Dodo Payments succeeds", async () => {
     const { db, queries } = database();
 
     const result = await actions.fulfillDataRequest({
@@ -124,7 +134,7 @@ describe("LGPD account deletion lifecycle", () => {
     } as never);
 
     expect(result).toEqual({ ok: true });
-    expect(mocks.terminateStripeBillingForAccount).toHaveBeenCalledOnce();
+    expect(mocks.terminateBillingForAccount).toHaveBeenCalledOnce();
     expect(mocks.lockObjectOwner).toHaveBeenCalledWith(
       expect.any(Function),
       "owner-1",
@@ -140,7 +150,7 @@ describe("LGPD account deletion lifecycle", () => {
     );
     expect(tombstone).toMatchObject({
       transaction: true,
-      values: ["owner-1", "cus_owner", "sub_owner"],
+      values: ["owner-1", "dodo", "test_mode", "cus_owner", "sub_owner"],
     });
     expect(deletion).toMatchObject({ transaction: true });
     expect(deletion?.sql).toContain("request.status = 'open'");
@@ -160,5 +170,103 @@ describe("LGPD account deletion lifecycle", () => {
       ownerId: "owner-1",
       platform: { env: {} },
     });
+  });
+
+  it("cancels only the fresh customer after acquiring the shared billing lock", async () => {
+    const { db, queries } = database("dodo", {
+      billing_customer_id: "cus_committed_checkout",
+      billing_subscription_id: "sub_committed_checkout",
+    });
+    mocks.terminateBillingForAccount.mockImplementation(async () => {
+      const lock = queries.findIndex((entry) =>
+        entry.sql.includes("pg_advisory_xact_lock(hashtextextended"),
+      );
+      const fresh = queries.findIndex(
+        (entry) =>
+          entry.sql.includes("for update of request") && entry.transaction,
+      );
+      expect(lock).toBeGreaterThan(-1);
+      expect(fresh).toBeGreaterThan(lock);
+      expect(queries[lock]).toMatchObject({ transaction: true });
+      expect(queries.some((entry) => entry.sql.startsWith("delete from"))).toBe(
+        false,
+      );
+    });
+    expect(
+      await actions.fulfillDataRequest({
+        request: request(),
+        locals: { db },
+        platform: { env: {} },
+      } as never),
+    ).toEqual({ ok: true });
+    expect(mocks.terminateBillingForAccount).toHaveBeenCalledWith(
+      {
+        customerId: "cus_committed_checkout",
+        subscriptionId: "sub_committed_checkout",
+        environment: "test_mode",
+      },
+      expect.anything(),
+    );
+    expect(
+      queries.find((entry) =>
+        entry.sql.includes("insert into account_deletion_tombstones"),
+      )?.values,
+    ).toEqual([
+      "owner-1",
+      "dodo",
+      "test_mode",
+      "cus_committed_checkout",
+      "sub_committed_checkout",
+    ]);
+  });
+
+  it("does not contact Dodo if the deletion request changes while waiting for the lock", async () => {
+    const { db, queries } = database("dodo", { status: "fulfilled" });
+    expect(
+      await actions.fulfillDataRequest({
+        request: request(),
+        locals: { db },
+        platform: { env: {} },
+      } as never),
+    ).toMatchObject({ status: 400 });
+    expect(mocks.terminateBillingForAccount).not.toHaveBeenCalled();
+    expect(queries.some((entry) => entry.sql.startsWith("delete from"))).toBe(
+      false,
+    );
+  });
+
+  it("leaves an open request with retry notes when cancellation succeeds but the local cascade fails", async () => {
+    const { db, queries } = database("dodo", {}, true);
+    expect(
+      await actions.fulfillDataRequest({
+        request: request(),
+        locals: { db },
+        platform: { env: {} },
+      } as never),
+    ).toMatchObject({ status: 400 });
+    expect(mocks.terminateBillingForAccount).toHaveBeenCalledOnce();
+    expect(
+      queries.some(
+        (entry) => entry.sql.includes("set notes") && !entry.transaction,
+      ),
+    ).toBe(true);
+    expect(mocks.deleteQueuedObjectsBestEffort).not.toHaveBeenCalled();
+  });
+
+  it("preserves unresolved former-provider IDs without sending them to Dodo", async () => {
+    const { db, queries } = database("legacy");
+    const result = await actions.fulfillDataRequest({
+      request: request(),
+      locals: { db },
+      platform: { env: {} },
+    } as never);
+
+    expect(result).toMatchObject({ status: 502 });
+    expect(mocks.terminateBillingForAccount).not.toHaveBeenCalled();
+    expect(
+      queries.some((entry) =>
+        entry.sql.includes('delete from neon_auth."user"'),
+      ),
+    ).toBe(false);
   });
 });

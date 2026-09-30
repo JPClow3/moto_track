@@ -10,10 +10,11 @@ declare global {
         DATABASE_URL?: string;
         PUBLIC_NEON_AUTH_URL?: string;
         NEON_AUTH_JWKS_URL?: string;
-        STRIPE_SECRET_KEY?: string;
-        STRIPE_WEBHOOK_SECRET?: string;
-        STRIPE_PRO_MONTHLY_PRICE_ID?: string;
-        STRIPE_PRO_YEARLY_PRICE_ID?: string;
+        DODO_PAYMENTS_API_KEY?: string;
+        DODO_PAYMENTS_ENVIRONMENT?: "test_mode" | "live_mode";
+        DODO_PAYMENTS_WEBHOOK_SECRET?: string;
+        DODO_PRO_MONTHLY_PRODUCT_ID?: string;
+        DODO_PRO_YEARLY_PRODUCT_ID?: string;
         MISTRAL_API_KEY?: string;
         PUBLIC_SITE_URL?: string;
         PUBLIC_VAPID_KEY?: string;

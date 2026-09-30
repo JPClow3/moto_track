@@ -4,6 +4,7 @@ import {
   type SubscriptionProfile,
 } from "$server/domain/entitlements";
 import { isDeletionConfirmation } from "$server/domain/account-data";
+import { runtimeEnv } from "$server/runtime";
 
 type Row = Record<string, unknown>;
 
@@ -11,14 +12,16 @@ function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
 }
 
-export async function load({ locals, url }) {
+export async function load({ locals, url, platform }) {
   const ownerId = locals.user!.id;
   // Reads are best-effort, matching the old unchecked `.maybeSingle()` /
   // `.select()` calls: a failure yields an empty profile/list instead of
   // failing the whole page load.
   const [[profile], requests, [userProfile]] = await Promise.all([
     locals.db<Row[]>`
-      select * from subscription_profiles
+      select subscription_profiles.*,
+        (select environment from billing_configuration where id = 1) as entitlement_environment
+      from subscription_profiles
       where owner_id = ${ownerId}
     `.catch(() => [] as Row[]),
     locals.db<Row[]>`
@@ -32,7 +35,11 @@ export async function load({ locals, url }) {
   ]);
   return {
     profile: profile ?? null,
-    hasProAccess: hasProAccess(profile as SubscriptionProfile | null),
+    hasProAccess: hasProAccess(
+      profile as SubscriptionProfile | null,
+      new Date(),
+      runtimeEnv(platform).DODO_PAYMENTS_ENVIRONMENT ?? "live_mode",
+    ),
     theme: userProfile?.theme ?? "system",
     requests,
     checkout: url.searchParams.get("checkout"),

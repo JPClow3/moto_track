@@ -8,7 +8,7 @@
 
   // Formatted here rather than on the server: the pricing lookup is cached
   // process-wide, so a string baked in there would pin one reader's locale for
-  // everyone. Falls back to a label rather than inventing a number when Stripe
+  // everyone. Falls back to a label rather than inventing a number when Dodo Payments
   // is unconfigured or unreachable.
   function planPrice(price: PlanPrice | null) {
     return price
@@ -16,7 +16,7 @@
       : $t("pricing.priceAtCheckout");
   }
 
-  // Set by /billing/checkout when Stripe could not open a session, so the
+  // Set by /billing/checkout when Dodo Payments could not open a session, so the
   // rider gets an explanation here instead of a bare error page.
   $: checkoutState = $page.url.searchParams.get("checkout");
 
@@ -51,7 +51,7 @@
     data.pricing.monthly && data.pricing.yearly
       ? data.pricing.monthly.amountCents * 12 - data.pricing.yearly.amountCents
       : 0;
-  // Stays in BRL in every locale — that is what Stripe actually charges. Only
+  // Stays in BRL in every locale — that is what Dodo Payments actually charges. Only
   // the separators and symbol placement follow the reader's locale.
   $: formattedAnnualSavings = formatMoney($locale, annualSavings);
 </script>
@@ -152,7 +152,7 @@
             </label>
           </fieldset>
 
-          <!-- Live from Stripe, so this can't drift from what checkout charges. -->
+          <!-- Live from Dodo Payments, so this can't drift from what checkout charges. -->
           <div class="my-8">
             {#if data.pricing.monthly}
               <p class="display numeric text-6xl text-[var(--accent)]">

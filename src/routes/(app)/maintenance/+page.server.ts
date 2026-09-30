@@ -362,7 +362,7 @@ export const actions = {
     );
     if (!validation.ok) return fail(400, { message: validation.message });
 
-    const blocked = await assertCanCreateUpload(locals.db, ownerId);
+    const blocked = await assertCanCreateUpload(locals.db, ownerId, platform);
     if (blocked) return fail(403, { message: blocked });
 
     let uploaded;

@@ -20,6 +20,9 @@ localConnectionString = "postgresql://user:pass@127.0.0.1:1/postgres"
 PUBLIC_SITE_URL = "https://moto-track.net"
 PUBLIC_NEON_AUTH_URL = "https://ep-damp-bar-acu29m6g.neonauth.sa-east-1.aws.neon.tech/neondb/auth"
 PUBLIC_SENTRY_ENVIRONMENT = "production"
+DODO_PAYMENTS_ENVIRONMENT = "live_mode"
+DODO_PRO_MONTHLY_PRODUCT_ID = "pdt_0NogzdEPLdVReWwPEmrOr"
+DODO_PRO_YEARLY_PRODUCT_ID = "pdt_0Noh00vT9xEg3MP9jHK7e"
 
 # Pages does not support a checked-in [secrets] table. The encrypted runtime
 # contract is documented in docs/deployment.md and configured in Cloudflare.

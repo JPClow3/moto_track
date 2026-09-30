@@ -57,7 +57,11 @@ export async function POST(event) {
   const { user } = await requireApiUser(event);
   const config = resourceOrThrow(event.params.resource);
   if (config.featureSlug === "reminders") {
-    const blocked = await assertCanCreateReminder(event.locals.db, user.id);
+    const blocked = await assertCanCreateReminder(
+      event.locals.db,
+      user.id,
+      event.platform,
+    );
     if (blocked) throw error(403, blocked);
   }
   const feature = getFeature(config.featureSlug);

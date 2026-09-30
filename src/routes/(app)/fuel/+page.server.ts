@@ -69,7 +69,7 @@ async function createFuelRecord({
       allowedContentTypes: RECEIPT_UPLOAD_CONTENT_TYPES,
     });
     if (!validation.ok) return fail(400, { message: validation.message });
-    const blocked = await assertCanCreateUpload(locals.db, user.id);
+    const blocked = await assertCanCreateUpload(locals.db, user.id, platform);
     if (blocked) return fail(403, { message: blocked });
     try {
       uploadedReceipt = await uploadObjectFile({

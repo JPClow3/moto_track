@@ -1,5 +1,6 @@
 import { fail } from "@sveltejs/kit";
 import type { Sql } from "postgres";
+import { runtimeEnv } from "$server/runtime";
 import {
   FREE_ACTIVE_MOTORCYCLE_LIMIT,
   hasProAccess,
@@ -57,7 +58,11 @@ function rowsOrEmpty<T>(
 // check before touching a motorcycle's `is_active` state. Neither the count
 // nor the profile lookup ever checked `{ error }` in the Supabase version —
 // a failed read just defaulted to 0 / no profile, same as here.
-async function canAddActiveMotorcycle(db: Sql, ownerId: string) {
+async function canAddActiveMotorcycle(
+  db: Sql,
+  ownerId: string,
+  platform?: App.Platform,
+) {
   let activeCount = 0;
   try {
     const [row] = await db<{ count: number }[]>`
@@ -72,7 +77,8 @@ async function canAddActiveMotorcycle(db: Sql, ownerId: string) {
   let profile: SubscriptionProfile | undefined;
   try {
     [profile] = await db<SubscriptionProfile[]>`
-      select plan, stripe_subscription_status, grace_until
+      select plan, billing_provider, billing_environment, billing_subscription_status, grace_until,
+        (select environment from billing_configuration where id = 1) as entitlement_environment
       from subscription_profiles
       where owner_id = ${ownerId}
     `;
@@ -80,10 +86,16 @@ async function canAddActiveMotorcycle(db: Sql, ownerId: string) {
     profile = undefined;
   }
 
-  return hasProAccess(profile) || activeCount < FREE_ACTIVE_MOTORCYCLE_LIMIT;
+  return (
+    hasProAccess(
+      profile,
+      new Date(),
+      runtimeEnv(platform).DODO_PAYMENTS_ENVIRONMENT ?? "live_mode",
+    ) || activeCount < FREE_ACTIVE_MOTORCYCLE_LIMIT
+  );
 }
 
-export async function load({ locals }) {
+export async function load({ locals, platform }) {
   const ownerId = locals.user!.id;
   let loadError = false;
   const markLoadError = () => {
@@ -100,7 +112,8 @@ export async function load({ locals }) {
     ),
     rowsOrEmpty(
       locals.db<SubscriptionProfile[]>`
-        select plan, stripe_subscription_status, grace_until
+        select plan, billing_provider, billing_environment, billing_subscription_status, grace_until,
+        (select environment from billing_configuration where id = 1) as entitlement_environment
         from subscription_profiles
         where owner_id = ${ownerId}
       `,
@@ -191,7 +204,11 @@ export async function load({ locals }) {
     })),
     models,
     canAddActive:
-      hasProAccess(profile) ||
+      hasProAccess(
+        profile,
+        new Date(),
+        runtimeEnv(platform).DODO_PAYMENTS_ENVIRONMENT ?? "live_mode",
+      ) ||
       motorcyclesWithSpecs.filter((motorcycle) => motorcycle.is_active).length <
         FREE_ACTIVE_MOTORCYCLE_LIMIT,
     errorMessage: loadError ? translate(locals.locale, "common.loadError") : "",
@@ -199,10 +216,10 @@ export async function load({ locals }) {
 }
 
 export const actions = {
-  create: async ({ request, locals }) => {
+  create: async ({ request, locals, platform }) => {
     const form = await request.formData();
     const ownerId = locals.user!.id;
-    if (!(await canAddActiveMotorcycle(locals.db, ownerId))) {
+    if (!(await canAddActiveMotorcycle(locals.db, ownerId, platform))) {
       return fail(403, { message: "O plano Free permite uma moto ativa." });
     }
     const name = value(form, "name");
@@ -306,10 +323,10 @@ export const actions = {
     }
     return { ok: true };
   },
-  restore: async ({ request, locals }) => {
+  restore: async ({ request, locals, platform }) => {
     const form = await request.formData();
     const ownerId = locals.user!.id;
-    if (!(await canAddActiveMotorcycle(locals.db, ownerId))) {
+    if (!(await canAddActiveMotorcycle(locals.db, ownerId, platform))) {
       return fail(403, { message: "O plano Free permite uma moto ativa." });
     }
     try {
