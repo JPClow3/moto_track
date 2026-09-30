@@ -286,4 +286,172 @@ describe("Dodo account billing termination", () => {
     expect(mocks.block).not.toHaveBeenCalled();
     expect(mocks.update).not.toHaveBeenCalled();
   });
+  it("retries a completed block after local deletion rolled back", async () => {
+    let blocked = false;
+    mocks.block.mockImplementation(async () => {
+      if (blocked)
+        throw Object.assign(new Error("already blocked"), {
+          status: 409,
+          error: { code: "CUSTOMER_ALREADY_BLOCKED" },
+        });
+      blocked = true;
+      return {
+        id: "blk_owner",
+        customer_id: "cus_owner",
+        subscriptions_swept: true,
+      };
+    });
+    mocks.retrieve.mockResolvedValue(record("sub_owner", "cancelled"));
+    mocks.retrieveCustomer.mockImplementation(async () => ({
+      customer_id: "cus_owner",
+      email: "owner@example.com",
+      metadata: {
+        app: "moto_track",
+        user_id: "owner",
+        environment: "test_mode",
+      },
+      blocked_at: blocked ? "2026-09-29T12:00:00Z" : null,
+      blocklist_entry_id: blocked ? "blk_owner" : null,
+    }));
+    mocks.verifyBlock.mockResolvedValue({
+      id: "blk_owner",
+      customer_id: "cus_owner",
+      customer_email: "owner@example.com",
+      unblocked_at: null,
+    });
+    const references = {
+      customerId: "cus_owner",
+      subscriptionId: "sub_owner",
+      environment: "test_mode",
+    };
+    await terminateBillingForAccount(references, platform);
+    // Simulate a local transaction rollback after provider termination succeeded.
+    await expect(
+      terminateBillingForAccount(references, platform),
+    ).resolves.toBeUndefined();
+    expect(mocks.block).toHaveBeenCalledTimes(2);
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.list).toHaveBeenCalledTimes(6);
+  });
+  it("accepts a specifically verified already-completed sweep on the sweep retry", async () => {
+    mocks.block
+      .mockResolvedValueOnce({
+        id: "blk_owner",
+        customer_id: "cus_owner",
+        subscriptions_swept: false,
+      })
+      .mockRejectedValueOnce(
+        Object.assign(new Error("already blocked"), {
+          status: 409,
+          error: { code: "CUSTOMER_ALREADY_BLOCKED" },
+        }),
+      );
+    mocks.retrieveCustomer.mockResolvedValue({
+      customer_id: "cus_owner",
+      email: "owner@example.com",
+      metadata: {
+        app: "moto_track",
+        user_id: "owner",
+        environment: "test_mode",
+      },
+      blocked_at: "2026-09-29T12:00:00Z",
+      blocklist_entry_id: "blk_owner",
+    });
+    mocks.verifyBlock.mockResolvedValue({
+      id: "blk_owner",
+      customer_id: "cus_owner",
+      customer_email: "owner@example.com",
+      unblocked_at: null,
+    });
+    await expect(
+      terminateBillingForAccount(
+        { customerId: "cus_owner", environment: "test_mode" },
+        platform,
+      ),
+    ).resolves.toBeUndefined();
+  });
+  it.each([
+    { status: 409, error: { code: "OTHER_CONFLICT" } },
+    { status: 409 },
+    { status: 403, error: { code: "CUSTOMER_ALREADY_BLOCKED" } },
+  ])("never suppresses unrelated provider errors %j", async (failure) => {
+    const error = Object.assign(new Error("CUSTOMER_ALREADY_BLOCKED"), failure);
+    mocks.block.mockRejectedValue(error);
+    await expect(
+      terminateBillingForAccount(
+        { customerId: "cus_owner", environment: "test_mode" },
+        platform,
+      ),
+    ).rejects.toBe(error);
+    expect(mocks.verifyBlock).not.toHaveBeenCalled();
+  });
+  it.each([
+    { blocked_at: null, blocklist_entry_id: "blk_owner" },
+    { blocked_at: "2026-09-29T12:00:00Z", blocklist_entry_id: null },
+  ])(
+    "requires customer detail to confirm an active block %j",
+    async (fields) => {
+      mocks.block.mockRejectedValue(
+        Object.assign(new Error("already blocked"), {
+          status: 409,
+          error: { code: "CUSTOMER_ALREADY_BLOCKED" },
+        }),
+      );
+      mocks.retrieveCustomer.mockResolvedValue({
+        customer_id: "cus_owner",
+        email: "owner@example.com",
+        metadata: {
+          app: "moto_track",
+          user_id: "owner",
+          environment: "test_mode",
+        },
+        ...fields,
+      });
+      await expect(
+        terminateBillingForAccount(
+          { customerId: "cus_owner", environment: "test_mode" },
+          platform,
+        ),
+      ).rejects.toThrow("could not be verified");
+      expect(mocks.update).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    { id: "blk_other" },
+    { customer_id: "cus_other" },
+    { customer_email: "other@example.com" },
+    { unblocked_at: "2026-09-30T12:00:00Z" },
+  ])("requires exact active block linkage %j", async (fields) => {
+    mocks.block.mockRejectedValue(
+      Object.assign(new Error("already blocked"), {
+        status: 409,
+        error: { code: "CUSTOMER_ALREADY_BLOCKED" },
+      }),
+    );
+    mocks.retrieveCustomer.mockResolvedValue({
+      customer_id: "cus_owner",
+      email: "owner@example.com",
+      metadata: {
+        app: "moto_track",
+        user_id: "owner",
+        environment: "test_mode",
+      },
+      blocked_at: "2026-09-29T12:00:00Z",
+      blocklist_entry_id: "blk_owner",
+    });
+    mocks.verifyBlock.mockResolvedValue({
+      id: "blk_owner",
+      customer_id: "cus_owner",
+      customer_email: "owner@example.com",
+      unblocked_at: null,
+      ...fields,
+    });
+    await expect(
+      terminateBillingForAccount(
+        { customerId: "cus_owner", environment: "test_mode" },
+        platform,
+      ),
+    ).rejects.toThrow("linkage mismatch");
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
 });

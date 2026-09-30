@@ -151,9 +151,12 @@ financial-event acceptance.
 ## Account deletion and pending checkout policy
 
 Before local deletion, serialize billing operations for the account, reread
-its current provider binding, and check for open subscriptions belonging to
-other applications in the shared Dodo Payments business. Fail closed and
-preserve the open deletion request when blocking would affect another app;
+its current provider binding, and inspect every customer record sharing its
+normalized email in the Dodo Payments business. Reject another app's or
+another owner's customer record even when it has no open subscription:
+pending checkout links may still be payable. Also check the customer's
+subscriptions for unrelated products. Fail closed and preserve the open
+deletion request when blocking would affect another app or owner;
 operator support or a dedicated provider business is required for safe
 cross-app deletion. Never mass-cancel unrelated subscriptions to fulfill a
 Moto Track deletion.
@@ -174,6 +177,17 @@ approving re-enrollment, reconcile previous sessions, subscriptions, and the
 deletion tombstone, and establish the new account's ownership deliberately.
 This is an operational billing safeguard; the application must still display
 a clear support path for an affected customer.
+
+## Unknown checkout outcomes
+
+Checkout commits the customer binding and a durable `pending:<uuid>` intent
+before creating a payable provider session. If the provider result or final
+local persistence is uncertain, the pending marker remains and future
+checkout attempts fail closed rather than create another payable session.
+An operator must reconcile that intent with provider records, its customer,
+and any created session before resolving it. Do not clear the marker or
+retry checkout creation without establishing the outcome. A known unfinished
+session is reused instead of minting another link.
 
 ## Existing subscription handover
 

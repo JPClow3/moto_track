@@ -39,6 +39,7 @@ describe("Dodo billing", () => {
       }),
     ).toMatchObject({
       product_cart: [{ product_id: "pdt_yearly", quantity: 1 }],
+      billing_currency: "BRL",
       customer: { customer_id: "cus_owner" },
       subscription_data: { trial_period_days: 7 },
       metadata: {

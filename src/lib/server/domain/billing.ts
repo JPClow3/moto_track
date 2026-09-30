@@ -282,6 +282,7 @@ export function buildCheckoutSessionParams({
 }): CheckoutSessionCreateParams {
   return {
     product_cart: [{ product_id: productId, quantity: 1 }],
+    billing_currency: "BRL",
     customer: customerId
       ? { customer_id: customerId }
       : { email, name: email.split("@")[0] },
@@ -437,6 +438,56 @@ async function assertAccountBlockScope(
   }
 }
 
+async function blockAccountCustomer(
+  customerId: string,
+  platform?: App.Platform,
+) {
+  const client = dodoClient(platform);
+  try {
+    return await client.blocklist.customers.create({
+      customer_id: customerId,
+      reason: "Moto Track account deletion",
+    });
+  } catch (error) {
+    // Dodo returns this specific conflict when an existing active block has
+    // already swept its subscriptions. Other conflicts/failures must propagate.
+    const failure = error as {
+      status?: number;
+      error?: { code?: string };
+    } | null;
+    if (
+      failure?.status !== 409 ||
+      failure.error?.code !== "CUSTOMER_ALREADY_BLOCKED"
+    )
+      throw error;
+    const customer = await client.customers.retrieve(customerId);
+    if (
+      customer.customer_id !== customerId ||
+      !customer.blocked_at ||
+      !customer.blocklist_entry_id ||
+      customer.metadata?.app !== "moto_track" ||
+      customer.metadata.environment !== billingEnvironment(platform)
+    )
+      throw new Error(
+        "Existing Dodo account billing block could not be verified.",
+      );
+    const block = await client.blocklist.customers.retrieve(
+      customer.blocklist_entry_id,
+    );
+    if (
+      block.id !== customer.blocklist_entry_id ||
+      block.customer_id !== customerId ||
+      block.unblocked_at ||
+      normalizedBillingEmail(block.customer_email) !==
+        normalizedBillingEmail(customer.email)
+    )
+      throw new Error("Existing Dodo account billing block linkage mismatch.");
+    // The documented 409 means the block's provider sweep is complete. The
+    // caller still enumerates/cancels and verifies current subscriptions below.
+    return { ...block, subscriptions_swept: true };
+  }
+}
+
 /** Stop every subscription; the provider has no customer-delete endpoint. */
 export async function terminateBillingForAccount(
   {
@@ -472,12 +523,7 @@ export async function terminateBillingForAccount(
   if (customer) await assertAccountBlockScope(customer, platform);
   // A provider block also stops outstanding checkout links and future renewals.
   // It applies to the email; re-registration requires operator review.
-  let block = customer
-    ? await client.blocklist.customers.create({
-        customer_id: customer,
-        reason: "Moto Track account deletion",
-      })
-    : null;
+  let block = customer ? await blockAccountCustomer(customer, platform) : null;
   if (block && (block.customer_id !== customer || block.unblocked_at))
     throw new Error("Dodo account billing block could not be verified.");
   const ids = new Set<string>();
@@ -526,10 +572,7 @@ export async function terminateBillingForAccount(
     )
       throw new Error("Dodo customer still has an open subscription.");
     if (block?.subscriptions_swept !== true) {
-      block = await client.blocklist.customers.create({
-        customer_id: customer,
-        reason: "Moto Track account deletion",
-      });
+      block = await blockAccountCustomer(customer, platform);
       if (
         block.subscriptions_swept !== true ||
         block.customer_id !== customer ||

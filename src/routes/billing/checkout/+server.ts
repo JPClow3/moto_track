@@ -146,6 +146,25 @@ export async function GET({ locals, url, platform }) {
             attemptId: null,
             trialEligible: false,
           };
+        if (history.length === 0) {
+          // A successful checkout can precede subscription indexing/webhook
+          // delivery. Never mint another payable link during that gap.
+          if (!profile.billing_subscription_id)
+            throw new Error(
+              "Successful checkout is awaiting subscription reconciliation.",
+            );
+          const previous = await dodoClient(platform).subscriptions.retrieve(
+            profile.billing_subscription_id,
+          );
+          if (previous.customer.customer_id !== customerId)
+            throw new Error("Previous subscription customer binding mismatch.");
+          if (!TERMINAL_SUBSCRIPTION_STATUSES.includes(previous.status))
+            return {
+              destination: "/billing/portal",
+              attemptId: null,
+              trialEligible: false,
+            };
+        }
       }
       const attemptId = `pending:${crypto.randomUUID()}`;
       await tx`

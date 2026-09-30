@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   customerRetrieve: vi.fn(),
   customerList: vi.fn(),
   subscriptionList: vi.fn(),
+  subscriptionRetrieve: vi.fn(),
   productRetrieve: vi.fn(),
   checkoutCreate: vi.fn(),
   checkoutRetrieve: vi.fn(),
@@ -17,7 +18,10 @@ vi.mock("dodopayments", () => ({
       retrieve: mocks.customerRetrieve,
       list: mocks.customerList,
     };
-    subscriptions = { list: mocks.subscriptionList };
+    subscriptions = {
+      list: mocks.subscriptionList,
+      retrieve: mocks.subscriptionRetrieve,
+    };
     products = { retrieve: mocks.productRetrieve };
     checkoutSessions = {
       create: mocks.checkoutCreate,
@@ -158,6 +162,10 @@ beforeEach(() => {
   mocks.customerRetrieve.mockResolvedValue(customer);
   mocks.customerList.mockImplementation(() => iterate([]));
   mocks.subscriptionList.mockImplementation(() => iterate([]));
+  mocks.subscriptionRetrieve.mockResolvedValue({
+    status: "active",
+    customer: { customer_id: customer.customer_id },
+  });
   mocks.productRetrieve.mockResolvedValue(product);
   mocks.checkoutCreate.mockResolvedValue({
     session_id: "cks_owner",
@@ -226,6 +234,38 @@ describe("Dodo checkout identity and provider lifecycle", () => {
       location: "/precos?checkout=error",
     });
     expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
+  });
+  it("does not remint a successful checkout before subscription indexing/webhook delivery", async () => {
+    const db = database();
+    await expect(GET(request(db.db))).rejects.toMatchObject({ status: 303 });
+    mocks.checkoutRetrieve.mockResolvedValue({ payment_status: "succeeded" });
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "/precos?checkout=error",
+    });
+    expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
+    expect(db.state.profile?.billing_checkout_session_id).toBe("cks_owner");
+  });
+  it("permits returning customers only after a known prior subscription is canonically terminal", async () => {
+    const db = database();
+    await expect(GET(request(db.db))).rejects.toMatchObject({ status: 303 });
+    db.state.profile!.billing_subscription_id = "sub_previous";
+    mocks.checkoutRetrieve.mockResolvedValue({ payment_status: "succeeded" });
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "/billing/portal",
+    });
+    expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
+    mocks.subscriptionRetrieve.mockResolvedValue({
+      status: "cancelled",
+      customer: { customer_id: customer.customer_id },
+    });
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      status: 303,
+      location: "https://checkout.dodopayments.com/session/cks_owner",
+    });
+    expect(mocks.checkoutCreate).toHaveBeenCalledTimes(2);
+    expect(
+      mocks.checkoutCreate.mock.calls[1][0].subscription_data.trial_period_days,
+    ).toBe(0);
   });
   it("recovers a customer created before a lost provider response by exact metadata", async () => {
     const db = database();
