@@ -565,9 +565,27 @@ test.describe("data surfaces responsive behavior", () => {
   }) => {
     await gotoAppRoute(page, "/billing/conta");
     const deletionForm = page.locator('form[action="?/requestDeletion"]');
+    await deletionForm
+      .locator("xpath=ancestor::details")
+      .locator("summary")
+      .click();
     await deletionForm.locator('input[name="confirmation"]').fill("INVALIDO");
-    await deletionForm.getByRole("button").click();
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(deletionForm.getByRole("button")).toBeDisabled();
+    // A crafted request must still fail even though the UI prevents submission.
+    const invalidDeletion = await postAction(
+      page,
+      "/billing/conta?/requestDeletion",
+      {
+        confirmation: "INVALIDO",
+      },
+    );
+    // Enhanced Svelte actions use HTTP 200 with the action status in the envelope.
+    expect(invalidDeletion.status, invalidDeletion.body).toBe(200);
+    expect(JSON.parse(invalidDeletion.body)).toMatchObject({
+      type: "failure",
+      status: 400,
+    });
+    expect(invalidDeletion.body).toContain(
       "Digite EXCLUIR para confirmar a exclusão da conta.",
     );
 

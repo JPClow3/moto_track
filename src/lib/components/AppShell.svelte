@@ -13,6 +13,7 @@
     Shield,
     Wrench,
     CircleGauge,
+    UserRound,
     X,
   } from "lucide-svelte";
   import { tick } from "svelte";
@@ -41,6 +42,7 @@
     ChartNoAxesCombined,
     BriefcaseBusiness,
     Shield,
+    UserRound,
   };
 
   type NavItem = {
@@ -98,6 +100,7 @@
     {
       key: "navGroup.system",
       items: [
+        { href: "/billing/conta", key: "conta.heading", icon: "UserRound" },
         { href: "/admin", key: "nav.admin", icon: "Shield", staffOnly: true },
       ],
     },
@@ -242,8 +245,9 @@
     </nav>
 
     <div class="mt-4 border-t border-[var(--line)] pt-4">
-      <div
-        class="flex items-center gap-3 rounded px-2 py-2 transition hover:bg-[color-mix(in_srgb,var(--fg)_4%,transparent)]"
+      <a
+        href="/billing/conta"
+        class="focus-ring flex items-center gap-3 rounded px-2 py-2 transition hover:bg-[color-mix(in_srgb,var(--fg)_4%,transparent)]"
         title={user?.email ?? $t("common.account")}
       >
         <div
@@ -257,7 +261,7 @@
         >
           {user?.email ?? $t("common.account")}
         </span>
-      </div>
+      </a>
       <div class="px-2 pt-1">
         <LocaleSwitcher />
       </div>
