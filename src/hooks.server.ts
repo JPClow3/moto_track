@@ -3,6 +3,7 @@ import { getDb } from "$server/db/client";
 import { resolveSession } from "$server/auth/session";
 import { ensureAccount } from "$server/auth/bootstrap";
 import { LOCALE_COOKIE, resolveLocale } from "$lib/i18n";
+import { preserveAppScripts } from "$server/domain/page-html";
 
 const protectedPrefixes = [
   "/dashboard",
@@ -73,7 +74,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     // app.html ships `lang="%lang%"`; without this the document would claim to
     // be pt-BR to screen readers and translation tools no matter the locale.
     transformPageChunk: ({ html }) =>
-      html.replace("%lang%", event.locals.locale),
+      preserveAppScripts(html.replace("%lang%", event.locals.locale)),
   });
 
   response.headers.set(
