@@ -58,7 +58,8 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/moto_track_test
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        timeout-minutes: 10
+        run: npx playwright install --with-deps chromium
 
       - name: Require authenticated E2E credentials
         env:
