@@ -26,7 +26,7 @@ Use this file for agent-specific repo workflows. Keep broader product and fronte
   - `src/lib/types/database.ts` is hand-maintained — update it alongside new migrations
   - Auth is Neon Auth (managed Better Auth); `DATABASE_URL`/`PUBLIC_NEON_AUTH_URL`/`NEON_AUTH_JWKS_URL` are required at runtime
 - **CI Pipeline**:
-  - GitHub Actions runs check, lint, format:check, unit tests, and e2e tests on push to `main` and all Pull Requests.
+  - Cloudflare Pages and Workers Builds own automatic main validation/deployment (see `docs/cloudflare-ci.md`). GitHub Actions retains checks and e2e tests for Pull Requests and explicit manual runs.
 
 ## Cursor Cloud specific instructions
 

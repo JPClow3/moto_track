@@ -1,16 +1,6 @@
 name: Deploy reminder Worker
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/deploy-reminders.yml"
-      - "workers/reminders/**"
-      - "src/lib/server/domain/reminders.ts"
-      - "src/lib/server/domain/push-crypto.ts"
-      - "package.json"
-      - "package-lock.json"
   workflow_dispatch:
 
 permissions:
