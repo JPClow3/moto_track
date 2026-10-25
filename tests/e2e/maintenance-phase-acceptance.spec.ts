@@ -49,7 +49,19 @@ test.describe("exact catalog item occurrence acceptance", () => {
       );
       await create.locator('select[name="year"]').selectOption("2026");
       await create.locator('[name="current_odometer_km"]').fill("12000");
-      await create.locator('button[type="submit"]').click();
+      // Settle the action before asserting: a create that commits after the
+      // cleanup below would leave a second active bike for later suites.
+      const [created] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            response.url().includes("?/create"),
+          { timeout: 60_000 },
+        ),
+        create.locator('button[type="submit"]').click(),
+      ]);
+      const createdBody = await created.text();
+      expect(createdBody, createdBody).toContain('"type":"success"');
       await expect(
         page.getByRole("heading", { name, exact: true }),
       ).toBeVisible();

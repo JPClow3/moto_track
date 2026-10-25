@@ -1,8 +1,10 @@
+import { OFFLINE_CACHE, OFFLINE_LOCALE_KEY } from "$lib/utils/offline-cache";
+
 export function GET() {
   const script = `
-const CACHE = 'moto-track-offline-v2';
+const CACHE = '${OFFLINE_CACHE}';
 const FALLBACKS = { 'pt-BR': '/offline-pt-BR.html', en: '/offline-en.html' };
-const LOCALE_KEY = '/__moto-track-offline-locale__';
+const LOCALE_KEY = '${OFFLINE_LOCALE_KEY}';
 const PUBLIC_ASSETS = [...Object.values(FALLBACKS), '/offline-drafts.js', '/offline.css', '/manifest.webmanifest'];
 const FUEL_SYNC_TAG = 'moto-track-fuel-sync';
 const FUEL_DB = 'moto-track-offline';

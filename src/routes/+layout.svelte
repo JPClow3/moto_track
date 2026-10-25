@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import type { Snippet } from "svelte";
   import { requestOfflineFuelSync } from "$lib/utils/offline-fuel";
+  import { saveOfflineLocale } from "$lib/utils/offline-cache";
   import {
     DEFAULT_LOCALE,
     normalizeReleasedLocale,
@@ -66,6 +67,7 @@
     const locale = normalizeReleasedLocale(data.locale) ?? DEFAULT_LOCALE;
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
       return;
+    void saveOfflineLocale(locale).catch(() => {});
     let cancelled = false;
     const updateController = () =>
       navigator.serviceWorker.controller?.postMessage({

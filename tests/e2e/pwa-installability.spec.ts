@@ -50,15 +50,16 @@ test("cold offline recovery exports and discards local drafts without account da
         page.evaluate(async () => {
           const cache = await caches.open("moto-track-offline-v2");
           const locale = await cache.match("/__moto-track-offline-locale__");
-          return (
-            Boolean(navigator.serviceWorker.controller) &&
-            (locale && (await locale.text())) === "en" &&
-            Boolean(await cache.match("/offline-drafts.js"))
-          );
+          // An object, so a failure names the condition that never held.
+          return {
+            controlled: Boolean(navigator.serviceWorker.controller),
+            locale: locale ? await locale.text() : null,
+            drafts: Boolean(await cache.match("/offline-drafts.js")),
+          };
         }),
       { timeout: 20_000 },
     )
-    .toBe(true);
+    .toEqual({ controlled: true, locale: "en", drafts: true });
   const id = "f03ec98b-6c67-45f9-8fbb-e95857c3d01c";
   const note = '<img src=x onerror="window.unsafeDraft=true">';
   await seedLocalFuelDrafts(page, [
@@ -159,14 +160,14 @@ test("uses the explicit English preference for a standalone offline fallback wit
         page.evaluate(async () => {
           const cache = await caches.open("moto-track-offline-v2");
           const saved = await cache.match("/__moto-track-offline-locale__");
-          return (
-            Boolean(navigator.serviceWorker.controller) &&
-            (saved && (await saved.text())) === "en"
-          );
+          return {
+            controlled: Boolean(navigator.serviceWorker.controller),
+            locale: saved ? await saved.text() : null,
+          };
         }),
       { timeout: 20_000 },
     )
-    .toBe(true);
+    .toEqual({ controlled: true, locale: "en" });
   await context.setOffline(true);
   try {
     await page.goto("/dashboard?offline-acceptance=1");
