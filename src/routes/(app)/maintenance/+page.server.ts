@@ -249,6 +249,9 @@ export const actions = localizedActions({
     try {
       reminderResult = await locals.db.begin(async (transaction) => {
         const db = transaction as unknown as typeof locals.db;
+        // Account deletion locks the owner first; a plan insert's foreign key
+        // would otherwise request that lock after the profile's.
+        await lockObjectOwner(db, ownerId);
         await db`select id from profiles where id = ${ownerId} for update`;
         const [motorcycle] = await db<Array<{ id: string }>>`
           select id from motorcycles where id = ${motorcycleId} and owner_id = ${ownerId}

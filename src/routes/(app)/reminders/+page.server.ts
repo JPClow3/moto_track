@@ -111,6 +111,7 @@ export const actions = localizedActions({
     try {
       await locals.db.begin(async (transaction) => {
         const db = transaction as unknown as Sql;
+        await lockObjectOwner(db, ownerId);
         await db`select id from profiles where id = ${ownerId} for update`;
         const [reminder] = await db<Array<{ motorcycle_id: string | null }>>`
           select motorcycle_id from reminders

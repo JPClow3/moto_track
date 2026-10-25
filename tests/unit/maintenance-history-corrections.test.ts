@@ -206,6 +206,8 @@ describe("maintenance history correction boundaries", () => {
     const queryDb = (query: unknown) => {
       if (!Array.isArray(query)) return { fragment: query };
       const sql = query.join(" ");
+      if (sql.includes('from neon_auth."user"'))
+        return Promise.resolve([{ id: "owner" }]);
       if (sql.includes("select id from motorcycles"))
         return Promise.resolve([{ id: "bike" }]);
       if (sql.includes("select id, schedule_milestones"))
@@ -250,10 +252,15 @@ describe("maintenance history correction boundaries", () => {
       message: "Limite de lembretes atingido.",
     });
     const inserts: string[] = [];
+    const order: string[] = [];
     let committed = false;
     const queryDb = (query: unknown) => {
       if (!Array.isArray(query)) return { fragment: query };
       const sql = query.join(" ");
+      if (sql.includes("for no key update")) order.push("owner");
+      if (sql.includes("from profiles")) order.push("profile");
+      if (sql.includes('from neon_auth."user"'))
+        return Promise.resolve([{ id: "owner" }]);
       if (sql.includes("select id from motorcycles"))
         return Promise.resolve([{ id: "bike" }]);
       if (sql.includes("insert into maintenance_plan_items")) {
@@ -277,6 +284,8 @@ describe("maintenance history correction boundaries", () => {
       }) as never,
     );
     expect(committed).toBe(true);
+    // Account deletion locks the owner first, so the plan save must too.
+    expect(order).toEqual(["owner", "profile"]);
     expect(inserts).toHaveLength(1);
     expect(result).toMatchObject({
       status: 403,

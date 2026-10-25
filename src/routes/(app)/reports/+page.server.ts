@@ -8,6 +8,8 @@ import { loadOwnershipCosts } from "$server/domain/ownership-report";
 import { validDate } from "$server/domain/maintenance-forecast";
 import { parseLocalizedNumber } from "$server/domain/fuel";
 import { isoDateValue } from "$server/domain/date-value";
+import { lockObjectOwner } from "$server/db/owner-lock";
+import type { Sql } from "postgres";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -60,6 +62,7 @@ export const actions = localizedActions({
     }
     try {
       const updated = await locals.db.begin(async (tx) => {
+        await lockObjectOwner(tx as unknown as Sql, locals.user!.id);
         const [bike] = await tx<Array<{ current_odometer_km: number }>>`
           select current_odometer_km from motorcycles
           where id = ${id} and owner_id = ${locals.user!.id} and deleted_at is null for update
