@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { motorcycleSlots, openDisposableDb } from "./helpers/disposable-db";
 
@@ -22,19 +23,15 @@ test.describe("confirmed tire wear observations", () => {
   test("remaining distance falls with use and only a confirmed observation resets the wear baseline", async ({
     page,
   }) => {
-    await page.goto("/garage");
-    await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
-    const bikeForm = page.locator('form[action="?/updateOdometer"]').first();
-    const motorcycleId = await bikeForm
-      .locator('input[name="motorcycle_id"]')
-      .inputValue();
-    const currentKm = Number(
-      await bikeForm.locator('input[name="odometer_override_km"]').inputValue(),
-    );
-    expect(
-      currentKm,
-      "Acceptance needs a bike with at least 1,000 recorded km",
-    ).toBeGreaterThanOrEqual(1000);
+    // Own the bike: the shared account's garage order and odometers vary with
+    // whatever production-copied and earlier-suite data the branch holds.
+    const fixture = await openDisposableDb();
+    const { sql, ownerId } = fixture;
+    const motorcycleId = randomUUID();
+    const currentKm = 5000;
+    const active = await sql<Array<{ id: string }>>`
+      select id from motorcycles where owner_id = ${ownerId} and is_active = true and deleted_at is null
+    `;
     const marker = `tire-observation-${Date.now()}`;
     let tireId = "";
     let fuelId = "";
@@ -42,6 +39,12 @@ test.describe("confirmed tire wear observations", () => {
       has: page.getByRole("heading", { name: marker, exact: true }),
     });
     try {
+      await sql.begin(async (db) => {
+        // Reserve the Free account's one active slot; restored below.
+        await db`update motorcycles set is_active = false where owner_id = ${ownerId} and is_active = true and deleted_at is null`;
+        await db`insert into motorcycles (id, owner_id, name, brand, model, year, current_odometer_km, odometer_override_km, is_active)
+          values (${motorcycleId}, ${ownerId}, ${`Tire fixture ${motorcycleId}`}, 'Fixture', 'Tire', 2026, ${currentKm}, ${currentKm}, true)`;
+      });
       const created = await page.request.post("/api/v1/tire-records", {
         data: {
           motorcycle_id: motorcycleId,
@@ -54,18 +57,10 @@ test.describe("confirmed tire wear observations", () => {
           is_active: true,
         },
       });
-      if (created.status() !== 201) {
-        // Explain a Free-cap rejection with slot counts from the disposable branch.
-        const fixture = await openDisposableDb();
-        try {
-          console.log(
-            `motorcycles: ${await motorcycleSlots(fixture.sql, fixture.ownerId)}`,
-          );
-        } finally {
-          await fixture.close();
-        }
-      }
-      expect(created.status(), await created.text()).toBe(201);
+      expect(
+        created.status(),
+        `${await created.text()} (motorcycles: ${await motorcycleSlots(sql, ownerId)})`,
+      ).toBe(201);
       tireId = (await created.json()).result.id;
       const original = (await rows(page, "tire-records")).find(
         (r) => r.id === tireId,
@@ -140,17 +135,31 @@ test.describe("confirmed tire wear observations", () => {
       expect(Number(confirmed.wear_odometer_km)).toBe(currentKm + 100);
       expect(confirmed.wear_observed_at).not.toBe(original.wear_observed_at);
     } finally {
-      if (fuelId) {
-        const deleted = await page.request.delete(
-          `/api/v1/fuel-records?id=${fuelId}`,
-        );
-        expect(deleted.ok(), await deleted.text()).toBe(true);
-      }
-      if (tireId) {
-        const deleted = await page.request.delete(
-          `/api/v1/tire-records?id=${tireId}`,
-        );
-        expect(deleted.ok(), await deleted.text()).toBe(true);
+      try {
+        if (fuelId) {
+          const deleted = await page.request.delete(
+            `/api/v1/fuel-records?id=${fuelId}`,
+          );
+          expect(deleted.ok(), await deleted.text()).toBe(true);
+        }
+        if (tireId) {
+          const deleted = await page.request.delete(
+            `/api/v1/tire-records?id=${tireId}`,
+          );
+          expect(deleted.ok(), await deleted.text()).toBe(true);
+        }
+      } finally {
+        try {
+          await sql.begin(async (db) => {
+            await db`delete from fuel_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
+            await db`delete from tire_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
+            await db`delete from motorcycles where owner_id = ${ownerId} and id = ${motorcycleId}`;
+            if (active.length)
+              await db`update motorcycles set is_active = true where owner_id = ${ownerId} and id in ${db(active.map((row) => row.id))}`;
+          });
+        } finally {
+          await fixture.close();
+        }
       }
     }
   });
