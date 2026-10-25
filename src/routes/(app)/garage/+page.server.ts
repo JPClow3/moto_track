@@ -402,10 +402,16 @@ export const actions = localizedActions({
         message: createTranslator(locals.locale)("garage.invalidServiceStart"),
       });
     }
-    const updated = await locals.db`
-      update motorcycles set in_service_date = ${date}, updated_at = now()
-      where id = ${motorcycleId} and owner_id = ${locals.user!.id} and deleted_at is null returning id
-    `;
+    const ownerId = locals.user!.id;
+    // The in-service trigger locks plans, then their reminders; reminder
+    // completion takes the owner lock first, so take it here too.
+    const updated = await locals.db.begin(async (tx) => {
+      await lockObjectOwner(tx as unknown as Sql, ownerId);
+      return tx`
+        update motorcycles set in_service_date = ${date}, updated_at = now()
+        where id = ${motorcycleId} and owner_id = ${ownerId} and deleted_at is null returning id
+      `;
+    });
     return updated.length
       ? { ok: true }
       : fail(404, {
