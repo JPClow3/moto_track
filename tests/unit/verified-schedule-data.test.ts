@@ -41,6 +41,13 @@ const replacementAnchors = readFileSync(
   ),
   "utf8",
 );
+const firstReplacementDeadline = readFileSync(
+  new URL(
+    "../../db/migrations/20261023220000_maintenance_first_replacement_deadline.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const automatic = entries.filter((entry) => entry.is_exact_schedule);
 const select = (model: string, year = 2025) => {
   const entry = entries.find(
@@ -68,6 +75,19 @@ describe("official motorcycle schedule transcription", () => {
     );
     expect(replacementAnchors).toContain(
       "new.last_done_date + make_interval(months => new.recurrence_months)",
+    );
+  });
+
+  it("keeps the original-age deadline until a replacement date is known", () => {
+    const relativeBranch = firstReplacementDeadline
+      .split("select case when new.calendar_anchor_mode = 'last_service'")[1]
+      .split("then (new.last_done_date")[0];
+    expect(relativeBranch).toContain("and new.last_done_date is not null");
+    expect(firstReplacementDeadline).toContain(
+      "else (m.in_service_date + make_interval(months => phase.due_months))::date",
+    );
+    expect(firstReplacementDeadline).toMatch(
+      /coalesce\(last_completed_milestone, 0\) = 0\s+and last_done_date is null;/,
     );
   });
 

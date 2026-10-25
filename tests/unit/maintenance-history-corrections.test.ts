@@ -243,6 +243,47 @@ describe("maintenance history correction boundaries", () => {
     expect(writes[0]).toContain("manual_source_id = null");
   });
 
+  it("keeps a saved plan when the reminder cap blocks its reminder", async () => {
+    const { syncPlanReminder } = await import("$server/domain/record-sync");
+    vi.mocked(syncPlanReminder).mockResolvedValueOnce({
+      ok: false,
+      message: "Limite de lembretes atingido.",
+    });
+    const inserts: string[] = [];
+    let committed = false;
+    const queryDb = (query: unknown) => {
+      if (!Array.isArray(query)) return { fragment: query };
+      const sql = query.join(" ");
+      if (sql.includes("select id from motorcycles"))
+        return Promise.resolve([{ id: "bike" }]);
+      if (sql.includes("insert into maintenance_plan_items")) {
+        inserts.push(sql);
+        return Promise.resolve([{ id: "plan" }]);
+      }
+      return Promise.resolve([]);
+    };
+    const db = Object.assign(queryDb, {
+      begin: async (callback: (tx: unknown) => unknown) => {
+        const result = await callback(queryDb);
+        committed = true;
+        return result;
+      },
+    });
+    const result = await actions.savePlan(
+      event(db, {
+        motorcycle_id: "bike",
+        maintenance_type: "valves",
+        interval_km: "2000",
+      }) as never,
+    );
+    expect(committed).toBe(true);
+    expect(inserts).toHaveLength(1);
+    expect(result).toMatchObject({
+      status: 403,
+      data: { message: "Limite de lembretes atingido." },
+    });
+  });
+
   it("can schedule a pure replacement from a confirmed date without inventing its count", () => {
     const rule = {
       milestones: [{ km: null, months: 36 }],

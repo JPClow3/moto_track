@@ -245,8 +245,9 @@ export const actions = localizedActions({
     // Explicit onConflict target matching the schema's unique combo
     // (motorcycle_id, maintenance_type, is_severe_duty_override) so saving
     // the same plan twice updates it instead of throwing a constraint error.
+    let reminderResult: Awaited<ReturnType<typeof syncPlanReminder>>;
     try {
-      await locals.db.begin(async (transaction) => {
+      reminderResult = await locals.db.begin(async (transaction) => {
         const db = transaction as unknown as typeof locals.db;
         await db`select id from profiles where id = ${ownerId} for update`;
         const [motorcycle] = await db<Array<{ id: string }>>`
@@ -294,17 +295,21 @@ export const actions = localizedActions({
         returning id
       `;
         if (!plan) throw new Error("Plano inválido.");
-        const result = await syncPlanReminder(db, ownerId, {
+        // A reminder cap must not roll back the plan itself; it is reported
+        // after commit, as `savePolicy` and `updateHistory` do.
+        return syncPlanReminder(db, ownerId, {
           id: plan.id,
           motorcycle_id: motorcycleId,
           maintenance_type: type,
           interval_km: intervalKm,
           interval_days: intervalDays,
         });
-        if (!result.ok) throw new Error(result.message);
       });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
+    }
+    if (!reminderResult.ok) {
+      return fail(403, { message: reminderResult.message });
     }
     return { ok: true };
   },
