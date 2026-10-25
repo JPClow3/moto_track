@@ -125,14 +125,17 @@ describe("workshop contribution validation", () => {
 });
 
 function mockSql(source: WorkshopRecord[] = [record]) {
-  const query = vi.fn(async (strings: TemplateStringsArray) => {
-    const text = strings.join("?");
-    if (text.includes("from maintenance_records")) return source;
-    if (text.includes("insert into workshop_benchmark_submission_guards")) {
-      return [{ contribution_id: "00000000-0000-4000-8000-000000000002" }];
-    }
-    return [];
-  });
+  const query = vi.fn(
+    async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      const text = strings.join("?");
+      if (text.includes('from neon_auth."user"')) return [{ id: values[0] }];
+      if (text.includes("from maintenance_records")) return source;
+      if (text.includes("insert into workshop_benchmark_submission_guards")) {
+        return [{ contribution_id: "00000000-0000-4000-8000-000000000002" }];
+      }
+      return [];
+    },
+  );
   const db = Object.assign(query, {
     begin: vi.fn(async (callback) => callback(query)),
   });
@@ -145,9 +148,9 @@ describe("workshop contribution authorization and lifecycle", () => {
     await expect(
       saveWorkshopContribution(db, "signed-in-account", input),
     ).rejects.toMatchObject({ code: "invalidRecord", status: 404 });
-    expect(query).toHaveBeenCalledOnce();
-    expect(query.mock.calls[0][0].join("?")).toContain("owner_id = ?");
-    expect(query.mock.calls[0]).toContain("signed-in-account");
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query.mock.calls[1][0].join("?")).toContain("owner_id = ?");
+    expect(query.mock.calls[1]).toContain("signed-in-account");
   });
 
   it("requires explicit consent before consulting or writing the database", async () => {
@@ -164,13 +167,16 @@ describe("workshop contribution authorization and lifecycle", () => {
       ...input,
       workshop: "Spoofed",
     } as WorkshopContributionInput);
-    expect(query.mock.calls[0][0].join("?")).toContain("for update");
-    const guard = query.mock.calls[1];
+    // The owner lock precedes the record lock, matching account deletion.
+    expect(query.mock.calls[0][0].join("?")).toContain("for no key update");
+    expect(query.mock.calls[0]).toContain("signed-in-account");
+    expect(query.mock.calls[1][0].join("?")).toContain("for update");
+    const guard = query.mock.calls[2];
     expect(guard[0].join("?")).toContain("on conflict (owner_id, record_id)");
     expect(guard).toContain(record.workshop);
     expect(guard).toContain(record.maintenance_type);
     expect(guard).toContain("signed-in-account");
-    const contribution = query.mock.calls[2];
+    const contribution = query.mock.calls[3];
     expect(contribution[0].join("?")).toContain("on conflict (id)");
     expect(contribution).toContain(5025);
     expect(contribution).not.toContain("signed-in-account");

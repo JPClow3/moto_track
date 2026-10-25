@@ -1,5 +1,6 @@
 import type { Sql } from "postgres";
 import { isoDateValue } from "./date-value";
+import { lockObjectOwner } from "../db/owner-lock";
 
 export const WORKSHOP_MIN_ACCOUNTS = 5;
 export const WORKSHOP_MAX_LABOR_CENTS = 1_000_000;
@@ -178,6 +179,9 @@ export async function saveWorkshopContribution(
   if (!UUID.test(input.recordId))
     throw new WorkshopBenchmarkError("invalidRecord", 404);
   await db.begin(async (tx) => {
+    // Account deletion locks the owner before cascading into records; the
+    // guard's foreign key would otherwise request that lock after the record's.
+    await lockObjectOwner(tx as unknown as Sql, ownerId);
     // Lock the source record, so concurrent edits/deletes cannot invalidate the
     // ownership or total checked before this consent snapshot is committed.
     const [record] = await tx<WorkshopRecord[]>`
