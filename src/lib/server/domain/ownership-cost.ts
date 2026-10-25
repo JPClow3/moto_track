@@ -24,6 +24,9 @@ export function calculateOwnershipCost({
     depreciationCents;
   return {
     totalCents,
-    costPerKmCents: currentKm > 0 ? Math.round(totalCents / currentKm) : null,
+    costPerKmCents:
+      Number.isFinite(currentKm) && currentKm > 0
+        ? totalCents / currentKm
+        : null,
   };
 }

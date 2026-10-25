@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/store";
   import { ShieldAlert, KeyRound, Mail, LogIn, UserPlus } from "lucide-svelte";
 
   let {
@@ -13,7 +14,7 @@
   let showReset = $state(false);
 </script>
 
-<svelte:head><title>Entrar · Moto Track</title></svelte:head>
+<svelte:head><title>{$t("auth.signIn")} · Moto Track</title></svelte:head>
 
 <div
   class="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12"
@@ -38,9 +39,9 @@
           class="mx-auto hidden h-8 dark:block"
         />
       </a>
-      <h1 class="display text-4xl">Acesse sua garagem.</h1>
+      <h1 class="display text-4xl">{$t("auth.title")}</h1>
       <p class="mt-3 text-sm text-[var(--muted)]">
-        Histórico, custos, lembretes e revisões em um só lugar.
+        {$t("auth.description")}
       </p>
     </div>
 
@@ -70,7 +71,7 @@
       <div
         class="mb-6 grid grid-cols-2 gap-1 rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-1"
         role="tablist"
-        aria-label="Modo de acesso"
+        aria-label={$t("auth.mode")}
       >
         <button
           type="button"
@@ -84,7 +85,8 @@
             : 'text-[var(--muted)] hover:text-[var(--fg)]'}"
           onclick={() => (mode = "signIn")}
         >
-          <LogIn class="h-4 w-4" /> Entrar
+          <LogIn class="h-4 w-4" />
+          {$t("auth.signIn")}
         </button>
         <button
           type="button"
@@ -98,7 +100,8 @@
             : 'text-[var(--muted)] hover:text-[var(--fg)]'}"
           onclick={() => (mode = "signUp")}
         >
-          <UserPlus class="h-4 w-4" /> Criar conta
+          <UserPlus class="h-4 w-4" />
+          {$t("auth.signUp")}
         </button>
       </div>
 
@@ -126,7 +129,7 @@
                 type="email"
                 autocomplete="email"
                 value={form?.email ?? ""}
-                placeholder="voce@exemplo.com"
+                placeholder={$t("auth.emailPlaceholder")}
                 required
               />
             </div>
@@ -134,7 +137,7 @@
 
           <div class="grid gap-1.5">
             <label for="password" class="label-tech text-[var(--muted)]"
-              >Senha</label
+              >{$t("auth.password")}</label
             >
             <div class="relative">
               <KeyRound
@@ -157,7 +160,7 @@
             type="submit"
           >
             <LogIn class="h-4 w-4" />
-            Entrar
+            {$t("auth.signIn")}
           </button>
         </form>
 
@@ -166,7 +169,7 @@
           class="focus-ring mt-4 inline-flex min-h-11 items-center rounded text-sm text-[var(--muted)] underline-offset-4 hover:underline"
           onclick={() => (showReset = !showReset)}
         >
-          Esqueci minha senha
+          {$t("auth.forgot")}
         </button>
 
         {#if showReset}
@@ -175,7 +178,9 @@
             method="POST"
             action="?/resetPassword"
           >
-            <h2 class="label-tech text-[var(--muted)]">Esqueci a senha</h2>
+            <h2 class="label-tech text-[var(--muted)]">
+              {$t("auth.resetHeading")}
+            </h2>
             <label for="reset-email" class="label-tech text-[var(--muted)]"
               >Email</label
             >
@@ -185,11 +190,11 @@
               name="email"
               type="email"
               autocomplete="email"
-              placeholder="email@exemplo.com"
+              placeholder={$t("auth.emailPlaceholder")}
               required
             />
             <button class="button-secondary" type="submit"
-              >Enviar link de recuperação</button
+              >{$t("auth.sendReset")}</button
             >
           </form>
         {/if}
@@ -200,7 +205,7 @@
           </div>
           <div class="relative flex justify-center">
             <span class="label-tech bg-[var(--panel)] px-4 text-[var(--muted)]"
-              >ou continuar com</span
+              >{$t("auth.continueWith")}</span
             >
           </div>
         </div>
@@ -236,7 +241,9 @@
       >
         <form class="grid gap-4" method="POST" action="?/signUp">
           <input type="hidden" name="redirectTo" value={data.redirectTo} />
-          <h2 class="label-tech text-[var(--muted)]">Nova conta</h2>
+          <h2 class="label-tech text-[var(--muted)]">
+            {$t("auth.newAccount")}
+          </h2>
           <div class="grid gap-1.5">
             <label for="signup-email" class="label-tech text-[var(--muted)]"
               >Email</label
@@ -247,13 +254,13 @@
               name="email"
               type="email"
               autocomplete="email"
-              placeholder="email@exemplo.com"
+              placeholder={$t("auth.emailPlaceholder")}
               required
             />
           </div>
           <div class="grid gap-1.5">
             <label for="signup-password" class="label-tech text-[var(--muted)]"
-              >Senha</label
+              >{$t("auth.password")}</label
             >
             <input
               id="signup-password"
@@ -261,13 +268,13 @@
               name="password"
               type="password"
               autocomplete="new-password"
-              placeholder="senha (mínimo 6 caracteres)"
+              placeholder={$t("auth.passwordPlaceholder")}
               minlength="6"
               required
             />
           </div>
           <button class="button-primary w-full py-2.5 text-base" type="submit"
-            ><UserPlus class="h-4 w-4" /> Criar conta</button
+            ><UserPlus class="h-4 w-4" /> {$t("auth.signUp")}</button
           >
         </form>
       </div>

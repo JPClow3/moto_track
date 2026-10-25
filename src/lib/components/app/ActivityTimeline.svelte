@@ -1,10 +1,11 @@
 <script lang="ts" generics="T = Record<string, unknown>">
+  import { t } from "$lib/i18n/store";
   export let title = "";
   export let emptyMessage = "";
   export let items: T[] | null = null;
 </script>
 
-<section class="activity-timeline" aria-label={title || "Atividades"}>
+<section class="activity-timeline" aria-label={title || $t("common.activity")}>
   {#if title}
     <div class="mb-3 flex items-center justify-between">
       <h2 class="label-tech text-xs text-[var(--muted)]">{title}</h2>
@@ -16,7 +17,7 @@
     <div class="py-8 text-center">
       <slot name="empty">
         <p class="text-sm text-[var(--muted)]">
-          {emptyMessage}
+          {emptyMessage || $t("authenticatedUx.emptyTimeline")}
         </p>
       </slot>
     </div>

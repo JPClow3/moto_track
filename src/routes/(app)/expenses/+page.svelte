@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { appCopy } from "$lib/i18n/app-copy";
   import FeaturePage from "$components/FeaturePage.svelte";
   import RecordSheet from "$lib/components/app/RecordSheet.svelte";
   import type { ActionChoice } from "$lib/components/app/ActionMenu.svelte";
@@ -133,7 +134,7 @@
     bind:this={policySheet}
     title={$t("authenticatedUx.addPolicy")}
     description={$t("authenticatedUx.addPolicyDesc")}
-    closeLabel={$t("authenticatedUx.close") || "Fechar"}
+    closeLabel={$t("authenticatedUx.close")}
   >
     <form
       class="grid gap-3"
@@ -142,7 +143,9 @@
       use:enhance={enhanceWithStatus}
     >
       <div class="field-group">
-        <label class="field-label" for="expense-policy-motorcycle">Moto</label>
+        <label class="field-label" for="expense-policy-motorcycle"
+          >{appCopy($locale, "Moto")}</label
+        >
         <select
           class="field"
           id="expense-policy-motorcycle"
@@ -158,31 +161,33 @@
 
       <div class="field-group">
         <label class="field-label" for="expense-policy-provider"
-          >Seguradora</label
+          >{appCopy($locale, "Seguradora")}</label
         >
         <input
           class="field"
           id="expense-policy-provider"
           name="provider"
-          placeholder="Ex: Porto Seguro"
+          placeholder={appCopy($locale, "Ex: Porto Seguro")}
           required
         />
       </div>
 
       <div class="field-group">
-        <label class="field-label" for="expense-policy-number">Apólice</label>
+        <label class="field-label" for="expense-policy-number"
+          >{appCopy($locale, "Apólice")}</label
+        >
         <input
           class="field"
           id="expense-policy-number"
           name="policy_number"
-          placeholder="Número da apólice"
+          placeholder={appCopy($locale, "Número da apólice")}
         />
       </div>
 
       <div class="grid grid-cols-2 gap-3">
         <div class="field-group">
           <label class="field-label" for="expense-policy-start"
-            >Início da cobertura</label
+            >{appCopy($locale, "Início da cobertura")}</label
           >
           <input
             class="field"
@@ -195,7 +200,7 @@
 
         <div class="field-group">
           <label class="field-label" for="expense-policy-end"
-            >Fim da cobertura</label
+            >{appCopy($locale, "Fim da cobertura")}</label
           >
           <input
             class="field"
@@ -210,7 +215,7 @@
       <div class="grid grid-cols-2 gap-3">
         <div class="field-group">
           <label class="field-label" for="expense-policy-premium"
-            >Prêmio (R$)</label
+            >{appCopy($locale, "Prêmio (R$)")}</label
           >
           <input
             class="field"
@@ -218,13 +223,13 @@
             name="premium"
             type="number"
             step=".01"
-            placeholder="0,00"
+            placeholder={$locale === "en" ? "0.00" : "0,00"}
           />
         </div>
 
         <div class="field-group">
           <label class="field-label" for="expense-policy-notify"
-            >Avisar antes (dias)</label
+            >{appCopy($locale, "Avisar antes (dias)")}</label
           >
           <input
             class="field"
@@ -251,7 +256,7 @@
     bind:this={claimSheet}
     title={$t("authenticatedUx.addClaim")}
     description={$t("authenticatedUx.addClaimDesc")}
-    closeLabel={$t("authenticatedUx.close") || "Fechar"}
+    closeLabel={$t("authenticatedUx.close")}
   >
     <form
       class="grid gap-3"
@@ -266,7 +271,9 @@
       {/if}
 
       <div class="field-group">
-        <label class="field-label" for="expense-claim-policy">Seguro</label>
+        <label class="field-label" for="expense-claim-policy"
+          >{appCopy($locale, "Seguro")}</label
+        >
         <select
           class="field"
           id="expense-claim-policy"
@@ -283,7 +290,7 @@
 
       <div class="field-group">
         <label class="field-label" for="expense-claim-date"
-          >Data do sinistro</label
+          >{appCopy($locale, "Data do sinistro")}</label
         >
         <input
           class="field"
@@ -296,13 +303,13 @@
 
       <div class="field-group">
         <label class="field-label" for="expense-claim-description"
-          >Descrição</label
+          >{appCopy($locale, "Descrição")}</label
         >
         <input
           class="field"
           id="expense-claim-description"
           name="description"
-          placeholder="Ex: Queda lateral, reparo carenagem"
+          placeholder={appCopy($locale, "Ex: Queda lateral, reparo carenagem")}
           required
         />
       </div>
@@ -310,7 +317,7 @@
       <div class="grid grid-cols-2 gap-3">
         <div class="field-group">
           <label class="field-label" for="expense-claim-amount"
-            >Valor (R$)</label
+            >{appCopy($locale, "Valor (R$)")}</label
           >
           <input
             class="field"
@@ -318,15 +325,15 @@
             name="amount"
             type="number"
             step=".01"
-            placeholder="0,00"
+            placeholder={$locale === "en" ? "0.00" : "0,00"}
           />
         </div>
 
         <div class="field-group">
           <label class="field-label" for="expense-claim-status">Status</label>
           <select class="field" id="expense-claim-status" name="status">
-            <option value="open">Aberto</option>
-            <option value="settled">Resolvido</option>
+            <option value="open">{appCopy($locale, "Aberto")}</option>
+            <option value="settled">{appCopy($locale, "Resolvido")}</option>
           </select>
         </div>
       </div>
@@ -414,7 +421,7 @@
               <p class="text-sm font-medium">
                 {claim.insurance_policies
                   ? policyLabel(claim.insurance_policies)
-                  : "Seguro"}
+                  : appCopy($locale, "Seguro")}
                 · {claim.claim_date}
               </p>
               <p class="mt-0.5 text-xs text-[var(--muted)]">

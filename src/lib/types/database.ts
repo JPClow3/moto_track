@@ -9,6 +9,207 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      offline_fuel_submissions: {
+        Row: {
+          id: string;
+          owner_id: string;
+          payload_fingerprint: string | null;
+          accepted_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id: string;
+          owner_id: string;
+          payload_fingerprint?: string | null;
+          accepted_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          payload_fingerprint?: string | null;
+          accepted_at?: string;
+          deleted_at?: string | null;
+        };
+        Relationships: [];
+      };
+      workshop_benchmark_submission_guards: {
+        Row: {
+          owner_id: string;
+          record_id: string;
+          contribution_id: string;
+          source_workshop: string;
+          source_service: string;
+          serviced_on: string;
+          source_total_cents: number;
+          consented_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          owner_id: string;
+          record_id: string;
+          contribution_id?: string;
+          source_workshop: string;
+          source_service: string;
+          serviced_on: string;
+          source_total_cents: number;
+          consented_at: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          source_workshop?: string;
+          source_service?: string;
+          serviced_on?: string;
+          source_total_cents?: number;
+          consented_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      anonymous_workshop_benchmark_contributions: {
+        Row: {
+          id: string;
+          workshop_key: string;
+          workshop_name: string;
+          service_key: string;
+          city_key: string;
+          city_name: string;
+          state_code: string;
+          labor_cents: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          workshop_key: string;
+          workshop_name: string;
+          service_key: string;
+          city_key: string;
+          city_name: string;
+          state_code: string;
+          labor_cents: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          workshop_key?: string;
+          workshop_name?: string;
+          service_key?: string;
+          city_key?: string;
+          city_name?: string;
+          state_code?: string;
+          labor_cents?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      garage_memberships: {
+        Row: {
+          id: string;
+          owner_id: string;
+          member_id: string;
+          role: "viewer" | "contributor" | "workshop";
+          created_at: string;
+          revoked_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          member_id: string;
+          role: "viewer" | "contributor" | "workshop";
+          created_at?: string;
+          revoked_at?: string | null;
+        };
+        Update: {
+          role?: "viewer" | "contributor" | "workshop";
+          revoked_at?: string | null;
+        };
+        Relationships: [];
+      };
+      garage_invitations: {
+        Row: {
+          id: string;
+          owner_id: string;
+          invited_email: string;
+          role: "viewer" | "contributor" | "workshop";
+          token_hash: string;
+          token_prefix: string;
+          created_at: string;
+          expires_at: string;
+          accepted_at: string | null;
+          accepted_by: string | null;
+          revoked_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          invited_email: string;
+          role: "viewer" | "contributor" | "workshop";
+          token_hash: string;
+          token_prefix: string;
+          created_at?: string;
+          expires_at: string;
+          accepted_at?: string | null;
+          accepted_by?: string | null;
+          revoked_at?: string | null;
+        };
+        Update: {
+          accepted_at?: string | null;
+          accepted_by?: string | null;
+          revoked_at?: string | null;
+        };
+        Relationships: [];
+      };
+      garage_activity: {
+        Row: {
+          id: string;
+          owner_id: string;
+          actor_id: string | null;
+          membership_id: string | null;
+          record_table: "fuel_records" | "maintenance_records";
+          record_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          actor_id: string | null;
+          membership_id: string | null;
+          record_table: "fuel_records" | "maintenance_records";
+          record_id: string;
+          created_at?: string;
+        };
+        Update: { actor_id?: string | null; membership_id?: string | null };
+        Relationships: [];
+      };
+      calendar_feeds: {
+        Row: {
+          id: string;
+          owner_id: string;
+          token_hash: string;
+          token_prefix: string;
+          locale: "pt-BR" | "en";
+          created_at: string;
+          expires_at: string;
+          revoked_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          token_hash: string;
+          token_prefix: string;
+          locale?: "pt-BR" | "en";
+          created_at?: string;
+          expires_at: string;
+          revoked_at?: string | null;
+        };
+        Update: {
+          revoked_at?: string | null;
+          expires_at?: string;
+          locale?: "pt-BR" | "en";
+        };
+        Relationships: [];
+      };
       billing_configuration: {
         Row: { id: number; environment: "test_mode" | "live_mode" };
         Insert: { id?: number; environment?: "test_mode" | "live_mode" };
@@ -42,6 +243,7 @@ export type Database = {
           email: string;
           full_name: string | null;
           theme: string;
+          preferred_locale: "pt-BR" | "en";
           is_staff: boolean;
           created_at: string;
           updated_at: string;
@@ -51,6 +253,7 @@ export type Database = {
           email: string;
           full_name?: string | null;
           theme?: string;
+          preferred_locale?: "pt-BR" | "en";
           is_staff?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -60,6 +263,7 @@ export type Database = {
           email?: string;
           full_name?: string | null;
           theme?: string;
+          preferred_locale?: "pt-BR" | "en";
           is_staff?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -364,6 +568,10 @@ export type Database = {
           maintenance_type: string;
           interval_km: number | null;
           interval_days: number | null;
+          schedule_milestones: Json;
+          recurrence_km: number | null;
+          recurrence_months: number | null;
+          calendar_anchor_mode: "in_service" | "last_service";
           notes: string;
           source_url: string;
           manual_source_id: string | null;
@@ -377,6 +585,10 @@ export type Database = {
           maintenance_type: string;
           interval_km?: number | null;
           interval_days?: number | null;
+          schedule_milestones?: Json;
+          recurrence_km?: number | null;
+          recurrence_months?: number | null;
+          calendar_anchor_mode?: "in_service" | "last_service";
           notes?: string;
           source_url: string;
           manual_source_id?: string | null;
@@ -390,6 +602,10 @@ export type Database = {
           maintenance_type?: string;
           interval_km?: number | null;
           interval_days?: number | null;
+          schedule_milestones?: Json;
+          recurrence_km?: number | null;
+          recurrence_months?: number | null;
+          calendar_anchor_mode?: "in_service" | "last_service";
           notes?: string;
           source_url?: string;
           manual_source_id?: string | null;
@@ -419,8 +635,10 @@ export type Database = {
           previous_owners: number | null;
           riding_profile: string;
           purchase_price_cents: number | null;
+          purchase_odometer_km: number | null;
           purchase_currency: string;
           purchase_date: string | null;
+          in_service_date: string | null;
           observations: string;
           created_at: string;
           updated_at: string;
@@ -444,8 +662,10 @@ export type Database = {
           previous_owners?: number | null;
           riding_profile?: string;
           purchase_price_cents?: number | null;
+          purchase_odometer_km?: number | null;
           purchase_currency?: string;
           purchase_date?: string | null;
+          in_service_date?: string | null;
           observations?: string;
           created_at?: string;
           updated_at?: string;
@@ -469,8 +689,10 @@ export type Database = {
           previous_owners?: number | null;
           riding_profile?: string;
           purchase_price_cents?: number | null;
+          purchase_odometer_km?: number | null;
           purchase_currency?: string;
           purchase_date?: string | null;
+          in_service_date?: string | null;
           observations?: string;
           created_at?: string;
           updated_at?: string;
@@ -822,6 +1044,8 @@ export type Database = {
           owner_id: string;
           motorcycle_id: string | null;
           maintenance_type: string;
+          maintenance_plan_item_id: string | null;
+          completed_milestone: number | null;
           date: string;
           odometer_km: number;
           description: string;
@@ -839,6 +1063,8 @@ export type Database = {
           owner_id: string;
           motorcycle_id?: string | null;
           maintenance_type?: string;
+          maintenance_plan_item_id?: string | null;
+          completed_milestone?: number | null;
           date: string;
           odometer_km: number;
           description?: string;
@@ -856,6 +1082,8 @@ export type Database = {
           owner_id?: string;
           motorcycle_id?: string | null;
           maintenance_type?: string;
+          maintenance_plan_item_id?: string | null;
+          completed_milestone?: number | null;
           date?: string;
           odometer_km?: number;
           description?: string;
@@ -914,6 +1142,15 @@ export type Database = {
           maintenance_type: string;
           interval_km: number | null;
           interval_days: number | null;
+          schedule_milestones: Json;
+          recurrence_km: number | null;
+          recurrence_months: number | null;
+          calendar_anchor_mode: "in_service" | "last_service";
+          baseline_completed_milestone: number | null;
+          last_completed_milestone: number | null;
+          baseline_history_status: "confirmed_done" | "not_done" | "unknown";
+          baseline_last_done_km: number | null;
+          baseline_last_done_date: string | null;
           last_done_km: number | null;
           last_done_date: string | null;
           manual_source_id: string | null;
@@ -932,6 +1169,15 @@ export type Database = {
           maintenance_type?: string;
           interval_km?: number | null;
           interval_days?: number | null;
+          schedule_milestones?: Json;
+          recurrence_km?: number | null;
+          recurrence_months?: number | null;
+          calendar_anchor_mode?: "in_service" | "last_service";
+          baseline_completed_milestone?: number | null;
+          last_completed_milestone?: number | null;
+          baseline_history_status?: "confirmed_done" | "not_done" | "unknown";
+          baseline_last_done_km?: number | null;
+          baseline_last_done_date?: string | null;
           last_done_km?: number | null;
           last_done_date?: string | null;
           manual_source_id?: string | null;
@@ -950,6 +1196,15 @@ export type Database = {
           maintenance_type?: string;
           interval_km?: number | null;
           interval_days?: number | null;
+          schedule_milestones?: Json;
+          recurrence_km?: number | null;
+          recurrence_months?: number | null;
+          calendar_anchor_mode?: "in_service" | "last_service";
+          baseline_completed_milestone?: number | null;
+          last_completed_milestone?: number | null;
+          baseline_history_status?: "confirmed_done" | "not_done" | "unknown";
+          baseline_last_done_km?: number | null;
+          baseline_last_done_date?: string | null;
           last_done_km?: number | null;
           last_done_date?: string | null;
           manual_source_id?: string | null;
@@ -1071,6 +1326,8 @@ export type Database = {
           currency: string;
           recommended_pressure: string;
           wear_percent: number;
+          wear_odometer_km: number | null;
+          wear_observed_at: string | null;
           estimated_change_km: number | null;
           is_active: boolean;
           created_at: string;
@@ -1090,6 +1347,8 @@ export type Database = {
           currency?: string;
           recommended_pressure?: string;
           wear_percent?: number;
+          wear_odometer_km?: number | null;
+          wear_observed_at?: string | null;
           estimated_change_km?: number | null;
           is_active?: boolean;
           created_at?: string;
@@ -1109,6 +1368,8 @@ export type Database = {
           currency?: string;
           recommended_pressure?: string;
           wear_percent?: number;
+          wear_odometer_km?: number | null;
+          wear_observed_at?: string | null;
           estimated_change_km?: number | null;
           is_active?: boolean;
           created_at?: string;
@@ -1206,6 +1467,9 @@ export type Database = {
           trigger_value_days: number | null;
           reference_km: number | null;
           reference_date: string | null;
+          snoozed_until_date: string | null;
+          snoozed_until_km: number | null;
+          completion_version: number;
           is_active: boolean;
           last_notified_at: string | null;
           last_email_notified_at: string | null;
@@ -1229,6 +1493,9 @@ export type Database = {
           trigger_value_days?: number | null;
           reference_km?: number | null;
           reference_date?: string | null;
+          snoozed_until_date?: string | null;
+          snoozed_until_km?: number | null;
+          completion_version?: number;
           is_active?: boolean;
           last_notified_at?: string | null;
           last_email_notified_at?: string | null;
@@ -1252,6 +1519,9 @@ export type Database = {
           trigger_value_days?: number | null;
           reference_km?: number | null;
           reference_date?: string | null;
+          snoozed_until_date?: string | null;
+          snoozed_until_km?: number | null;
+          completion_version?: number;
           is_active?: boolean;
           last_notified_at?: string | null;
           last_email_notified_at?: string | null;
@@ -2133,6 +2403,32 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      workshop_benchmark_summary: {
+        Args: {
+          p_service_key: string;
+          p_city_key: string;
+          p_state_code: string;
+        };
+        Returns: Array<{
+          workshop_key: string;
+          workshop_name: string;
+          sample_size: number;
+          average_labor_cents: number;
+        }>;
+      };
+      maintenance_schedule_target: {
+        Args: {
+          stages: Json;
+          repeat_km: number | null;
+          repeat_months: number | null;
+          completed: number | null;
+        };
+        Returns: Array<{
+          next_milestone: number;
+          due_km: number | null;
+          due_months: number | null;
+        }>;
+      };
       model_benchmark_summary: {
         Args: {
           p_model_key: string;

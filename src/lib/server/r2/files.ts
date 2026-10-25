@@ -1,5 +1,6 @@
 import { error } from "@sveltejs/kit";
 import type { Sql } from "postgres";
+export { lockObjectOwner } from "$server/db/owner-lock";
 
 export const MAX_DOCUMENT_UPLOAD_BYTES = 20 * 1024 * 1024;
 export const MAX_RECEIPT_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -71,15 +72,6 @@ export async function validateObjectUpload(
     }
   }
   return { ok: true as const };
-}
-
-export async function lockObjectOwner(db: Sql, ownerId: string) {
-  const [owner] = await db<Array<{ id: string }>>`
-    select id from neon_auth."user"
-    where id = ${ownerId}
-    for update
-  `;
-  if (!owner) throw new Error("Account no longer exists.");
 }
 
 export async function requireR2Bucket(platform: App.Platform | undefined) {

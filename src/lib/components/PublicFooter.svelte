@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { locale } from "$lib/i18n/store";
+  import { publicCopy } from "$lib/i18n/public-copy";
   // Lifted out of the landing page so /blog, /roadmap and /precos stop ending
   // in a hard cut at the last section.
 </script>
@@ -26,7 +28,7 @@
     </div>
     <nav
       class="flex flex-wrap items-center justify-center gap-5 text-sm text-[var(--muted)]"
-      aria-label="Navegação secundária"
+      aria-label={publicCopy($locale, "Navegação secundária")}
     >
       <a
         href="/blog"
@@ -38,12 +40,13 @@
       >
       <a
         href="/termos"
-        class="focus-ring nav-link inline-flex min-h-11 items-center">Termos</a
+        class="focus-ring nav-link inline-flex min-h-11 items-center"
+        >{publicCopy($locale, "Termos")}</a
       >
       <a
         href="/privacidade"
         class="focus-ring nav-link inline-flex min-h-11 items-center"
-        >Privacidade</a
+        >{publicCopy($locale, "Privacidade")}</a
       >
       <a
         href="/lgpd"

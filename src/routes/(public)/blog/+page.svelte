@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { publicCopy } from "$lib/i18n/public-copy";
   import { ArrowRight, Clock } from "lucide-svelte";
   import { locale } from "$lib/i18n/store";
   import { formatDate as formatDateFor } from "$lib/i18n";
@@ -25,11 +26,19 @@
 </script>
 
 <svelte:head>
-  <title>Blog · Guias de manutenção de moto — Moto Track</title>
+  <title
+    >{publicCopy(
+      $locale,
+      "Blog · Guias de manutenção de moto — Moto Track",
+    )}</title
+  >
   <link rel="canonical" href="https://moto-track.net/blog" />
   <meta
     name="description"
-    content="Guias práticos de manutenção de moto: troca de óleo, corrente, freios, pneus e consumo. Passo a passo com especificações reais por modelo."
+    content={publicCopy(
+      $locale,
+      "Guias práticos de manutenção de moto: troca de óleo, corrente, freios, pneus e consumo. Passo a passo com especificações reais por modelo.",
+    )}
   />
 </svelte:head>
 
@@ -41,17 +50,26 @@
   <div class="relative mx-auto max-w-6xl px-6 py-16 sm:py-20">
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
-      Manual de garagem
+      {publicCopy($locale, "Manual de garagem")}
     </p>
     <h1 class="display mt-5 max-w-3xl text-5xl sm:text-6xl lg:text-7xl">
-      Guias que evitam<br /><span class="text-[var(--accent)]"
-        >oficina cara.</span
+      {publicCopy($locale, "Guias que evitam")}<br /><span
+        class="text-[var(--accent)]"
+        >{publicCopy($locale, "oficina cara.")}</span
       >
     </h1>
     <p class="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted)]">
-      Passo a passo, torque, intervalo e peça certa — escrito para quem faz a
-      manutenção da própria moto.
+      {publicCopy(
+        $locale,
+        "Passo a passo, torque, intervalo e peça certa — escrito para quem faz a manutenção da própria moto.",
+      )}
     </p>
+    {#if $locale === "en"}<p class="mt-3 text-sm text-[var(--muted)]">
+        {publicCopy(
+          $locale,
+          "Artigos e comentários são exibidos no idioma original.",
+        )}
+      </p>{/if}
   </div>
 </section>
 
@@ -68,7 +86,7 @@
         <div class="relative max-w-3xl">
           <p class="eyebrow">
             <span class="slash-rule" aria-hidden="true"></span>
-            Mais recente
+            {publicCopy($locale, "Mais recente")}
           </p>
           <h2
             class="display mt-4 text-3xl transition-colors group-hover:text-[var(--accent)] sm:text-5xl"
@@ -84,7 +102,7 @@
             <span
               class="label-tech inline-flex items-center gap-2 text-[var(--accent)]"
             >
-              Ler guia
+              {publicCopy($locale, "Ler guia")}
               <ArrowRight
                 class="h-3.5 w-3.5 transition-transform group-hover:translate-x-1"
               />
@@ -134,7 +152,7 @@
             <span
               class="label-tech mt-6 inline-flex items-center gap-2 text-[var(--accent)]"
             >
-              Ler
+              {publicCopy($locale, "Ler")}
               <ArrowRight
                 class="h-3.5 w-3.5 transition-transform group-hover:translate-x-1"
               />
@@ -152,13 +170,19 @@
       >
         <p class="display text-2xl">
           {data.unavailable
-            ? "Os guias estão temporariamente indisponíveis"
-            : "Nenhum guia publicado ainda"}
+            ? publicCopy(
+                $locale,
+                "Os guias estão temporariamente indisponíveis",
+              )
+            : publicCopy($locale, "Nenhum guia publicado ainda")}
         </p>
         <p class="mt-3 text-[var(--muted)]">
           {data.unavailable
-            ? "Tente novamente em alguns instantes."
-            : "Os primeiros guias de manutenção chegam em breve."}
+            ? publicCopy($locale, "Tente novamente em alguns instantes.")
+            : publicCopy(
+                $locale,
+                "Os primeiros guias de manutenção chegam em breve.",
+              )}
         </p>
       </div>
     {/if}

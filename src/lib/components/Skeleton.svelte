@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/store";
   /**
    * A pending placeholder. Purely decorative: the surrounding region should
    * carry `aria-busy="true"` and the real content announces itself when it
@@ -8,7 +9,7 @@
   export let height = "1rem";
   /** Rendered as a stack of `lines` bars, the last one short like real text. */
   export let lines = 1;
-  export let label = "Loading";
+  export let label = "";
   let className = "";
   export { className as class };
 
@@ -16,7 +17,11 @@
 </script>
 
 {#if lines > 1}
-  <div class={`grid gap-2 ${className}`} role="status" aria-label={label}>
+  <div
+    class={`grid gap-2 ${className}`}
+    role="status"
+    aria-label={label || $t("a11y.loadingContent")}
+  >
     {#each indices as index (index)}
       <div
         class="skeleton"
@@ -31,6 +36,6 @@
     style:width
     style:height
     role="status"
-    aria-label={label}
+    aria-label={label || $t("a11y.loadingContent")}
   ></div>
 {/if}

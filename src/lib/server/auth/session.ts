@@ -5,6 +5,7 @@ import {
   readCachedSession,
   rememberSession,
 } from "$server/auth/session-cache";
+import { createTranslator, DEFAULT_LOCALE, type MessageKey } from "$lib/i18n";
 
 // Neon Auth (Managed Better Auth) is hosted on a *different* domain than this
 // app, so we can't let its `__Secure-` session cookie ride back to the browser
@@ -190,6 +191,27 @@ export async function resolveSession(
 
 type Result = { ok: boolean; message?: string };
 
+function authError(
+  event: RequestEvent,
+  data: Record<string, unknown>,
+  fallback: MessageKey,
+) {
+  const codes: Record<string, MessageKey> = {
+    INVALID_EMAIL_OR_PASSWORD: "auth.invalidCredentials",
+    INVALID_PASSWORD: "auth.invalidCredentials",
+    USER_NOT_FOUND: "auth.invalidCredentials",
+    USER_ALREADY_EXISTS: "auth.accountExists",
+    USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "auth.accountExists",
+    INVALID_EMAIL: "auth.invalidEmail",
+    PASSWORD_TOO_SHORT: "auth.passwordTooShort",
+    INVALID_TOKEN: "auth.invalidReset",
+  };
+  const code = String(data.code ?? "");
+  return createTranslator(event.locals?.locale ?? DEFAULT_LOCALE)(
+    Object.hasOwn(codes, code) ? codes[code] : fallback,
+  );
+}
+
 async function authenticate(
   event: RequestEvent,
   path: string,
@@ -198,11 +220,11 @@ async function authenticate(
   const res = await call(event, path, { method: "POST", body });
   if (!res.ok) {
     const data = await readJson(res);
-    return { ok: false, message: (data.message as string) ?? "Auth failed." };
+    return { ok: false, message: authError(event, data, "auth.failed") };
   }
   const token = extractUpstreamToken(res);
   if (!token) {
-    return { ok: false, message: "No session issued." };
+    return { ok: false, message: authError(event, {}, "auth.failed") };
   }
   storeSession(event, token);
   return { ok: true };
@@ -223,6 +245,52 @@ export function signUpEmail(
   name: string,
 ) {
   return authenticate(event, "/sign-up/email", { email, password, name });
+}
+
+/** Verification is always bound to the signed-in account, never a submitted email. */
+export async function requestEmailVerification(
+  event: RequestEvent,
+): Promise<Result> {
+  if (!event.locals.user?.email)
+    return {
+      ok: false,
+      message: authError(event, {}, "auth.verificationSignIn"),
+    };
+  const response = await call(event, "/email-otp/send-verification-otp", {
+    method: "POST",
+    token: event.cookies.get(APP_SESSION_COOKIE),
+    body: { email: event.locals.user.email, type: "email-verification" },
+  });
+  return response.ok
+    ? { ok: true }
+    : {
+        ok: false,
+        message: authError(event, {}, "auth.verificationSendFailed"),
+      };
+}
+
+export async function verifyEmailAddress(
+  event: RequestEvent,
+  code: string,
+): Promise<Result> {
+  if (!event.locals.user?.email || !/^\d{4,10}$/.test(code))
+    return {
+      ok: false,
+      message: authError(event, {}, "auth.verificationRequired"),
+    };
+  const response = await call(event, "/email-otp/verify-email", {
+    method: "POST",
+    token: event.cookies.get(APP_SESSION_COOKIE),
+    body: { email: event.locals.user.email, otp: code },
+  });
+  if (!response.ok)
+    return {
+      ok: false,
+      message: authError(event, {}, "auth.verificationInvalid"),
+    };
+  const token = extractUpstreamToken(response);
+  if (token) storeSession(event, token);
+  return { ok: true };
 }
 
 export async function completeSocialSignIn(
@@ -274,11 +342,11 @@ export async function socialSignInUrl(
   });
   if (!res.ok) {
     const data = await readJson(res);
-    return { url: null, message: (data.message as string) ?? "OAuth failed." };
+    return { url: null, message: authError(event, data, "auth.googleFailed") };
   }
   const challenge = extractUpstreamCookie(res, UPSTREAM_OAUTH_CHALLENGE_COOKIE);
   if (!challenge) {
-    return { url: null, message: "No OAuth challenge was issued." };
+    return { url: null, message: authError(event, {}, "auth.googleFailed") };
   }
   storeOAuthChallenge(event, challenge);
   const data = await readJson(res);
@@ -298,7 +366,7 @@ export async function requestPasswordReset(
     const data = await readJson(res);
     return {
       ok: false,
-      message: (data.message as string) ?? "Request failed.",
+      message: authError(event, data, "auth.requestFailed"),
     };
   }
   return { ok: true };
@@ -315,7 +383,7 @@ export async function resetPassword(
   });
   if (!res.ok) {
     const data = await readJson(res);
-    return { ok: false, message: (data.message as string) ?? "Reset failed." };
+    return { ok: false, message: authError(event, data, "auth.resetFailed") };
   }
   return { ok: true };
 }

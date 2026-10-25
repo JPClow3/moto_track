@@ -1,5 +1,10 @@
 import type { Sql } from "postgres";
 import { syncPlanReminder } from "$server/domain/record-sync";
+import {
+  addCalendarDays,
+  validDate,
+} from "$server/domain/maintenance-forecast";
+import { nextScheduleMilestone } from "$server/domain/maintenance-schedule";
 
 export type MotorcycleTemplate = {
   id: string;
@@ -200,19 +205,74 @@ export function dueStateForPlan({
   lastDoneKm,
   intervalKm,
   currentKm,
+  lastDoneDate,
+  intervalDays,
+  today = new Date().toISOString().slice(0, 10),
+  scheduleMilestones,
+  recurrenceKm,
+  recurrenceMonths,
+  lastCompletedMilestone,
+  inServiceDate,
+  calendarAnchorMode,
 }: {
   historyStatus: InitialHistoryStatus;
   lastDoneKm: number | null;
   intervalKm: number | null;
   currentKm: number;
+  lastDoneDate?: unknown;
+  intervalDays?: number | null;
+  today?: string;
+  scheduleMilestones?: unknown;
+  recurrenceKm?: number | null;
+  recurrenceMonths?: number | null;
+  lastCompletedMilestone?: number | null;
+  inServiceDate?: unknown;
+  calendarAnchorMode?: "in_service" | "last_service";
 }) {
+  const phase = nextScheduleMilestone({
+    milestones: scheduleMilestones,
+    recurrenceKm,
+    recurrenceMonths,
+    completedMilestone: lastCompletedMilestone,
+    inServiceDate,
+    calendarAnchorMode,
+    lastServiceDate: lastDoneDate,
+  });
+  if (phase) {
+    if (phase.nextMilestone === null && phase.dueDate === null)
+      return { urgency: "due_now" as const, dueKm: null };
+    if (
+      (phase.dueKm !== null && currentKm >= phase.dueKm) ||
+      (phase.dueDate !== null && phase.dueDate <= today)
+    )
+      return { urgency: "overdue" as const, dueKm: phase.dueKm };
+    if (phase.dueMonths !== null && phase.dueDate === null)
+      return { urgency: "due_now" as const, dueKm: phase.dueKm };
+    return { urgency: "scheduled" as const, dueKm: phase.dueKm };
+  }
   if (historyStatus === "not_done")
     return { urgency: "overdue" as const, dueKm: null };
-  if (historyStatus === "unknown" || lastDoneKm === null)
+  if (historyStatus === "unknown")
     return { urgency: "due_now" as const, dueKm: null };
-  const dueKm = intervalKm === null ? null : lastDoneKm + intervalKm;
+  const dueKm =
+    intervalKm !== null && lastDoneKm !== null ? lastDoneKm + intervalKm : null;
   if (dueKm !== null && currentKm >= dueKm)
     return { urgency: "overdue" as const, dueKm };
+  const serviceDate = validDate(lastDoneDate);
+  const dueDate =
+    serviceDate && intervalDays != null && intervalDays > 0
+      ? addCalendarDays(serviceDate, intervalDays)
+      : null;
+  if (dueDate && dueDate <= today)
+    return { urgency: "overdue" as const, dueKm };
+  // A known mileage cannot prove the time interval is still safe when the
+  // service date is unknown (and vice versa).
+  if (
+    (intervalKm != null && dueKm === null) ||
+    (intervalDays != null && !dueDate) ||
+    (dueKm === null && !dueDate)
+  )
+    return { urgency: "due_now" as const, dueKm };
   return { urgency: "scheduled" as const, dueKm };
 }
 
@@ -275,10 +335,15 @@ export async function applyMotorcycleTemplate(
       notes: string;
       manual_source_id: string | null;
       estimated_cost_cents: number;
+      schedule_milestones: unknown;
+      recurrence_km: number | null;
+      recurrence_months: number | null;
+      calendar_anchor_mode: "in_service" | "last_service";
     }>
   >`
     select mi.maintenance_type, mi.interval_km, mi.interval_days, mi.notes,
-      mi.manual_source_id, mi.estimated_cost_cents
+      mi.manual_source_id, mi.estimated_cost_cents,
+      mi.schedule_milestones, mi.recurrence_km, mi.recurrence_months, mi.calendar_anchor_mode
     from motorcycle_template_maintenance_items mi
     join motorcycle_templates t on t.id = mi.template_id
     where mi.template_id = ${templateId}
@@ -299,10 +364,15 @@ export async function applyMotorcycleTemplate(
         last_done_km: confirmedNow
           ? Math.max(0, Math.trunc(currentOdometerKm))
           : null,
-        last_done_date: confirmedNow
-          ? new Date().toISOString().slice(0, 10)
-          : null,
+        // A rider confirming past service at this mileage did not supply a
+        // date. Starting the age interval today would invent service history.
+        last_done_date: null,
         initial_history_status: historyStatus,
+        last_completed_milestone: historyStatus === "not_done" ? 0 : null,
+        schedule_milestones: db.json(item.schedule_milestones as never),
+        recurrence_km: item.recurrence_km,
+        recurrence_months: item.recurrence_months,
+        calendar_anchor_mode: item.calendar_anchor_mode,
         manual_source_id: item.manual_source_id,
         estimated_cost_cents: item.estimated_cost_cents,
         notes: `${item.notes} Histórico inicial: ${historyStatus === "confirmed_done" ? "serviço confirmado no odômetro informado" : historyStatus === "not_done" ? "serviço informado como não realizado" : "histórico não confirmado; inspeção necessária antes de assumir um marco"}.`,

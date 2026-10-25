@@ -1,3 +1,4 @@
+import { localizedActions } from "$server/domain/localized-actions";
 import { fail } from "@sveltejs/kit";
 import {
   deleteOwnedRow,
@@ -5,11 +6,14 @@ import {
   loadFeature,
   parseFormNumber,
   parseMoneyCents,
+  assertOwnedMotorcycleReference,
 } from "$server/domain/crud";
 import {
   clearInsuranceReminder,
   syncInsuranceReminder,
 } from "$server/domain/record-sync";
+import { lockObjectOwner } from "$server/db/owner-lock";
+import type { Sql } from "postgres";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -18,7 +22,7 @@ function messageFrom(err: unknown) {
 const base = featureActions("expenses");
 const v = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
-export const actions = {
+export const actions = localizedActions({
   record: base.default,
   savePolicy: async ({ request, locals }) => {
     const f = await request.formData();
@@ -37,6 +41,7 @@ export const actions = {
         Math.round(parseFormNumber(f.get("notify_before_days"), 30)) || 30,
       notes: v(f, "notes"),
     };
+    let reminderResult: Awaited<ReturnType<typeof syncInsuranceReminder>>;
     try {
       // Conflict target is the primary key (`id`), matching the Supabase
       // upsert's implicit default. RLS used to stop a supplied id from
@@ -44,8 +49,17 @@ export const actions = {
       // upsert must check ownership itself: if the row belongs to someone
       // else, this `where` makes the conflicting row a no-op instead of an
       // IDOR-style overwrite.
-      await locals.db`
-        insert into insurance_policies ${locals.db(payload)}
+      reminderResult = await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as Sql;
+        await lockObjectOwner(db, ownerId);
+        await assertOwnedMotorcycleReference(
+          db,
+          ownerId,
+          payload.motorcycle_id,
+          { required: true },
+        );
+        const [saved] = await db<Array<{ id: string }>>`
+        insert into insurance_policies ${db(payload)}
         on conflict (id) do update set
           motorcycle_id = excluded.motorcycle_id,
           provider = excluded.provider,
@@ -57,18 +71,21 @@ export const actions = {
           notes = excluded.notes,
           updated_at = now()
         where insurance_policies.owner_id = ${ownerId}
+        returning id
       `;
+        if (!saved) throw new Error("Seguro não encontrado.");
+        return syncInsuranceReminder(db, ownerId, {
+          id,
+          motorcycle_id: payload.motorcycle_id,
+          provider: payload.provider,
+          coverage_end: payload.coverage_end,
+          notify_before_days: payload.notify_before_days,
+        });
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
 
-    const reminderResult = await syncInsuranceReminder(locals.db, ownerId, {
-      id,
-      motorcycle_id: payload.motorcycle_id,
-      provider: payload.provider,
-      coverage_end: payload.coverage_end,
-      notify_before_days: payload.notify_before_days,
-    });
     if (!reminderResult.ok) {
       return fail(403, {
         message: `Seguro salvo, mas o lembrete não foi criado: ${reminderResult.message}`,
@@ -80,20 +97,15 @@ export const actions = {
     const f = await request.formData();
     const policyId = v(f, "policy_id");
     const ownerId = locals.user!.id;
-    let policy: { id: string } | undefined;
     try {
-      [policy] = await locals.db<Array<{ id: string }>>`
-        select id from insurance_policies
-        where id = ${policyId} and owner_id = ${ownerId}
-      `;
-    } catch {
-      // Falls through to the not-found response below, matching the
-      // Supabase version's unchecked `{ data: policy }` destructure.
-    }
-    if (!policy) return fail(404, { message: "Seguro não encontrado." });
-    try {
-      await locals.db`
-        insert into insurance_claims ${locals.db({
+      const saved = await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as Sql;
+        const [policy] = await db<Array<{ id: string }>>`
+          select id from insurance_policies where id = ${policyId} and owner_id = ${ownerId} for share
+        `;
+        if (!policy) return false;
+        await db`
+        insert into insurance_claims ${db({
           owner_id: ownerId,
           policy_id: policyId,
           claim_date: v(f, "claim_date"),
@@ -102,6 +114,9 @@ export const actions = {
           status: v(f, "status") || "open",
         })}
       `;
+        return true;
+      });
+      if (!saved) return fail(404, { message: "Seguro não encontrado." });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
@@ -111,14 +126,16 @@ export const actions = {
     const f = await request.formData();
     const id = v(f, "id");
     const ownerId = locals.user!.id;
-    const error = await deleteOwnedRow(
-      locals.db,
-      "insurance_policies",
-      id,
-      ownerId,
-    );
-    if (error) return fail(400, { message: error });
-    await clearInsuranceReminder(locals.db, ownerId, id);
+    try {
+      await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as Sql;
+        await lockObjectOwner(db, ownerId);
+        await db`delete from insurance_policies where id = ${id} and owner_id = ${ownerId}`;
+        await clearInsuranceReminder(db, ownerId, id);
+      });
+    } catch (cause) {
+      return fail(400, { message: messageFrom(cause) });
+    }
     return { ok: true };
   },
   deleteClaim: async ({ request, locals }) => {
@@ -131,7 +148,7 @@ export const actions = {
     );
     return error ? fail(400, { message: error }) : { ok: true };
   },
-};
+});
 
 type PolicyRow = {
   id: string;
@@ -165,7 +182,7 @@ export async function load({ locals }) {
       select c.id, c.claim_date, c.description, c.amount_cents, c.status,
         p.provider as policy_provider, p.policy_number
       from insurance_claims c
-      left join insurance_policies p on p.id = c.policy_id
+      left join insurance_policies p on p.id = c.policy_id and p.owner_id = c.owner_id
       where c.owner_id = ${ownerId}
       order by c.claim_date desc
     `.catch(() => [] as ClaimRow[]),

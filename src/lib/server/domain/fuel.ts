@@ -117,15 +117,15 @@ export function parseReceiptText(text: string): FuelOcrResult {
   };
 }
 
-export async function parseReceiptFile(
+export async function extractOcrText(
   file: File,
   { apiKey, fetch: fetchImpl = globalThis.fetch }: ReceiptOcrOptions = {},
-): Promise<FuelOcrResult> {
+): Promise<string> {
   if (file.size > MAX_RECEIPT_OCR_BYTES) {
     throw new Error("O comprovante excede o limite de 10 MB para OCR.");
   }
   if (file.type === "text/plain") {
-    return parseReceiptText(await file.text());
+    return file.text();
   }
   if (!supportedReceiptType(file)) {
     throw new Error("Formato de comprovante não suportado para OCR.");
@@ -143,6 +143,7 @@ export async function parseReceiptFile(
       : { type: "image_url", image_url: dataUrl };
   const response = await fetchImpl("https://api.mistral.ai/v1/ocr", {
     method: "POST",
+    signal: AbortSignal.timeout(30_000),
     headers: {
       authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
@@ -180,7 +181,14 @@ export async function parseReceiptFile(
   if (!text) {
     throw new Error("O OCR não encontrou texto legível no comprovante.");
   }
-  return parseReceiptText(text);
+  return text;
+}
+
+export async function parseReceiptFile(
+  file: File,
+  options: ReceiptOcrOptions = {},
+): Promise<FuelOcrResult> {
+  return parseReceiptText(await extractOcrText(file, options));
 }
 
 export type FuelCsvPreviewRow = {
@@ -444,8 +452,24 @@ export function detectFuelConsumptionAnomalies(
 
 export function parseOdometerText(text: string): number | null {
   const normalized = text.toLowerCase();
-  const match = normalized.match(/(\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?\s*km\b/);
+  const odometer = normalized.match(
+    /(?:\bodo\b|od[oô]metro|odometer)\s*[:=]?\s*(\d{1,3}(?:[.,]\d{3})+|\d+)(?:,\d{1,2})?\s*(km|mi(?:les)?)?\b/,
+  );
+  if (odometer?.[2] && odometer[2] !== "km") return null;
+  const candidates = [
+    ...normalized.matchAll(
+      /(\d{1,3}(?:[.,]\d{3})+|\d+)(?:,\d{1,2})?\s*km\b(?!\s*\/\s*h)/g,
+    ),
+  ].filter(
+    (match) =>
+      !/trip\s*[:=]?\s*$/.test(
+        normalized.slice(Math.max(0, match.index! - 12), match.index),
+      ),
+  );
+  const match = odometer ?? (candidates.length === 1 ? candidates[0] : null);
   if (!match) return null;
-  const value = Number(match[1].replace(/\./g, ""));
-  return Number.isFinite(value) ? value : null;
+  const value = Number(match[1].replace(/[.,]/g, ""));
+  return Number.isSafeInteger(value) && value >= 0 && value <= 2147483647
+    ? value
+    : null;
 }

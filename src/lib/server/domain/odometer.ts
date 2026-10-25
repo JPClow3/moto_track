@@ -44,10 +44,12 @@ export function validateOdometer(candidate: number, current: number) {
 // since this is a best-effort cache refresh, not a user-facing action.
 async function rowsOrEmpty<T extends object>(
   query: Promise<T[]>,
+  strict = false,
 ): Promise<T[]> {
   try {
     return await query;
-  } catch {
+  } catch (cause) {
+    if (strict) throw cause;
     return [];
   }
 }
@@ -56,6 +58,7 @@ export async function syncMotorcycleOdometer(
   db: Sql,
   ownerId: string,
   motorcycleId: string,
+  { strict = false }: { strict?: boolean } = {},
 ) {
   let motorcycle: { odometer_override_km: number | null } | undefined;
   try {
@@ -63,10 +66,14 @@ export async function syncMotorcycleOdometer(
       select odometer_override_km from motorcycles
       where id = ${motorcycleId} and owner_id = ${ownerId}
     `;
-  } catch {
+  } catch (cause) {
+    if (strict) throw cause;
     return;
   }
-  if (!motorcycle) return;
+  if (!motorcycle) {
+    if (strict) throw new Error("Moto não encontrada.");
+    return;
+  }
 
   const [fuel, maintenance, tires, work] = await Promise.all([
     rowsOrEmpty(
@@ -74,24 +81,28 @@ export async function syncMotorcycleOdometer(
         select odometer_km from fuel_records
         where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
       `,
+      strict,
     ),
     rowsOrEmpty(
       db<{ odometer_km: number | null }[]>`
         select odometer_km from maintenance_records
         where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
       `,
+      strict,
     ),
     rowsOrEmpty(
       db<{ installed_odometer_km: number | null }[]>`
         select installed_odometer_km from tire_records
         where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
       `,
+      strict,
     ),
     rowsOrEmpty(
       db<{ odometer_end_km: number | null }[]>`
         select odometer_end_km from work_sessions
         where motorcycle_id = ${motorcycleId} and owner_id = ${ownerId}
       `,
+      strict,
     ),
   ]);
 
@@ -110,7 +121,8 @@ export async function syncMotorcycleOdometer(
         current_odometer_updated_at = ${new Date().toISOString()}
       where id = ${motorcycleId} and owner_id = ${ownerId}
     `;
-  } catch {
+  } catch (cause) {
+    if (strict) throw cause;
     // Match the Supabase version, which never checked this update's error.
   }
 }

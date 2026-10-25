@@ -1,3 +1,6 @@
+import type { Locale } from "$lib/i18n";
+import { exportMessages } from "$lib/i18n/exports";
+
 type DatedAmount = {
   date?: string | null;
   installed_at?: string | null;
@@ -24,29 +27,33 @@ function monthFrom(record: {
   return typeof date === "string" ? date.slice(0, 7) : "";
 }
 
-export function summarizeReportMetrics({
-  fuel,
-  maintenance,
-  tires,
-  fees,
-}: {
-  fuel: FuelRecord[];
-  maintenance: DatedAmount[];
-  tires: DatedAmount[];
-  fees: DatedAmount[];
-}) {
+export function summarizeReportMetrics(
+  {
+    fuel,
+    maintenance,
+    tires,
+    fees,
+  }: {
+    fuel: FuelRecord[];
+    maintenance: DatedAmount[];
+    tires: DatedAmount[];
+    fees: DatedAmount[];
+  },
+  locale: Locale = "pt-BR",
+) {
+  const copy = exportMessages(locale);
   const distribution = [
     {
-      label: "Abastecimento",
+      label: copy.fuel,
       amountCents: sum(fuel.map((r) => r.total_price_cents)),
     },
     {
-      label: "Manutenção",
+      label: copy.maintenance,
       amountCents: sum(maintenance.map((r) => r.cost_cents)),
     },
-    { label: "Pneus", amountCents: sum(tires.map((r) => r.cost_cents)) },
+    { label: copy.tires, amountCents: sum(tires.map((r) => r.cost_cents)) },
     {
-      label: "Taxas e seguro",
+      label: copy.feesAndInsurance,
       amountCents: sum(fees.map((r) => r.amount_cents)),
     },
   ];

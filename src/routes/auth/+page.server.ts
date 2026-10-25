@@ -1,5 +1,6 @@
 import { fail, redirect, type Actions } from "@sveltejs/kit";
 import { safeInternalRedirect } from "$server/auth-redirect";
+import { createTranslator } from "$lib/i18n";
 import {
   signInEmail,
   signUpEmail,
@@ -65,7 +66,10 @@ export const actions: Actions = {
       callbackURL,
     );
     if (!providerUrl)
-      return fail(400, { message: message ?? "Google OAuth unavailable." });
+      return fail(400, {
+        message:
+          message ?? createTranslator(event.locals.locale)("auth.googleFailed"),
+      });
     throw redirect(303, providerUrl);
   },
   resetPassword: async (event) => {
@@ -78,7 +82,7 @@ export const actions: Actions = {
       `${url.origin}/auth/update-password`,
     );
     if (!result.ok) return fail(400, { message: result.message, email });
-    return { message: "Email de recuperação enviado." };
+    return { message: createTranslator(event.locals.locale)("auth.resetSent") };
   },
   signOut: async (event) => {
     await signOut(event);
@@ -87,6 +91,7 @@ export const actions: Actions = {
 };
 
 export async function load({ locals, url }) {
+  const t = createTranslator(locals.locale);
   if (locals.user)
     throw redirect(
       303,
@@ -96,11 +101,11 @@ export async function load({ locals, url }) {
     redirectTo: safeInternalRedirect(url.searchParams.get("redirectTo")),
     errorMessage:
       url.searchParams.get("error") === "oauth_callback_failed"
-        ? "Não foi possível concluir o acesso com o Google. Tente novamente ou entre com email e senha."
+        ? t("auth.googleFailed")
         : undefined,
     message:
       url.searchParams.get("message") === "senha_atualizada"
-        ? "Senha atualizada. Entre novamente para acessar sua garagem."
+        ? t("auth.passwordUpdated")
         : undefined,
   };
 }

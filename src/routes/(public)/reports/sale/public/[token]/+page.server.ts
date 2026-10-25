@@ -1,4 +1,5 @@
 import { error } from "@sveltejs/kit";
+import { actionMessage } from "$lib/i18n/action-messages";
 import { shareTokenHash } from "$server/domain/sale-report-share";
 import type { PublicSaleReport } from "$types/sale-report";
 
@@ -35,7 +36,11 @@ export async function load({ params, locals }) {
       and expires_at >= now()
   `;
 
-  if (!share) throw error(404, "Relatório não encontrado ou expirado.");
+  if (!share)
+    throw error(
+      404,
+      actionMessage(locals.locale, "Relatório não encontrado ou expirado."),
+    );
 
   const ownerId = String(share.owner_id);
   const motorcycleId = String(share.motorcycle_id);
@@ -80,7 +85,10 @@ export async function load({ params, locals }) {
   const motorcycleRow = motorcycle[0];
   // A share can outlive the motorcycle it points at.
   if (!motorcycleRow || motorcycleRow.deleted_at) {
-    throw error(404, "Relatório não encontrado ou expirado.");
+    throw error(
+      404,
+      actionMessage(locals.locale, "Relatório não encontrado ou expirado."),
+    );
   }
 
   await locals.db`

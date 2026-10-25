@@ -1,97 +1,19 @@
 <script lang="ts">
+  import { locale } from "$lib/i18n/store";
+  import { legalCopy, termsSections } from "$lib/i18n/legal";
   import { ArrowRight, FileText, Mail, Printer, Scale } from "lucide-svelte";
 
   let { data } = $props();
-  const { companyName, supportEmail } = $derived(data.contact);
+  const { supportEmail } = $derived(data.contact);
 
-  const sections = $derived([
-    {
-      id: "aceitacao",
-      title: "Aceitação dos termos",
-      paragraphs: [
-        `Ao criar uma conta ou usar o Moto Track, você concorda com estes Termos de Uso e com a nossa Política de Privacidade. O serviço é oferecido por ${companyName}. Se você não concordar com algum ponto, não utilize o serviço.`,
-      ],
-    },
-    {
-      id: "servico",
-      title: "Descrição do serviço",
-      paragraphs: [
-        "O Moto Track é uma ferramenta para organizar o histórico de motocicletas: abastecimentos, manutenções, documentos, despesas, lembretes e relatórios. Parte dos recursos está disponível no plano gratuito e parte no plano Pro, mediante assinatura.",
-        "Podemos alterar, adicionar ou remover recursos ao longo do tempo para manter o produto estável, seguro e sustentável.",
-      ],
-    },
-    {
-      id: "conta",
-      title: "Contas e responsabilidades do usuário",
-      paragraphs: [
-        "Você é responsável por manter suas credenciais em sigilo e por todas as atividades realizadas na sua conta. Informe dados verdadeiros ao se cadastrar e mantenha seu e-mail atualizado para receber comunicações relevantes.",
-        "Avise-nos imediatamente se suspeitar de acesso não autorizado à sua conta.",
-      ],
-    },
-    {
-      id: "uso-aceitavel",
-      title: "Uso aceitável",
-      paragraphs: [
-        "Não é permitido usar o Moto Track para fins ilícitos, para violar direitos de terceiros, para tentar acessar dados de outras contas, para interferir na operação do serviço ou para realizar engenharia reversa além do permitido em lei.",
-        "Reservamo-nos o direito de suspender ou encerrar contas que violem estes termos ou que representem risco de segurança para o serviço ou para outros usuários.",
-      ],
-    },
-    {
-      id: "assinatura",
-      title: "Assinatura Pro e cobrança",
-      paragraphs: [
-        "O plano Pro é cobrado de forma recorrente pela Dodo Payments, que atua como comerciante responsável pela venda (Merchant of Record). Os valores, a periodicidade, os tributos aplicáveis e os métodos de pagamento aceitos são exibidos antes da confirmação da assinatura. A área Conta direciona ao Portal de cobrança para gerenciar a assinatura.",
-        "A primeira assinatura Pro inclui um teste grátis de 7 dias com forma de pagamento informada no checkout. Ao fim do teste, o plano escolhido é cobrado e renovado automaticamente. Cancele antes da primeira cobrança para não pagar pelo plano. Uma nova assinatura após já ter contratado Pro não concede outro teste grátis.",
-        "Você pode cancelar a assinatura a qualquer momento pelo Portal de cobrança. O acesso Pro continua até o fim do período já pago e não há cobrança seguinte.",
-        `Na primeira contratação, você pode desistir em até 7 dias e receber o reembolso integral, conforme o art. 49 do Código de Defesa do Consumidor; para isso, escreva para ${supportEmail}. Fora desse prazo, não há reembolso proporcional do período em curso, salvo quando exigido por lei.`,
-      ],
-    },
-    {
-      id: "propriedade",
-      title: "Propriedade intelectual",
-      paragraphs: [
-        "Antes de enviar documentos, fotos ou outros conteúdos, verifique se você tem autorização para armazená-los no serviço. O Moto Track processa registros enviados para fornecer os recursos solicitados, conforme a Política de Privacidade. A titularidade de marcas, software e conteúdos de terceiros depende dos respectivos direitos e licenças.",
-      ],
-    },
-    {
-      id: "limitacoes",
-      title: "Limitações e responsabilidade",
-      paragraphs: [
-        "O Moto Track é fornecido 'como está', sem garantia de disponibilidade ininterrupta ou de ausência total de falhas. Registros como odômetro, consumo, custos e previsões de manutenção são estimativas e não substituem o manual do fabricante ou a avaliação de um profissional qualificado.",
-        "Na máxima medida permitida por lei, não respondemos por danos indiretos ou lucros cessantes decorrentes do uso ou da impossibilidade de uso do serviço. Nada nestes termos afasta direitos do consumidor que a legislação não permite limitar. Mantenha cópias próprias de informações críticas quando possível.",
-      ],
-    },
-    {
-      id: "rescisao",
-      title: "Encerramento da conta",
-      paragraphs: [
-        "A área Conta permite baixar um arquivo JSON e registrar solicitações de exportação ou exclusão. O pedido de exclusão é atendido pela equipe em até 15 dias. O cancelamento de uma assinatura é gerenciado separadamente pelo Portal de cobrança. Podemos suspender ou encerrar contas em caso de violação destes termos ou risco de segurança, observadas as regras aplicáveis.",
-      ],
-    },
-    {
-      id: "alteracoes",
-      title: "Alterações destes termos",
-      paragraphs: [
-        "Podemos atualizar estes termos para refletir mudanças no serviço ou na legislação aplicável. Quando a alteração for relevante, atualizaremos a data nesta página e poderemos avisar pelo serviço ou por e-mail.",
-      ],
-    },
-    {
-      id: "contato",
-      title: "Contato",
-      paragraphs: [
-        `Para dúvidas sobre estes termos, pedidos de reembolso ou outras solicitações, escreva para ${supportEmail}.`,
-      ],
-    },
-  ]);
+  const copy = $derived(legalCopy($locale));
+  const sections = $derived(termsSections($locale, data.contact));
 </script>
 
 <svelte:head>
-  <title>Termos de Uso · Moto Track</title>
+  <title>{copy.terms.title} · Moto Track</title>
   <link rel="canonical" href="https://moto-track.net/termos" />
-  <meta
-    name="description"
-    content="Termos de Uso do Moto Track: assinatura, responsabilidades e limitações do serviço."
-  />
+  <meta name="description" content={copy.terms.description} />
 </svelte:head>
 
 <section class="relative overflow-hidden border-b border-[var(--line)]">
@@ -99,31 +21,31 @@
   <div class="accent-glow legal-glow" aria-hidden="true"></div>
   <div class="relative mx-auto max-w-6xl px-6 py-16 sm:py-20">
     <p class="eyebrow">
-      <span class="slash-rule" aria-hidden="true"></span> Termos e condições
+      <span class="slash-rule" aria-hidden="true"></span>
+      {copy.terms.eyebrow}
     </p>
     <div class="mt-5 flex flex-wrap items-end justify-between gap-6">
       <div>
         <h1 class="display text-5xl sm:text-6xl lg:text-7xl">
-          Regras claras,<br /><span class="text-[var(--accent)]"
-            >sem letra miúda.</span
+          {copy.terms.headline}<br /><span class="text-[var(--accent)]"
+            >{copy.terms.accent}</span
           >
         </h1>
         <p class="mt-5 max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
-          Como funciona o uso do Moto Track, o plano Pro e o que esperar do
-          serviço.
+          {copy.terms.introduction}
         </p>
       </div>
       <button
         class="button-secondary gap-2"
         type="button"
         onclick={() => window.print()}
-        ><Printer class="h-4 w-4" /> Imprimir</button
+        ><Printer class="h-4 w-4" /> {copy.print}</button
       >
     </div>
     <p
       class="label-tech mt-10 border-t border-[var(--line)] pt-5 text-[var(--muted)]"
     >
-      Última atualização: 29 de setembro de 2026
+      {copy.updated}
     </p>
   </div>
 </section>
@@ -132,10 +54,10 @@
   class="mx-auto grid max-w-6xl gap-12 px-6 py-14 lg:grid-cols-[15rem_minmax(0,1fr)] lg:py-20"
 >
   <aside class="lg:sticky lg:top-24 lg:self-start">
-    <p class="label-tech text-[var(--muted)]">Neste documento</p>
+    <p class="label-tech text-[var(--muted)]">{copy.contents}</p>
     <nav
       class="mt-4 border-l border-[var(--line)]"
-      aria-label="Seções dos termos"
+      aria-label={copy.terms.navigation}
     >
       {#each sections as section, index (section.id)}
         <a
@@ -155,14 +77,13 @@
       <div class="flex gap-3">
         <FileText class="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
         <p class="text-sm leading-relaxed text-[var(--muted)]">
-          Desistência com reembolso integral em até 7 dias na primeira
-          contratação.
+          {copy.terms.refund}
         </p>
       </div>
       <div class="flex gap-3">
         <Scale class="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
         <p class="text-sm leading-relaxed text-[var(--muted)]">
-          Cancele a assinatura Pro quando quiser, pelo Portal de cobrança.
+          {copy.terms.cancel}
         </p>
       </div>
     </div>
@@ -187,15 +108,14 @@
       <div class="relative flex gap-4">
         <Mail class="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
         <div>
-          <h2 class="display text-2xl">Dúvidas sobre os termos</h2>
+          <h2 class="display text-2xl">{copy.terms.supportHeading}</h2>
           <p class="mt-2 text-sm leading-relaxed text-paper/65">
-            Fale com o suporte em {supportEmail}. Não inclua dados pessoais em
-            uma issue aberta.
+            {copy.terms.supportText(supportEmail)}
           </p>
           <a
             class="focus-ring mt-4 inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
             href={`mailto:${supportEmail}`}
-            >Enviar e-mail <ArrowRight class="h-4 w-4" /></a
+            >{copy.email} <ArrowRight class="h-4 w-4" /></a
           >
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { localizedActions } from "$server/domain/localized-actions";
 import { fail } from "@sveltejs/kit";
 import {
   deleteOwnedRow,
@@ -25,6 +26,19 @@ import {
 import { syncPlanReminder } from "$server/domain/record-sync";
 import { getFeature } from "$server/domain/features";
 import {
+  forecastMaintenance,
+  validDate,
+  estimateDailyDistance,
+  forecastDateAtKm,
+} from "$server/domain/maintenance-forecast";
+import { loadOdometerHistory } from "$server/domain/odometer-history";
+import { isoDateValue } from "$server/domain/date-value";
+import {
+  nextScheduleMilestone,
+  maintenanceOccurrenceOptions,
+  relativeReplacementMonths,
+} from "$server/domain/maintenance-schedule";
+import {
   deleteQueuedObjectsBestEffort,
   enqueueObjectDeletions,
   lockObjectOwner,
@@ -49,7 +63,7 @@ function marketplaceDisplayQuery(value: unknown) {
     .slice(0, MARKETPLACE_QUERY_MAX_LENGTH);
 }
 
-export const actions = {
+export const actions = localizedActions({
   logCompleted: base.default,
   deleteRecord: async ({ request, locals, platform }) => {
     const f = await request.formData();
@@ -113,6 +127,14 @@ export const actions = {
           delete from maintenance_records
           where id = ${id} and owner_id = ${ownerId}
         `;
+        await syncRecordDeleteEffects({
+          db,
+          ownerId,
+          feature: maintenanceFeature,
+          recordId: id,
+          existing,
+          strictOdometer: true,
+        });
         return {
           existing,
           objectKeys: files.map((file) => file.object_key),
@@ -127,13 +149,6 @@ export const actions = {
       objectKeys: deleted.objectKeys,
       ownerId,
       platform,
-    });
-    await syncRecordDeleteEffects({
-      db: locals.db,
-      ownerId,
-      feature: maintenanceFeature,
-      recordId: id,
-      existing: (deleted.existing ?? {}) as Record<string, unknown>,
     });
     return { ok: true };
   },
@@ -217,7 +232,11 @@ export const actions = {
     const intervalDays =
       Math.round(parseFormNumber(f.get("interval_days"), 0)) || null;
 
-    if (!intervalKm && !intervalDays) {
+    if (
+      (!intervalKm && !intervalDays) ||
+      (intervalKm !== null && intervalKm < 1) ||
+      (intervalDays !== null && intervalDays < 1)
+    ) {
       return fail(400, {
         message: "Informe um intervalo em quilômetros ou dias.",
       });
@@ -226,10 +245,37 @@ export const actions = {
     // Explicit onConflict target matching the schema's unique combo
     // (motorcycle_id, maintenance_type, is_severe_duty_override) so saving
     // the same plan twice updates it instead of throwing a constraint error.
-    let plan: { id: string } | undefined;
     try {
-      [plan] = await locals.db<Array<{ id: string }>>`
-        insert into maintenance_plan_items ${locals.db({
+      await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as typeof locals.db;
+        await db`select id from profiles where id = ${ownerId} for update`;
+        const [motorcycle] = await db<Array<{ id: string }>>`
+          select id from motorcycles where id = ${motorcycleId} and owner_id = ${ownerId}
+            and deleted_at is null and is_active = true
+        `;
+        if (!motorcycle) throw new Error("Moto não encontrada.");
+        if (!type) throw new Error("Informe o tipo de manutenção.");
+        const [existing] = await db<
+          Array<{ id: string; schedule_milestones: unknown[] }>
+        >`
+          select id, schedule_milestones from maintenance_plan_items
+          where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}
+            and maintenance_type = ${type} and is_severe_duty_override = false for update
+        `;
+        const convert = f.get("convert_manufacturer_plan") === "true";
+        if (existing?.schedule_milestones.length && !convert) {
+          throw new Error(
+            "Confirme a substituição dos marcos do fabricante para personalizar este plano.",
+          );
+        }
+        if (existing?.schedule_milestones.length && convert) {
+          await db`update maintenance_plan_items set schedule_milestones = '[]'::jsonb,
+            recurrence_km = null, recurrence_months = null, calendar_anchor_mode = 'in_service',
+            manual_source_id = null, baseline_completed_milestone = null, last_completed_milestone = null
+            where id = ${existing.id} and owner_id = ${ownerId}`;
+        }
+        const [plan] = await db<Array<{ id: string }>>`
+        insert into maintenance_plan_items ${db({
           owner_id: ownerId,
           motorcycle_id: motorcycleId,
           maintenance_type: type,
@@ -247,20 +293,18 @@ export const actions = {
         where maintenance_plan_items.owner_id = ${ownerId}
         returning id
       `;
+        if (!plan) throw new Error("Plano inválido.");
+        const result = await syncPlanReminder(db, ownerId, {
+          id: plan.id,
+          motorcycle_id: motorcycleId,
+          maintenance_type: type,
+          interval_km: intervalKm,
+          interval_days: intervalDays,
+        });
+        if (!result.ok) throw new Error(result.message);
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
-    }
-    if (!plan) return fail(400, { message: "Plano inválido." });
-
-    const reminderResult = await syncPlanReminder(locals.db, ownerId, {
-      id: plan.id,
-      motorcycle_id: motorcycleId,
-      maintenance_type: type,
-      interval_km: intervalKm,
-      interval_days: intervalDays,
-    });
-    if (!reminderResult.ok) {
-      return fail(403, { message: reminderResult.message });
     }
     return { ok: true };
   },
@@ -275,54 +319,96 @@ export const actions = {
     const status = initialHistoryStatus(v(f, "initial_history_status"));
     const rawKm = v(f, "last_done_km");
     const confirmed = status === "confirmed_done";
+    const rawDate = v(f, "last_done_date");
+    const rawMilestone = v(f, "last_completed_milestone");
+    const completedMilestone =
+      confirmed && rawMilestone ? Number(rawMilestone) : null;
+    if (
+      completedMilestone !== null &&
+      (!Number.isInteger(completedMilestone) ||
+        completedMilestone < 0 ||
+        completedMilestone > 10_000)
+    )
+      return fail(400, { message: "Informe uma etapa de revisão válida." });
+    const lastDoneDate = confirmed && rawDate ? validDate(rawDate) : null;
+    if (
+      confirmed &&
+      rawDate &&
+      (!lastDoneDate || lastDoneDate > new Date().toISOString().slice(0, 10))
+    ) {
+      return fail(400, {
+        message: "Informe uma data válida para o último serviço.",
+      });
+    }
 
     let lastDoneKm: number | null = null;
-    if (confirmed) {
+    if (confirmed && rawKm) {
       const parsed = Number(rawKm);
-      if (!rawKm || !Number.isFinite(parsed) || parsed < 0) {
+      if (!Number.isFinite(parsed) || parsed < 0) {
         return fail(400, { message: "Informe o odômetro do último serviço." });
       }
       lastDoneKm = Math.trunc(parsed);
     }
-
-    const [plan] = await locals.db<
-      Array<{
-        id: string;
-        motorcycle_id: string;
-        maintenance_type: string;
-        interval_km: number | null;
-        interval_days: number | null;
-      }>
-    >`
-      select id, motorcycle_id, maintenance_type, interval_km, interval_days
-      from maintenance_plan_items
-      where id = ${planId} and owner_id = ${ownerId}
-    `.catch(() => []);
-    if (!plan) return fail(404, { message: "Plano não encontrado." });
+    if (
+      confirmed &&
+      lastDoneKm === null &&
+      !lastDoneDate &&
+      completedMilestone === null
+    )
+      return fail(400, {
+        message: "Informe a data ou o odômetro do último serviço.",
+      });
 
     try {
-      await locals.db`
-        update maintenance_plan_items
-        set initial_history_status = ${status},
-          last_done_km = ${lastDoneKm},
-          last_done_date = ${confirmed ? new Date().toISOString().slice(0, 10) : null},
-          updated_at = now()
-        where id = ${planId} and owner_id = ${ownerId}
-      `;
+      await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as typeof locals.db;
+        await lockObjectOwner(db, ownerId);
+        const [plan] = await db<
+          Array<{
+            id: string;
+            motorcycle_id: string;
+            maintenance_type: string;
+            interval_km: number | null;
+            interval_days: number | null;
+          }>
+        >`
+          select id, motorcycle_id, maintenance_type, interval_km, interval_days
+          from maintenance_plan_items where id = ${planId} and owner_id = ${ownerId}
+          for update
+        `;
+        if (!plan) throw new Error("Plano não encontrado.");
+        if (lastDoneKm !== null) {
+          const [motorcycle] = await db<Array<{ current_odometer_km: number }>>`
+            select current_odometer_km from motorcycles
+            where id = ${plan.motorcycle_id} and owner_id = ${ownerId}
+          `;
+          if (
+            !motorcycle ||
+            lastDoneKm > Number(motorcycle.current_odometer_km ?? 0)
+          )
+            throw new Error(
+              "O último serviço não pode superar o odômetro atual da moto.",
+            );
+        }
+        await db`
+          update maintenance_plan_items set baseline_history_status = ${status},
+            baseline_last_done_km = ${lastDoneKm}, baseline_last_done_date = ${lastDoneDate},
+            baseline_completed_milestone = ${completedMilestone}, updated_at = now()
+          where id = ${planId} and owner_id = ${ownerId}
+        `;
+        // The effective history is recalculated by the same transaction. A
+        // reminder cap may omit a new reminder without discarding known history.
+        await syncPlanReminder(db, ownerId, {
+          id: plan.id,
+          motorcycle_id: plan.motorcycle_id,
+          maintenance_type: plan.maintenance_type,
+          interval_km: plan.interval_km,
+          interval_days: plan.interval_days,
+        });
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
-
-    // The reminder's reference point moves with the stated history, otherwise
-    // the dashboard and the reminder would disagree about the same service.
-    await syncPlanReminder(locals.db, ownerId, {
-      id: plan.id,
-      motorcycle_id: plan.motorcycle_id,
-      maintenance_type: plan.maintenance_type,
-      interval_km: plan.interval_km,
-      interval_days: plan.interval_days,
-      reference_km: lastDoneKm,
-    });
     return { ok: true };
   },
   deletePlan: async ({ request, locals }) => {
@@ -472,42 +558,49 @@ export const actions = {
     });
     return { ok: true };
   },
-};
+});
 
 export async function load({ locals }) {
   const ownerId = locals.user!.id;
-  const [motorcycleRows, recordResult, parts, planRows, photos] =
-    await Promise.all([
-      locals.db<
-        Array<{
-          id: string;
-          name: string;
-          brand: string;
-          model: string;
-          current_odometer_km: number | null;
-        }>
-      >`
-        select id, name, brand, model, current_odometer_km from motorcycles
+  const [
+    motorcycleRows,
+    recordResult,
+    parts,
+    planRows,
+    photos,
+    odometerHistory,
+  ] = await Promise.all([
+    locals.db<
+      Array<{
+        id: string;
+        name: string;
+        brand: string;
+        model: string;
+        current_odometer_km: number | null;
+        in_service_date: unknown;
+      }>
+    >`
+        select id, name, brand, model, current_odometer_km, in_service_date from motorcycles
         where owner_id = ${ownerId} and is_active = true and deleted_at is null
         order by name
       `.catch(() => []),
-      locals.db<Row[]>`
+    locals.db<Row[]>`
         select r.*, m.name as motorcycle_name
         from maintenance_records r
-        left join motorcycles m on m.id = r.motorcycle_id
+        left join motorcycles m on m.id = r.motorcycle_id and m.owner_id = r.owner_id
         where r.owner_id = ${ownerId}
         order by r.date desc
         limit 100
       `.then(
-        (rows) => ({ rows, error: null as string | null }),
-        (err: unknown) => ({ rows: [] as Row[], error: messageFrom(err) }),
-      ),
-      locals.db<Row[]>`
+      (rows) => ({ rows, error: null as string | null }),
+      (err: unknown) => ({ rows: [] as Row[], error: messageFrom(err) }),
+    ),
+    locals.db<Row[]>`
         select * from maintenance_parts
         where owner_id = ${ownerId}
         order by name
       `.catch(() => [] as Row[]),
-      locals.db<Row[]>`
+    locals.db<Row[]>`
         select p.*, m.name as motorcycle_name,
           ms.official_url, ms.document_version, ms.page_reference,
           ms.last_verified_date, ms.coverage_notes,
@@ -517,19 +610,20 @@ export async function load({ locals }) {
             else null
           end as next_due_km
         from maintenance_plan_items p
-        left join motorcycles m on m.id = p.motorcycle_id
+        left join motorcycles m on m.id = p.motorcycle_id and m.owner_id = p.owner_id
         left join motorcycle_manual_sources ms on ms.id = p.manual_source_id
         where p.owner_id = ${ownerId}
         order by p.maintenance_type
       `.catch(() => [] as Row[]),
-      locals.db<Row[]>`
+    locals.db<Row[]>`
         select ph.*, r.date as record_date, r.maintenance_type as record_maintenance_type
         from maintenance_photos ph
-        left join maintenance_records r on r.id = ph.maintenance_record_id
+        left join maintenance_records r on r.id = ph.maintenance_record_id and r.owner_id = ph.owner_id
         where ph.owner_id = ${ownerId}
         order by ph.created_at desc
       `.catch(() => [] as Row[]),
-    ]);
+    loadOdometerHistory(locals.db, ownerId).catch(() => new Map()),
+  ]);
 
   // Every plan item gets a live urgency read against its bike's odometer so
   // the page can lead with what needs attention instead of a raw list.
@@ -552,13 +646,91 @@ export async function load({ locals }) {
       const intervalKm =
         plan.interval_km == null ? null : Number(plan.interval_km);
       const currentKm = odometerByMotorcycle.get(motorcycleId) ?? 0;
+      const inServiceDate = motorcycleRows.find(
+        (m) => m.id === motorcycleId,
+      )?.in_service_date;
+      const phase = nextScheduleMilestone({
+        milestones: plan.schedule_milestones,
+        recurrenceKm:
+          plan.recurrence_km == null ? null : Number(plan.recurrence_km),
+        recurrenceMonths:
+          plan.recurrence_months == null
+            ? null
+            : Number(plan.recurrence_months),
+        completedMilestone:
+          plan.last_completed_milestone == null
+            ? null
+            : Number(plan.last_completed_milestone),
+        inServiceDate,
+        calendarAnchorMode:
+          plan.calendar_anchor_mode === "last_service"
+            ? "last_service"
+            : "in_service",
+        lastServiceDate: plan.last_done_date,
+      });
       const state = dueStateForPlan({
         historyStatus,
         lastDoneKm,
         intervalKm,
         currentKm,
+        intervalDays:
+          plan.interval_days == null ? null : Number(plan.interval_days),
+        lastDoneDate: plan.last_done_date,
+        scheduleMilestones: plan.schedule_milestones,
+        recurrenceKm:
+          plan.recurrence_km == null ? null : Number(plan.recurrence_km),
+        recurrenceMonths:
+          plan.recurrence_months == null
+            ? null
+            : Number(plan.recurrence_months),
+        lastCompletedMilestone:
+          plan.last_completed_milestone == null
+            ? null
+            : Number(plan.last_completed_milestone),
+        inServiceDate,
+        calendarAnchorMode:
+          plan.calendar_anchor_mode === "last_service"
+            ? "last_service"
+            : "in_service",
       });
+      const kmPerDay = estimateDailyDistance(
+        odometerHistory.get(motorcycleId) ?? [],
+        new Date().toISOString().slice(0, 10),
+      );
+      const phasePredictedDate =
+        phase?.dueKm == null
+          ? null
+          : forecastDateAtKm(
+              phase.dueKm,
+              currentKm,
+              kmPerDay,
+              new Date().toISOString().slice(0, 10),
+            );
+      const forecast = phase
+        ? {
+            dueKm: phase.dueKm,
+            kmPerDay,
+            dueDate:
+              [phase.dueDate, phasePredictedDate]
+                .filter((d): d is string => d !== null)
+                .sort()[0] ?? null,
+            dueByDate: phase.dueDate,
+            predictedDateByKm: phasePredictedDate,
+          }
+        : forecastMaintenance({
+            lastService:
+              historyStatus === "confirmed_done"
+                ? { date: plan.last_done_date, odometer_km: lastDoneKm }
+                : null,
+            intervalKm,
+            intervalDays:
+              plan.interval_days == null ? null : Number(plan.interval_days),
+            currentKm,
+            odometerSamples: odometerHistory.get(motorcycleId) ?? [],
+            today: new Date().toISOString().slice(0, 10),
+          });
       const progressPercent =
+        !phase &&
         state.urgency === "scheduled" &&
         lastDoneKm !== null &&
         intervalKm !== null &&
@@ -572,6 +744,41 @@ export async function load({ locals }) {
           : null;
       return {
         ...plan,
+        last_done_date: plan.last_done_date
+          ? isoDateValue(plan.last_done_date)
+          : null,
+        baseline_last_done_date: plan.baseline_last_done_date
+          ? isoDateValue(plan.baseline_last_done_date)
+          : null,
+        forecast,
+        next_milestone: phase?.nextMilestone ?? null,
+        occurrence_options: maintenanceOccurrenceOptions({
+          milestones: plan.schedule_milestones,
+          recurrenceKm:
+            plan.recurrence_km == null ? null : Number(plan.recurrence_km),
+          recurrenceMonths:
+            plan.recurrence_months == null
+              ? null
+              : Number(plan.recurrence_months),
+          currentKm,
+          inServiceDate,
+          knownOrdinal: Math.max(
+            Number(plan.last_completed_milestone ?? 0),
+            Number(plan.baseline_completed_milestone ?? 0),
+          ),
+        }),
+        is_relative_replacement:
+          relativeReplacementMonths({
+            milestones: plan.schedule_milestones,
+            recurrenceKm:
+              plan.recurrence_km == null ? null : Number(plan.recurrence_km),
+            recurrenceMonths:
+              plan.recurrence_months == null
+                ? null
+                : Number(plan.recurrence_months),
+            calendarAnchorMode: String(plan.calendar_anchor_mode),
+          }) !== null,
+        is_phased_schedule: phase !== null,
         motorcycles: plan.motorcycle_name
           ? { name: plan.motorcycle_name }
           : null,
@@ -592,7 +799,10 @@ export async function load({ locals }) {
 
   return {
     errorMessage: recordResult.error ?? "",
-    rows: recordResult.rows,
+    rows: recordResult.rows.map((row): Row & { date: string } => ({
+      ...row,
+      date: isoDateValue(row.date),
+    })),
     motorcycles: motorcycleRows,
     parts,
     plans,

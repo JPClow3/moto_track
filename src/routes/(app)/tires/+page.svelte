@@ -6,7 +6,7 @@
   import BookOpen from "lucide-svelte/icons/book-open";
   import Edit from "lucide-svelte/icons/edit-2";
   import Trash2 from "lucide-svelte/icons/trash-2";
-  import { locale, t } from "$lib/i18n/store";
+  import { locale, t, format } from "$lib/i18n/store";
   import { formatMoney } from "$lib/i18n";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
   import PageHeader from "$lib/components/app/PageHeader.svelte";
@@ -32,6 +32,7 @@
   type TireRow = Record<string, unknown> & {
     id: string;
     life_estimate?: LifeEstimate;
+    estimated_change_date?: string | null;
     current_km?: number | null;
     motorcycle_name?: string | null;
     motorcycle_id?: string;
@@ -40,6 +41,8 @@
     installed_at?: string;
     installed_odometer_km?: number | string | null;
     wear_percent?: number | string | null;
+    wear_odometer_km?: number | null;
+    wear_observed_at?: string | null;
     estimated_change_km?: number | string | null;
     cost_cents?: number | null;
     is_active?: boolean;
@@ -74,8 +77,7 @@
     {
       id: "tires-pressure",
       label: $t("authenticatedUx.logPressure") || "Aferir calibragem",
-      description:
-        $t("authenticatedUx.logPressureDesc") || "Pressão atual dos pneus",
+      description: $t("authenticatedUx.logPressureDesc"),
       recommended: true,
     },
     {
@@ -118,12 +120,14 @@
 
   const finishStatus = (result: {
     type: string;
-    data?: { message?: unknown };
+    data?: { message?: unknown; wearObservationSaved?: boolean };
   }) => {
     statusRole = result.type === "success" ? "status" : "alert";
     statusMessage =
       result.type === "success"
-        ? $t("common.actionSuccess")
+        ? result.data?.wearObservationSaved
+          ? $t("tires.wearObservationSaved")
+          : $t("common.actionSuccess")
         : String(result.data?.message ?? $t("error.serverBody"));
   };
 
@@ -202,7 +206,7 @@
         },
     {
       label: $t("nav.tires"),
-      value: `${activeTires.length} ${$t("garage.active")}`,
+      value: $t("tires.inUseCount", { count: String(activeTires.length) }),
       hint: `${historyTires.length} total`,
     },
   ] as Signal[];
@@ -427,6 +431,72 @@
                 >
               {/if}
             </p>
+
+            {#if tire.estimated_change_date}
+              <p class="text-sm text-[var(--muted)]">
+                {$t("forecast.tireDate")}: {$format.date(
+                  tire.estimated_change_date,
+                )}
+              </p>
+            {/if}
+
+            <p class="text-xs text-[var(--muted)]">
+              {#if tire.wear_odometer_km != null}
+                {$t("tires.wearObservedAt")}:
+                {#if tire.wear_observed_at}
+                  {$format.date(tire.wear_observed_at, {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: "UTC",
+                    timeZoneName: "short",
+                  })} ·
+                {/if}
+                {$format.distance(tire.wear_odometer_km)}
+              {:else}
+                {$t("tires.wearObservationUnknown")}
+              {/if}
+            </p>
+            <details class="border-t border-[var(--line)] pt-2">
+              <summary
+                class="focus-ring flex min-h-11 cursor-pointer items-center text-sm font-semibold"
+              >
+                {$t("tires.recordWearObservation")}
+              </summary>
+              <form
+                class="mt-2 grid gap-3"
+                method="POST"
+                action="?/recordWearObservation"
+                use:enhance={enhanceWithStatus}
+              >
+                <input type="hidden" name="id" value={tire.id} />
+                <p class="text-xs text-[var(--muted)]">
+                  {$t("tires.wearObservationHelp")}
+                </p>
+                <label class="grid gap-1 text-sm">
+                  {$t("tires.wearPercentLabel")}
+                  <input
+                    class="field"
+                    name="wear_percent"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={tire.wear_percent ?? 0}
+                    required
+                  />
+                </label>
+                <button
+                  class="button-secondary min-h-11 justify-self-start"
+                  type="submit"
+                  disabled={formBusy}
+                >
+                  {$t("tires.recordWearObservation")}
+                </button>
+              </form>
+            </details>
 
             <dl
               class="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-[var(--line)] pt-3 text-xs text-[var(--muted)] sm:grid-cols-4"

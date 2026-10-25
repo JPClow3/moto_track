@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { reminderForRecord } from "../../src/lib/server/domain/record-sync";
 
 describe("linked reminder definitions", () => {
+  it("retains a service recorded at zero kilometers", () => {
+    expect(
+      reminderForRecord("maintenance_records", "zero", {
+        motorcycle_id: "moto-1",
+        maintenance_type: "oil",
+        date: "2026-07-01",
+        odometer_km: 0,
+        interval_km: 1000,
+      }),
+    ).toMatchObject({ reference_km: 0, trigger_value_km: 1000 });
+  });
   it("creates a recurring interval reminder from maintenance data", () => {
     expect(
       reminderForRecord("maintenance_records", "record-1", {

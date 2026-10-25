@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { appCopy } from "$lib/i18n/app-copy";
   import FeaturePage from "$components/FeaturePage.svelte";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { locale, t } from "$lib/i18n/store";
-  import { formatMoney } from "$lib/i18n";
+  import { formatDate, formatMoney } from "$lib/i18n";
   export let data;
   export let form;
 
@@ -87,7 +88,7 @@
       {/each}
     </select>
     <label class="field-label" for="work-maintenance-reserve">
-      Reserva de manutenção por km
+      {appCopy($locale, "Reserva de manutenção por km")}
     </label>
     <input
       class="field"
@@ -99,7 +100,7 @@
     />
     <p class="field-help">{$t("trabalho.reserveHelp")}</p>
     <label class="field-label" for="work-depreciation">
-      Depreciação por km
+      {appCopy($locale, "Depreciação por km")}
     </label>
     <input
       class="field"
@@ -110,7 +111,9 @@
       min="0"
     />
     <p class="field-help">{$t("trabalho.depreciationHelp")}</p>
-    <label class="field-label" for="work-fixed-cost"> Custo fixo diário </label>
+    <label class="field-label" for="work-fixed-cost">
+      {appCopy($locale, "Custo fixo diário")}
+    </label>
     <input
       class="field"
       id="work-fixed-cost"
@@ -125,14 +128,14 @@
       type="submit"
       disabled={formBusy}
     >
-      Salvar custos
+      {appCopy($locale, "Salvar custos")}
     </button>
   </form>
   <div class="panel p-5">
     <h2 class="display text-xl">{$t("trabalho.profitabilityTitle")}</h2>
     {#each data.summaries as s}
       <p class="mt-2 text-sm">
-        {s.work_date} · {$t("trabalho.profitLabel", {
+        {formatDate($locale, s.work_date)} · {$t("trabalho.profitLabel", {
           value: brl(s.profitability.profitCents),
         })}
       </p>

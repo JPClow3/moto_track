@@ -21,6 +21,22 @@ function plan(overrides: PlanRow = {}): PlanRow {
 }
 
 describe("due-now attention list", () => {
+  it("surfaces a date-overdue service while its mileage is still safe", () => {
+    expect(
+      buildDueNow({
+        rows: [
+          plan({
+            initial_history_status: "confirmed_done",
+            last_done_km: 1000,
+            last_done_date: "2026-01-01",
+            interval_days: 180,
+          }),
+        ],
+        odometerByMotorcycle: new Map([["bike-1", 1500]]),
+        today: "2026-10-23",
+      }),
+    ).toMatchObject([{ urgency: "overdue", confidence: "confirmed" }]);
+  });
   it("leaves out services that are still within their interval", () => {
     const items = buildDueNow({
       rows: [

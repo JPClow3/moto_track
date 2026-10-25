@@ -57,7 +57,12 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Provision the app-side profile/subscription rows that Supabase used to
   // seed from an auth.users trigger.
   if (user) {
-    await ensureAccount(event.locals.db, user.id, user.email);
+    await ensureAccount(
+      event.locals.db,
+      user.id,
+      user.email,
+      event.locals.locale,
+    );
   }
 
   const isPublic = publicPrefixes.some((prefix) =>

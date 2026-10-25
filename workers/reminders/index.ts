@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { evaluateReminder } from "../../src/lib/server/domain/reminders";
+import { notificationCopy } from "../../src/lib/server/domain/notification-copy";
 import {
   decryptPushField,
   isAllowedPushEndpoint,
@@ -38,6 +39,8 @@ type ReminderRow = {
   trigger_value_days: number | null;
   reference_km: number | null;
   reference_date: string | null;
+  snoozed_until_date: string | null;
+  snoozed_until_km: number | null;
   send_email: boolean;
   send_push: boolean;
   last_email_notified_at: string | null;
@@ -45,6 +48,8 @@ type ReminderRow = {
   current_odometer_km: number | null;
   motorcycle_name: string | null;
   owner_email: string | null;
+  preferred_locale?: string;
+  linked_plan_item_id?: string | null;
 };
 
 type PushSubscriptionRow = {
@@ -94,7 +99,7 @@ export default {
 
 export async function runTrackedWork(env: Env, triggerSource: WorkerRunSource) {
   const sql = postgres(env.HYPERDRIVE.connectionString, {
-    prepare: false,
+    prepare: true,
     max: 1,
   });
   try {
@@ -118,7 +123,7 @@ export async function processScheduledWork(
 
 export async function drainObjectDeletionQueue(env: Env) {
   const sql = postgres(env.HYPERDRIVE.connectionString, {
-    prepare: false,
+    prepare: true,
     max: 1,
   });
   try {
@@ -162,11 +167,11 @@ function webPushConfig(env: Env): WebPushConfig | null {
   };
 }
 
-// prepare:false + max:1 are required through Hyperdrive's transaction pooler,
-// same as the app's own db client (src/lib/server/db/client.ts).
+// Hyperdrive supports prepared statements; keep this client scoped to the run,
+// as in the app's own db client (src/lib/server/db/client.ts).
 export async function processReminders(env: Env) {
   const sql = postgres(env.HYPERDRIVE.connectionString, {
-    prepare: false,
+    prepare: true,
     max: 1,
   });
 
@@ -176,11 +181,12 @@ export async function processReminders(env: Env) {
     // (reminders + profiles embed); is_active already scopes to live reminders.
     const rows = await sql<ReminderRow[]>`
       select r.*, m.current_odometer_km, m.name as motorcycle_name,
-        p.email as owner_email
+        p.email as owner_email, p.preferred_locale
       from reminders r
-      left join motorcycles m on m.id = r.motorcycle_id
+      left join motorcycles m on m.id = r.motorcycle_id and m.owner_id = r.owner_id
       left join profiles p on p.id = r.owner_id
       where r.is_active = true
+        and (r.motorcycle_id is null or (m.is_active = true and m.deleted_at is null))
     `;
 
     const pushConfig = webPushConfig(env);
@@ -210,19 +216,7 @@ export async function processReminders(env: Env) {
     // not mark a reminder failed when another subscription received it.
     let pushFailed = 0;
     for (const reminder of rows) {
-      // evaluateReminder's INPUT CONTRACT expects a `motorcycles` embed shape;
-      // rebuild it from the joined columns instead of changing that function.
-      // (Assigned to a plain variable, not passed as an inline literal, so
-      // the extra `motorcycles` key doesn't trip TS excess-property checks
-      // against evaluateReminder's ReminderInput param type.)
-      const reminderForEvaluation = {
-        ...reminder,
-        motorcycles: {
-          current_odometer_km: reminder.current_odometer_km,
-          name: reminder.motorcycle_name,
-        },
-      };
-      const evaluation = evaluateReminder(reminderForEvaluation, {
+      const evaluation = evaluateReminder(reminder, {
         currentOdometerKm: Number(reminder.current_odometer_km ?? 0),
         today,
       });
@@ -230,8 +224,8 @@ export async function processReminders(env: Env) {
         continue;
       due += 1;
 
-      const bikeName = reminder.motorcycle_name ?? "Moto";
-      const body = `${bikeName}: ${reminder.title} (${evaluation.status})`;
+      const copy = notificationCopy(reminder, evaluation.status);
+      const body = copy.body;
       const now = new Date().toISOString();
       const updates: Record<string, string> = {};
 
@@ -242,8 +236,8 @@ export async function processReminders(env: Env) {
       ) {
         const sent = await sendReminderEmail(env, {
           to: reminder.owner_email,
-          subject: `Moto Track: ${reminder.title}`,
-          text: `${bikeName}: ${reminder.title}\nStatus: ${evaluation.status}`,
+          subject: copy.subject,
+          text: copy.text,
         });
         if (sent) {
           emailed += 1;

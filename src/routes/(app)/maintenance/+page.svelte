@@ -1,7 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
-  import { locale, t } from "$lib/i18n/store";
+  import { locale, t, format } from "$lib/i18n/store";
   import { formatMoney } from "$lib/i18n";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
   import PageHeader from "$lib/components/app/PageHeader.svelte";
@@ -21,6 +21,7 @@
   import Search from "lucide-svelte/icons/search";
   import Camera from "lucide-svelte/icons/camera";
   import Trash2 from "lucide-svelte/icons/trash-2";
+  import MaintenancePhaseFields from "$lib/components/MaintenancePhaseFields.svelte";
 
   export let data;
   export let form;
@@ -44,6 +45,7 @@
     fallbackUrl?: string;
   };
   type PlanRow = Record<string, unknown> & {
+    forecast?: { dueDate: string | null; kmPerDay: number | null } | null;
     urgency?: "overdue" | "due_now" | "scheduled";
     due_km?: number | null;
     remaining_km?: number | null;
@@ -87,6 +89,8 @@
     workshop?: string | null;
     cost_cents?: number | null;
     description?: string | null;
+    maintenance_plan_item_id?: string | null;
+    completed_milestone?: number | null;
   };
   $: filteredRows = ((data.rows ?? []) as MaintenanceRecord[]).filter(
     (row: MaintenanceRecord) =>
@@ -309,7 +313,10 @@
     title={$t("maintenance.pageTitle")}
     description={$t("maintenance.pageSubtitle")}
   >
-    <div slot="actions">
+    <div slot="actions" class="flex flex-wrap items-center gap-2">
+      <a class="button-secondary min-h-11" href="/maintenance/workshops">
+        {$t("maintenance.compareWorkshops")}
+      </a>
       <PageAction
         label={$t("authenticatedUx.addRecord")}
         ariaLabel={$t("authenticatedUx.addRecord")}
@@ -552,6 +559,25 @@
               </p>
             {/if}
 
+            {#if plan.forecast?.dueDate}
+              <p class="text-sm text-[var(--muted)]">
+                {$t("forecast.nextDate")}: {$format.date(plan.forecast.dueDate)}
+                {#if plan.forecast.kmPerDay}
+                  · {$t("forecast.observedPace", {
+                    count: Math.round(plan.forecast.kmPerDay),
+                  })}
+                {/if}
+              </p>
+            {/if}
+            {#if plan.is_phased_schedule && !plan.is_relative_replacement}
+              <p class="text-sm text-[var(--muted)]">
+                {$t("maintenance.nextReview")}:
+                {plan.next_milestone == null
+                  ? $t("maintenance.confirmBooklet")
+                  : `#${plan.next_milestone}`}
+              </p>
+            {/if}
+
             <div
               class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[var(--line)] pt-3 text-xs text-[var(--muted)]"
             >
@@ -618,7 +644,7 @@
                     <select
                       class="field"
                       name="initial_history_status"
-                      value={String(plan.initial_history_status ?? "unknown")}
+                      value={String(plan.baseline_history_status ?? "unknown")}
                     >
                       <option value="confirmed_done"
                         >{$t("history.confirmedDone")}</option
@@ -634,10 +660,36 @@
                       name="last_done_km"
                       type="number"
                       min="0"
-                      value={plan.last_done_km ?? ""}
+                      value={plan.baseline_last_done_km ?? ""}
                     />
                   </label>
                   <p class="text-xs">{$t("maintenance.historyEditHint")}</p>
+                  {#if plan.is_phased_schedule}
+                    <MaintenancePhaseFields
+                      plans={[plan]}
+                      planId={String(plan.id)}
+                      completedMilestone={plan.baseline_completed_milestone ==
+                      null
+                        ? ""
+                        : Number(plan.baseline_completed_milestone)}
+                      fieldName="last_completed_milestone"
+                      showPlanSelector={false}
+                      allowZero={true}
+                    />
+                  {/if}
+                  <label class="grid gap-1">
+                    {$t("forecast.lastServiceDate")}
+                    <input
+                      class="field"
+                      name="last_done_date"
+                      type="date"
+                      value={String(plan.baseline_last_done_date ?? "").slice(
+                        0,
+                        10,
+                      )}
+                      max={new Date().toISOString().slice(0, 10)}
+                    />
+                  </label>
                   <button
                     class="button-secondary min-h-11 justify-self-start"
                     disabled={pendingAction === `history:${plan.id}`}
@@ -877,6 +929,11 @@
               >
                 <input type="hidden" name="_intent" value="update" />
                 <input type="hidden" name="id" value={String(row.id)} />
+                <MaintenancePhaseFields
+                  {plans}
+                  planId={String(row.maintenance_plan_item_id ?? "")}
+                  completedMilestone={row.completed_milestone ?? null}
+                />
                 <div class="field-group">
                   <label class="field-label" for={`edit-${row.id}-motorcycle`}>
                     {$t("maintenance.bikeFallback")}
@@ -1085,6 +1142,8 @@
         ></textarea>
       </div>
 
+      <MaintenancePhaseFields {plans} />
+
       <div class="grid gap-3 sm:grid-cols-2">
         <div class="field-group">
           <label class="field-label" for="record-workshop">
@@ -1225,6 +1284,16 @@
           />
         </div>
       </div>
+
+      <label class="flex items-start gap-2 text-sm">
+        <input type="checkbox" name="convert_manufacturer_plan" value="true" />
+        <span
+          >{$t("maintenance.convertManufacturerPlan")}
+          <span class="mt-1 block text-xs text-[var(--muted)]"
+            >{$t("maintenance.convertManufacturerPlanHelp")}</span
+          >
+        </span>
+      </label>
 
       <button
         class="button-primary min-h-11 w-full"

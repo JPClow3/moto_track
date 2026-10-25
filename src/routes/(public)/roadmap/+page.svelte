@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { locale } from "$lib/i18n/store";
+  import { publicCopy } from "$lib/i18n/public-copy";
   import { onMount } from "svelte";
   import {
     ArrowRight,
@@ -289,7 +291,10 @@
   <link rel="canonical" href="https://moto-track.net/roadmap" />
   <meta
     name="description"
-    content="O que já funciona no Moto Track, o que vem a seguir e o que ainda está em estudo. Roadmap público e atualizado pela equipe."
+    content={publicCopy(
+      $locale,
+      "O que já funciona no Moto Track, o que vem a seguir e o que ainda está em estudo. Roadmap público e atualizado pela equipe.",
+    )}
   />
 </svelte:head>
 
@@ -301,16 +306,19 @@
   <div class="relative mx-auto max-w-6xl px-6 py-16 sm:py-20">
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
-      Transparência
+      {publicCopy($locale, "Transparência")}
     </p>
     <h1 class="display mt-5 max-w-3xl text-5xl sm:text-6xl lg:text-7xl">
-      O que está pronto,<br /><span class="text-[var(--accent)]"
-        >e o que vem depois.</span
+      {publicCopy($locale, "O que está pronto,")}<br /><span
+        class="text-[var(--accent)]"
+        >{publicCopy($locale, "e o que vem depois.")}</span
       >
     </h1>
     <p class="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted)]">
-      Sem data prometida e sem funcionalidade fantasma. Esta página é o estado
-      real do produto, atualizada à mão pela equipe.
+      {publicCopy(
+        $locale,
+        "Sem data prometida e sem funcionalidade fantasma. Esta página é o estado real do produto, atualizada à mão pela equipe.",
+      )}
     </p>
 
     <!-- Count strip — same idiom as the landing hero's spec strip. -->
@@ -324,7 +332,7 @@
               class="h-1.5 w-1.5 rounded-full {dotClass[group.status]}"
               aria-hidden="true"
             ></span>
-            {group.label}
+            {publicCopy($locale, group.label)}
           </dt>
           <dd class="display numeric mt-1 text-4xl">{group.items.length}</dd>
         </div>
@@ -334,7 +342,9 @@
     <!-- Overall completion, read as a fuel/service gauge rather than a web bar. -->
     <div class="gauge mt-10 max-w-2xl" bind:this={gaugeEl}>
       <div class="flex items-baseline justify-between gap-4">
-        <p class="label-tech text-[var(--muted)]">Entregue</p>
+        <p class="label-tech text-[var(--muted)]">
+          {publicCopy($locale, "Entregue")}
+        </p>
         <p class="display numeric text-4xl tabular-nums" aria-hidden="true">
           {shownPct}%
         </p>
@@ -345,14 +355,20 @@
         aria-valuenow={targetPct}
         aria-valuemin="0"
         aria-valuemax="100"
-        aria-valuetext="{targetPct}% do roadmap entregue"
-        aria-label="Progresso geral do roadmap"
+        aria-valuetext="{targetPct}{publicCopy(
+          $locale,
+          '% do roadmap entregue',
+        )}"
+        aria-label={publicCopy($locale, "Progresso geral do roadmap")}
       >
         <div class="fill" style="width: {shownPct}%"></div>
         <div class="ticks" aria-hidden="true"></div>
       </div>
       <p class="mt-2.5 text-sm text-[var(--muted)]">
-        {doneCount} dos {totalCount} itens deste roadmap já estão no ar.
+        {doneCount}
+        {publicCopy($locale, "dos")}
+        {totalCount}
+        {publicCopy($locale, "itens deste roadmap já estão no ar.")}
       </p>
     </div>
   </div>
@@ -368,15 +384,17 @@
       <div class="lg:sticky lg:top-24 lg:self-start">
         <p class="eyebrow">
           <span class="slash-rule" aria-hidden="true"></span>
-          {group.label}
+          {publicCopy($locale, group.label)}
         </p>
-        <h2 class="display mt-4 text-4xl">{group.heading}</h2>
+        <h2 class="display mt-4 text-4xl">
+          {publicCopy($locale, group.heading)}
+        </h2>
         <p class="mt-3 text-sm leading-relaxed text-[var(--muted)]">
-          {group.blurb}
+          {publicCopy($locale, group.blurb)}
         </p>
         <p class="label-tech numeric mt-5 text-[var(--muted)]">
           {group.items.length}
-          {group.items.length === 1 ? "item" : "itens"}
+          {group.items.length === 1 ? "item" : publicCopy($locale, "itens")}
         </p>
       </div>
 
@@ -398,10 +416,10 @@
             <h3
               class="display text-xl transition-colors group-hover:text-[var(--accent)]"
             >
-              {item.title}
+              {publicCopy($locale, item.title)}
             </h3>
             <p class="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
-              {item.body}
+              {publicCopy($locale, item.body)}
             </p>
           </li>
         {/each}
@@ -414,21 +432,25 @@
 <section class="relative overflow-hidden bg-ink px-6 py-24 text-paper">
   <div class="cta-slashes" aria-hidden="true"></div>
   <div class="relative mx-auto max-w-3xl text-center">
-    <h2 class="display text-5xl sm:text-6xl">Faltou alguma coisa?</h2>
+    <h2 class="display text-5xl sm:text-6xl">
+      {publicCopy($locale, "Faltou alguma coisa?")}
+    </h2>
     <p class="mx-auto mt-5 max-w-xl text-lg text-paper/60">
-      O que entra nessa lista sai do que os motociclistas pedem. Crie sua conta
-      e diga o que a sua moto precisa.
+      {publicCopy(
+        $locale,
+        "O que entra nessa lista sai do que os motociclistas pedem. Crie sua conta e diga o que a sua moto precisa.",
+      )}
     </p>
     <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
       <a class="button-accent px-7 py-3.5 text-base shadow-brand" href="/auth">
-        Criar conta
+        {publicCopy($locale, "Criar conta")}
         <ArrowRight class="h-4 w-4" />
       </a>
       <a
         class="button-secondary border-paper/20 bg-transparent px-7 py-3.5 text-base text-paper hover:border-[var(--accent)]"
         href="/blog"
       >
-        Ler os guias
+        {publicCopy($locale, "Ler os guias")}
       </a>
     </div>
   </div>

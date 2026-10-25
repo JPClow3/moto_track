@@ -25,6 +25,11 @@ export default ts.config(
     },
   },
   {
+    // Manual database verifiers intentionally use Node's CommonJS loader.
+    files: ["tests/integration/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  {
     ignores: [
       "build/",
       ".svelte-kit/",

@@ -1,6 +1,7 @@
 <script lang="ts">
   import FeaturePage from "$components/FeaturePage.svelte";
   import { t } from "$lib/i18n/store";
+  import { enhance } from "$app/forms";
   export let data;
   export let form;
 
@@ -62,3 +63,52 @@
   motorcycles={data.motorcycles}
   errorMessage=""
 />
+
+<section class="panel mt-6 grid gap-4 p-5" aria-labelledby="calendar-heading">
+  <h2 id="calendar-heading" class="display text-2xl">
+    {$t("calendar.heading")}
+  </h2>
+  <p class="text-sm text-[var(--muted)]">{$t("calendar.help")}</p>
+  <div class="flex flex-wrap gap-3">
+    <a class="button-secondary" href="/reminders/calendar.ics"
+      >{$t("calendar.download")}</a
+    >
+    <form method="POST" action="?/createCalendar" use:enhance>
+      <button class="button-primary" type="submit"
+        >{$t("calendar.create")}</button
+      >
+    </form>
+  </div>
+  {#if form?.calendarUrl}
+    <div class="grid gap-2" role="status">
+      <label class="field-label" for="calendar-url">{$t("calendar.url")}</label>
+      <input
+        class="field w-full"
+        id="calendar-url"
+        value={form.calendarUrl}
+        readonly
+        on:focus={(event) => event.currentTarget.select()}
+      />
+      <p class="text-sm text-[var(--muted)]">{$t("calendar.secret")}</p>
+    </div>
+  {/if}
+  {#each data.calendars as calendar}
+    <form
+      class="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-3"
+      method="POST"
+      action="?/revokeCalendar"
+      use:enhance
+    >
+      <span class="text-sm"
+        >{calendar.token_prefix}… · {$t("calendar.expires")}: {calendar.expires_at.slice(
+          0,
+          10,
+        )}</span
+      >
+      <input type="hidden" name="id" value={calendar.id} />
+      <button class="button-secondary" type="submit"
+        >{$t("calendar.revoke")}</button
+      >
+    </form>
+  {/each}
+</section>
