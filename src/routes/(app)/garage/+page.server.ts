@@ -73,7 +73,7 @@ async function canAddActiveMotorcycle(
   try {
     const [row] = await db<{ count: number }[]>`
       select count(*)::int as count from motorcycles
-      where owner_id = ${ownerId} and is_active = true
+      where owner_id = ${ownerId} and is_active = true and deleted_at is null
     `;
     activeCount = row?.count ?? 0;
   } catch {
@@ -216,8 +216,10 @@ export async function load({ locals, platform }) {
         new Date(),
         runtimeEnv(platform).DODO_PAYMENTS_ENVIRONMENT ?? "live_mode",
       ) ||
-      motorcyclesWithSpecs.filter((motorcycle) => motorcycle.is_active).length <
-        FREE_ACTIVE_MOTORCYCLE_LIMIT,
+      // Matches the database cap trigger: soft-deleted rows hold no slot.
+      motorcyclesWithSpecs.filter(
+        (motorcycle) => motorcycle.is_active && !motorcycle.deleted_at,
+      ).length < FREE_ACTIVE_MOTORCYCLE_LIMIT,
     errorMessage: loadError ? translate(locals.locale, "common.loadError") : "",
   };
 }

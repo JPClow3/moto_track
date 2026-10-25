@@ -61,3 +61,24 @@ export async function openDisposableDb() {
     throw cause;
   }
 }
+
+/** Counts only, so CI logs can explain Free-cap failures without account data. */
+export async function motorcycleSlots(
+  sql: ReturnType<typeof postgres>,
+  ownerId: string,
+) {
+  const rows = await sql<
+    Array<{ active: boolean; deleted: boolean; n: number }>
+  >`
+    select is_active as active, deleted_at is not null as deleted, count(*)::int as n
+    from motorcycles where owner_id = ${ownerId} group by 1, 2 order by 1, 2
+  `;
+  return (
+    rows
+      .map(
+        (row) =>
+          `${row.active ? "active" : "inactive"}${row.deleted ? "+deleted" : ""}=${row.n}`,
+      )
+      .join(", ") || "none"
+  );
+}

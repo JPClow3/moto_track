@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { motorcycleSlots, openDisposableDb } from "./helpers/disposable-db";
 
 const hasAuth = Boolean(
   process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD,
@@ -53,6 +54,17 @@ test.describe("confirmed tire wear observations", () => {
           is_active: true,
         },
       });
+      if (created.status() !== 201) {
+        // Explain a Free-cap rejection with slot counts from the disposable branch.
+        const fixture = await openDisposableDb();
+        try {
+          console.log(
+            `motorcycles: ${await motorcycleSlots(fixture.sql, fixture.ownerId)}`,
+          );
+        } finally {
+          await fixture.close();
+        }
+      }
       expect(created.status(), await created.text()).toBe(201);
       tireId = (await created.json()).result.id;
       const original = (await rows(page, "tire-records")).find(
