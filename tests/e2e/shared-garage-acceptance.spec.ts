@@ -3,6 +3,9 @@ import { expect, test } from "@playwright/test";
 import { openDisposableDb } from "./helpers/disposable-db";
 
 test.describe("shared garage acceptance", () => {
+  // Multi-step journeys against a real Neon/Auth branch, like the other
+  // authenticated suites; the 30s default is not enough under dev-mode Vite.
+  test.describe.configure({ timeout: 300_000 });
   test.skip(
     !process.env.E2E_USER_EMAIL || !process.env.E2E_USER_PASSWORD,
     "Requires the dedicated disposable authenticated account.",
