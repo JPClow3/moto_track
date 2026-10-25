@@ -13,6 +13,9 @@ async function rows(page: Page, resource: string): Promise<Row[]> {
 }
 
 test.describe("confirmed tire wear observations", () => {
+  // Multi-step journeys against a real Neon/Auth branch, like the other
+  // authenticated suites; the 30s default is not enough under dev-mode Vite.
+  test.describe.configure({ timeout: 300_000 });
   test.skip(!hasAuth, "Requires the disposable Neon/Auth account.");
 
   test("remaining distance falls with use and only a confirmed observation resets the wear baseline", async ({

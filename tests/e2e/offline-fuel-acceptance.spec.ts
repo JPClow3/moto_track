@@ -10,6 +10,9 @@ import {
 } from "./helpers/offline-queue";
 
 test.describe("offline fill-up acceptance on the isolated branch", () => {
+  // Multi-step journeys against a real Neon/Auth branch, like the other
+  // authenticated suites; the 30s default is not enough under dev-mode Vite.
+  test.describe.configure({ timeout: 300_000 });
   test.skip(
     !process.env.E2E_USER_EMAIL || !process.env.E2E_USER_PASSWORD,
     "Requires the dedicated disposable Neon/Auth account.",

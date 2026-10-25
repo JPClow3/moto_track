@@ -55,6 +55,9 @@ export default defineConfig({
         /legacy-reference-privacy\.spec\.ts/,
       ],
       dependencies: ["auth-setup"],
+      // Every authenticated assertion follows a real Neon/Auth round-trip on
+      // dev-mode Vite; a save plus its invalidation routinely exceeds 5s.
+      expect: { timeout: 15_000 },
       use: { storageState: hasAuthEnv ? authStatePath : undefined },
     },
     {
