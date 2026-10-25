@@ -8,9 +8,10 @@ vi.mock("$server/domain/record-sync", () => ({
 
 const accessId = "00000000-0000-4000-8000-000000000001";
 
-function database(fault?: "history" | "cache") {
+function database(fault?: "history" | "cache", role = "workshop") {
   const state = {
     records: [] as Array<Record<string, unknown>>,
+    fuel: [] as Array<Record<string, unknown>>,
     activity: [] as unknown[],
     odometer: 1000,
   };
@@ -26,7 +27,7 @@ function database(fault?: "history" | "cache") {
           id: accessId,
           owner_id: "owner",
           member_id: "member",
-          role: "workshop",
+          role,
         },
       ]);
     }
@@ -62,6 +63,10 @@ function database(fault?: "history" | "cache") {
       recordWrites++;
       return Promise.resolve([]);
     }
+    if (query.includes("insert into") && values[0] === "fuel_records") {
+      state.fuel.push({ ...(values[1] as Record<string, unknown>) });
+      return Promise.resolve([]);
+    }
     return Promise.resolve([]);
   };
   const db = Object.assign(queryDb, {
@@ -78,20 +83,23 @@ function database(fault?: "history" | "cache") {
   return { db, state, queries, writes: () => recordWrites };
 }
 
-function event(db: unknown) {
+function event(
+  db: unknown,
+  body: Record<string, string> = {
+    feature: "maintenance",
+    motorcycle_id: "motorcycle",
+    date: "2026-10-01",
+    odometer_km: "1500",
+    maintenance_type: "Oil change",
+    cost_cents: "30",
+  },
+) {
   return {
     locals: { db, user: { id: "member" }, locale: "pt-BR" },
     params: { accessId },
     request: new Request(`https://app.test/garage/shared/${accessId}?/record`, {
       method: "POST",
-      body: new URLSearchParams({
-        feature: "maintenance",
-        motorcycle_id: "motorcycle",
-        date: "2026-10-01",
-        odometer_km: "1500",
-        maintenance_type: "Oil change",
-        cost_cents: "30",
-      }),
+      body: new URLSearchParams(body),
     }),
   };
 }
@@ -110,6 +118,7 @@ describe("shared-garage record and derived-state atomicity", () => {
       expect(fixture.writes()).toBe(1);
       expect(fixture.state).toEqual({
         records: [],
+        fuel: [],
         activity: [],
         odometer: 1000,
       });
@@ -125,9 +134,31 @@ describe("shared-garage record and derived-state atomicity", () => {
     expect(fixture.writes()).toBe(1);
     expect(fixture.state).toEqual({
       records: [],
+      fuel: [],
       activity: [],
       odometer: 1000,
     });
+  });
+
+  it("never stores another account's station or grade on a shared fuel record", async () => {
+    const fixture = database(undefined, "contributor");
+    const result = await actions.record(
+      event(fixture.db, {
+        feature: "fuel",
+        motorcycle_id: "motorcycle",
+        date: "2026-10-01",
+        odometer_km: "1500",
+        liters: "10",
+        total_price_cents: "60",
+        station_id: "foreign-station",
+        fuel_grade_id: "foreign-grade",
+      }) as never,
+    );
+    expect(result).toEqual({ ok: true });
+    expect(fixture.state.fuel).toHaveLength(1);
+    expect(fixture.state.fuel[0]).toMatchObject({ owner_id: "owner" });
+    expect(fixture.state.fuel[0]).not.toHaveProperty("station_id");
+    expect(fixture.state.fuel[0]).not.toHaveProperty("fuel_grade_id");
   });
 
   it("commits the record, odometer and audit activity for the garage owner", async () => {

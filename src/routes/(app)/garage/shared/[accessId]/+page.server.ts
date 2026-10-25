@@ -12,6 +12,7 @@ import {
 } from "$server/domain/crud";
 import type { Sql } from "postgres";
 import { validDate } from "$server/domain/maintenance-forecast";
+import { assertOwnedFuelReferences } from "$server/domain/fuel-reference-guards";
 import { lockAccountActor, lockObjectOwner } from "$server/db/owner-lock";
 
 export async function load({ locals, params }) {
@@ -168,6 +169,10 @@ export const actions = localizedActions({
             404,
             createTranslator(locals.locale)("sharing.motorcycleNotFound"),
           );
+        // The fuel feature form does not carry station/grade IDs today; keep the
+        // owner fuel route's guard so any future reference stays owner-scoped.
+        if (slug === "fuel")
+          await assertOwnedFuelReferences(db, membership.owner_id, payload);
         const id = crypto.randomUUID();
         payload.id = id;
         await db`insert into ${db(feature.table)} ${db(payload)}`;
