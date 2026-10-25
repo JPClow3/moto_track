@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { openDisposableDb } from "./helpers/disposable-db";
+import { motorcycleSlots, openDisposableDb } from "./helpers/disposable-db";
 
 test.describe("exact catalog item occurrence acceptance", () => {
   // Multi-step journeys against a real Neon/Auth branch, like the other
@@ -49,6 +49,10 @@ test.describe("exact catalog item occurrence acceptance", () => {
       );
       await create.locator('select[name="year"]').selectOption("2026");
       await create.locator('[name="current_odometer_km"]').fill("12000");
+      await expect(
+        create.locator('button[type="submit"]'),
+        `Free slot should be open; motorcycles: ${await motorcycleSlots(sql, ownerId)}`,
+      ).toBeEnabled();
       // Settle the action before asserting: a create that commits after the
       // cleanup below would leave a second active bike for later suites.
       const [created] = await Promise.all([
