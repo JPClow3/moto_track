@@ -100,6 +100,9 @@ export const actions = localizedActions({
     try {
       const saved = await locals.db.begin(async (transaction) => {
         const db = transaction as unknown as Sql;
+        // Account deletion locks the owner before cascading into policies; the
+        // claim's foreign key would otherwise request it after the policy lock.
+        await lockObjectOwner(db, ownerId);
         const [policy] = await db<Array<{ id: string }>>`
           select id from insurance_policies where id = ${policyId} and owner_id = ${ownerId} for share
         `;

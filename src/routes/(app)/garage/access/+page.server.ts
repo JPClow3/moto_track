@@ -112,6 +112,7 @@ export const actions = localizedActions({
         message: createTranslator(locals.locale)("sharing.invalidAccess"),
       });
     await locals.db.begin(async (tx) => {
+      await lockObjectOwner(tx as unknown as Sql, locals.user!.id);
       await tx`select id from profiles where id = ${locals.user!.id} for update`;
       const [member] = await tx<Array<{ member_id: string }>>`
         update garage_memberships set revoked_at = now()
