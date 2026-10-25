@@ -1,3 +1,4 @@
+import { localizedActions } from "$server/domain/localized-actions";
 import { fail } from "@sveltejs/kit";
 import { featureActions, loadFeature } from "$server/domain/crud";
 import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
@@ -9,7 +10,7 @@ function messageFrom(err: unknown) {
 
 const base = featureActions("documents");
 
-export const actions = {
+export const actions = localizedActions({
   record: base.default,
   createReminder: async ({ request, locals, platform }) => {
     const f = await request.formData();
@@ -67,7 +68,7 @@ export const actions = {
     }
     return { ok: true };
   },
-};
+});
 
 export async function load({ locals }) {
   return loadFeature(locals.db, "documents", locals.user!);

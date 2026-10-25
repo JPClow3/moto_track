@@ -46,10 +46,12 @@ export function buildDueNow({
   rows,
   odometerByMotorcycle,
   limit = 5,
+  today = new Date().toISOString().slice(0, 10),
 }: {
   rows: Row[];
   odometerByMotorcycle: Map<string, number>;
   limit?: number;
+  today?: string;
 }): DueNowItem[] {
   const byMotorcycle = new Map<string, DueNowItem[]>();
 
@@ -60,6 +62,24 @@ export function buildDueNow({
       historyStatus: initialHistoryStatus(historyStatus),
       lastDoneKm: row.last_done_km == null ? null : Number(row.last_done_km),
       intervalKm: row.interval_km == null ? null : Number(row.interval_km),
+      intervalDays:
+        row.interval_days == null ? null : Number(row.interval_days),
+      lastDoneDate: row.last_done_date,
+      today,
+      scheduleMilestones: row.schedule_milestones,
+      recurrenceKm:
+        row.recurrence_km == null ? null : Number(row.recurrence_km),
+      recurrenceMonths:
+        row.recurrence_months == null ? null : Number(row.recurrence_months),
+      lastCompletedMilestone:
+        row.last_completed_milestone == null
+          ? null
+          : Number(row.last_completed_milestone),
+      inServiceDate: row.in_service_date,
+      calendarAnchorMode:
+        row.calendar_anchor_mode === "last_service"
+          ? "last_service"
+          : "in_service",
       currentKm: odometerByMotorcycle.get(motorcycleId) ?? 0,
     });
     if (state.urgency === "scheduled") continue;

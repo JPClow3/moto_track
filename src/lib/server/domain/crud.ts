@@ -1,3 +1,4 @@
+import { localizedActions } from "$server/domain/localized-actions";
 import { fail, type Actions } from "@sveltejs/kit";
 import type { Sql } from "postgres";
 import { getFeature, schemaForFeature, type FeatureConfig } from "./features";
@@ -13,6 +14,7 @@ import {
 import { parseLocalizedNumber } from "$server/domain/fuel";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
 import { syncLinkedReminder } from "$server/domain/record-sync";
+import { relativeReplacementMonths } from "$server/domain/maintenance-schedule";
 import {
   assertCanCreateReminder,
   assertCanCreateUpload,
@@ -30,6 +32,66 @@ function messageFrom(err: unknown) {
 function motorcycleIdFrom(payload: Record<string, unknown>) {
   const value = payload.motorcycle_id;
   return typeof value === "string" && value ? value : null;
+}
+
+const ODOMETER_RECORD_TABLES = new Set([
+  "fuel_records",
+  "maintenance_records",
+  "tire_records",
+  "work_sessions",
+]);
+
+export function recordTracksOdometer(table: string) {
+  return ODOMETER_RECORD_TABLES.has(table);
+}
+
+/** The FK proves existence only; it does not prove this authenticated owner. */
+export async function assertOwnedMotorcycleReference(
+  db: Sql,
+  ownerId: string,
+  value: unknown,
+  { required = false }: { required?: boolean } = {},
+) {
+  if (value === null || value === undefined || value === "") {
+    if (required) throw new Error("Moto não encontrada.");
+    return;
+  }
+  if (typeof value !== "string" || !value.trim())
+    throw new Error("Moto não encontrada.");
+  const [motorcycle] = await db<Array<{ id: string }>>`
+    select id from motorcycles
+    where id = ${value} and owner_id = ${ownerId} and deleted_at is null
+    for share
+  `;
+  if (!motorcycle) throw new Error("Moto não encontrada.");
+}
+
+export async function assertFeatureReferences(
+  db: Sql,
+  ownerId: string,
+  feature: FeatureConfig,
+  payload: Record<string, unknown>,
+) {
+  for (const field of feature.fields) {
+    if (field.source === "motorcycles") {
+      await assertOwnedMotorcycleReference(db, ownerId, payload[field.key], {
+        required: field.required,
+      });
+    }
+  }
+}
+
+/** A correction can remove the highest reading from its previous motorcycle. */
+export async function syncChangedRecordOdometers(
+  db: Sql,
+  ownerId: string,
+  payload: Record<string, unknown>,
+  previous: Record<string, unknown> = {},
+) {
+  const ids = new Set([motorcycleIdFrom(previous), motorcycleIdFrom(payload)]);
+  for (const id of ids) {
+    if (id) await syncMotorcycleOdometer(db, ownerId, id, { strict: true });
+  }
 }
 
 export function parseFormNumber(value: unknown, fallback = 0): number {
@@ -55,16 +117,18 @@ export async function syncRecordEffects({
   feature,
   recordId,
   payload,
+  syncOdometer = true,
 }: {
   db: Sql;
   ownerId: string;
   feature: FeatureConfig;
   recordId: string;
   payload: Record<string, unknown>;
+  syncOdometer?: boolean;
 }) {
   const motorcycleId = motorcycleIdFrom(payload);
-  if (motorcycleId) {
-    await syncMotorcycleOdometer(db, ownerId, motorcycleId);
+  if (motorcycleId && syncOdometer) {
+    await syncMotorcycleOdometer(db, ownerId, motorcycleId, { strict: true });
   }
   await syncLinkedReminder(db, ownerId, feature.table, recordId, payload);
 }
@@ -75,17 +139,21 @@ export async function syncRecordDeleteEffects({
   feature,
   recordId,
   existing,
+  strictOdometer = false,
 }: {
   db: Sql;
   ownerId: string;
   feature: FeatureConfig;
   recordId: string;
   existing: Record<string, unknown>;
+  strictOdometer?: boolean;
 }) {
   await syncLinkedReminder(db, ownerId, feature.table, recordId, {});
   const motorcycleId = motorcycleIdFrom(existing);
-  if (motorcycleId) {
-    await syncMotorcycleOdometer(db, ownerId, motorcycleId);
+  if (motorcycleId && recordTracksOdometer(feature.table)) {
+    await syncMotorcycleOdometer(db, ownerId, motorcycleId, {
+      strict: strictOdometer,
+    });
   }
 }
 
@@ -143,6 +211,33 @@ export function normalizeFeaturePayload(
     } else {
       payload[field.key] = value;
     }
+  }
+
+  if (feature.table === "maintenance_records") {
+    const planId = String(
+      formData.get("maintenance_plan_item_id") ?? "",
+    ).trim();
+    const rawMilestone = String(
+      formData.get("completed_milestone") ?? "",
+    ).trim();
+    const milestone = rawMilestone ? Number(rawMilestone) : null;
+    if (
+      (planId &&
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          planId,
+        )) ||
+      (milestone !== null &&
+        (!planId ||
+          !Number.isInteger(milestone) ||
+          milestone < 1 ||
+          milestone > 10_000))
+    )
+      return {
+        ok: false as const,
+        errors: { completed_milestone: ["Informe uma etapa válida do plano."] },
+      };
+    payload.maintenance_plan_item_id = planId || null;
+    payload.completed_milestone = milestone;
   }
 
   if (feature.ownerScoped) {
@@ -205,7 +300,7 @@ export async function loadFeature(db: Sql, slug: string, user: FeatureUser) {
 }
 
 export function featureActions(slug: string): Actions {
-  return {
+  return localizedActions({
     default: async ({ request, locals, platform }) => {
       if (!locals.user) {
         return fail(401, { message: "Authentication required." });
@@ -259,6 +354,14 @@ export function featureActions(slug: string): Actions {
                 and source_table = ${feature.table}
                 and source_id = ${id}
             `;
+            await syncRecordDeleteEffects({
+              db,
+              ownerId,
+              feature,
+              recordId: id,
+              existing,
+              strictOdometer: true,
+            });
             return {
               existing,
               objectKeys: files.map((file) => file.object_key),
@@ -275,13 +378,6 @@ export function featureActions(slug: string): Actions {
           platform,
         });
 
-        await syncRecordDeleteEffects({
-          db: locals.db,
-          ownerId,
-          feature,
-          recordId: id,
-          existing: (deleted.existing ?? {}) as Record<string, unknown>,
-        });
         return { ok: true };
       }
 
@@ -369,6 +465,60 @@ export function featureActions(slug: string): Actions {
       try {
         replacedObjectKeys = await locals.db.begin(async (transaction) => {
           const db = transaction as unknown as typeof locals.db;
+          const tracksOdometer = ODOMETER_RECORD_TABLES.has(feature.table);
+          if (tracksOdometer || feature.fields.some((field) => field.source))
+            await lockObjectOwner(db, ownerId);
+          await assertFeatureReferences(db, ownerId, feature, payload);
+          let previous: Record<string, unknown> = {};
+          if (
+            intent === "update" &&
+            id &&
+            (tracksOdometer || feature.table === "reminders")
+          ) {
+            const [row] = await db<Array<Record<string, unknown>>>`
+              select * from ${db(feature.table)}
+              where id = ${id} and owner_id = ${ownerId} for update
+            `;
+            if (!row) throw new Error("Record not found.");
+            previous = row;
+            if (feature.table === "reminders") {
+              payload.completion_version =
+                Number(row.completion_version ?? 0) + 1;
+            }
+          }
+          if (
+            feature.table === "maintenance_records" &&
+            payload.maintenance_plan_item_id
+          ) {
+            const [plan] = await db<
+              Array<{
+                maintenance_type: string;
+                schedule_milestones: unknown[];
+                recurrence_km: number | null;
+                recurrence_months: number | null;
+                calendar_anchor_mode: string;
+              }>
+            >`
+              select maintenance_type, schedule_milestones, recurrence_km, recurrence_months, calendar_anchor_mode from maintenance_plan_items
+              where id = ${String(payload.maintenance_plan_item_id)} and owner_id = ${ownerId}
+                and motorcycle_id = ${String(payload.motorcycle_id ?? "")} and is_active = true
+              for update
+            `;
+            if (!plan)
+              throw new Error("Plano de manutenção inválido para esta moto.");
+            if (
+              plan.schedule_milestones.length &&
+              payload.completed_milestone === null &&
+              relativeReplacementMonths({
+                milestones: plan.schedule_milestones,
+                recurrenceKm: plan.recurrence_km,
+                recurrenceMonths: plan.recurrence_months,
+                calendarAnchorMode: plan.calendar_anchor_mode,
+              }) === null
+            )
+              throw new Error("Informe qual etapa de revisão foi realizada.");
+            payload.maintenance_type = plan.maintenance_type;
+          }
           let oldKeys: string[] = [];
           if (uploadedObjects.length > 0) {
             await lockObjectOwner(db, ownerId);
@@ -424,6 +574,17 @@ export function featureActions(slug: string): Actions {
               insert into ${db(feature.table)} ${db(payload)}
             `;
           }
+          if (tracksOdometer) {
+            await syncChangedRecordOdometers(db, ownerId, payload, previous);
+          }
+          await syncRecordEffects({
+            db,
+            ownerId,
+            feature,
+            recordId,
+            payload,
+            syncOdometer: false,
+          });
           return oldKeys;
         });
       } catch (err) {
@@ -443,14 +604,7 @@ export function featureActions(slug: string): Actions {
         platform,
       });
 
-      await syncRecordEffects({
-        db: locals.db,
-        ownerId,
-        feature,
-        recordId,
-        payload,
-      });
       return { ok: true };
     },
-  };
+  });
 }

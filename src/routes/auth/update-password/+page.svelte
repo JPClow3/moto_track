@@ -1,10 +1,11 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/store";
   import { ShieldAlert, KeyRound } from "lucide-svelte";
   export let form: { message?: string } | undefined;
   export let data: { token: string };
 </script>
 
-<svelte:head><title>Nova senha · Moto Track</title></svelte:head>
+<svelte:head><title>{$t("auth.newPassword")} · Moto Track</title></svelte:head>
 
 <div
   class="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12"
@@ -29,9 +30,9 @@
           class="mx-auto hidden h-8 dark:block"
         />
       </a>
-      <h1 class="display text-4xl">Defina sua nova senha.</h1>
+      <h1 class="display text-4xl">{$t("auth.updateHeading")}</h1>
       <p class="mt-3 text-sm text-[var(--muted)]">
-        Escolha uma senha nova para continuar acessando sua garagem.
+        {$t("auth.updateDescription")}
       </p>
     </div>
 
@@ -52,7 +53,7 @@
         <input type="hidden" name="token" value={data.token} />
         <div class="grid gap-1.5">
           <label for="password" class="label-tech text-[var(--muted)]"
-            >Nova senha</label
+            >{$t("auth.newPassword")}</label
           >
           <div class="relative">
             <KeyRound
@@ -64,7 +65,7 @@
               name="password"
               type="password"
               autocomplete="new-password"
-              placeholder="mínimo 6 caracteres"
+              placeholder={$t("auth.minimumPassword")}
               required
               minlength="6"
             />
@@ -73,7 +74,7 @@
 
         <div class="grid gap-1.5">
           <label for="confirmPassword" class="label-tech text-[var(--muted)]"
-            >Confirme a senha</label
+            >{$t("auth.confirmPassword")}</label
           >
           <div class="relative">
             <KeyRound
@@ -96,7 +97,7 @@
           class="button-primary mt-2 w-full py-2.5 text-base"
           type="submit"
         >
-          Salvar nova senha
+          {$t("auth.savePassword")}
         </button>
       </form>
     </div>

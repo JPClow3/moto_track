@@ -1,4 +1,5 @@
 <script lang="ts">
+  import OdometerScan from "$components/OdometerScan.svelte";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { t } from "$lib/i18n/store";
@@ -64,6 +65,9 @@
     description={$t("garage.description")}
   >
     <svelte:fragment slot="actions">
+      <a class="button-secondary min-h-11" href="/garage/access"
+        >{$t("sharing.manage")}</a
+      >
       {#if data.canAddActive}
         <PageAction
           label={$t("authenticatedUx.addMotorcycle") || $t("garage.newTitle")}
@@ -230,6 +234,41 @@
                 >
                   {$t("garage.updateOdometer")}
                 </button>
+              </form>
+              <OdometerScan
+                motorcycleId={String(motorcycle.id)}
+                currentKm={Number(motorcycle.current_odometer_km)}
+              />
+              <form
+                method="POST"
+                action="?/saveServiceStart"
+                use:enhance
+                class="mt-3 grid gap-2"
+              >
+                <input
+                  type="hidden"
+                  name="motorcycle_id"
+                  value={motorcycle.id}
+                />
+                <label
+                  class="field-group"
+                  for={`service-start-${motorcycle.id}`}
+                  ><span class="field-label">{$t("garage.inServiceDate")}</span
+                  ><input
+                    class="field"
+                    id={`service-start-${motorcycle.id}`}
+                    name="in_service_date"
+                    type="date"
+                    max={new Date().toISOString().slice(0, 10)}
+                    value={String(motorcycle.in_service_date ?? "")}
+                  /></label
+                >
+                <p class="text-xs text-[var(--muted)]">
+                  {$t("garage.inServiceHelp")}
+                </p>
+                <button class="button-secondary" type="submit"
+                  >{$t("common.save")}</button
+                >
               </form>
               <form
                 class="mt-3 grid gap-2"

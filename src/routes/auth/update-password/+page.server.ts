@@ -1,5 +1,6 @@
 import { fail, redirect, type Actions } from "@sveltejs/kit";
 import { resetPassword } from "$server/auth/session";
+import { createTranslator } from "$lib/i18n";
 
 export async function load({ url }) {
   // The reset link from the recovery email carries the one-time token.
@@ -8,6 +9,7 @@ export async function load({ url }) {
 
 export const actions: Actions = {
   default: async (event) => {
+    const t = createTranslator(event.locals.locale);
     const { request, url } = event;
     const form = await request.formData();
     const password = String(form.get("password") ?? "");
@@ -18,16 +20,16 @@ export const actions: Actions = {
 
     if (!token) {
       return fail(400, {
-        message: "Link de recuperação inválido ou expirado.",
+        message: t("auth.invalidReset"),
       });
     }
     if (password.length < 6) {
       return fail(400, {
-        message: "A senha precisa ter pelo menos 6 caracteres.",
+        message: t("auth.passwordTooShort"),
       });
     }
     if (password !== confirmPassword) {
-      return fail(400, { message: "As senhas não coincidem." });
+      return fail(400, { message: t("auth.passwordMismatch") });
     }
 
     const result = await resetPassword(event, password, token);

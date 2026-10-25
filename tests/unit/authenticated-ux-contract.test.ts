@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { render } from "svelte/server";
 import { readable } from "svelte/store";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
   createTranslator,
@@ -41,6 +41,17 @@ vi.mock("$lib/i18n/store", () => ({
 
 const source = (path: string) =>
   readFileSync(resolve(process.cwd(), path), "utf8");
+
+// These assertions measure the rendered contracts. Compile the large page
+// modules once with a separate startup budget, before their render assertions.
+beforeAll(async () => {
+  await Promise.all([
+    import("../../src/routes/(app)/fuel/+page.svelte"),
+    import("../../src/routes/(app)/maintenance/+page.svelte"),
+    import("../../src/routes/(app)/tires/+page.svelte"),
+    import("../../src/routes/(app)/dashboard/+page.svelte"),
+  ]);
+}, 60_000);
 
 describe("authenticated UX primitives contract", () => {
   it("renders a labelled native record dialog with close button and title", async () => {

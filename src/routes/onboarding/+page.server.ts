@@ -1,4 +1,6 @@
+import { localizedActions } from "$server/domain/localized-actions";
 import { fail, redirect } from "@sveltejs/kit";
+import { lockObjectOwner } from "$server/db/owner-lock";
 import {
   applyMotorcycleTemplate,
   initialHistoryStatus,
@@ -25,7 +27,7 @@ export async function load({ locals }) {
   return { models };
 }
 
-export const actions = {
+export const actions = localizedActions({
   create: async ({ request, locals }) => {
     const form = await request.formData();
     const name = String(form.get("name") ?? "").trim();
@@ -65,6 +67,10 @@ export const actions = {
     const motorcycleId = crypto.randomUUID();
     try {
       await locals.db.begin(async (tx) => {
+        await lockObjectOwner(
+          tx as unknown as typeof locals.db,
+          locals.user!.id,
+        );
         await tx`
           insert into motorcycles ${tx({
             id: motorcycleId,
@@ -111,19 +117,25 @@ export const actions = {
   },
   demo: async ({ locals }) => {
     try {
-      await locals.db`
-        insert into motorcycles ${locals.db({
-          owner_id: locals.user!.id,
-          name: "Moto de demonstração",
-          brand: "Moto Track",
-          model: "Demo",
-          year: new Date().getFullYear(),
-          current_odometer_km: 1200,
-        })}
-      `;
+      await locals.db.begin(async (tx) => {
+        await lockObjectOwner(
+          tx as unknown as typeof locals.db,
+          locals.user!.id,
+        );
+        await tx`
+          insert into motorcycles ${tx({
+            owner_id: locals.user!.id,
+            name: "Moto de demonstração",
+            brand: "Moto Track",
+            model: "Demo",
+            year: new Date().getFullYear(),
+            current_odometer_km: 1200,
+          })}
+        `;
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
     throw redirect(303, "/dashboard");
   },
-};
+});

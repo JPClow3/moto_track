@@ -1,3 +1,6 @@
+import { localizedActions } from "$server/domain/localized-actions";
+import { createTranslator } from "$lib/i18n";
+import { actionMessage } from "$lib/i18n/action-messages";
 import { error, fail } from "@sveltejs/kit";
 
 const WORDS_PER_MINUTE = 200;
@@ -39,7 +42,8 @@ export async function load({ locals, params }) {
     select * from forum_articles
     where slug = ${params.slug} and is_published = true
   `;
-  if (!article) throw error(404, "Article not found");
+  if (!article)
+    throw error(404, actionMessage(locals.locale, "Article not found"));
   const articleId = String(article.id);
 
   const [comments, reactions, related] = await Promise.all([
@@ -74,7 +78,7 @@ export async function load({ locals, params }) {
   const names = new Map(
     profiles.map((profile) => [
       profile.id,
-      profile.full_name || "Motociclista",
+      profile.full_name || createTranslator(locals.locale)("common.rider"),
     ]),
   );
 
@@ -92,13 +96,15 @@ export async function load({ locals, params }) {
     related,
     comments: comments.map((comment) => ({
       ...comment,
-      author: names.get(comment.owner_id) ?? "Motociclista",
+      author:
+        names.get(comment.owner_id) ??
+        createTranslator(locals.locale)("common.rider"),
     })),
     reactions,
   };
 }
 
-export const actions = {
+export const actions = localizedActions({
   comment: async ({ request, locals, params }) => {
     if (!locals.user) return fail(401, { message: "Entre para comentar." });
     const f = await request.formData();
@@ -106,7 +112,7 @@ export const actions = {
     if (!body) return fail(400, { message: "Escreva um comentário." });
     const [article] = await locals.db<Array<{ id: string }>>`
       select id from forum_articles
-      where slug = ${params.slug} and is_published = true
+      where slug = ${String(params.slug ?? "")} and is_published = true
     `;
     if (!article) return fail(404, { message: "Artigo não encontrado." });
     try {
@@ -129,7 +135,7 @@ export const actions = {
     const ownerId = locals.user.id;
     const [article] = await locals.db<Array<{ id: string }>>`
       select id from forum_articles
-      where slug = ${params.slug} and is_published = true
+      where slug = ${String(params.slug ?? "")} and is_published = true
     `;
     if (!article) return fail(404, { message: "Artigo não encontrado." });
     const [existing] = await locals.db<Array<{ article_id: string }>>`
@@ -156,4 +162,4 @@ export const actions = {
     }
     return { ok: true };
   },
-};
+});

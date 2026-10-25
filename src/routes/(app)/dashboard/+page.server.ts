@@ -1,3 +1,5 @@
+import { localizedActions } from "$server/domain/localized-actions";
+import { createTranslator } from "$lib/i18n";
 import { fail, redirect, type Actions } from "@sveltejs/kit";
 import { dashboardSummary, healthScore } from "$server/domain/reports";
 import { evaluateReminder, type ReminderInput } from "$server/domain/reminders";
@@ -224,12 +226,15 @@ export async function load({ locals, url }) {
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
-        select p.id, p.motorcycle_id, p.maintenance_type, p.interval_km,
-          p.last_done_km, p.initial_history_status, p.estimated_cost_cents,
+        select p.id, p.motorcycle_id, p.maintenance_type, p.interval_km, p.interval_days,
+          p.last_done_km, p.last_done_date, p.initial_history_status, p.estimated_cost_cents,
+          p.schedule_milestones, p.recurrence_km, p.recurrence_months, p.last_completed_milestone,
+          p.calendar_anchor_mode,
+          m.in_service_date,
           m.name as motorcycle_name, ms.official_url, ms.document_version,
           ms.page_reference
         from maintenance_plan_items p
-        join motorcycles m on m.id = p.motorcycle_id
+        join motorcycles m on m.id = p.motorcycle_id and m.owner_id = p.owner_id
         left join motorcycle_manual_sources ms on ms.id = p.manual_source_id
         where p.owner_id = ${ownerId} and p.is_active = true and m.is_active = true
       `,
@@ -464,7 +469,8 @@ export async function load({ locals, url }) {
           benchmarkMotorcycle.year,
         ]
           .filter(Boolean)
-          .join(" ") || "Modelo não informado",
+          .join(" ") ||
+        createTranslator(locals.locale)("dashboard.modelNotProvided"),
       models: benchmarkModels.map((model) => ({
         id: model.id,
         name: model.name,
@@ -602,7 +608,7 @@ export async function load({ locals, url }) {
   };
 }
 
-export const actions: Actions = {
+export const actions: Actions = localizedActions({
   contributeBenchmark: async ({ request, locals }) => {
     const ownerId = locals.user?.id;
     if (!ownerId) return fail(401, { message: "Entre para compartilhar." });
@@ -713,4 +719,4 @@ export const actions: Actions = {
       `/dashboard?benchmark=${encodeURIComponent(motorcycleId)}`,
     );
   },
-};
+});

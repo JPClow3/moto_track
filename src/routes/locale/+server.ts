@@ -21,7 +21,15 @@ export async function POST({ request, cookies, url }) {
   // Only ever bounce back to a path on this origin — `redirectTo` comes from
   // the request, so honouring an absolute URL here would be an open redirect.
   const target = String(form.get("redirectTo") ?? "/");
-  const safe =
-    target.startsWith("/") && !target.startsWith("//") ? target : "/";
-  throw redirect(303, safe || url.pathname);
+  let safe = "/";
+  if (target.startsWith("/") && !target.startsWith("//")) {
+    try {
+      const resolved = new URL(target, url.origin);
+      if (resolved.origin === url.origin)
+        safe = resolved.pathname + resolved.search + resolved.hash;
+    } catch {
+      /* malformed destinations return home */
+    }
+  }
+  throw redirect(303, safe);
 }

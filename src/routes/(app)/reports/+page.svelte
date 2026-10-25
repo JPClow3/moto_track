@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { appCopy } from "$lib/i18n/app-copy";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { locale, t } from "$lib/i18n/store";
   import { formatDate, formatMoney } from "$lib/i18n";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
+  import OwnershipCosts from "$components/OwnershipCosts.svelte";
   import PageHeader from "$lib/components/app/PageHeader.svelte";
   import RecordSheet from "$lib/components/app/RecordSheet.svelte";
   import Download from "lucide-svelte/icons/download";
@@ -22,7 +24,8 @@
     expenses: "Despesas",
     work: "Trabalho",
   };
-  const sourceLabel = (source: string) => SOURCE_LABELS[source] ?? source;
+  const sourceLabel = (source: string) =>
+    appCopy($locale, SOURCE_LABELS[source] ?? source);
   const isCostSource = (source: string) => source !== "work";
 
   let formBusy = false;
@@ -58,7 +61,10 @@
 
   const enhanceRevoke: SubmitFunction = async ({ cancel }) => {
     const ok = await confirmDialog.ask(
-      "Revogar este link público? Quem tiver o link perderá o acesso.",
+      appCopy(
+        $locale,
+        "Revogar este link público? Quem tiver o link perderá o acesso.",
+      ),
     );
     if (!ok) {
       cancel();
@@ -79,8 +85,11 @@
 <section class="grid gap-6" aria-busy={formBusy}>
   <PageHeader
     eyebrow={$t("nav.reports")}
-    title="Linha do tempo e dossiê de venda"
-    description="Histórico comprovado de manutenção e eventos da sua moto para valorizar a venda"
+    title={appCopy($locale, "Linha do tempo e dossiê de venda")}
+    description={appCopy(
+      $locale,
+      "Histórico comprovado de manutenção e eventos da sua moto para valorizar a venda",
+    )}
   >
     <svelte:fragment slot="actions">
       <button
@@ -93,7 +102,11 @@
     </svelte:fragment>
   </PageHeader>
 
-  <ConfirmDialog bind:this={confirmDialog} confirmLabel="Revogar" destructive />
+  <ConfirmDialog
+    bind:this={confirmDialog}
+    confirmLabel={appCopy($locale, "Revogar")}
+    destructive
+  />
 
   {#if form?.message}
     <p
@@ -110,7 +123,9 @@
       class="panel flex flex-col justify-between gap-3 border-l-4 border-l-[var(--accent)] p-4 sm:flex-row sm:items-center"
     >
       <div class="min-w-0">
-        <p class="text-sm font-semibold">Link público gerado com sucesso!</p>
+        <p class="text-sm font-semibold">
+          {appCopy($locale, "Link público gerado com sucesso!")}
+        </p>
         <p class="mt-1 break-all text-xs text-[var(--muted)]">
           {form.publicUrl}
         </p>
@@ -121,7 +136,7 @@
         target="_blank"
         rel="noreferrer"
       >
-        <span>Abrir dossiê</span>
+        <span>{appCopy($locale, "Abrir dossiê")}</span>
         <ExternalLink size={14} />
       </a>
     </div>
@@ -139,12 +154,14 @@
     </p>
   {/if}
 
+  <OwnershipCosts motorcycles={data.ownershipCosts} />
+
   <!-- Sheet to Generate Sale Report / Public Link -->
   <RecordSheet
     bind:this={shareModal}
     title={$t("authenticatedUx.generateReport")}
     description="Gere um link seguro com histórico de manutenções e custos para valorizar sua moto na venda."
-    closeLabel={$t("authenticatedUx.close") || "Fechar"}
+    closeLabel={$t("authenticatedUx.close")}
   >
     <form
       class="grid gap-4"
@@ -153,14 +170,16 @@
       use:enhance={enhanceWithStatus}
     >
       <div class="field-group">
-        <label class="field-label" for="reports-motorcycle">Moto</label>
+        <label class="field-label" for="reports-motorcycle"
+          >{appCopy($locale, "Moto")}</label
+        >
         <select
           class="field"
           id="reports-motorcycle"
           name="motorcycle_id"
           required
         >
-          <option value="">Escolha uma moto</option>
+          <option value="">{appCopy($locale, "Escolha uma moto")}</option>
           {#each data.motorcycles as moto}
             <option value={moto.id}>
               {moto.name} · {moto.brand}
@@ -172,7 +191,7 @@
 
       <div class="field-group">
         <label class="field-label" for="reports-days"
-          >Validade do link (dias)</label
+          >{appCopy($locale, "Validade do link (dias)")}</label
         >
         <input
           class="field"
@@ -184,8 +203,10 @@
           value="14"
         />
         <p class="mt-1 text-xs text-[var(--muted)]">
-          Após este prazo, o link expirará automaticamente. Você pode revogá-lo
-          a qualquer momento.
+          {appCopy(
+            $locale,
+            "Após este prazo, o link expirará automaticamente. Você pode revogá-lo a qualquer momento.",
+          )}
         </p>
       </div>
 
@@ -194,7 +215,7 @@
         type="submit"
         disabled={formBusy}
       >
-        Criar link seguro
+        {appCopy($locale, "Criar link seguro")}
       </button>
     </form>
   </RecordSheet>
@@ -202,7 +223,9 @@
   <!-- Active Public Shares -->
   {#if data.shares && data.shares.length > 0}
     <div class="panel grid gap-3 p-5">
-      <h2 class="display text-xl">Dossiês públicos ativos</h2>
+      <h2 class="display text-xl">
+        {appCopy($locale, "Dossiês públicos ativos")}
+      </h2>
       <div class="mt-1 grid gap-3 md:grid-cols-2">
         {#each data.shares as share (share.id)}
           <article
@@ -211,11 +234,13 @@
             <div class="min-w-0 flex-1 break-words">
               <p class="text-sm font-semibold">{share.token_prefix}…</p>
               <p class="mt-0.5 text-xs text-[var(--muted)]">
-                {share.access_count} acessos · expira {formatDate(
-                  $locale,
-                  share.expires_at,
-                  { day: "2-digit", month: "2-digit", year: "numeric" },
-                )}
+                {share.access_count}
+                {appCopy($locale, "acessos · expira")}
+                {formatDate($locale, share.expires_at, {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                })}
               </p>
             </div>
             {#if !share.revoked_at}
@@ -229,12 +254,12 @@
                   class="button-danger min-h-11 px-3 py-1 text-xs"
                   disabled={formBusy}
                 >
-                  Revogar
+                  {appCopy($locale, "Revogar")}
                 </button>
               </form>
             {:else}
               <span class="label-tech text-xs text-[var(--muted)]"
-                >Revogado</span
+                >{appCopy($locale, "Revogado")}</span
               >
             {/if}
           </article>
@@ -249,9 +274,12 @@
       class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] p-4"
     >
       <div>
-        <h2 class="display text-xl">Eventos da linha do tempo</h2>
+        <h2 class="display text-xl">
+          {appCopy($locale, "Eventos da linha do tempo")}
+        </h2>
         <p class="mt-0.5 text-xs text-[var(--muted)]">
-          {data.timeline.length} eventos encontrados
+          {data.timeline.length}
+          {appCopy($locale, "eventos encontrados")}
         </p>
       </div>
       <button
@@ -270,23 +298,28 @@
         method="GET"
       >
         <div>
-          <label class="field-label" for="reports-source">Fonte</label>
+          <label class="field-label" for="reports-source"
+            >{appCopy($locale, "Fonte")}</label
+          >
           <select
             class="field"
             id="reports-source"
             name="source"
             value={data.filters.source}
           >
-            <option value="">Todas as fontes</option>
-            <option value="fuel">Abastecimento</option>
-            <option value="maintenance">Manutenção</option>
-            <option value="tires">Pneus</option>
-            <option value="expenses">Despesas</option>
-            <option value="work">Trabalho</option>
+            <option value="">{appCopy($locale, "Todas as fontes")}</option>
+            <option value="fuel">{appCopy($locale, "Abastecimento")}</option>
+            <option value="maintenance">{appCopy($locale, "Manutenção")}</option
+            >
+            <option value="tires">{appCopy($locale, "Pneus")}</option>
+            <option value="expenses">{appCopy($locale, "Despesas")}</option>
+            <option value="work">{appCopy($locale, "Trabalho")}</option>
           </select>
         </div>
         <div>
-          <label class="field-label" for="reports-start">Data inicial</label>
+          <label class="field-label" for="reports-start"
+            >{appCopy($locale, "Data inicial")}</label
+          >
           <input
             class="field"
             id="reports-start"
@@ -296,7 +329,9 @@
           />
         </div>
         <div>
-          <label class="field-label" for="reports-end">Data final</label>
+          <label class="field-label" for="reports-end"
+            >{appCopy($locale, "Data final")}</label
+          >
           <input
             class="field"
             id="reports-end"
@@ -307,14 +342,14 @@
         </div>
         <div class="flex justify-end gap-2 sm:col-span-3">
           <a href="/reports" class="button-secondary min-h-11 px-3 py-1 text-xs"
-            >Limpar</a
+            >{appCopy($locale, "Limpar")}</a
           >
           <button
             class="button-primary min-h-11 px-4 py-1 text-xs"
             type="submit"
             disabled={formBusy}
           >
-            Aplicar filtros
+            {appCopy($locale, "Aplicar filtros")}
           </button>
         </div>
       </form>
@@ -341,9 +376,9 @@
         </div>
       {:else}
         <div class="p-8 text-center text-sm text-[var(--muted)]">
-          <p>Sem eventos para este filtro.</p>
+          <p>{appCopy($locale, "Sem eventos para este filtro.")}</p>
           <p class="mt-1 text-xs text-[var(--muted)]">
-            Tente ajustar as datas ou a fonte selecionada.
+            {appCopy($locale, "Tente ajustar as datas ou a fonte selecionada.")}
           </p>
         </div>
       {/each}
@@ -356,8 +391,10 @@
       <div>
         <h2 class="display text-xl">{$t("authenticatedUx.exportData")}</h2>
         <p class="mt-1 text-sm text-[var(--muted)]">
-          Baixe cópias completas em formato CSV dos seus dados para backup ou
-          análise em planilhas.
+          {appCopy(
+            $locale,
+            "Baixe cópias completas em formato CSV dos seus dados para backup ou análise em planilhas.",
+          )}
         </p>
       </div>
     </div>
@@ -367,42 +404,42 @@
         href="/fuel/export.csv"
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
-        <span class="font-medium">Abastecimentos</span>
+        <span class="font-medium">{appCopy($locale, "Abastecimentos")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
       <a
         href="/maintenance/export.csv"
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
-        <span class="font-medium">Manutenções</span>
+        <span class="font-medium">{appCopy($locale, "Manutenções")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
       <a
         href="/tires/export.csv"
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
-        <span class="font-medium">Pneus</span>
+        <span class="font-medium">{appCopy($locale, "Pneus")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
       <a
         href="/expenses/export.csv"
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
-        <span class="font-medium">Despesas</span>
+        <span class="font-medium">{appCopy($locale, "Despesas")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
       <a
         href="/documents/export.csv"
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
-        <span class="font-medium">Documentos</span>
+        <span class="font-medium">{appCopy($locale, "Documentos")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
       <a
         href="/trabalho/export.csv"
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
-        <span class="font-medium">Trabalho</span>
+        <span class="font-medium">{appCopy($locale, "Trabalho")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
     </div>

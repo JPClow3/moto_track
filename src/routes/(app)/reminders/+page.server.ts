@@ -1,14 +1,15 @@
+import { localizedActions } from "$server/domain/localized-actions";
 import type { Sql } from "postgres";
 import { featureActions, loadFeature } from "$server/domain/crud";
-
-type ReminderRow = {
-  motorcycle_id: string | null;
-  title: string;
-  is_recurring: boolean;
-  trigger_type: string;
-  reference_km: number | null;
-  reference_date: string | null;
-};
+import { fail } from "@sveltejs/kit";
+import { siteUrl } from "$server/env";
+import { shareTokenHash } from "$server/domain/sale-report-share";
+import { lockObjectOwner } from "$server/db/owner-lock";
+import {
+  completeReminder,
+  snoozeDateTarget,
+  snoozeKmTarget,
+} from "$server/domain/reminder-lifecycle";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -28,163 +29,140 @@ async function currentOdometerFor(
     select current_odometer_km from motorcycles
     where id = ${motorcycleId} and owner_id = ${ownerId}
   `;
+  if (!motorcycle) throw new Error("Moto não encontrada.");
   return Number(motorcycle?.current_odometer_km ?? 0);
 }
 
 const baseActions = featureActions("reminders");
 
-export const actions = {
+export const actions = localizedActions({
+  createCalendar: async ({ locals, platform }) => {
+    const ownerId = locals.user!.id;
+    const token =
+      crypto.randomUUID().replaceAll("-", "") +
+      crypto.randomUUID().replaceAll("-", "");
+    const hash = await shareTokenHash(token);
+    try {
+      const created = await locals.db.begin(async (tx) => {
+        await lockObjectOwner(tx as unknown as Sql, ownerId);
+        await tx`select id from profiles where id = ${ownerId} for update`;
+        const [count] = await tx<Array<{ total: number }>>`
+          select count(*)::int as total from calendar_feeds
+          where owner_id = ${ownerId} and revoked_at is null and expires_at > now()
+        `;
+        if (Number(count.total) >= 3) return false;
+        await tx`
+          insert into calendar_feeds (owner_id, token_hash, token_prefix, locale, expires_at)
+          values (${ownerId}, ${hash}, ${token.slice(0, 12)}, ${locals.locale}, now() + interval '1 year')
+        `;
+        return true;
+      });
+      if (!created)
+        return fail(400, {
+          message: "Revogue um calendário antes de criar outro (limite de 3).",
+        });
+      return {
+        ok: true,
+        calendarUrl: `${siteUrl(platform)}/calendar/${token}.ics`,
+      };
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+  },
+  revokeCalendar: async ({ locals, request }) => {
+    const form = await request.formData();
+    try {
+      await locals.db`update calendar_feeds set revoked_at = now()
+        where id = ${String(form.get("id") ?? "")} and owner_id = ${locals.user!.id}`;
+      return { ok: true };
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+  },
   record: baseActions.default,
   snoozeDays: async ({ request, locals }) => {
     const form = await request.formData();
     const id = String(form.get("id") ?? "");
-    const days = Math.max(Number(form.get("days") ?? 7), 0);
     const ownerId = locals.user!.id;
-
-    let reminder: { reference_date: string | null } | undefined;
     try {
-      [reminder] = await locals.db<Array<{ reference_date: string | null }>>`
-        select reference_date from reminders
-        where id = ${id} and owner_id = ${ownerId}
-      `;
-    } catch (err) {
-      return { ok: false, message: messageFrom(err) };
-    }
-    if (!reminder) return { ok: false, message: "Lembrete não encontrado." };
-
-    const today = new Date().toISOString().slice(0, 10);
-    const baseDateStr =
-      reminder.reference_date && reminder.reference_date > today
-        ? reminder.reference_date
-        : today;
-    const target = new Date(`${baseDateStr}T00:00:00.000Z`);
-    target.setUTCDate(target.getUTCDate() + days);
-
-    try {
-      await locals.db`
+      const target = snoozeDateTarget(
+        new Date().toISOString().slice(0, 10),
+        Number(form.get("days") ?? 7),
+      );
+      const updated = await locals.db`
         update reminders
-        set reference_date = ${target.toISOString().slice(0, 10)},
-          last_notified_at = null,
-          last_email_notified_at = null,
-          last_push_notified_at = null
-        where id = ${id} and owner_id = ${ownerId}
+        set snoozed_until_date = ${target}, snoozed_until_km = null,
+          last_notified_at = null, last_email_notified_at = null,
+          last_push_notified_at = null, updated_at = now()
+        where id = ${id} and owner_id = ${ownerId} and is_active = true
+        returning id
       `;
+      if (!updated.length)
+        return fail(404, { message: "Lembrete não encontrado." });
+      return { ok: true };
     } catch (err) {
-      return { ok: false, message: messageFrom(err) };
+      return fail(400, { message: messageFrom(err) });
     }
-    return { ok: true };
   },
   snoozeKm: async ({ request, locals }) => {
     const form = await request.formData();
     const id = String(form.get("id") ?? "");
-    const km = Math.max(Number(form.get("km") ?? 500), 0);
     const ownerId = locals.user!.id;
-
-    let reminder:
-      { reference_km: number | null; motorcycle_id: string | null } | undefined;
     try {
-      [reminder] = await locals.db<
-        Array<{ reference_km: number | null; motorcycle_id: string | null }>
-      >`
-        select reference_km, motorcycle_id from reminders
-        where id = ${id} and owner_id = ${ownerId}
-      `;
+      await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as Sql;
+        await db`select id from profiles where id = ${ownerId} for update`;
+        const [reminder] = await db<Array<{ motorcycle_id: string | null }>>`
+          select motorcycle_id from reminders
+          where id = ${id} and owner_id = ${ownerId} and is_active = true for update
+        `;
+        if (!reminder?.motorcycle_id)
+          throw new Error("Vincule uma moto para adiar por quilômetros.");
+        const current = await currentOdometerFor(
+          db,
+          ownerId,
+          reminder.motorcycle_id,
+        );
+        const target = snoozeKmTarget(current, Number(form.get("km") ?? 500));
+        await db`
+          update reminders
+          set snoozed_until_km = ${target}, snoozed_until_date = null,
+            last_notified_at = null, last_email_notified_at = null,
+            last_push_notified_at = null, updated_at = now()
+          where id = ${id} and owner_id = ${ownerId}
+        `;
+      });
+      return { ok: true };
     } catch (err) {
-      return { ok: false, message: messageFrom(err) };
+      return fail(400, { message: messageFrom(err) });
     }
-    if (!reminder) return { ok: false, message: "Lembrete não encontrado." };
-
-    const current = await currentOdometerFor(
-      locals.db,
-      ownerId,
-      reminder.motorcycle_id,
-    );
-    const base = Math.max(Number(reminder.reference_km ?? 0), current);
-
-    try {
-      await locals.db`
-        update reminders
-        set reference_km = ${base + km},
-          last_notified_at = null,
-          last_email_notified_at = null,
-          last_push_notified_at = null
-        where id = ${id} and owner_id = ${ownerId}
-      `;
-    } catch (err) {
-      return { ok: false, message: messageFrom(err) };
-    }
-    return { ok: true };
   },
   complete: async ({ request, locals }) => {
     const form = await request.formData();
-    const id = String(form.get("id") ?? "");
-    const ownerId = locals.user!.id;
-
-    let reminder: ReminderRow | undefined;
+    const rawVersion = form.get("completion_version");
     try {
-      [reminder] = await locals.db<ReminderRow[]>`
-        select motorcycle_id, title, is_recurring, trigger_type,
-          reference_km, reference_date
-        from reminders
-        where id = ${id} and owner_id = ${ownerId}
-      `;
+      return await completeReminder(
+        locals.db,
+        locals.user!.id,
+        String(form.get("id") ?? ""),
+        rawVersion === null || rawVersion === ""
+          ? Number.NaN
+          : Number(rawVersion),
+      );
     } catch (err) {
-      return { ok: false, message: messageFrom(err) };
+      return fail(400, { message: messageFrom(err) });
     }
-    if (!reminder) return { ok: false, message: "Lembrete não encontrado." };
-
-    const today = new Date().toISOString().slice(0, 10);
-    const currentOdometer = await currentOdometerFor(
-      locals.db,
-      ownerId,
-      reminder.motorcycle_id,
-    );
-
-    try {
-      await locals.db`
-        insert into maintenance_records ${locals.db({
-          owner_id: ownerId,
-          motorcycle_id: reminder.motorcycle_id,
-          maintenance_type: "other",
-          date: today,
-          odometer_km: currentOdometer,
-          description: reminder.title,
-          cost_cents: 0,
-        })}
-      `;
-    } catch (err) {
-      return { ok: false, message: messageFrom(err) };
-    }
-
-    const update = reminder.is_recurring
-      ? {
-          reference_km: ["by_km", "by_interval"].includes(reminder.trigger_type)
-            ? currentOdometer
-            : reminder.reference_km,
-          reference_date: ["by_date", "by_interval"].includes(
-            reminder.trigger_type,
-          )
-            ? today
-            : reminder.reference_date,
-          last_notified_at: null,
-          last_email_notified_at: null,
-          last_push_notified_at: null,
-        }
-      : { is_active: false };
-
-    try {
-      await locals.db`
-        update reminders
-        set ${locals.db(update)}
-        where id = ${id} and owner_id = ${ownerId}
-      `;
-    } catch (err) {
-      return { ok: false, message: messageFrom(err) };
-    }
-    return { ok: true };
   },
-};
+});
 
 export async function load({ locals }) {
-  return loadFeature(locals.db, "reminders", locals.user!);
+  const [feature, calendars] = await Promise.all([
+    loadFeature(locals.db, "reminders", locals.user!),
+    locals.db<Array<{ id: string; token_prefix: string; expires_at: string }>>`
+      select id, token_prefix, expires_at::text from calendar_feeds
+      where owner_id = ${locals.user!.id} and revoked_at is null and expires_at > now()
+      order by created_at desc
+    `,
+  ]);
+  return { ...feature, calendars };
 }

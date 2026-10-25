@@ -5,7 +5,186 @@ import type { Messages } from "../index";
  * fails `npm run check` instead of rendering a raw key string in production.
  */
 export const en: Messages = {
+  auth: {
+    signIn: "Sign in",
+    signUp: "Create account",
+    title: "Access your garage.",
+    description: "History, costs, reminders and services in one place.",
+    mode: "Access mode",
+    email: "Email",
+    password: "Password",
+    emailPlaceholder: "you@example.com",
+    forgot: "Forgot my password",
+    resetHeading: "Reset password",
+    sendReset: "Send recovery link",
+    continueWith: "or continue with",
+    newAccount: "New account",
+    passwordPlaceholder: "password (at least 6 characters)",
+    newPassword: "New password",
+    updateHeading: "Set your new password.",
+    updateDescription: "Choose a new password to keep accessing your garage.",
+    minimumPassword: "at least 6 characters",
+    confirmPassword: "Confirm password",
+    savePassword: "Save new password",
+    resetSent: "Recovery email sent.",
+    googleFailed:
+      "Could not complete Google sign-in. Try again or use your email and password.",
+    passwordUpdated: "Password updated. Sign in again to access your garage.",
+    invalidReset: "Recovery link is invalid or expired.",
+    passwordTooShort: "The password must have at least 6 characters.",
+    passwordMismatch: "The passwords do not match.",
+    invalidCredentials: "Incorrect email or password.",
+    accountExists:
+      "An account already uses this email. Sign in or reset your password.",
+    invalidEmail: "Enter a valid email.",
+    failed: "Could not complete sign-in. Please try again shortly.",
+    resetFailed: "Could not update the password. Check the link and try again.",
+    requestFailed: "Could not send the link. Please wait and try again.",
+    verificationSignIn: "Sign in again to verify your email.",
+    verificationSendFailed:
+      "Could not send the code. Please wait and try again.",
+    verificationRequired: "Enter the code sent to your email.",
+    verificationInvalid:
+      "Invalid or expired code. Check it or request another.",
+  },
+  sharing: {
+    invalidInviteEmail: "Enter another person's email and a valid permission.",
+    pendingLimit:
+      "Revoke a pending invitation before creating another (limit: 20).",
+    invalidInvitation: "Invalid invitation.",
+    invalidAccess: "Invalid access.",
+    invitationNotFound: "Invitation not found.",
+    invitationUnavailable: "Invitation expired, already used or revoked.",
+    signInInvited: "Sign in with the invited email.",
+    alreadyOwner: "You already own this garage.",
+    verifyInvitedEmail:
+      "Sign in with the invited email and verify that address before accepting.",
+    invitationGone: "This invitation is no longer available.",
+    accessNotFound: "Access not found.",
+    accessRevoked: "Access not found or revoked.",
+    ownerConfirmStages: "The owner must confirm maintenance-plan stages.",
+    invalidRecord: "Invalid record.",
+    permissionDenied: "Your permission does not allow this record.",
+    checkFields: "Check the record fields.",
+    validDateOdometer: "Enter a valid date and odometer.",
+    checkValues: "Check the record's amounts and description.",
+    motorcycleNotFound: "Motorcycle not found in this garage.",
+    saveFailed: "Could not save the record. Check the fields and try again.",
+    sendVerification: "Send verification code",
+    codeSent: "Code sent. Check your email.",
+    verificationCode: "Email verification code",
+    verifyEmail: "Verify email",
+    heading: "Shared garage",
+    manage: "Manage access",
+    invite: "Invite someone",
+    scope:
+      "Share active motorcycles and their history with family, collaborators or a workshop. Permission includes current and future motorcycles. Private documents, account and billing remain personal.",
+    rolesHelp:
+      "Viewer: motorcycles, maintenance and fill-ups. Contributor: can also record services and fill-ups. Workshop: motorcycles and maintenance only. The owner can revoke access at any time.",
+    viewer: "Viewer",
+    contributor: "Contributor",
+    workshop: "Workshop",
+    email: "Recipient email",
+    permission: "Permission",
+    generate: "Generate invitation",
+    inviteUrl: "Private invitation link",
+    linkHelp:
+      "Copy and send the link to the invited person. It is shown only now and expires in 7 days. Acceptance requires the same verified email.",
+    members: "People and invitations",
+    revoke: "Revoke access",
+    cancelInvite: "Cancel invitation",
+    noMembers: "No active access to your garage.",
+    received: "Garages shared with me",
+    leave: "Leave garage",
+    noReceived: "No garage has been shared with you.",
+    activity: "Collaborator records",
+    noActivity: "No collaborator records.",
+    deletedAccount: "Deleted account",
+    verifiedEmail:
+      "Make sure your email has been verified before accepting the invitation.",
+    accept: "Accept invitation",
+    wrongEmail:
+      "Sign in with the email that received the invitation to continue.",
+    noBikes: "This garage has no active motorcycles.",
+    addRecord: "Add record",
+    recordHelp:
+      "The record will be saved in the owner's history and identified in garage activity.",
+    recordType: "Record type",
+    date: "Date",
+    cost: "Cost (BRL)",
+    description: "Service description",
+    gasoline: "Gasoline",
+    ethanol: "Ethanol",
+    station: "Station",
+    noRecords: "No records in this history.",
+  },
+  odometerScan: {
+    heading: "Read odometer from a photo",
+    help: "Photograph the total odometer in good light. The photo is sent to the reading service and is not saved in the garage. Review the reading before confirming. Limit: 10 MB.",
+    photo: "Dashboard photo",
+    scan: "Read photo",
+    reading: "Reading…",
+    review: "Review and correct the reading (km)",
+    confirm: "Confirm odometer",
+    lower:
+      "The reading is below the current odometer. Check that the photo shows the total rather than the trip meter.",
+    failed:
+      "Could not read the dashboard. Try another photo or enter the odometer manually.",
+  },
+  forecast: {
+    lastServiceDate: "Last service date (if known)",
+    nextDate: "Estimated next service",
+    tireDate: "Estimated replacement",
+    observedPace: "Observed pace: {count} km/day",
+    caution: "Estimate based on recent history. Inspect the tire regularly.",
+  },
+  calendar: {
+    heading: "Calendar reminders",
+    help: "Download a file to import or generate a link to subscribe in Google Calendar or Apple Calendar. Refresh timing depends on your calendar. Mileage reminders need recent history to estimate a date; otherwise they remain available in the app.",
+    download: "Download calendar (.ics)",
+    create: "Generate subscription link",
+    url: "Private calendar URL",
+    secret:
+      "Copy it now: the link is shown only once. Anyone with this address can see reminder titles and dates. Revoke it to stop future updates; remove previously imported events in your calendar.",
+    expires: "Expires",
+    revoke: "Revoke link",
+  },
+  nearby: {
+    heading: "Nearby stations and recorded prices",
+    help: "Compare your own records from the last 30 days for the same fuel. The lowest observed price is listed first. Add station coordinates; prices and availability can change. Your location stays in this browser.",
+    latitude: "Latitude",
+    longitude: "Longitude",
+    useLocation: "Use current location",
+    locating: "Getting location…",
+    unavailable: "Location unavailable. Enter coordinates manually.",
+    denied: "Could not get your location. Allow access or enter coordinates.",
+    radius: "Maximum distance (km)",
+    empty:
+      "No station with coordinates and a recent price for this fuel within this distance.",
+    directions: "Directions",
+    fuelType: "Fuel",
+  },
+  ownership: {
+    heading: "Total cost per km",
+    help: "Purchase, fuel, maintenance, tires, fees and insurance since acquisition. Cost per km uses only distance traveled since purchase. Records before purchase are excluded.",
+    setup: "Purchase details",
+    date: "Purchase date",
+    mileage: "Odometer at purchase (km)",
+    price: "Purchase price (BRL)",
+    total: "Total recorded cost",
+    distance: "Distance since purchase",
+    missing: "Enter purchase date, price and mileage to calculate cost per km.",
+    noDistance:
+      "Cost per km becomes available once you have traveled since purchase.",
+    fuel: "Fuel",
+    maintenance: "Maintenance",
+    tires: "Tires",
+    fees: "Fees and insurance",
+  },
   common: {
+    language: "Language",
+    activity: "Activity",
+    rider: "Rider",
     save: "Save",
     saveChanges: "Save changes",
     cancel: "Cancel",
@@ -122,6 +301,7 @@ export const en: Messages = {
       "Add an insurance policy first — claims must be linked to one.",
   },
   dashboard: {
+    modelNotProvided: "Model not provided",
     synced: "Data synced",
     noData: "No data",
     total: "Total",
@@ -268,6 +448,12 @@ export const en: Messages = {
     unknown: "Not sure",
   },
   garage: {
+    invalidServiceStart:
+      "Enter a valid original service start date, or leave blank if unknown.",
+    motorcycleNotFound: "Motorcycle not found.",
+    inServiceDate: "Original service start date",
+    inServiceHelp:
+      "First delivery or invoice date for the new motorcycle, not a used purchase date. Leave blank if unknown.",
     pageTitle: "Garage",
     heading: "Your garage",
     description: "Keep bikes, odometers and official references in order.",
@@ -301,6 +487,28 @@ export const en: Messages = {
     distanceUnit: "km",
   },
   maintenance: {
+    compareWorkshops: "Compare workshops",
+    optionalPlan: "Maintenance plan (optional)",
+    independentService: "Independent service",
+    completedReviewNumber: "Completed occurrence of this service",
+    completedReviewHelp:
+      "Choose the milestone for this service, not the global review number in the booklet. For example, the first valve service at 6,000 km / 18 months is occurrence 1 even when it belongs to booklet review 3.",
+    nextReview: "Next occurrence of this service",
+    confirmBooklet: "Confirm the service booklet history",
+    baselineReviewNumber:
+      "Last occurrence of this service before app records (leave blank if unknown)",
+    occurrenceMilestone: "Occurrence {number} · {km} km / {months} months",
+    occurrenceMileageOnly: "Occurrence {number} · {km} km",
+    occurrenceCalendarOnly: "Occurrence {number} · {months} months",
+    occurrenceUnknown: "Milestone not specified",
+    noPreviousService: "This service has never been performed",
+    baselineServiceOccurrence: "Last occurrence of this service before the app",
+    relativeReplacementDate:
+      "This item is due by time since its last confirmed replacement. The occurrence count is optional.",
+    convertManufacturerPlan:
+      "Replace the manufacturer milestones with these custom intervals",
+    convertManufacturerPlanHelp:
+      "Use only to explicitly replace an existing plan for the same service. Its official source link will be removed.",
     pageTitle: "Maintenance",
     pageSubtitle: "Plan services, parts and evidence for your bike.",
     noMotorcyclesHint: "Add a bike to create maintenance plans.",
@@ -334,7 +542,7 @@ export const en: Messages = {
     historyStatusLabel: "What you know about this service",
     lastDoneKmLabel: "Odometer at last service (km)",
     historyEditHint:
-      "The odometer is only used when you confirm the service was done.",
+      "Enter the history before your app records. Maintenance records determine the latest service; edit or delete the record to correct that service.",
     saveHistory: "Save history",
     photoFormTitle: "Add photo",
     recordSelect: "Select a record",
@@ -483,6 +691,16 @@ export const en: Messages = {
     statusValid: "Valid",
   },
   tires: {
+    inUseCount: "{count} in use",
+    invalidWearObservation: "Enter a whole wear percentage from 0 to 100%.",
+    tireNotFound: "Active tire not found for this motorcycle.",
+    recordWearObservation: "Record measurement",
+    wearObservationHelp:
+      "Confirm the wear measured now. The reading is linked to the current odometer, even if the percentage has not changed.",
+    wearObservedAt: "Last recorded measurement",
+    wearObservationUnknown:
+      "No confirmed wear measurement. Record a current reading to calculate an estimate.",
+    wearObservationSaved: "Wear measurement recorded.",
     pageTitle: "Tires",
     pageSubtitle: "Wear, pressure, and installation history.",
     noMotorcyclesHint: "Add a bike to log tires and pressures.",
@@ -632,6 +850,62 @@ export const en: Messages = {
   offline: {
     title: "Offline",
     body: "Moto Track is offline. Reconnect to sync your latest data.",
+    queuedFuel:
+      "Queued fill-ups will be sent when the connection returns and your session is active.",
+    retryNow: "Try again now",
+    home: "Back to home",
+    receiptOnline:
+      "Upload the receipt when you are online; photos are not added to the offline queue.",
+    requiredFields: "Complete the required fields before saving offline.",
+    signInToQueue: "Sign in before saving a fill-up offline.",
+    fuelQueued:
+      "Offline: the fill-up is queued and will be sent when the connection returns and your session is active.",
+    queueFailed: "Could not save the fill-up offline.",
+    draftsTitle: "Local fill-up drafts",
+    draftsHelp:
+      "These drafts stay in this browser until the server confirms them or you discard them. Export a copy before changing browsers or clearing local data.",
+    noDrafts: "No local drafts.",
+    currentDraft: "This account",
+    unknownDraft: "Account not recorded",
+    otherDraft: "Another account",
+    unknownHelp:
+      "This older draft has no account binding. It will never be sent automatically. Check your history before importing it to avoid a duplicate.",
+    otherHelp:
+      "Sign in to the original account to send this draft. Changing accounts does not transfer it.",
+    exportDraft: "Export draft JSON",
+    exportAll: "Export all local drafts",
+    discard: "Discard local draft",
+    discardConfirm:
+      "Discard this draft from this browser? Export it first if you need a copy. This does not delete a record already saved on the server.",
+    review: "Review and import",
+    reviewConsent:
+      "I checked that this draft belongs to me, is not already in my history, and should be sent with the account shown above.",
+    reviewConsentRequired:
+      "Review the draft and explicitly confirm import to your current account.",
+    reviewAccount: "Import into: {account}",
+    reviewed:
+      "Draft reviewed and linked to this account. Its original identifier was preserved.",
+    invalidDraft:
+      "This draft cannot be sent safely. Export it and enter the details manually.",
+    missingAttachment:
+      "This draft refers to an unavailable receipt. Export it and add the record with its receipt while online; it cannot be replayed without the file.",
+    draftsUnavailable:
+      "Could not read local drafts. Browser storage may be unavailable.",
+    pending: "Awaiting confirmation",
+    statusAuthentication:
+      "Sign in again to send this draft. It is still saved locally.",
+    statusConflict:
+      "The original identifier already exists with different details. Check your history and export this draft before deciding what to discard.",
+    statusNetwork:
+      "No confirmed connection to the server. The draft is still saved locally.",
+    statusInvalid:
+      "The server did not confirm this draft. Review the fields or export it for manual entry.",
+    sent: "Fill-up confirmed by the server.",
+    sync: "Send drafts for this account",
+    refreshDrafts: "Refresh local drafts",
+    noMotorcycle: "No motorcycle linked",
+    recoveredRelationships:
+      "Choose a motorcycle from this account. Older saved-station and grade links will not be imported.",
   },
   pricing: {
     eyebrow: "Moto Track Pro",

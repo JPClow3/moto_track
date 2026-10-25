@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { appCopy } from "$lib/i18n/app-copy";
+  import { actionMessage } from "$lib/i18n/action-messages";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { locale, t } from "$lib/i18n/store";
@@ -9,6 +11,8 @@
   } from "$lib/utils/offline-fuel";
   import { privateFileUrl } from "$lib/utils/private-file-url";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
+  import NearbyStations from "$components/NearbyStations.svelte";
+  import LocationFields from "$components/LocationFields.svelte";
   import TrendChart from "$components/charts/TrendChart.svelte";
   import PageHeader from "$lib/components/app/PageHeader.svelte";
   import BikeContextBar from "$lib/components/app/BikeContextBar.svelte";
@@ -264,12 +268,11 @@
       };
     }
     cancel();
-    void queueOfflineFuelSubmission(formData)
+    void queueOfflineFuelSubmission(formData, $locale, data.user?.id)
       .then(() => {
         formBusy = false;
         statusRole = "status";
-        offlineMessage =
-          "Sem conexão: abastecimento guardado na fila offline e será enviado ao reconectar.";
+        offlineMessage = $t("offline.fuelQueued");
         manualSheet?.close();
         scanSheet?.close();
         ocrReview = false;
@@ -278,9 +281,7 @@
         formBusy = false;
         statusRole = "alert";
         offlineMessage =
-          error instanceof Error
-            ? error.message
-            : "Não foi possível guardar o abastecimento offline.";
+          error instanceof Error ? error.message : $t("offline.queueFailed");
       });
   };
 
@@ -475,6 +476,8 @@
     </p>
   {/if}
 
+  <a class="text-sm underline" href="/offline">{$t("offline.draftsTitle")}</a>
+
   {#if statusMessage && !offlineMessage}
     <p
       class={statusRole === "alert"
@@ -495,6 +498,18 @@
 
   <!-- Key signals -->
   <SignalStrip {signals} />
+  <NearbyStations
+    stations={data.stations.map((station: Record<string, unknown>) => ({
+      ...station,
+      id: String(station.id),
+      name: String(station.name),
+    }))}
+    records={data.rows}
+    grades={data.grades.map((grade: Record<string, unknown>) => ({
+      id: String(grade.id),
+      name: String(grade.name),
+    }))}
+  />
 
   <!-- Compact Trend Chart -->
   {#if data.consumption.length >= 2}
@@ -537,7 +552,11 @@
                 </td>
                 <td data-label={$t("common.status")}>
                   {row.errors.length
-                    ? row.errors.join(" ")
+                    ? row.errors
+                        .map((message: string) =>
+                          actionMessage($locale, message),
+                        )
+                        .join(" ")
                     : $t("fuel.statusValid")}
                 </td>
               </tr>
@@ -640,7 +659,7 @@
               filterPeriod = "all";
             }}
           >
-            Limpar filtros
+            {appCopy($locale, "Limpar filtros")}
           </button>
         {/if}
       </div>
@@ -1573,6 +1592,7 @@
             <textarea class="field min-h-16" id="station-notes" name="notes"
             ></textarea>
           </div>
+          <LocationFields id="new-station" />
           <button
             class="button-primary justify-self-start"
             type="submit"
@@ -1588,8 +1608,52 @@
           </h4>
           <ul class="divide-y divide-[var(--line)]">
             {#each data.stations as station (station.id)}
-              <li class="flex items-center justify-between py-2 text-sm">
+              <li
+                class="flex flex-wrap items-center justify-between gap-3 py-2 text-sm"
+              >
                 <span>{station.name}</span>
+                <details class="w-full">
+                  <summary class="cursor-pointer">{$t("common.edit")}</summary>
+                  <form
+                    class="mt-3 grid gap-3"
+                    method="POST"
+                    action="?/saveStation"
+                    use:enhance={enhanceWithStatus}
+                  >
+                    <input type="hidden" name="id" value={station.id} />
+                    <input type="hidden" name="name" value={station.name} />
+                    <input
+                      type="hidden"
+                      name="brand"
+                      value={station.brand ?? ""}
+                    />
+                    <input
+                      type="hidden"
+                      name="city"
+                      value={station.city ?? ""}
+                    />
+                    <input
+                      type="hidden"
+                      name="state"
+                      value={station.state ?? ""}
+                    />
+                    <input
+                      type="hidden"
+                      name="notes"
+                      value={station.notes ?? ""}
+                    />
+                    <LocationFields
+                      id={`station-${station.id}`}
+                      latitude={String(station.latitude ?? "")}
+                      longitude={String(station.longitude ?? "")}
+                    />
+                    <button
+                      class="button-primary justify-self-start"
+                      type="submit"
+                      disabled={formBusy}>{$t("common.save")}</button
+                    >
+                  </form>
+                </details>
                 <form
                   method="POST"
                   action="?/deleteStation"

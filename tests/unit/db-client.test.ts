@@ -2,17 +2,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   postgres: vi.fn(),
+  dev: false,
 }));
 
 vi.mock("postgres", () => ({ default: mocks.postgres }));
 vi.mock("$env/dynamic/private", () => ({ env: {} }));
 vi.mock("$env/dynamic/public", () => ({ env: {} }));
+vi.mock("$app/environment", () => ({
+  get dev() {
+    return mocks.dev;
+  },
+}));
 
 import { getDb } from "../../src/lib/server/db/client";
 
 describe("database client lifetime", () => {
   beforeEach(() => {
     mocks.postgres.mockReset();
+    mocks.dev = false;
     mocks.postgres.mockImplementation(() => ({}));
   });
 
@@ -39,7 +46,11 @@ describe("database client lifetime", () => {
 
     expect(mocks.postgres).toHaveBeenCalledWith(
       "postgres://user:pass@ep-example.neon.tech/neondb",
-      expect.objectContaining({ ssl: "require" }),
+      expect.objectContaining({
+        ssl: "require",
+        prepare: false,
+        idle_timeout: 5,
+      }),
     );
   });
 
@@ -54,7 +65,11 @@ describe("database client lifetime", () => {
 
     expect(mocks.postgres).toHaveBeenCalledWith(
       "postgres://hyperdrive.internal/neondb",
-      expect.objectContaining({ ssl: undefined }),
+      expect.objectContaining({
+        ssl: undefined,
+        prepare: true,
+        idle_timeout: undefined,
+      }),
     );
   });
 
@@ -70,7 +85,7 @@ describe("database client lifetime", () => {
 
     expect(mocks.postgres).toHaveBeenCalledWith(
       "postgres://hyperdrive.internal/neondb",
-      expect.any(Object),
+      expect.objectContaining({ prepare: true }),
     );
   });
 
@@ -86,7 +101,20 @@ describe("database client lifetime", () => {
 
     expect(mocks.postgres).toHaveBeenCalledWith(
       "postgres://user:pass@ep-example.neon.tech/neondb",
-      expect.any(Object),
+      expect.objectContaining({ prepare: false, idle_timeout: 5 }),
+    );
+  });
+
+  it("releases idle clients during Vite emulation even with a local Hyperdrive binding", () => {
+    mocks.dev = true;
+    getDb({
+      env: {
+        HYPERDRIVE: { connectionString: "postgres://hyperdrive.local/neondb" },
+      },
+    } as never);
+    expect(mocks.postgres).toHaveBeenCalledWith(
+      "postgres://hyperdrive.local/neondb",
+      expect.objectContaining({ prepare: true, idle_timeout: 5 }),
     );
   });
 });

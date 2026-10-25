@@ -1,5 +1,6 @@
 import { env as privateEnv } from "$env/dynamic/private";
 import { env as publicEnv } from "$env/dynamic/public";
+import { dev } from "$app/environment";
 
 export type RuntimeEnv = {
   DATABASE_URL?: string;
@@ -60,5 +61,20 @@ export function resolveRuntimeEnv(
 }
 
 export function runtimeEnv(platform?: App.Platform): RuntimeEnv {
-  return resolveRuntimeEnv(platform?.env, { ...publicEnv, ...privateEnv });
+  const local: Record<string, string | undefined> = {
+    ...publicEnv,
+    ...privateEnv,
+  };
+  // Wrangler's checked-in vars describe production. During Vite development,
+  // explicit environment variables select the disposable Neon/Auth target.
+  return dev
+    ? resolveRuntimeEnv(
+        local,
+        Object.fromEntries(
+          Object.entries(platform?.env ?? {}).filter(
+            ([key]) => typeof local[key] !== "string",
+          ),
+        ),
+      )
+    : resolveRuntimeEnv(platform?.env, local);
 }

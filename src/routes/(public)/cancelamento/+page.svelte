@@ -1,5 +1,11 @@
+<script lang="ts">
+  import { locale } from "$lib/i18n/store";
+  import { legalCopy } from "$lib/i18n/legal";
+  $: copy = legalCopy($locale);
+</script>
+
 <svelte:head>
-  <title>Cancelamento · Moto Track</title>
+  <title>{copy.cancellation.title} · Moto Track</title>
   <link rel="canonical" href="https://moto-track.net/cancelamento" />
 </svelte:head>
 
@@ -8,20 +14,18 @@
   <div class="accent-glow legal-glow" aria-hidden="true"></div>
   <div class="relative mx-auto max-w-3xl px-6 py-16 sm:py-20">
     <p class="eyebrow">
-      <span class="slash-rule" aria-hidden="true"></span> Sem pegadinha
+      <span class="slash-rule" aria-hidden="true"></span>
+      {copy.cancellation.eyebrow}
     </p>
-    <h1 class="display mt-5 text-5xl sm:text-6xl">Cancelamento</h1>
+    <h1 class="display mt-5 text-5xl sm:text-6xl">{copy.cancellation.title}</h1>
     <p class="mt-5 max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
-      Assinaturas Pro são gerenciadas pelo portal da Dodo Payments — cancele
-      quando quiser, sem burocracia e sem precisar falar com ninguém.
+      {copy.cancellation.introduction}
     </p>
     <p class="mt-4 max-w-2xl leading-relaxed text-[var(--muted)]">
-      O cancelamento impede a próxima renovação. Seu acesso Pro continua até o
-      fim do período atual. Durante o teste grátis de 7 dias, cancele antes da
-      primeira cobrança para não pagar pelo plano.
+      {copy.cancellation.conditions}
     </p>
     <a href="/billing/portal" class="button-secondary mt-8"
-      >Abrir portal de cobrança</a
+      >{copy.cancellation.portal}</a
     >
   </div>
 </section>

@@ -6,10 +6,12 @@ import { en } from "./locales/en";
 export const LOCALES = ["pt-BR", "en"] as const;
 export type Locale = (typeof LOCALES)[number];
 
-// English catalogue work is intentionally kept in-tree, but several product
-// journeys still contain Portuguese-only copy. Do not advertise or negotiate
-// a partially translated experience as a released locale.
-export const RELEASED_LOCALES = ["pt-BR"] as const satisfies readonly Locale[];
+// Both reviewed catalogues are enabled on this development branch for journey
+// acceptance. This flag alone is not evidence of a production release.
+export const RELEASED_LOCALES = [
+  "pt-BR",
+  "en",
+] as const satisfies readonly Locale[];
 
 export const DEFAULT_LOCALE: Locale = "pt-BR";
 export const LOCALE_COOKIE = "locale";
@@ -50,7 +52,7 @@ export function normalizeLocale(value: unknown): Locale | null {
   if (isLocale(value)) return value;
   // Accept a bare language tag ("pt", "en-GB") and resolve it to what we ship.
   if (typeof value !== "string") return null;
-  const base = value.toLowerCase().split("-")[0];
+  const base = value.trim().toLowerCase().split("-")[0];
   if (base === "pt") return "pt-BR";
   if (base === "en") return "en";
   return null;
@@ -77,8 +79,14 @@ export function localeFromAcceptLanguage(header: string | null): Locale | null {
         .map((p) => p.trim())
         .find((p) => p.startsWith("q="))
         ?.slice(2);
-      const quality = q === undefined ? 1 : Number.parseFloat(q);
-      return { tag: tag.trim(), quality: Number.isNaN(quality) ? 0 : quality };
+      const quality = q === undefined ? 1 : Number(q);
+      return {
+        tag: tag.trim(),
+        quality:
+          Number.isFinite(quality) && quality >= 0 && quality <= 1
+            ? quality
+            : 0,
+      };
     })
     .filter((entry) => entry.tag && entry.quality > 0)
     .sort((a, b) => b.quality - a.quality);

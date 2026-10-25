@@ -13,7 +13,8 @@
   } from "$lib/components/app/ActionMenu.svelte";
   import type { FeatureConfig } from "$server/domain/features";
   import { t, locale, format } from "$lib/i18n/store";
-  import { formatMoney, formatPreciseMoney } from "$lib/i18n";
+  import { formatDate, formatMoney, formatPreciseMoney } from "$lib/i18n";
+  import { featureCopy } from "$lib/i18n/feature-copy";
   import { privateFileUrl } from "$lib/utils/private-file-url";
 
   export let routeSlug: string;
@@ -105,8 +106,10 @@
   // key.
   function labelForColumn(column: string) {
     return (
-      feature.fields.find((field) => field.key === column)?.label ??
-      column.replaceAll("_", " ")
+      featureCopy(
+        $locale,
+        feature.fields.find((field) => field.key === column)?.label ?? "",
+      ) || column.replaceAll("_", " ")
     );
   }
 
@@ -124,6 +127,18 @@
       return $t("common.empty");
     if (typeof value === "boolean")
       return value ? $t("common.yes") : $t("common.no");
+    const field = feature.fields.find((candidate) => candidate.key === key);
+    if (
+      (field?.kind === "date" || field?.kind === "datetime") &&
+      (typeof value === "string" || value instanceof Date) &&
+      Number.isFinite(new Date(value).getTime())
+    ) {
+      return formatDate($locale, value);
+    }
+    const option = field?.options?.find(
+      (candidate) => candidate.value === value,
+    );
+    if (option) return featureCopy($locale, option.label);
     if (key.endsWith("_cents") && typeof value === "number") {
       return formatMoney($locale, value);
     }
@@ -255,9 +270,7 @@
       />
     </svelte:fragment>
     <svelte:fragment slot="overflow">
-      <PageOverflowMenu
-        label={$t("authenticatedUx.moreActions") || "Mais ações"}
-      >
+      <PageOverflowMenu label={$t("authenticatedUx.moreActions")}>
         <a
           class="focus-ring flex items-center gap-2 rounded px-3 py-2 text-sm text-[var(--fg)] hover:bg-[var(--line)]"
           href={`/${routeSlug}/export.csv`}
@@ -427,6 +440,11 @@
                     >
                       <input
                         type="hidden"
+                        name="completion_version"
+                        value={String(row.completion_version ?? 0)}
+                      />
+                      <input
+                        type="hidden"
                         name="id"
                         value={String(row.id ?? "")}
                       />
@@ -528,7 +546,7 @@
         {#if isFieldVisible(field.key, reminderTrigger)}
           <div class="field-group">
             <label class="field-label" for={`new-${field.key}`}>
-              {field.label}
+              {featureCopy($locale, field.label)}
               {#if field.required}<span
                   class="text-[var(--accent)]"
                   aria-hidden="true">*</span
@@ -580,7 +598,9 @@
                 >
                   <option value="">{$t("common.select")}</option>
                   {#each field.options ?? [] as option (option.value)}
-                    <option value={option.value}>{option.label}</option>
+                    <option value={option.value}
+                      >{featureCopy($locale, option.label)}</option
+                    >
                   {/each}
                 </select>
               {:else}
@@ -600,7 +620,9 @@
                     {/each}
                   {:else}
                     {#each field.options ?? [] as option (option.value)}
-                      <option value={option.value}>{option.label}</option>
+                      <option value={option.value}
+                        >{featureCopy($locale, option.label)}</option
+                      >
                     {/each}
                   {/if}
                 </select>
@@ -621,7 +643,7 @@
 
             {#if field.help}
               <p class="field-help" id={`new-${field.key}-help`}>
-                {field.help}
+                {featureCopy($locale, field.help)}
               </p>
             {/if}
           </div>
@@ -673,7 +695,7 @@
             {#if isFieldVisible(field.key, editReminderTrigger)}
               <div class="field-group">
                 <label class="field-label" for={`edit-${field.key}`}>
-                  {field.label}
+                  {featureCopy($locale, field.label)}
                   {#if field.required}<span
                       class="text-[var(--accent)]"
                       aria-hidden="true">*</span
@@ -721,7 +743,9 @@
                     >
                       <option value="">{$t("common.select")}</option>
                       {#each field.options ?? [] as option (option.value)}
-                        <option value={option.value}>{option.label}</option>
+                        <option value={option.value}
+                          >{featureCopy($locale, option.label)}</option
+                        >
                       {/each}
                     </select>
                   {:else}
@@ -742,7 +766,9 @@
                         {/each}
                       {:else}
                         {#each field.options ?? [] as option (option.value)}
-                          <option value={option.value}>{option.label}</option>
+                          <option value={option.value}
+                            >{featureCopy($locale, option.label)}</option
+                          >
                         {/each}
                       {/if}
                     </select>
@@ -763,7 +789,7 @@
                 {/if}
                 {#if field.help}
                   <p class="field-help" id={`edit-${field.key}-help`}>
-                    {field.help}
+                    {featureCopy($locale, field.help)}
                   </p>
                 {/if}
               </div>

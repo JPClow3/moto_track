@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { appCopy } from "$lib/i18n/app-copy";
   import { Fuel, Wrench, CircleGauge, ReceiptText } from "lucide-svelte";
   import type { PublicSaleReport } from "$types/sale-report";
   import { locale } from "$lib/i18n/store";
@@ -43,7 +44,7 @@
 </script>
 
 <svelte:head>
-  <title>{moto.name || "Dossiê de venda"} · Moto Track</title>
+  <title>{moto.name || appCopy($locale, "Dossiê de venda")} · Moto Track</title>
   <!-- A private share link should never end up in a search index. -->
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
@@ -52,13 +53,16 @@
   <header>
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
-      Dossiê de venda
+      {appCopy($locale, "Dossiê de venda")}
     </p>
     <h1 class="display mt-3 text-5xl sm:text-6xl">
-      {moto.name || "Histórico da moto"}
+      {moto.name || appCopy($locale, "Histórico da moto")}
     </h1>
     <p class="mt-3 text-[var(--muted)]">
-      Histórico registrado no Moto Track e compartilhado pelo proprietário.
+      {appCopy(
+        $locale,
+        "Histórico registrado no Moto Track e compartilhado pelo proprietário.",
+      )}
     </p>
   </header>
 
@@ -68,7 +72,9 @@
     >
       {#each specs as spec (spec.label)}
         <div class="bg-[var(--bg)] p-5">
-          <dt class="label-tech text-[var(--muted)]">{spec.label}</dt>
+          <dt class="label-tech text-[var(--muted)]">
+            {appCopy($locale, spec.label)}
+          </dt>
           <dd class="display numeric mt-2 text-2xl">{spec.value}</dd>
         </div>
       {/each}
@@ -77,9 +83,12 @@
 
   <!-- Cost of ownership — the reason a buyer opens this link. -->
   <section class="mt-14">
-    <h2 class="display text-3xl">Custo registrado</h2>
+    <h2 class="display text-3xl">{appCopy($locale, "Custo registrado")}</h2>
     <p class="mt-2 text-sm text-[var(--muted)]">
-      Somatório de tudo que o proprietário lançou para esta moto.
+      {appCopy(
+        $locale,
+        "Somatório de tudo que o proprietário lançou para esta moto.",
+      )}
     </p>
 
     <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -87,7 +96,7 @@
         <div class="panel p-5">
           <div class="flex items-center gap-2 text-[var(--muted)]">
             <svelte:component this={cost.icon} class="h-4 w-4" />
-            <p class="label-tech">{cost.label}</p>
+            <p class="label-tech">{appCopy($locale, cost.label)}</p>
           </div>
           <p class="display numeric mt-3 text-3xl">{brl(cost.value)}</p>
         </div>
@@ -98,13 +107,17 @@
       class="mt-4 flex flex-col gap-4 rounded-panel bg-[var(--panel-invert)] p-6 text-paper sm:flex-row sm:items-center sm:justify-between"
     >
       <div>
-        <p class="label-tech text-paper/50">Total investido</p>
+        <p class="label-tech text-paper/50">
+          {appCopy($locale, "Total investido")}
+        </p>
         <p class="display numeric mt-1 text-5xl text-[var(--accent)]">
           {brl(report.totals.all)}
         </p>
       </div>
       <div class="sm:text-right">
-        <p class="label-tech text-paper/50">Serviços registrados</p>
+        <p class="label-tech text-paper/50">
+          {appCopy($locale, "Serviços registrados")}
+        </p>
         <p class="display numeric mt-1 text-5xl">{report.serviceCount}</p>
       </div>
     </div>
@@ -112,11 +125,16 @@
 
   <!-- Maintenance history -->
   <section class="mt-14">
-    <h2 class="display text-3xl">Histórico de manutenção</h2>
+    <h2 class="display text-3xl">
+      {appCopy($locale, "Histórico de manutenção")}
+    </h2>
     {#if report.timeline.length < report.serviceCount}
       <!-- Say so rather than let a capped table read as the whole history. -->
       <p class="mt-2 text-sm text-[var(--muted)]">
-        Exibindo os {report.timeline.length} serviços mais recentes de {report.serviceCount}.
+        {appCopy($locale, "Exibindo os")}
+        {report.timeline.length}
+        {appCopy($locale, "serviços mais recentes de")}
+        {report.serviceCount}.
       </p>
     {/if}
 
@@ -126,10 +144,16 @@
           <table class="w-full min-w-[640px] text-left text-sm">
             <thead class="border-b border-[var(--line)] text-[var(--muted)]">
               <tr>
-                <th class="label-tech px-4 py-3">Data</th>
-                <th class="label-tech px-4 py-3">Serviço</th>
-                <th class="label-tech px-4 py-3">Odômetro</th>
-                <th class="label-tech px-4 py-3 text-right">Custo</th>
+                <th class="label-tech px-4 py-3">{appCopy($locale, "Data")}</th>
+                <th class="label-tech px-4 py-3"
+                  >{appCopy($locale, "Serviço")}</th
+                >
+                <th class="label-tech px-4 py-3"
+                  >{appCopy($locale, "Odômetro")}</th
+                >
+                <th class="label-tech px-4 py-3 text-right"
+                  >{appCopy($locale, "Custo")}</th
+                >
               </tr>
             </thead>
             <tbody>
@@ -140,7 +164,9 @@
                     >{day(event.date)}</td
                   >
                   <td class="px-4 py-3">
-                    <p class="font-semibold">{event.type || "Manutenção"}</p>
+                    <p class="font-semibold">
+                      {event.type || appCopy($locale, "Manutenção")}
+                    </p>
                     {#if event.description}
                       <p class="mt-0.5 text-xs text-[var(--muted)]">
                         {event.description}
@@ -165,7 +191,7 @@
       </div>
     {:else}
       <p class="panel mt-6 p-8 text-center text-[var(--muted)]">
-        Nenhuma manutenção registrada para esta moto.
+        {appCopy($locale, "Nenhuma manutenção registrada para esta moto.")}
       </p>
     {/if}
   </section>
@@ -174,11 +200,14 @@
     class="mt-14 flex flex-col gap-3 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center sm:justify-between"
   >
     <p class="text-xs text-[var(--muted)]">
-      Link válido até {day(report.expiresAt)}. O proprietário pode revogá-lo a
-      qualquer momento.
+      {appCopy($locale, "Link válido até")}
+      {day(report.expiresAt)}{appCopy(
+        $locale,
+        ". O proprietário pode revogá-lo a qualquer momento.",
+      )}
     </p>
     <a class="button-secondary shrink-0" href="/"
-      >Criar meu histórico no Moto Track</a
+      >{appCopy($locale, "Criar meu histórico no Moto Track")}</a
     >
   </footer>
 </article>

@@ -7,7 +7,195 @@
  * than a silent fallback at runtime.
  */
 export const ptBR = {
+  auth: {
+    signIn: "Entrar",
+    signUp: "Criar conta",
+    title: "Acesse sua garagem.",
+    description: "Histórico, custos, lembretes e revisões em um só lugar.",
+    mode: "Modo de acesso",
+    email: "Email",
+    password: "Senha",
+    emailPlaceholder: "voce@exemplo.com",
+    forgot: "Esqueci minha senha",
+    resetHeading: "Esqueci a senha",
+    sendReset: "Enviar link de recuperação",
+    continueWith: "ou continuar com",
+    newAccount: "Nova conta",
+    passwordPlaceholder: "senha (mínimo 6 caracteres)",
+    newPassword: "Nova senha",
+    updateHeading: "Defina sua nova senha.",
+    updateDescription:
+      "Escolha uma senha nova para continuar acessando sua garagem.",
+    minimumPassword: "mínimo 6 caracteres",
+    confirmPassword: "Confirme a senha",
+    savePassword: "Salvar nova senha",
+    resetSent: "Email de recuperação enviado.",
+    googleFailed:
+      "Não foi possível concluir o acesso com o Google. Tente novamente ou entre com email e senha.",
+    passwordUpdated:
+      "Senha atualizada. Entre novamente para acessar sua garagem.",
+    invalidReset: "Link de recuperação inválido ou expirado.",
+    passwordTooShort: "A senha precisa ter pelo menos 6 caracteres.",
+    passwordMismatch: "As senhas não coincidem.",
+    invalidCredentials: "Email ou senha incorretos.",
+    accountExists:
+      "Já existe uma conta com esse email. Entre ou recupere sua senha.",
+    invalidEmail: "Informe um email válido.",
+    failed: "Não foi possível concluir o acesso. Tente novamente em instantes.",
+    resetFailed:
+      "Não foi possível atualizar a senha. Confira o link e tente novamente.",
+    requestFailed: "Não foi possível enviar o link. Aguarde e tente novamente.",
+    verificationSignIn: "Entre novamente para verificar seu e-mail.",
+    verificationSendFailed:
+      "Não foi possível enviar o código. Aguarde e tente novamente.",
+    verificationRequired: "Informe o código recebido no seu e-mail.",
+    verificationInvalid:
+      "Código inválido ou expirado. Confira o código ou solicite outro.",
+  },
+  sharing: {
+    invalidInviteEmail:
+      "Informe o e-mail de outra pessoa e uma permissão válida.",
+    pendingLimit:
+      "Revogue um convite pendente antes de criar outro (limite de 20).",
+    invalidInvitation: "Convite inválido.",
+    invalidAccess: "Acesso inválido.",
+    invitationNotFound: "Convite não encontrado.",
+    invitationUnavailable: "Convite expirado, utilizado ou revogado.",
+    signInInvited: "Entre com o e-mail convidado.",
+    alreadyOwner: "Você já é o proprietário desta garagem.",
+    verifyInvitedEmail:
+      "Entre com o e-mail convidado e verifique esse endereço antes de aceitar.",
+    invitationGone: "Este convite não está mais disponível.",
+    accessNotFound: "Acesso não encontrado.",
+    accessRevoked: "Acesso não encontrado ou revogado.",
+    ownerConfirmStages:
+      "As etapas do plano devem ser confirmadas pelo proprietário.",
+    invalidRecord: "Registro inválido.",
+    permissionDenied: "Sua permissão não permite este registro.",
+    checkFields: "Confira os campos do registro.",
+    validDateOdometer: "Informe data e odômetro válidos.",
+    checkValues: "Confira valores e descrição do registro.",
+    motorcycleNotFound: "Moto não encontrada nesta garagem.",
+    saveFailed:
+      "Não foi possível salvar o registro. Confira os campos e tente novamente.",
+    sendVerification: "Enviar código de verificação",
+    codeSent: "Código enviado. Confira seu e-mail.",
+    verificationCode: "Código recebido por e-mail",
+    verifyEmail: "Verificar e-mail",
+    heading: "Garagem compartilhada",
+    manage: "Gerenciar acessos",
+    invite: "Convidar uma pessoa",
+    scope:
+      "Compartilhe motos ativas e seus históricos com familiares, colaboradores ou uma oficina. A permissão inclui motos atuais e futuras. Documentos privados, conta e cobrança permanecem pessoais.",
+    rolesHelp:
+      "Leitura: motos, manutenção e abastecimentos. Colaborador: também registra serviços e abastecimentos. Oficina: apenas motos e manutenção. O proprietário pode revogar o acesso a qualquer momento.",
+    viewer: "Leitura",
+    contributor: "Colaborador",
+    workshop: "Oficina",
+    email: "E-mail da pessoa",
+    permission: "Permissão",
+    generate: "Gerar convite",
+    inviteUrl: "Link privado do convite",
+    linkHelp:
+      "Copie e envie o link à pessoa convidada. Ele aparece somente agora e expira em 7 dias. A aceitação exige o mesmo e-mail verificado.",
+    members: "Pessoas e convites",
+    revoke: "Revogar acesso",
+    cancelInvite: "Cancelar convite",
+    noMembers: "Nenhum acesso ativo à sua garagem.",
+    received: "Garagens às quais tenho acesso",
+    leave: "Sair da garagem",
+    noReceived: "Nenhuma garagem foi compartilhada com você.",
+    activity: "Registros feitos por colaboradores",
+    noActivity: "Nenhum registro de colaborador.",
+    deletedAccount: "Conta excluída",
+    verifiedEmail:
+      "Confirme que seu e-mail foi verificado antes de aceitar o convite.",
+    accept: "Aceitar convite",
+    wrongEmail: "Entre com o e-mail que recebeu o convite para continuar.",
+    noBikes: "Esta garagem não possui motos ativas.",
+    addRecord: "Adicionar registro",
+    recordHelp:
+      "O registro será salvo no histórico do proprietário e identificado na atividade da garagem.",
+    recordType: "Tipo de registro",
+    date: "Data",
+    cost: "Custo (R$)",
+    description: "Descrição do serviço",
+    gasoline: "Gasolina",
+    ethanol: "Etanol",
+    station: "Posto",
+    noRecords: "Nenhum registro neste histórico.",
+  },
+  odometerScan: {
+    heading: "Ler odômetro por foto",
+    help: "Fotografe o odômetro total com boa iluminação. A foto é enviada ao serviço de leitura e não é salva na garagem. Revise a leitura antes de confirmar. Limite de 10 MB.",
+    photo: "Foto do painel",
+    scan: "Ler foto",
+    reading: "Lendo…",
+    review: "Confira e corrija a leitura (km)",
+    confirm: "Confirmar odômetro",
+    lower:
+      "A leitura é menor que o odômetro atual. Confira se a foto mostra o total, e não o marcador parcial.",
+    failed:
+      "Não foi possível ler o painel. Tente outra foto ou digite o odômetro manualmente.",
+  },
+  forecast: {
+    lastServiceDate: "Data do último serviço (se conhecida)",
+    nextDate: "Próxima manutenção estimada",
+    tireDate: "Troca estimada",
+    observedPace: "Ritmo observado: {count} km/dia",
+    caution:
+      "Estimativa baseada no histórico recente. Inspecione o pneu regularmente.",
+  },
+  calendar: {
+    heading: "Lembretes no calendário",
+    help: "Baixe um arquivo para importar ou gere um link para assinar no Google Agenda ou Apple Calendar. A atualização depende da frequência do seu calendário. Lembretes por km precisam de histórico recente para estimar uma data; sem ele, ficam disponíveis no app.",
+    download: "Baixar calendário (.ics)",
+    create: "Gerar link de assinatura",
+    url: "URL privada do calendário",
+    secret:
+      "Copie agora: o link só aparece uma vez. Quem tiver este endereço poderá ver os títulos e datas dos seus lembretes. Revogue-o para impedir novas atualizações; eventos já importados precisam ser removidos no calendário.",
+    expires: "Válido até",
+    revoke: "Revogar link",
+  },
+  nearby: {
+    heading: "Postos próximos e preços registrados",
+    help: "Compare seus próprios registros dos últimos 30 dias, pelo mesmo combustível. O primeiro é o menor preço observado. Cadastre a localização dos postos; preços e disponibilidade podem mudar. Sua localização fica neste navegador.",
+    latitude: "Latitude",
+    longitude: "Longitude",
+    useLocation: "Usar localização atual",
+    locating: "Obtendo localização…",
+    unavailable:
+      "Localização indisponível. Informe as coordenadas manualmente.",
+    denied:
+      "Não foi possível obter a localização. Permita o acesso ou informe as coordenadas.",
+    radius: "Distância máxima (km)",
+    empty:
+      "Nenhum posto com localização e preço recente para este combustível nesta distância.",
+    directions: "Como chegar",
+    fuelType: "Combustível",
+  },
+  ownership: {
+    heading: "Custo total por km",
+    help: "Compra, combustível, manutenção, pneus, taxas e seguro desde a aquisição. O custo por km usa apenas a distância percorrida desde a compra. Registros anteriores à compra não entram na soma.",
+    setup: "Dados da aquisição",
+    date: "Data da compra",
+    mileage: "Odômetro na compra (km)",
+    price: "Valor de compra (R$)",
+    total: "Custo total registrado",
+    distance: "Distância desde a compra",
+    missing:
+      "Informe data, valor e odômetro da compra para calcular o custo por km.",
+    noDistance:
+      "O custo por km estará disponível quando houver distância percorrida desde a compra.",
+    fuel: "Combustível",
+    maintenance: "Manutenção",
+    tires: "Pneus",
+    fees: "Taxas e seguro",
+  },
   common: {
+    language: "Idioma",
+    activity: "Atividades",
+    rider: "Motociclista",
     save: "Salvar",
     saveChanges: "Salvar alterações",
     cancel: "Cancelar",
@@ -130,6 +318,7 @@ export const ptBR = {
       "Cadastre um seguro primeiro — o sinistro precisa estar ligado a uma apólice.",
   },
   dashboard: {
+    modelNotProvided: "Modelo não informado",
     synced: "Dados sincronizados",
     noData: "Sem dados",
     total: "Total",
@@ -275,6 +464,12 @@ export const ptBR = {
     unknown: "Não sei confirmar",
   },
   garage: {
+    invalidServiceStart:
+      "Informe uma data válida de entrada em serviço, ou deixe vazio se não souber.",
+    motorcycleNotFound: "Moto não encontrada.",
+    inServiceDate: "Entrada original em serviço",
+    inServiceHelp:
+      "Data da primeira entrega ou nota da moto nova, não da compra usada. Deixe vazio se desconhecida.",
     pageTitle: "Garagem",
     heading: "Sua garagem",
     description: "Mantenha motos, odômetros e referências oficiais em ordem.",
@@ -308,6 +503,28 @@ export const ptBR = {
     distanceUnit: "km",
   },
   maintenance: {
+    compareWorkshops: "Comparar oficinas",
+    optionalPlan: "Plano de manutenção (opcional)",
+    independentService: "Serviço avulso",
+    completedReviewNumber: "Ocorrência realizada deste serviço",
+    completedReviewHelp:
+      "Selecione o marco deste serviço, não o número global da revisão na caderneta. Exemplo: o primeiro serviço de válvulas aos 6.000 km / 18 meses é a ocorrência 1, mesmo na revisão 3 da caderneta.",
+    nextReview: "Próxima ocorrência deste serviço",
+    confirmBooklet: "Confirme o histórico na caderneta",
+    baselineReviewNumber:
+      "Última ocorrência deste serviço antes dos registros do app (vazio se não souber)",
+    occurrenceMilestone: "Ocorrência {number} · {km} km / {months} meses",
+    occurrenceMileageOnly: "Ocorrência {number} · {km} km",
+    occurrenceCalendarOnly: "Ocorrência {number} · {months} meses",
+    occurrenceUnknown: "Marco não informado",
+    noPreviousService: "Este serviço nunca foi realizado",
+    baselineServiceOccurrence: "Última ocorrência deste serviço antes do app",
+    relativeReplacementDate:
+      "Este item vence pelo tempo desde a última troca confirmada. A contagem de ocorrências é opcional.",
+    convertManufacturerPlan:
+      "Substituir os marcos do fabricante por estes intervalos personalizados",
+    convertManufacturerPlanHelp:
+      "Use apenas para substituir explicitamente um plano existente do mesmo serviço. O vínculo com a fonte oficial será removido.",
     pageTitle: "Manutenção",
     pageSubtitle: "Planeje serviços, peças e evidências da sua moto.",
     noMotorcyclesHint: "Cadastre uma moto para criar planos de manutenção.",
@@ -341,7 +558,7 @@ export const ptBR = {
     historyStatusLabel: "O que você sabe sobre este serviço",
     lastDoneKmLabel: "Odômetro do último serviço (km)",
     historyEditHint:
-      "O odômetro só é usado quando você confirma que o serviço foi feito.",
+      "Informe o histórico anterior aos registros do app. Os registros de manutenção determinam o serviço mais recente; edite ou exclua o registro para corrigir esse serviço.",
     saveHistory: "Salvar histórico",
     photoFormTitle: "Adicionar foto",
     recordSelect: "Selecione um registro",
@@ -495,6 +712,16 @@ export const ptBR = {
     statusValid: "Válida",
   },
   tires: {
+    inUseCount: "{count} em uso",
+    invalidWearObservation: "Informe um desgaste inteiro entre 0 e 100%.",
+    tireNotFound: "Pneu ativo não encontrado para esta moto.",
+    recordWearObservation: "Registrar medição",
+    wearObservationHelp:
+      "Confirme o desgaste medido agora. A leitura será vinculada ao odômetro atual, mesmo se o percentual não mudou.",
+    wearObservedAt: "Última medição registrada",
+    wearObservationUnknown:
+      "Sem medição confirmada de desgaste. Registre uma leitura atual para calcular a estimativa.",
+    wearObservationSaved: "Medição de desgaste registrada.",
     pageTitle: "Pneus",
     pageSubtitle: "Desgaste, calibragem e histórico de instalações.",
     noMotorcyclesHint: "Cadastre uma moto para registrar pneus e calibragens.",
@@ -647,6 +874,63 @@ export const ptBR = {
   offline: {
     title: "Offline",
     body: "O Moto Track está offline. Reconecte para sincronizar seus dados mais recentes.",
+    queuedFuel:
+      "Abastecimentos guardados serão enviados quando a conexão voltar e sua sessão estiver ativa.",
+    retryNow: "Tentar novamente agora",
+    home: "Voltar ao início",
+    receiptOnline:
+      "Envie o comprovante quando estiver online; fotos não entram na fila offline.",
+    requiredFields: "Preencha os campos obrigatórios antes de salvar offline.",
+    signInToQueue:
+      "Entre na sua conta antes de guardar um abastecimento offline.",
+    fuelQueued:
+      "Sem conexão: abastecimento guardado na fila e será enviado quando a conexão voltar e sua sessão estiver ativa.",
+    queueFailed: "Não foi possível guardar o abastecimento offline.",
+    draftsTitle: "Rascunhos locais de abastecimento",
+    draftsHelp:
+      "Estes rascunhos ficam neste navegador até a confirmação do servidor ou até você descartá-los. Exporte uma cópia antes de trocar de navegador ou limpar os dados locais.",
+    noDrafts: "Nenhum rascunho local.",
+    currentDraft: "Esta conta",
+    unknownDraft: "Conta não registrada",
+    otherDraft: "Outra conta",
+    unknownHelp:
+      "Este rascunho antigo não tem vínculo com uma conta. Ele nunca será enviado automaticamente. Confira seu histórico antes de importar para evitar duplicação.",
+    otherHelp:
+      "Entre na conta de origem para enviar este rascunho. Trocar de conta não transfere o registro.",
+    exportDraft: "Exportar rascunho JSON",
+    exportAll: "Exportar todos os rascunhos locais",
+    discard: "Descartar rascunho local",
+    discardConfirm:
+      "Descartar este rascunho deste navegador? Exporte antes se precisar de uma cópia. Isso não exclui um registro já salvo no servidor.",
+    review: "Revisar e importar",
+    reviewConsent:
+      "Conferi que este rascunho é meu, ainda não está no meu histórico e deve ser enviado pela conta indicada acima.",
+    reviewConsentRequired:
+      "Revise o rascunho e confirme explicitamente a importação para a conta atual.",
+    reviewAccount: "Importar para: {account}",
+    reviewed:
+      "Rascunho revisado e vinculado a esta conta. O identificador original foi preservado.",
+    invalidDraft:
+      "Este rascunho não pode ser enviado com segurança. Exporte e preencha os dados manualmente.",
+    missingAttachment:
+      "Este rascunho menciona um comprovante indisponível. Exporte e adicione o registro com o comprovante quando estiver online; ele não pode ser reenviado sem o arquivo.",
+    draftsUnavailable:
+      "Não foi possível ler os rascunhos locais. O armazenamento do navegador pode estar indisponível.",
+    pending: "Aguardando confirmação",
+    statusAuthentication:
+      "Entre novamente para enviar este rascunho. Ele continua guardado neste navegador.",
+    statusConflict:
+      "O identificador original já existe com dados diferentes. Confira o histórico e exporte o rascunho antes de decidir o que descartar.",
+    statusNetwork:
+      "Sem conexão confirmada com o servidor. O rascunho continua guardado neste navegador.",
+    statusInvalid:
+      "O servidor não confirmou este rascunho. Confira os campos ou exporte para preenchimento manual.",
+    sent: "Abastecimento confirmado pelo servidor.",
+    sync: "Enviar rascunhos desta conta",
+    refreshDrafts: "Atualizar rascunhos locais",
+    noMotorcycle: "Sem moto vinculada",
+    recoveredRelationships:
+      "Escolha uma moto desta conta. Vínculos antigos com posto salvo e tipo de combustível cadastrado não serão importados.",
   },
   pricing: {
     eyebrow: "Moto Track Pro",
