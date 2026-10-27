@@ -25,6 +25,7 @@
     theme: string;
     requests: Array<Record<string, string | Date>>;
     checkout: string | null;
+    portal: string | null;
     billingSummary?: {
       trialEndsAt: string | null;
       nextBillingAt: string | null;
@@ -279,6 +280,14 @@
     >
       {$t("conta.checkoutCancelled")}
     </p>{/if}
+  {#if data.portal === "error"}
+    <p
+      class="rounded border border-danger/30 bg-danger/10 p-4 text-sm text-danger"
+      role="alert"
+    >
+      {$t("conta.portalError")}
+    </p>
+  {/if}
 
   <section class="panel overflow-hidden" aria-labelledby="subscription-heading">
     <div class="grid gap-6 p-5 sm:p-6 md:grid-cols-[1fr_auto] md:items-center">

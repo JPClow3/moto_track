@@ -70,6 +70,7 @@ export async function load({ locals, url, platform }) {
     theme: userProfile?.theme ?? "system",
     requests: requests.map(normalizeDates),
     checkout: url.searchParams.get("checkout"),
+    portal: url.searchParams.get("portal"),
   };
 }
 

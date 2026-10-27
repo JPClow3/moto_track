@@ -840,6 +840,8 @@ export const ptBR = {
     checkoutPending:
       "Você voltou do checkout. Estamos verificando sua assinatura com a Dodo Payments — atualize esta página em alguns instantes.",
     checkoutCancelled: "Checkout cancelado. Nenhuma cobrança foi realizada.",
+    portalError:
+      "Não foi possível abrir o portal de pagamentos agora. Confirme sua assinatura e tente de novo em alguns instantes.",
     currentPlan: "Plano atual",
     billingInterval: "Cobrança {interval}.",
     nextBillingDate: "Próxima cobrança: {date}.",

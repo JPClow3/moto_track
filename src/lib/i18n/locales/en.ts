@@ -815,6 +815,8 @@ export const en: Messages = {
     checkoutPending:
       "You're back from checkout. We are checking your subscription with Dodo Payments — refresh this page in a moment.",
     checkoutCancelled: "Checkout cancelled. No charge was made.",
+    portalError:
+      "We could not open the payment portal right now. Confirm your subscription and try again in a moment.",
     currentPlan: "Current plan",
     billingInterval: "{interval} billing.",
     nextBillingDate: "Next billing date: {date}.",
