@@ -8,7 +8,6 @@
   import { locale, t } from "$lib/i18n/store";
   import { formatMoney } from "$lib/i18n";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
-  import Plus from "lucide-svelte/icons/plus";
 
   let { data, form } = $props();
 
@@ -349,21 +348,11 @@
     </form>
   </RecordSheet>
 
-  <!-- Secondary sections: Policies and Claims -->
+  <!-- Secondary sections: Policies and Claims (review/delete only; create via action menu) -->
   <div class="grid gap-6 lg:grid-cols-2">
     <!-- Policies Section -->
     <div class="panel grid gap-3 p-5">
-      <div class="flex items-center justify-between gap-3">
-        <h2 class="display text-xl">{$t("expenses.policiesHeading")}</h2>
-        <button
-          type="button"
-          class="button-secondary flex min-h-11 items-center gap-1 px-2 py-1 text-xs"
-          onclick={() => policySheet?.open()}
-        >
-          <Plus size={14} />
-          {$t("authenticatedUx.addPolicy")}
-        </button>
-      </div>
+      <h2 class="display text-xl">{$t("expenses.policiesHeading")}</h2>
       <div class="mt-2 grid gap-2">
         {#each data.policies as p (p.id)}
           <article
@@ -401,18 +390,7 @@
 
     <!-- Claims Section -->
     <div class="panel grid gap-3 p-5">
-      <div class="flex items-center justify-between gap-3">
-        <h2 class="display text-xl">{$t("expenses.claimsHeading")}</h2>
-        <button
-          type="button"
-          class="button-secondary flex min-h-11 items-center gap-1 px-2 py-1 text-xs"
-          disabled={!hasPolicies}
-          onclick={() => claimSheet?.open()}
-        >
-          <Plus size={14} />
-          {$t("authenticatedUx.addClaim")}
-        </button>
-      </div>
+      <h2 class="display text-xl">{$t("expenses.claimsHeading")}</h2>
       <div class="mt-2 grid gap-2">
         {#each data.claims as claim (claim.id)}
           <article

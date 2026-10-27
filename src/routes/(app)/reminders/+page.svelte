@@ -11,6 +11,9 @@
     title: $t("reminders.pageTitle"),
     subtitle: $t("reminders.pageSubtitle"),
   });
+  let showCalendarSecondary = $derived(
+    data.calendars.length > 0 || Boolean(form?.calendarUrl),
+  );
 </script>
 
 <svelte:head
@@ -62,60 +65,71 @@
   rows={data.rows}
   motorcycles={data.motorcycles}
   errorMessage=""
-/>
-
-<section
-  class="mt-6 grid gap-3 border-t border-[var(--line)] pt-5"
-  aria-labelledby="calendar-heading"
 >
-  <h2 id="calendar-heading" class="display text-xl">
-    {$t("calendar.heading")}
-  </h2>
-  <p class="text-sm text-[var(--muted)]">{$t("calendar.help")}</p>
-  {#if data.calendars.length === 0}
-    <p class="text-sm text-[var(--muted)]">{$t("calendar.empty")}</p>
-  {/if}
-  <div class="flex flex-wrap gap-3">
+  <svelte:fragment slot="overflow">
     <a
-      class="button-secondary min-h-11"
-      href={resolve("/reminders/calendar.ics")}>{$t("calendar.download")}</a
+      class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-[var(--fg)] hover:bg-[var(--line)]"
+      href={resolve("/reminders/calendar.ics")}
     >
+      {$t("calendar.download")}
+    </a>
     <form method="POST" action="?/createCalendar" use:enhance>
-      <button class="button-primary min-h-11" type="submit"
-        >{$t("calendar.create")}</button
+      <button
+        class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--line)]"
+        type="submit"
       >
+        {$t("calendar.create")}
+      </button>
     </form>
-  </div>
-  {#if form?.calendarUrl}
-    <div class="grid gap-2" role="status">
-      <label class="field-label" for="calendar-url">{$t("calendar.url")}</label>
-      <input
-        class="field w-full"
-        id="calendar-url"
-        value={form.calendarUrl}
-        readonly
-        onfocus={(event) => event.currentTarget.select()}
-      />
-      <p class="text-sm text-[var(--muted)]">{$t("calendar.secret")}</p>
-    </div>
-  {/if}
-  {#each data.calendars as calendar (calendar.id)}
-    <form
-      class="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-3"
-      method="POST"
-      action="?/revokeCalendar"
-      use:enhance
-    >
-      <span class="text-sm"
-        >{calendar.token_prefix}… · {$t("calendar.expires")}: {calendar.expires_at.slice(
-          0,
-          10,
-        )}</span
+  </svelte:fragment>
+
+  <svelte:fragment slot="afterHeader">
+    {#if showCalendarSecondary}
+      <section
+        class="grid gap-3 text-sm text-[var(--muted)]"
+        aria-labelledby="calendar-heading"
       >
-      <input type="hidden" name="id" value={calendar.id} />
-      <button class="button-secondary" type="submit"
-        >{$t("calendar.revoke")}</button
-      >
-    </form>
-  {/each}
-</section>
+        <h2
+          id="calendar-heading"
+          class="label-tech text-xs text-[var(--muted)]"
+        >
+          {$t("calendar.heading")}
+        </h2>
+        {#if form?.calendarUrl}
+          <div class="grid gap-2" role="status">
+            <label class="field-label" for="calendar-url"
+              >{$t("calendar.url")}</label
+            >
+            <input
+              class="field w-full"
+              id="calendar-url"
+              value={form.calendarUrl}
+              readonly
+              onfocus={(event) => event.currentTarget.select()}
+            />
+            <p class="text-sm text-[var(--muted)]">{$t("calendar.secret")}</p>
+          </div>
+        {/if}
+        {#each data.calendars as calendar (calendar.id)}
+          <form
+            class="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-3"
+            method="POST"
+            action="?/revokeCalendar"
+            use:enhance
+          >
+            <span class="text-sm text-[var(--fg)]"
+              >{calendar.token_prefix}… · {$t("calendar.expires")}: {calendar.expires_at.slice(
+                0,
+                10,
+              )}</span
+            >
+            <input type="hidden" name="id" value={calendar.id} />
+            <button class="button-secondary min-h-11" type="submit"
+              >{$t("calendar.revoke")}</button
+            >
+          </form>
+        {/each}
+      </section>
+    {/if}
+  </svelte:fragment>
+</FeaturePage>

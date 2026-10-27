@@ -477,6 +477,22 @@
               </button>
             </form>
           {/if}
+          {#if feature.slug === "documents" || routeSlug === "documents"}
+            <form
+              method="POST"
+              action="?/createReminder"
+              use:enhance={enhanceWithStatus}
+            >
+              <input type="hidden" name="id" value={String(row.id ?? "")} />
+              <button
+                class="button-secondary min-h-11 px-3 py-1 text-xs"
+                type="submit"
+                disabled={formBusy}
+              >
+                {$t("documents.createReminder")}
+              </button>
+            </form>
+          {/if}
           <button
             type="button"
             class="button-secondary min-h-11 px-3 py-1 text-xs"

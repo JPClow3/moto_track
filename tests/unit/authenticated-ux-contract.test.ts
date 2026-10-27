@@ -460,6 +460,14 @@ describe("authenticated UX primitives contract", () => {
     expect(expensesSrc).toContain("RecordSheet");
     // No permanent creation panels on the page
     expect(expensesSrc).not.toContain('class="panel grid gap-2 p-5"');
+    // Creation lives in FeaturePage action menu — no header Plus add buttons
+    expect(expensesSrc).not.toContain('from "lucide-svelte/icons/plus"');
+    expect(expensesSrc).not.toMatch(
+      /policiesHeading[\s\S]*?authenticatedUx\.addPolicy/,
+    );
+    expect(expensesSrc).not.toMatch(
+      /claimsHeading[\s\S]*?authenticatedUx\.addClaim/,
+    );
 
     const module = await import("../../src/routes/(app)/expenses/+page.svelte");
     const mockData = {
@@ -487,6 +495,32 @@ describe("authenticated UX primitives contract", () => {
 
     expect(body).toContain("<dialog");
   }, 15000);
+
+  it("keeps documents createReminder on FeaturePage rows without a duplicate list", () => {
+    const documentsSrc = source("src/routes/(app)/documents/+page.svelte");
+    const featurePageSrc = source("src/lib/components/FeaturePage.svelte");
+
+    expect(documentsSrc).not.toContain("documents.reminderHeading");
+    expect(documentsSrc).not.toContain('action="?/createReminder"');
+    expect(documentsSrc).toContain("FeaturePage");
+
+    expect(featurePageSrc).toContain('action="?/createReminder"');
+    expect(featurePageSrc).toContain("documents.createReminder");
+  });
+
+  it("moves trabalho cost assumptions into a RecordSheet with SignalStrip profits", () => {
+    const trabalhoSrc = source("src/routes/(app)/trabalho/+page.svelte");
+
+    expect(trabalhoSrc).toContain("RecordSheet");
+    expect(trabalhoSrc).toContain("SignalStrip");
+    expect(trabalhoSrc).toContain('action="?/saveCosts"');
+    expect(trabalhoSrc).toContain('slot="overflow"');
+    // Permanent dual-panel cost form rail is gone
+    expect(trabalhoSrc).not.toMatch(
+      /class="panel grid gap-2 p-5"[\s\S]*\?\/saveCosts/,
+    );
+    expect(trabalhoSrc).not.toContain('class="panel grid gap-2 p-5"');
+  });
 
   it("rebuilds Reports with PageHeader, generate report action, and no PageAction import", async () => {
     const reportsSrc = source("src/routes/(app)/reports/+page.svelte");
