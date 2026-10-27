@@ -16,7 +16,7 @@
     type ActionChoice,
   } from "$lib/components/app/ActionMenu.svelte";
   import type { FeatureConfig } from "$server/domain/features";
-  import { t, locale, format } from "$lib/i18n/store";
+  import { t, locale } from "$lib/i18n/store";
   import { formatDate, formatMoney, formatPreciseMoney } from "$lib/i18n";
   import { featureCopy } from "$lib/i18n/feature-copy";
   import { privateFileUrl } from "$lib/utils/private-file-url";
@@ -150,6 +150,28 @@
       return formatPreciseMoney($locale, value);
     }
     return String(value);
+  }
+
+  /** Coerce Date/string/number for formatting; null when missing/invalid. */
+  function coerceDateInput(value: unknown): string | number | Date | null {
+    if (value instanceof Date) {
+      return Number.isFinite(value.getTime()) ? value : null;
+    }
+    if (typeof value === "string" || typeof value === "number") {
+      if (value === "") return null;
+      return Number.isFinite(new Date(value).getTime()) ? value : null;
+    }
+    return null;
+  }
+
+  function formatUpdatedAt(value: unknown): string {
+    const coerced = coerceDateInput(value);
+    if (!coerced) return $t("common.empty");
+    return formatDate($locale, coerced, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   }
 
   // One dialog for the whole table rather than one per row.
@@ -413,15 +435,7 @@
 
           <p class="mt-1 text-xs text-[var(--muted)]">
             {$t("feature.updatedAt")}:
-            {#if row.updated_at && typeof row.updated_at === "string"}
-              {$format.date(row.updated_at, {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
-            {:else}
-              {valueFor(row, "updated_at")}
-            {/if}
+            {formatUpdatedAt(row.updated_at)}
           </p>
         </div>
 
