@@ -341,7 +341,8 @@ test.describe("data surfaces responsive behavior", () => {
         notes: marker,
       });
       await gotoAppRoute(page, "/trabalho");
-      const workRow = page.locator("tbody tr", { hasText: marker });
+      // FeaturePage lists sessions in ActivityTimeline, not a table.
+      const workRow = page.locator(".timeline-item", { hasText: marker });
       if (!(await workRow.count())) {
         expect(workResult.body).toContain(
           "O plano Free permite até 3 turnos por mês",

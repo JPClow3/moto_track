@@ -213,9 +213,13 @@ test.describe("nearby prices, OCR confirmation and staff manual sources", () => 
       const card = page.locator("article").filter({
         has: page.getByRole("heading", { name: snapshot.name, exact: true }),
       });
-      // Odometer photo scan is always visible under the bike card (not details).
+      // Scan lives under the odometer/specs <details> on the bike card.
+      await card
+        .getByText("Odômetro e especificações", { exact: true })
+        .click();
       const scanForm = card.locator('form[action="?/scanOdometer"]');
       const scanner = scanForm.locator("..");
+      await expect(scanForm.locator('[name="photo"]')).toBeVisible();
       await scanForm.locator('[name="photo"]').setInputFiles({
         name: "synthetic-odometer.png",
         mimeType: "image/png",

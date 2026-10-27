@@ -96,7 +96,7 @@ test.describe("completed core flows", () => {
     const purchaseDate = card.getByLabel("Data da compra", { exact: true });
     // Setup form lives in <details>; open it when the bike already has a basis.
     if (!(await purchaseDate.isVisible())) {
-      await card.getByText("Configurar custo de aquisição", { exact: true }).click();
+      await card.getByText("Dados da aquisição", { exact: true }).click();
     }
     await expect(purchaseDate).toBeVisible();
     await purchaseDate.fill("2026-01-01");
