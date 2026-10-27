@@ -34,8 +34,8 @@
 <style>
   .corner-slashes {
     position: absolute;
-    top: -8px;
-    right: -20px;
+    top: 0;
+    right: 0;
     width: 90px;
     height: 56px;
     pointer-events: none;

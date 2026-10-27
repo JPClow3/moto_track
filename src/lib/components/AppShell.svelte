@@ -269,7 +269,7 @@
   </aside>
 
   <!-- Main area -->
-  <div class="flex min-h-screen flex-col lg:pl-72">
+  <div class="flex min-h-screen min-w-0 flex-col lg:pl-72">
     <header
       class="bg-[var(--bg)]/80 sticky top-0 z-20 border-b border-[var(--line)] backdrop-blur-md"
     >
@@ -370,7 +370,7 @@
 
     <main
       id="main-content"
-      class="app-main mx-auto w-full max-w-7xl flex-1 px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-8"
+      class="app-main mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-8"
       tabindex="-1"
     >
       <slot />

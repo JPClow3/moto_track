@@ -951,8 +951,8 @@
 
   .corner-slashes {
     position: absolute;
-    top: -10px;
-    right: -30px;
+    top: 0;
+    right: 0;
     width: 160px;
     height: 90px;
     pointer-events: none;
