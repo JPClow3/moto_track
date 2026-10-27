@@ -3,6 +3,7 @@ import { actions as reminderActions } from "../../src/routes/(app)/reminders/+pa
 import { actions as accessActions } from "../../src/routes/(app)/garage/access/+page.server";
 import { actions as invitationActions } from "../../src/routes/(app)/garage/invite/[token]/+page.server";
 import { actions as garageActions } from "../../src/routes/(app)/garage/+page.server";
+import { deleteOwnedRow } from "$server/domain/crud";
 
 function database() {
   const queries: Array<{ query: string; values: unknown[] }> = [];
@@ -158,5 +159,51 @@ describe("service-start saves", () => {
     expect(queries[owner]).toMatchObject({ values: ["owner"], tx: true });
     expect(update).toBeGreaterThan(owner);
     expect(queries[update].tx).toBe(true);
+  });
+});
+
+describe("owned-row deletes", () => {
+  it("lock the owner before deleting, so plan triggers follow reminder completion's order", async () => {
+    const queries: Array<{ query: string; values: unknown[]; tx: boolean }> =
+      [];
+    let inTransaction = false;
+    const query = async (
+      strings: TemplateStringsArray | string,
+      ...values: unknown[]
+    ) => {
+      if (!Array.isArray(strings)) return strings;
+      const sql = strings.join("?");
+      queries.push({ query: sql, values, tx: inTransaction });
+      if (sql.includes('select id from neon_auth."user"'))
+        return [{ id: values[0] }];
+      return [];
+    };
+    const db = Object.assign(query, {
+      begin: async (callback: (tx: typeof query) => Promise<unknown>) => {
+        inTransaction = true;
+        try {
+          return await callback(query);
+        } finally {
+          inTransaction = false;
+        }
+      },
+    });
+    expect(
+      await deleteOwnedRow(
+        db as never,
+        "maintenance_plan_items",
+        "plan",
+        "owner",
+      ),
+    ).toBeNull();
+    const owner = queries.findIndex(({ query }) =>
+      query.includes("for no key update"),
+    );
+    const removal = queries.findIndex(({ query }) =>
+      query.includes("delete from"),
+    );
+    expect(queries[owner]).toMatchObject({ values: ["owner"], tx: true });
+    expect(removal).toBeGreaterThan(owner);
+    expect(queries[removal]).toMatchObject({ tx: true });
   });
 });
