@@ -62,12 +62,18 @@ partner credentials and a supported purchasing/quoting contract remain pending.
   matrix. Mobile and desktop screenshots of shared-garage and tire pages were
   inspected. These checks predate the final atomic-write source snapshot.
 - On 2026-10-27 (America/Sao_Paulo), disposable-auth e2e against
-  `release-verify-20261027` re-verified after UX cleanup: ownership cost
-  persistence, nearby fuel comparison, OCR confirm-before-write, staff source
-  inspection, and Free-slot concurrency passed. Calendar create was moved out of
-  the overflow menu into an always-visible secondary section so `enhance` and
-  Playwright no longer race the unmounted panel; re-verification of that path is
-  in progress on `cursor/release-finish-gaps-5937` (PR #47).
+  `release-verify-20261027` on `cursor/release-finish-gaps-5937` (PR #47):
+  - completion-flows + feature-acceptance **7/7** (calendar create/revoke/ICS,
+    ownership cost, Free-slot concurrency, nearby fuel, OCR confirm-before-write,
+    staff sources)
+  - tire life, shared garage, maintenance phase, offline fuel, workshop **8/8**
+  - public project **15/15** (locale, responsive, PWA, smoke)
+  Calendar create/download now live in an always-visible reminders secondary
+  section; PageOverflowMenu stays mounted and stops trigger-click close races.
+- 320px overflow on `/dashboard` and `/fuel` fixed by formatting activity/list
+  Date values (no raw GMT dumps) plus AppShell `min-w-0` / `overflow-x-hidden`.
+  core-responsive + data-responsive viewport suites passed after the fix.
+
 - Frozen product snapshot on Node 22.23.4: lint and format checks passed,
   all 701 unit tests passed in 90 files, and the Cloudflare build passed.
   One E2E-only TypeScript narrowing fix and the final browser suites remain
