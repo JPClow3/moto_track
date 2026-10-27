@@ -1,8 +1,6 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { runtimeEnv } from "$server/runtime";
 import {
-  SESSION_CACHE_COOKIE,
-  SESSION_CACHE_MAX_AGE_SECONDS,
   forgetCachedSession,
   readCachedSession,
   rememberSession,
@@ -68,24 +66,14 @@ function extractUpstreamCookie(res: Response, name: string): string | null {
   return null;
 }
 
-function sessionCookieOptions(event: RequestEvent, maxAge: number) {
-  return {
+function storeSession(event: RequestEvent, token: string) {
+  event.cookies.set(APP_SESSION_COOKIE, token, {
     path: "/",
     httpOnly: true,
-    sameSite: "lax" as const,
+    sameSite: "lax",
     secure: event.url.protocol === "https:",
-    maxAge,
-  };
-}
-
-function storeSession(event: RequestEvent, token: string) {
-  event.cookies.set(
-    APP_SESSION_COOKIE,
-    token,
-    sessionCookieOptions(event, MAX_AGE_SECONDS),
-  );
-  // The previous user's cache is signed with the previous token.
-  event.cookies.delete(SESSION_CACHE_COOKIE, { path: "/" });
+    maxAge: MAX_AGE_SECONDS,
+  });
 }
 
 function storeOAuthChallenge(event: RequestEvent, challenge: string) {
@@ -100,7 +88,6 @@ function storeOAuthChallenge(event: RequestEvent, challenge: string) {
 
 export function clearSession(event: RequestEvent) {
   event.cookies.delete(APP_SESSION_COOKIE, { path: "/" });
-  event.cookies.delete(SESSION_CACHE_COOKIE, { path: "/" });
 }
 
 async function call(
@@ -140,7 +127,6 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
 type SessionLoad = {
   session: AuthSession | null;
   user: AuthUser | null;
-  cacheCookie?: string;
 };
 
 const inflightSessionLoads = new Map<string, Promise<SessionLoad>>();
@@ -164,19 +150,6 @@ function sessionFromPayload(data: Record<string, unknown>): {
   };
 }
 
-function publishCacheCookie(event: RequestEvent, cacheCookie?: string) {
-  if (!cacheCookie) return;
-  try {
-    event.cookies.set(
-      SESSION_CACHE_COOKIE,
-      cacheCookie,
-      sessionCookieOptions(event, SESSION_CACHE_MAX_AGE_SECONDS),
-    );
-  } catch {
-    // A cache write must not fail an otherwise valid session.
-  }
-}
-
 async function loadSession(
   event: RequestEvent,
   token: string,
@@ -185,14 +158,12 @@ async function loadSession(
   if (!res.ok) return { session: null, user: null };
   const resolved = sessionFromPayload(await readJson(res));
   if (!resolved) return { session: null, user: null };
-  let cacheCookie: string | undefined;
   try {
-    cacheCookie = await rememberSession(token, resolved);
+    await rememberSession(token, resolved);
   } catch {
-    cacheCookie = undefined;
+    // A cache write must not fail an otherwise valid session.
   }
-  publishCacheCookie(event, cacheCookie);
-  return { ...resolved, cacheCookie };
+  return resolved;
 }
 
 /** Resolve the current user from the app's session cookie, or null. */
@@ -202,23 +173,13 @@ export async function resolveSession(
   const token = event.cookies.get(APP_SESSION_COOKIE);
   if (!token) return { session: null, user: null };
 
-  const cached = await readCachedSession(
-    token,
-    event.cookies.get(SESSION_CACHE_COOKIE),
-  );
+  const cached = await readCachedSession(token);
   if (cached) return cached;
 
   // Parallel requests in one isolate share one Neon Auth round trip.
   // Each get-session reads neon_auth.session and neon_auth.jwks.
   const existing = inflightSessionLoads.get(token);
-  if (existing) {
-    const shared = await existing;
-    // The request that won the race sets the cookie on its own response.
-    // Copy it onto this response too, or the document the browser keeps can
-    // miss the cache and call Neon Auth again on the next navigation.
-    publishCacheCookie(event, shared.cacheCookie);
-    return { session: shared.session, user: shared.user };
-  }
+  if (existing) return existing;
   const pending = loadSession(event, token).finally(() => {
     inflightSessionLoads.delete(token);
   });

@@ -58,7 +58,7 @@
       id: "cookies",
       title: "Cookies e serviços de terceiros",
       paragraphs: [
-        "A aplicação usa o cookie mt_session para manter a sessão por até sete dias, o cookie httpOnly mt_session_cache por até cinco minutos (identificador e e-mail da sessão, para não consultar o serviço de autenticação a cada página; ele é apagado no logout) e o cookie mt_oauth_challenge por até dez minutos durante o login social. A preferência de idioma fica em um cookie por até um ano; a preferência de tema é salva no localStorage do navegador. Ao usar o modo offline, o service worker armazena a página offline e o manifesto no Cache API, e envios de abastecimento aguardando sincronização ficam no IndexedDB até o envio ser concluído ou os dados locais serem removidos.",
+        "A aplicação usa o cookie mt_session para manter a sessão por até sete dias e o cookie mt_oauth_challenge por até dez minutos durante o login social. A preferência de idioma fica em um cookie por até um ano; a preferência de tema é salva no localStorage do navegador. Ao usar o modo offline, o service worker armazena a página offline e o manifesto no Cache API, e envios de abastecimento aguardando sincronização ficam no IndexedDB até o envio ser concluído ou os dados locais serem removidos.",
         "O navegador também pode armazenar cookies ou dados próprios dos serviços de autenticação, cobrança, telemetria e notificações que você usar. Você pode limitar o armazenamento pelo navegador, mas isso pode impedir partes do Moto Track de funcionar corretamente.",
       ],
     },
@@ -111,7 +111,7 @@
     <p
       class="label-tech mt-10 border-t border-[var(--line)] pt-5 text-[var(--muted)]"
     >
-      Última atualização: 27 de outubro de 2026
+      Última atualização: 29 de setembro de 2026
     </p>
   </div>
 </section>
