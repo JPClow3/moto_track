@@ -22,9 +22,30 @@ acceptance are separate evidence layers. This audit does not mark the goal done.
 | English                            | Public/app/auth/admin/legal/export copy, locale negotiation, saved notification language                                                 | Final translation tests and browser journeys; branch QA only                                                |
 | Offline fuel queue                 | Fixing authentication redirects, explicit server acknowledgement, stable retry IDs and account binding                                   | Regression and browser acceptance pending                                                                   |
 
+## Browser acceptance status (2026-10-27, America/Sao_Paulo)
+
+Disposable Neon Auth e2e on `release-verify-20261027` / PR #47 proved:
+
+| Capability                 | Browser evidence                                                       |
+| -------------------------- | ---------------------------------------------------------------------- |
+| Ownership cost per km      | completion-flows acquisition save + reload                             |
+| Calendar reminders         | create private feed, anonymous GET, revoke, `.ics` download            |
+| Nearby fuel                | feature-acceptance same-grade/premium/stale filtering                  |
+| Odometer OCR confirm       | preview does not write until confirm (provider mocked at boundary)     |
+| Manual-source transparency | staff source versions / item counts                                    |
+| Shared garages             | invite/revoke/accept/workshop role enforcement                         |
+| Workshop labor comparison  | five-account unlock, equal weight, withdrawal                          |
+| Phased maintenance         | exact model-year occurrence persistence                                |
+| Tire wear observations     | remaining distance + confirmed reset                                   |
+| Offline fuel queue         | durable ACK, no resurrection, expired-auth drafts                      |
+| English / locale           | public locale suite 5/5                                                |
+| Responsive shell           | core + data routes within viewport at 320–1280px after date-format fix |
+
+Still not browser-proven against **production providers**: live Mistral OCR, Dodo paid renewal, R2 ownership with real bucket, VAPID push delivery.
+
 ## Remaining roadmap scope
 
-- Finish integrated browser acceptance of the implementations listed above.
+- Keep disposable browser acceptance green as the app changes.
 - Expand exact, year-specific schedules only where primary manufacturer evidence
   supports applicability. Four new Dafra model-years are automatic; contradictory
   or incompletely mapped official documents remain visibly advisory.
@@ -104,6 +125,17 @@ partner credentials and a supported purchasing/quoting contract remain pending.
 - Dodo paid renewal, refund/dispute handling, scheduled email/push delivery,
   operational recovery and the deployment runbook remain release requirements;
   local mocks or a zero-value trial do not prove provider acceptance.
+
+## Release blockers (explicit)
+
+These remain open and prevent declaring the product release-ready:
+
+1. **Production Neon migrate + Pages/Workers deploy** — disposable branch only; production schema/deploy unverified.
+2. **Provider acceptance** — local env has no `MISTRAL_*`, `DODO_*`, `R2_*`, or `VAPID_*` values; `PRODUCTION_PROVIDER_SMOKE` cannot run here. Shared Pages previews still point at production bindings, so tip commits keep `[CF-Pages-Skip]`.
+3. **Mercado Livre / insurer partner credentials** — owner confirmed unavailable (2026-10-23); OAuth transport alone is not purchase/quoting proof.
+4. **Legal counsel sign-off** on terms/privacy/commercial copy.
+
+This audit does not mark the release goal done while any blocker above is unmet.
 
 ## Working environment
 
