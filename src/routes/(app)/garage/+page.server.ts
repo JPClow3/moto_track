@@ -102,6 +102,9 @@ export async function load({ locals, platform }) {
     loadError = true;
   };
   const [motorcycles, profileRows, models] = await Promise.all([
+    // Deliberately no `deleted_at is null`: archiving soft-deletes the row
+    // (see `archiveMotorcycle`), and this list is the only place an archived
+    // motorcycle can be restored from.
     rowsOrEmpty(
       locals.db<Row[]>`
         select * from motorcycles

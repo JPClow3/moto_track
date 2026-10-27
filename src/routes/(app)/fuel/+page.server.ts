@@ -197,7 +197,7 @@ export async function load({ locals }) {
     ),
     locals.db<Row[]>`
       select id, name, current_odometer_km from motorcycles
-      where owner_id = ${user.id} and is_active = true
+      where owner_id = ${user.id} and is_active = true and deleted_at is null
       order by name
     `.catch(() => [] as Row[]),
     locals.db<Row[]>`
