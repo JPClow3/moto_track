@@ -126,6 +126,25 @@ partner credentials and a supported purchasing/quoting contract remain pending.
   operational recovery and the deployment runbook remain release requirements;
   local mocks or a zero-value trial do not prove provider acceptance.
 
+## Production migrate lag (read-only, 2026-10-27 America/Sao_Paulo)
+
+Neon project `misty-meadow-08424188`:
+
+- **production** (`br-lingering-darkness-acnan3z2`): 21 migrations applied; last is
+  `20260929123000_enforce_billing_environment.sql`.
+- **release-verify-20261027** (`br-twilight-hat-ac2ujtl1`): 36 migrations applied
+  through `20261023220000_maintenance_first_replacement_deadline.sql`.
+
+**15 migrations are pending on production** (all `20261023*` files). They were
+verified on the disposable branch only. This work does **not** apply them to
+production without an explicit operator decision.
+
+Cloudflare Pages project `moto-track` still shares production Hyperdrive
+`173c6f16dc3445cdb982cd84dbcb9b23` and R2 bucket `moto-track-media` with
+preview. Preview env var names omit several production secrets (Mistral, Dodo
+API key, VAPID private, push encryption), but shared Hyperdrive/R2 alone means
+unisolated previews remain unsafe for acceptance — keep `[CF-Pages-Skip]`.
+
 ## Release blockers (explicit)
 
 These remain open and prevent declaring the product release-ready:
