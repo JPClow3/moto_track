@@ -186,7 +186,8 @@ export async function load({ locals, url }) {
     rowsOrEmpty(
       locals.db<Row[]>`
         select id, title, motorcycle_id, trigger_type, trigger_value_km,
-          trigger_value_days, reference_km, reference_date
+          trigger_value_days, reference_km, reference_date,
+          snoozed_until_date, snoozed_until_km
         from reminders
         where owner_id = ${ownerId} and is_active = true
       `,
