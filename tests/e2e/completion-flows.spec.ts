@@ -40,11 +40,8 @@ test.describe("completed core flows", () => {
     const reminder = (await response.json()).result;
     try {
       await page.reload();
-      // Calendar subscription lives in the page overflow menu after the
-      // authenticated UX cleanup — open that before creating a link.
-      await page
-        .getByRole("button", { name: "Mais ações", exact: true })
-        .click();
+      // Calendar subscription actions are always visible under the calendar
+      // secondary section (not buried in the overflow menu).
       await page
         .getByRole("button", { name: "Gerar link de assinatura", exact: true })
         .click();
