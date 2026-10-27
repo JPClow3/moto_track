@@ -37,7 +37,8 @@
     }
     if (typeof value === "string" || typeof value === "number") {
       if (value === "") return $t("common.empty");
-      if (!Number.isFinite(new Date(value).getTime())) return $t("common.empty");
+      if (!Number.isFinite(new Date(value).getTime()))
+        return $t("common.empty");
       return $format.date(value);
     }
     return $t("common.empty");

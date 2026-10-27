@@ -68,8 +68,8 @@ partner credentials and a supported purchasing/quoting contract remain pending.
     staff sources)
   - tire life, shared garage, maintenance phase, offline fuel, workshop **8/8**
   - public project **15/15** (locale, responsive, PWA, smoke)
-  Calendar create/download now live in an always-visible reminders secondary
-  section; PageOverflowMenu stays mounted and stops trigger-click close races.
+    Calendar create/download now live in an always-visible reminders secondary
+    section; PageOverflowMenu stays mounted and stops trigger-click close races.
 - 320px overflow on `/dashboard` and `/fuel` fixed by formatting activity/list
   Date values (no raw GMT dumps) plus AppShell `min-w-0` / `overflow-x-hidden`.
   core-responsive + data-responsive viewport suites passed after the fix.
