@@ -422,7 +422,7 @@
                 </p>
               {:else}
                 <p class="display numeric text-6xl text-[var(--accent)]">
-                  R$&nbsp;—
+                  {$t("pricing.priceAtCheckout")}
                 </p>
                 <p class="mt-2 text-xs text-paper/50">
                   {publicCopy($locale, "Preço confirmado no checkout")}

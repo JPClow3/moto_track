@@ -1,6 +1,39 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { seedLocalFuelDrafts } from "./helpers/offline-queue";
+
+/** First visit can finish install/activate after load; claim may need a reload. */
+async function ensureServiceWorkerControls(page: Page) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          if (!("serviceWorker" in navigator)) return false;
+          await navigator.serviceWorker.ready;
+          return Boolean(
+            navigator.serviceWorker.controller ||
+            (await navigator.serviceWorker.getRegistration("/"))?.active,
+          );
+        }),
+      { timeout: 20_000 },
+    )
+    .toBe(true);
+
+  const controlled = await page.evaluate(() =>
+    Boolean(navigator.serviceWorker.controller),
+  );
+  if (!controlled) {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
+  }
+
+  await expect
+    .poll(
+      () => page.evaluate(() => Boolean(navigator.serviceWorker.controller)),
+      { timeout: 20_000 },
+    )
+    .toBe(true);
+}
 
 test("registers the Moto Track service worker", async ({ page }) => {
   await page.goto("/");
@@ -41,6 +74,7 @@ test("cold offline recovery exports and discards local drafts without account da
 }) => {
   await page.goto("/precos");
   await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
+  await ensureServiceWorkerControls(page);
   await page.locator("#locale-select").selectOption("en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
@@ -152,6 +186,7 @@ test("uses the explicit English preference for a standalone offline fallback wit
 }) => {
   await page.goto("/precos");
   await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
+  await ensureServiceWorkerControls(page);
   await page.locator("#locale-select").selectOption("en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect
