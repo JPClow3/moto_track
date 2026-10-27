@@ -198,30 +198,30 @@ export const PUBLIC_ENGLISH_COPY: Record<string, string> = {
   "Checkout direto no Mercado Livre a partir de uma peça ou plano de manutenção, sem sair para comparar links.":
     "Mercado Livre checkout from a part or maintenance plan within the app.",
   "Mais motos com agenda exata": "More motorcycles with exact schedules",
-  "Hoje só duas entradas do catálogo têm cronograma oficial transcrito; a fila é ampliar Dafra, Shineray, KTM e as demais famílias.":
-    "Expand transcribed official maintenance schedules across Dafra, Shineray, KTM and other model families.",
+  "Já há agenda oficial para CG 160 Start e quatro anos Dafra (NH 190 e NH 300). A fila continua: ampliar Shineray, KTM e as demais famílias.":
+    "Exact schedules already cover CG 160 Start and four Dafra years (NH 190 and NH 300). Next: expand Shineray, KTM and other families.",
   "Transparência das fontes do catálogo": "Catalog source transparency",
-  "Painel mostrando a data de verificação de cada manual usado no catálogo, para saber o que está desatualizado.":
-    "A dashboard showing when catalog manuals were last checked.",
+  "A fonte e a data de verificação de cada manual aparecem na ficha da moto e no admin do catálogo — não há painel público geral para o motociclista.":
+    "Each manual's source and verification date appear on the bike record and in catalog admin — there is no rider-wide public panel.",
   Planejado: "Planned",
   "Na fila": "In the backlog",
   "Aceito no backlog, ainda sem posição definida.":
     "Accepted into the backlog without a fixed order.",
   "Moto Track em inglês": "Moto Track in English",
-  "A tradução já existe no sistema de i18n; falta o seletor de idioma e as páginas públicas revisadas.":
-    "Complete translated journeys and reviewed public pages before releasing the language selector.",
+  "Seletor de idioma e páginas públicas em inglês disponíveis; o app acompanha o idioma do navegador ou a escolha na Conta.":
+    "Language switcher and English public pages are available; the app follows the browser language or your Account choice.",
   "Garagem compartilhada": "Shared garage",
   "Convide outra pessoa para acessar a mesma garagem — útil para famílias e times de entrega com várias motos.":
     "Invite another person to the same garage for family or delivery-team use.",
   "Lembretes no seu calendário": "Calendar reminders",
-  "Sincronize vencimentos por km ou data com Google Agenda ou Apple Calendar, além do e-mail e push.":
-    "Subscribe to date or estimated mileage reminders in Google Calendar or Apple Calendar.",
+  "Baixe um arquivo .ics ou gere um link de assinatura para Google Agenda ou Apple Calendar, além do e-mail e push.":
+    "Download a .ics file or create a subscription link for Google Calendar or Apple Calendar, in addition to email and push.",
   "Comparativo de oficinas": "Workshop comparison",
   "A mesma lógica do comparativo anônimo por modelo, aplicada ao preço de mão de obra por serviço e região.":
     "Anonymous labor-price comparisons by workshop, service and region.",
   "Posto mais barato perto de você": "Nearby station price comparison",
-  "O app já registra onde você abastece; a ideia é usar isso para indicar o posto mais em conta nas proximidades.":
-    "Use recorded fill-up prices and station locations to compare nearby options.",
+  "Compare postos próximos com os preços que você mesmo registrou nos últimos abastecimentos.":
+    "Compare nearby stations using the prices you recorded on recent fill-ups.",
   "Em estudo": "Exploring",
   "Ideias em avaliação": "Ideas under review",
   "Interessante no papel. Ainda sem compromisso de entrega.":
@@ -233,8 +233,8 @@ export const PUBLIC_ENGLISH_COPY: Record<string, string> = {
   "Usar o histórico de apólices e sinistros já registrado para comparar cotações de seguradoras parceiras.":
     "Compare partner insurance quotes using recorded policy and claim history.",
   "Acesso para oficinas parceiras": "Partner workshop access",
-  "Deixar uma oficina de confiança lançar serviços direto no histórico do cliente, com permissão limitada.":
-    "Allow a trusted workshop to record services with limited permission.",
+  "Na garagem compartilhada, o papel de oficina permite lançar serviços no histórico do cliente com permissão limitada.":
+    "In a shared garage, the workshop role can record services on the customer's history with limited permission.",
   "O que já funciona no Moto Track, o que vem a seguir e o que ainda está em estudo. Roadmap público e atualizado pela equipe.":
     "See what's available in Moto Track, what's next and what's being explored in the team's public roadmap.",
   Transparência: "Transparency",

@@ -2,11 +2,11 @@
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { t } from "$lib/i18n/store";
-  export let motorcycleId: string;
-  export let currentKm: number;
-  let busy = false;
-  let reading: number | null = null;
-  let message = "";
+  let { motorcycleId, currentKm }: { motorcycleId: string; currentKm: number } =
+    $props();
+  let busy = $state(false);
+  let reading = $state<number | null>(null);
+  let message = $state("");
   const scan: SubmitFunction = () => {
     busy = true;
     reading = null;
@@ -41,13 +41,16 @@
   };
 </script>
 
-<details class="mt-3 rounded border border-[var(--line)] p-3">
-  <summary class="cursor-pointer text-sm font-semibold"
-    >{$t("odometerScan.heading")}</summary
-  >
-  <p class="mt-3 text-xs text-[var(--muted)]">{$t("odometerScan.help")}</p>
+<section
+  class="mt-3 grid gap-3 rounded border border-[var(--line)] p-3"
+  aria-labelledby={`odometer-scan-${motorcycleId}`}
+>
+  <h3 class="text-sm font-semibold" id={`odometer-scan-${motorcycleId}`}>
+    {$t("odometerScan.heading")}
+  </h3>
+  <p class="text-xs text-[var(--muted)]">{$t("odometerScan.help")}</p>
   <form
-    class="mt-3 grid gap-3"
+    class="grid gap-3"
     method="POST"
     action="?/scanOdometer"
     enctype="multipart/form-data"
@@ -72,7 +75,7 @@
   </form>
   {#if reading !== null}
     <form
-      class="mt-3 grid gap-3"
+      class="grid gap-3"
       method="POST"
       action="?/updateOdometer"
       use:enhance={save}
@@ -100,7 +103,7 @@
       >
     </form>
   {/if}
-  {#if message}<p class="mt-3 text-sm" role="status" aria-live="polite">
+  {#if message}<p class="text-sm" role="status" aria-live="polite">
       {message}
     </p>{/if}
-</details>
+</section>

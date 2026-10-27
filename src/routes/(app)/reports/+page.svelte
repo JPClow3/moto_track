@@ -1,6 +1,7 @@
 <script lang="ts">
   import { appCopy } from "$lib/i18n/app-copy";
   import { enhance } from "$app/forms";
+  import { resolve } from "$app/paths";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { locale, t } from "$lib/i18n/store";
   import { formatDate, formatMoney } from "$lib/i18n";
@@ -12,8 +13,7 @@
   import ExternalLink from "lucide-svelte/icons/external-link";
   import Filter from "lucide-svelte/icons/filter";
 
-  export let data;
-  export let form;
+  let { data, form } = $props();
 
   const money = (c: number) => formatMoney($locale, c);
 
@@ -28,12 +28,12 @@
     appCopy($locale, SOURCE_LABELS[source] ?? source);
   const isCostSource = (source: string) => source !== "work";
 
-  let formBusy = false;
-  let statusMessage = "";
-  let statusRole: "status" | "alert" = "status";
-  let confirmDialog: ConfirmDialog;
-  let shareModal: RecordSheet;
-  let filterOpen = false;
+  let formBusy = $state(false);
+  let statusMessage = $state("");
+  let statusRole = $state<"status" | "alert">("status");
+  let confirmDialog = $state<ConfirmDialog>();
+  let shareModal = $state<RecordSheet>();
+  let filterOpen = $state(false);
 
   const finishStatus = (result: {
     type: string;
@@ -60,7 +60,7 @@
   };
 
   const enhanceRevoke: SubmitFunction = async ({ cancel }) => {
-    const ok = await confirmDialog.ask(
+    const ok = await confirmDialog?.ask(
       appCopy(
         $locale,
         "Revogar este link público? Quem tiver o link perderá o acesso.",
@@ -95,7 +95,7 @@
       <button
         type="button"
         class="button-primary min-h-11 px-4 text-sm font-semibold"
-        on:click={() => shareModal?.open()}
+        onclick={() => shareModal?.open()}
       >
         {$t("authenticatedUx.generateReport")}
       </button>
@@ -132,7 +132,10 @@
       </div>
       <a
         class="button-secondary flex min-h-11 shrink-0 items-center gap-1.5 px-3 py-1 text-xs"
-        href={form.publicUrl}
+        href={resolve(
+          new URL(String(form.publicUrl), "https://moto-track.net").pathname as
+            "/reports" | `/reports/sale/public/${string}`,
+        )}
         target="_blank"
         rel="noreferrer"
       >
@@ -160,7 +163,7 @@
   <RecordSheet
     bind:this={shareModal}
     title={$t("authenticatedUx.generateReport")}
-    description="Gere um link seguro com histórico de manutenções e custos para valorizar sua moto na venda."
+    description={$t("authenticatedUx.generateReportHelp")}
     closeLabel={$t("authenticatedUx.close")}
   >
     <form
@@ -180,7 +183,7 @@
           required
         >
           <option value="">{appCopy($locale, "Escolha uma moto")}</option>
-          {#each data.motorcycles as moto}
+          {#each data.motorcycles as moto (moto.id)}
             <option value={moto.id}>
               {moto.name} · {moto.brand}
               {moto.model}
@@ -285,7 +288,7 @@
       <button
         type="button"
         class="button-secondary flex min-h-11 items-center gap-1.5 px-3 py-1 text-xs"
-        on:click={() => (filterOpen = !filterOpen)}
+        onclick={() => (filterOpen = !filterOpen)}
       >
         <Filter size={14} />
         <span>{$t("authenticatedUx.filters")}</span>
@@ -341,7 +344,9 @@
           />
         </div>
         <div class="flex justify-end gap-2 sm:col-span-3">
-          <a href="/reports" class="button-secondary min-h-11 px-3 py-1 text-xs"
+          <a
+            href={resolve("/reports")}
+            class="button-secondary min-h-11 px-3 py-1 text-xs"
             >{appCopy($locale, "Limpar")}</a
           >
           <button
@@ -356,7 +361,7 @@
     {/if}
 
     <div class="divide-y divide-[var(--line)]">
-      {#each data.timeline as event}
+      {#each data.timeline as event (`${event.source}:${event.date}:${event.label}:${event.amountCents}`)}
         <div
           class="flex min-w-0 items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-[var(--panel-sunken)]"
         >
@@ -367,9 +372,13 @@
             </p>
           </div>
           <strong
-            class="numeric text-sm"
-            class:text-danger={event.amountCents > 0 &&
-              isCostSource(String(event.source))}
+            class={[
+              "numeric text-sm",
+              {
+                "text-danger":
+                  event.amountCents > 0 && isCostSource(String(event.source)),
+              },
+            ]}
           >
             {money(event.amountCents)}
           </strong>
@@ -401,42 +410,42 @@
 
     <div class="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
       <a
-        href="/fuel/export.csv"
+        href={resolve("/fuel/export.csv")}
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
         <span class="font-medium">{appCopy($locale, "Abastecimentos")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
       <a
-        href="/maintenance/export.csv"
+        href={resolve("/maintenance/export.csv")}
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
         <span class="font-medium">{appCopy($locale, "Manutenções")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
       <a
-        href="/tires/export.csv"
+        href={resolve("/tires/export.csv")}
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
         <span class="font-medium">{appCopy($locale, "Pneus")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
       <a
-        href="/expenses/export.csv"
+        href={resolve("/expenses/export.csv")}
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
         <span class="font-medium">{appCopy($locale, "Despesas")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
       <a
-        href="/documents/export.csv"
+        href={resolve("/documents/export.csv")}
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
         <span class="font-medium">{appCopy($locale, "Documentos")}</span>
         <Download size={16} class="text-[var(--muted)]" />
       </a>
       <a
-        href="/trabalho/export.csv"
+        href={resolve("/trabalho/export.csv")}
         class="focus-ring flex items-center justify-between rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm transition-colors hover:border-[var(--accent)]"
       >
         <span class="font-medium">{appCopy($locale, "Trabalho")}</span>

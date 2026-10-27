@@ -10,8 +10,7 @@
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
   import Plus from "lucide-svelte/icons/plus";
 
-  export let data;
-  export let form;
+  let { data, form } = $props();
 
   const brl = (cents: number) => formatMoney($locale, cents);
   const policyLabel = (policy: {
@@ -20,22 +19,22 @@
   }) =>
     `${policy.provider}${policy.policy_number ? ` · ${policy.policy_number}` : ""}`;
 
-  $: localizedFeature = {
+  let localizedFeature = $derived({
     ...data.feature,
     slug: $t("nav.expenses"),
     title: $t("expenses.pageTitle"),
     subtitle: $t("expenses.pageSubtitle"),
-  };
-  $: hasPolicies = data.policies.length > 0;
+  });
+  let hasPolicies = $derived(data.policies.length > 0);
 
-  let formBusy = false;
-  let statusMessage = "";
-  let statusRole: "status" | "alert" = "status";
-  let confirmDialog: ConfirmDialog;
-  let policySheet: RecordSheet;
-  let claimSheet: RecordSheet;
+  let formBusy = $state(false);
+  let statusMessage = $state("");
+  let statusRole = $state<"status" | "alert">("status");
+  let confirmDialog = $state<ConfirmDialog>();
+  let policySheet = $state<RecordSheet>();
+  let claimSheet = $state<RecordSheet>();
 
-  $: actionChoices = [
+  let actionChoices = $derived([
     {
       id: "expense-record",
       label: $t("authenticatedUx.addExpense"),
@@ -52,7 +51,7 @@
       label: $t("authenticatedUx.addClaim"),
       description: $t("authenticatedUx.addClaimDesc"),
     },
-  ] satisfies ActionChoice[];
+  ] satisfies ActionChoice[]);
 
   function handleActionSelect(event: CustomEvent<string>) {
     const choice = event.detail;
@@ -89,7 +88,7 @@
   };
 
   const enhanceDelete: SubmitFunction = async ({ cancel }) => {
-    const ok = await confirmDialog.ask($t("feature.confirmDelete"));
+    const ok = await confirmDialog?.ask($t("feature.confirmDelete"));
     if (!ok) {
       cancel();
       return;
@@ -153,7 +152,7 @@
           required
         >
           <option value="">{$t("common.select")}</option>
-          {#each data.motorcycles as m}
+          {#each data.motorcycles as m (m.id)}
             <option value={m.id}>{m.name}</option>
           {/each}
         </select>
@@ -282,7 +281,7 @@
           disabled={!hasPolicies}
         >
           <option value="">{$t("common.select")}</option>
-          {#each data.policies as p}
+          {#each data.policies as p (p.id)}
             <option value={p.id}>{policyLabel(p)}</option>
           {/each}
         </select>
@@ -330,7 +329,9 @@
         </div>
 
         <div class="field-group">
-          <label class="field-label" for="expense-claim-status">Status</label>
+          <label class="field-label" for="expense-claim-status"
+            >{appCopy($locale, "Status")}</label
+          >
           <select class="field" id="expense-claim-status" name="status">
             <option value="open">{appCopy($locale, "Aberto")}</option>
             <option value="settled">{appCopy($locale, "Resolvido")}</option>
@@ -357,7 +358,7 @@
         <button
           type="button"
           class="button-secondary flex min-h-11 items-center gap-1 px-2 py-1 text-xs"
-          on:click={() => policySheet?.open()}
+          onclick={() => policySheet?.open()}
         >
           <Plus size={14} />
           {$t("authenticatedUx.addPolicy")}
@@ -406,7 +407,7 @@
           type="button"
           class="button-secondary flex min-h-11 items-center gap-1 px-2 py-1 text-xs"
           disabled={!hasPolicies}
-          on:click={() => claimSheet?.open()}
+          onclick={() => claimSheet?.open()}
         >
           <Plus size={14} />
           {$t("authenticatedUx.addClaim")}

@@ -334,9 +334,7 @@
 
   <ActivityTimeline
     title={$t(
-      rows.length === 1
-        ? "feature.recordCountOne"
-        : "feature.recordCountOther",
+      rows.length === 1 ? "feature.recordCountOne" : "feature.recordCountOther",
       { count: rows.length },
     )}
     emptyMessage={$t("feature.noRecords")}
@@ -800,4 +798,3 @@
     {/if}
   </RecordSheet>
 </section>
-

@@ -30,6 +30,7 @@ export const APP_ENGLISH_COPY: Record<string, string> = {
   "Valor (R$)": "Amount (BRL)",
   Aberto: "Open",
   Resolvido: "Settled",
+  Status: "Status",
   "Limpar filtros": "Clear filters",
   "Reserva de manutenção por km": "Maintenance reserve per km",
   "Depreciação por km": "Depreciation per km",
