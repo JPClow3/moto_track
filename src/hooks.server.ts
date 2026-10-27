@@ -42,9 +42,14 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.request.headers.get("accept-language"),
   );
 
-  event.locals.db = getDb(event.platform);
-
-  const { session, user } = await resolveSession(event);
+  // Platform probes must not resolve Neon Auth or construct a database
+  // client. `/healthz` itself also avoids `select 1`, which was keeping the
+  // Neon compute awake on the Free plan.
+  const isHealthCheck = event.url.pathname === "/healthz";
+  if (!isHealthCheck) event.locals.db = getDb(event.platform);
+  const { session, user } = isHealthCheck
+    ? { session: null, user: null }
+    : await resolveSession(event);
   event.locals.session = session;
   event.locals.user = user;
   event.locals.safeGetSession = async () => ({ session, user });

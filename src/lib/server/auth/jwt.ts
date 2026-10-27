@@ -1,8 +1,12 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { runtimeEnv } from "$server/runtime";
 
-// One JWKS set per JWKS URL, cached across requests in the isolate. `jose`'s
-// remote set handles its own key rotation/caching internally.
+// One JWKS set per URL, kept for the life of the isolate. Neon Auth's
+// `neon_auth.jwks` table is a single row and is sequential-scanned on every
+// fetch of the JWKS URL, so refetch only after an hour (jose would otherwise
+// reload every 10 minutes) and ignore unknown-key retries for 10 minutes.
+const JWKS_CACHE_MAX_AGE_MS = 60 * 60 * 1000;
+const JWKS_COOLDOWN_MS = 10 * 60 * 1000;
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 function getJwks(platform?: App.Platform) {
@@ -12,7 +16,10 @@ function getJwks(platform?: App.Platform) {
   }
   let jwks = jwksCache.get(url);
   if (!jwks) {
-    jwks = createRemoteJWKSet(new URL(url));
+    jwks = createRemoteJWKSet(new URL(url), {
+      cacheMaxAge: JWKS_CACHE_MAX_AGE_MS,
+      cooldownDuration: JWKS_COOLDOWN_MS,
+    });
     jwksCache.set(url, jwks);
   }
   return jwks;
