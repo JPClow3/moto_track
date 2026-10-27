@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { motorcycleSlots, openDisposableDb } from "./helpers/disposable-db";
+import { reserveFreeMotorcycleSlot } from "./helpers/free-slot";
 
 test.describe("exact catalog item occurrence acceptance", () => {
   // Multi-step journeys against a real Neon/Auth branch, like the other
@@ -17,12 +18,8 @@ test.describe("exact catalog item occurrence acceptance", () => {
     const fixture = await openDisposableDb();
     const { sql, ownerId } = fixture;
     const name = `Dafra occurrence ${randomUUID()}`;
-    const active = await sql<
-      Array<{ id: string }>
-    >`select id from motorcycles where owner_id = ${ownerId} and is_active = true and deleted_at is null`;
+    const slot = await reserveFreeMotorcycleSlot(sql, ownerId);
     try {
-      // Reserve the Free account's one active slot; restore its exact state below.
-      await sql`update motorcycles set is_active = false where owner_id = ${ownerId} and is_active = true and deleted_at is null`;
       const [template] = await sql<Array<{ id: string; model_id: string }>>`
         select id, model_id from motorcycle_templates where brand = 'Dafra' and model = 'NH 190'
           and year_from = 2026 and year_to = 2026 and is_exact_schedule = true and is_catalog_visible = true
@@ -53,25 +50,20 @@ test.describe("exact catalog item occurrence acceptance", () => {
         create.locator('button[type="submit"]'),
         `Free slot should be open; motorcycles: ${await motorcycleSlots(sql, ownerId)}`,
       ).toBeEnabled();
-      // Settle the action before asserting: a create that commits after the
-      // cleanup below would leave a second active bike for later suites.
-      const [created] = await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.request().method() === "POST" &&
-            response.url().includes("?/create"),
-          { timeout: 60_000 },
-        ),
-        create.locator('button[type="submit"]').click(),
-      ]);
-      const createdBody = await created.text();
-      expect(createdBody, createdBody).toContain('"type":"success"');
+      // Prefer the visible garage heading over waitForResponse alone — cold
+      // Vite + Neon on CI can exceed 60s before the enhance response settles,
+      // while a late create after failed cleanup would poison later Free-slot suites.
+      await create.locator('button[type="submit"]').click();
       await expect(
         page.getByRole("heading", { name, exact: true }),
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 120_000 });
       const [bike] = await sql<
         Array<{ id: string; source_template_id: string }>
       >`select id, source_template_id from motorcycles where owner_id = ${ownerId} and name = ${name}`;
+      expect(
+        bike,
+        `create did not persist (${await motorcycleSlots(sql, ownerId)})`,
+      ).toBeTruthy();
       const bikeId = bike.id;
       expect(bike.source_template_id).toBe(template.id);
       await sql`update motorcycles set in_service_date = '2026-01-01' where id = ${bikeId} and owner_id = ${ownerId}`;
@@ -157,9 +149,12 @@ test.describe("exact catalog item occurrence acceptance", () => {
       }
     } finally {
       try {
-        await sql`delete from motorcycles where owner_id = ${ownerId} and name = ${name}`;
-        if (active.length)
-          await sql`update motorcycles set is_active = true where owner_id = ${ownerId} and id in ${sql(active.map((row) => row.id))} and deleted_at is null`;
+        const created = await sql<Array<{ id: string }>>`
+          select id from motorcycles where owner_id = ${ownerId} and name = ${name}
+        `;
+        await slot.restore({
+          deleteMotorcycleIds: created.map((row) => row.id),
+        });
       } finally {
         await fixture.close();
       }

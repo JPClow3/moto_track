@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { openDisposableDb } from "./helpers/disposable-db";
+import { reserveFreeMotorcycleSlot } from "./helpers/free-slot";
 
 test.describe("completed core flows", () => {
   // Multi-step journeys against a real Neon/Auth branch, like the other
@@ -122,20 +123,15 @@ test.describe("completed core flows", () => {
     const fixture = await openDisposableDb();
     const { sql, ownerId } = fixture;
     const names = [0, 1].map(() => `Concurrent bike ${randomUUID()}`);
-    const active = await sql<
-      Array<{ id: string }>
-    >`select id from motorcycles where owner_id = ${ownerId} and is_active = true and deleted_at is null`;
-    let reserved = false;
+    const [subscription] = await sql<
+      Array<{ plan: string }>
+    >`select plan from subscription_profiles where owner_id = ${ownerId}`;
+    test.skip(
+      subscription?.plan !== "free",
+      "This cap applies to the dedicated Free acceptance account.",
+    );
+    const slot = await reserveFreeMotorcycleSlot(sql, ownerId);
     try {
-      const [subscription] = await sql<
-        Array<{ plan: string }>
-      >`select plan from subscription_profiles where owner_id = ${ownerId}`;
-      test.skip(
-        subscription?.plan !== "free",
-        "This cap applies to the dedicated Free acceptance account.",
-      );
-      await sql`update motorcycles set is_active = false where owner_id = ${ownerId} and is_active = true and deleted_at is null`;
-      reserved = true;
       await page.goto("/garage");
       const responses = await Promise.allSettled(
         names.map((name) =>
@@ -186,10 +182,16 @@ test.describe("completed core flows", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].odometer_override_km).toBe(1200);
     } finally {
-      await sql`delete from motorcycles where owner_id = ${ownerId} and name in ${sql(names)}`;
-      if (reserved && active.length)
-        await sql`update motorcycles set is_active = true where owner_id = ${ownerId} and id in ${sql(active.map((bike) => bike.id))}`;
-      await fixture.close();
+      try {
+        const created = await sql<Array<{ id: string }>>`
+          select id from motorcycles where owner_id = ${ownerId} and name in ${sql(names)}
+        `;
+        await slot.restore({
+          deleteMotorcycleIds: created.map((row) => row.id),
+        });
+      } finally {
+        await fixture.close();
+      }
     }
   });
 });
