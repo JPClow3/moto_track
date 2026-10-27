@@ -51,15 +51,21 @@ test("cold offline recovery exports and discards local drafts without account da
           const cache = await caches.open("moto-track-offline-v2");
           const locale = await cache.match("/__moto-track-offline-locale__");
           // An object, so a failure names the condition that never held.
+          // The offline navigation below needs an activated worker, not a
+          // controlled page: a first-visit locale POST can land between the
+          // worker's clients.claim() and the new document, leaving it
+          // uncontrolled until the next navigation.
+          const registration =
+            await navigator.serviceWorker.getRegistration("/");
           return {
-            controlled: Boolean(navigator.serviceWorker.controller),
+            activated: registration?.active?.state === "activated",
             locale: locale ? await locale.text() : null,
             drafts: Boolean(await cache.match("/offline-drafts.js")),
           };
         }),
       { timeout: 20_000 },
     )
-    .toEqual({ controlled: true, locale: "en", drafts: true });
+    .toEqual({ activated: true, locale: "en", drafts: true });
   const id = "f03ec98b-6c67-45f9-8fbb-e95857c3d01c";
   const note = '<img src=x onerror="window.unsafeDraft=true">';
   await seedLocalFuelDrafts(page, [
@@ -160,14 +166,16 @@ test("uses the explicit English preference for a standalone offline fallback wit
         page.evaluate(async () => {
           const cache = await caches.open("moto-track-offline-v2");
           const saved = await cache.match("/__moto-track-offline-locale__");
+          const registration =
+            await navigator.serviceWorker.getRegistration("/");
           return {
-            controlled: Boolean(navigator.serviceWorker.controller),
+            activated: registration?.active?.state === "activated",
             locale: saved ? await saved.text() : null,
           };
         }),
       { timeout: 20_000 },
     )
-    .toEqual({ controlled: true, locale: "en" });
+    .toEqual({ activated: true, locale: "en" });
   await context.setOffline(true);
   try {
     await page.goto("/dashboard?offline-acceptance=1");
