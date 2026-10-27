@@ -11,4 +11,14 @@ describe("ensureAccount", () => {
 
     expect(db).toHaveBeenCalledTimes(2);
   });
+
+  it("does not overwrite preferred_locale on conflict with request locale", async () => {
+    const source = await import("node:fs").then((fs) =>
+      fs.readFileSync("src/lib/server/auth/bootstrap.ts", "utf8"),
+    );
+    expect(source).not.toMatch(
+      /on conflict \(id\) do update set preferred_locale/,
+    );
+    expect(source).toContain("on conflict (id) do update set email");
+  });
 });
