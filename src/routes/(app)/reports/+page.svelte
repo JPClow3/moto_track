@@ -368,7 +368,10 @@
           <div class="min-w-0 flex-1 break-words">
             <p class="text-sm font-medium">{event.label}</p>
             <p class="text-xs text-[var(--muted)]">
-              {sourceLabel(String(event.source))} · {event.date}
+              {sourceLabel(String(event.source))} · {formatDate(
+                $locale,
+                event.date,
+              )}
             </p>
           </div>
           <strong
