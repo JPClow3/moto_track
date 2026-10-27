@@ -32,7 +32,7 @@ Use this file for agent-specific repo workflows. Keep broader product and fronte
 
 The startup update script runs `npm install`, so assume `node_modules` is present. Standard commands live in the sections above; notes below are the non-obvious caveats.
 
-- `npm run dev` (Vite, `--host 0.0.0.0`, default port 5173) boots without a real provider environment. Public/marketing pages (`/`, `/precos`, `/blog`, `/roadmap`) render with fallbacks, but auth and data features require Neon (`DATABASE_URL`, `PUBLIC_NEON_AUTH_URL`, `NEON_AUTH_JWKS_URL`). `/healthz` returns 503 without a reachable database.
+- `npm run dev` (Vite, `--host 0.0.0.0`, default port 5173) boots without a real provider environment. Public/marketing pages (`/`, `/precos`, `/blog`, `/roadmap`) render with fallbacks, but auth and data features require Neon (`DATABASE_URL`, `PUBLIC_NEON_AUTH_URL`, `NEON_AUTH_JWKS_URL`). `/healthz` is a liveness check and returns `{ status: "ok" }` without contacting the database.
 - `npm run check`, `npm run lint`, `npm run format:check`, `npm run test:unit`, and `npm run build` all pass offline with no `.env`.
 - `npm run test:e2e` runs offline public-page coverage after browsers are installed once with `npx playwright install --with-deps`. Authenticated specs require `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`, and a real disposable Neon/Auth environment; a skipped authenticated run is not release proof.
 - `npm run db:push` applies ordered SQL migrations through `postgres.js`. Database types are hand-maintained in `src/lib/types/database.ts`; the old generator is retired.

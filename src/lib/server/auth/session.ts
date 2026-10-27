@@ -1,5 +1,10 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { runtimeEnv } from "$server/runtime";
+import {
+  forgetCachedSession,
+  readCachedSession,
+  rememberSession,
+} from "$server/auth/session-cache";
 
 // Neon Auth (Managed Better Auth) is hosted on a *different* domain than this
 // app, so we can't let its `__Secure-` session cookie ride back to the browser
@@ -119,6 +124,48 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
   }
 }
 
+type SessionLoad = {
+  session: AuthSession | null;
+  user: AuthUser | null;
+};
+
+const inflightSessionLoads = new Map<string, Promise<SessionLoad>>();
+
+function sessionFromPayload(data: Record<string, unknown>): {
+  session: AuthSession;
+  user: AuthUser;
+} | null {
+  const session = data.session as Record<string, unknown> | null | undefined;
+  const user = data.user as Record<string, unknown> | null | undefined;
+  if (!session || !user) return null;
+  const id = (user.id ?? session.userId) as string | undefined;
+  if (!id) return null;
+  const expiresAt = session.expiresAt;
+  return {
+    session: {
+      userId: id,
+      expiresAt: typeof expiresAt === "string" ? expiresAt : undefined,
+    },
+    user: { id, email: (user.email as string | null) ?? null },
+  };
+}
+
+async function loadSession(
+  event: RequestEvent,
+  token: string,
+): Promise<SessionLoad> {
+  const res = await call(event, "/get-session", { token });
+  if (!res.ok) return { session: null, user: null };
+  const resolved = sessionFromPayload(await readJson(res));
+  if (!resolved) return { session: null, user: null };
+  try {
+    await rememberSession(token, resolved);
+  } catch {
+    // A cache write must not fail an otherwise valid session.
+  }
+  return resolved;
+}
+
 /** Resolve the current user from the app's session cookie, or null. */
 export async function resolveSession(
   event: RequestEvent,
@@ -126,22 +173,19 @@ export async function resolveSession(
   const token = event.cookies.get(APP_SESSION_COOKIE);
   if (!token) return { session: null, user: null };
 
-  const res = await call(event, "/get-session", { token });
-  if (!res.ok) return { session: null, user: null };
-  const data = await readJson(res);
-  const session = data.session as Record<string, unknown> | null | undefined;
-  const user = data.user as Record<string, unknown> | null | undefined;
-  if (!session || !user) return { session: null, user: null };
+  const cached = await readCachedSession(token);
+  if (cached) return cached;
 
-  const id = (user.id ?? session.userId) as string | undefined;
-  if (!id) return { session: null, user: null };
-  return {
-    session: {
-      userId: id,
-      expiresAt: session.expiresAt as string | undefined,
-    },
-    user: { id, email: (user.email as string | null) ?? null },
-  };
+  // Parallel requests in one isolate share one Neon Auth round trip.
+  // Each get-session reads neon_auth.session and neon_auth.jwks.
+  const existing = inflightSessionLoads.get(token);
+  if (existing) return existing;
+  const pending = loadSession(event, token).finally(() => {
+    inflightSessionLoads.delete(token);
+  });
+  inflightSessionLoads.set(token, pending);
+  const loaded = await pending;
+  return { session: loaded.session, user: loaded.user };
 }
 
 type Result = { ok: boolean; message?: string };
@@ -207,6 +251,7 @@ export async function completeSocialSignIn(
 export async function signOut(event: RequestEvent) {
   const token = event.cookies.get(APP_SESSION_COOKIE);
   if (token) {
+    await forgetCachedSession(token);
     // Best-effort upstream revocation; the local cookie clear is what matters.
     try {
       await call(event, "/sign-out", { method: "POST", body: {}, token });
