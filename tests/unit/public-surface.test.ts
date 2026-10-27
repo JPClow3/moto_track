@@ -20,7 +20,8 @@ describe("public surface contracts", () => {
     const privacy = source("src/routes/(public)/privacidade/+page.svelte");
 
     expect(terms).toContain("Última atualização: 29 de setembro de 2026");
-    expect(privacy).toContain("Última atualização: 29 de setembro de 2026");
+    expect(privacy).toContain("Última atualização: 27 de outubro de 2026");
+    expect(privacy).toContain("mt_session_cache");
     expect(terms).toContain("Limitações e responsabilidade");
     expect(privacy).toContain("Seus direitos pela LGPD");
     expect(privacy).toContain('href="/billing/conta"');

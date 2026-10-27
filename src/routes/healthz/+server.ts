@@ -1,11 +1,9 @@
 import { json } from "@sveltejs/kit";
-import { getDb } from "$server/db/client";
 
-export async function GET({ platform }) {
-  try {
-    await getDb(platform)`select 1`;
-    return json({ status: "ok" });
-  } catch {
-    return json({ status: "error" }, { status: 503 });
-  }
+/**
+ * Liveness only. A `select 1` here wakes the Neon compute on every platform
+ * probe (Free plan, scale-to-zero), including while the app is otherwise idle.
+ */
+export function GET() {
+  return json({ status: "ok" });
 }
