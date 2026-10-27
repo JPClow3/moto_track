@@ -5,6 +5,18 @@
   let {
     motorcycles = [],
   }: { motorcycles?: ReturnType<typeof ownershipSummary>[] } = $props();
+
+  /** User toggles stick per motorcycle; unset → default open when !ready. */
+  let openByMotorcycleId = $state<Record<string, boolean>>({});
+
+  function setupOpen(motorcycle: { id: string; ready: boolean }) {
+    return openByMotorcycleId[motorcycle.id] ?? !motorcycle.ready;
+  }
+
+  function onSetupToggle(id: string, event: ToggleEvent) {
+    const details = event.currentTarget as HTMLDetailsElement;
+    openByMotorcycleId[id] = details.open;
+  }
 </script>
 
 <section class="grid gap-4" aria-labelledby="ownership-heading">
@@ -65,7 +77,10 @@
               {$t("ownership.missing")}
             </p>
           {/if}
-          <details open={!motorcycle.ready}>
+          <details
+            open={setupOpen(motorcycle)}
+            ontoggle={(event) => onSetupToggle(motorcycle.id, event)}
+          >
             <summary class="cursor-pointer text-sm font-semibold"
               >{$t("ownership.setup")}</summary
             >
