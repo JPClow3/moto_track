@@ -280,7 +280,9 @@
       <PageOverflowMenu label={$t("authenticatedUx.moreActions")}>
         <a
           class="focus-ring flex items-center gap-2 rounded px-3 py-2 text-sm text-[var(--fg)] hover:bg-[var(--line)]"
-          href={resolve(`/${routeSlug}/export.csv` as `/${string}`)}
+          href={resolve("/(app)/[feature]/export.csv", {
+            feature: routeSlug,
+          })}
         >
           <Download size={14} aria-hidden="true" />
           {$t("common.exportCsv")}
@@ -370,7 +372,7 @@
               {#if primaryHref}
                 <a
                   class="text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
-                  href={resolve(primaryHref as `/${string}`)}
+                  href={resolve(primaryHref as `/files/${string}`)}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -397,7 +399,7 @@
                   {#if href}
                     <a
                       class="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                      href={resolve(href as `/${string}`)}
+                      href={resolve(href as `/files/${string}`)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
