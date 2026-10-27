@@ -8,7 +8,10 @@
   let open = false;
   let triggerButton: HTMLButtonElement;
 
-  function toggle() {
+  function toggle(event: MouseEvent) {
+    // Prevent the same click from reaching svelte:window handleDocumentClick,
+    // which would immediately close the menu after open (Playwright race).
+    event.stopPropagation();
     open = !open;
   }
 
