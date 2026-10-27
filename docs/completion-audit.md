@@ -94,11 +94,14 @@ partner credentials and a supported purchasing/quoting contract remain pending.
 
 ## Working environment
 
-- Git branch: `work/complete-product-flows`.
-- Isolated Neon branch: `finish-app-20261023` (`br-dawn-glitter-ac0vy5bm`),
+- Git branch: `cursor/release-finish-gaps-5937` (continues `work/complete-product-flows`).
+- Isolated Neon branch: `release-verify-20261027` (`br-twilight-hat-ac2ujtl1`),
   project `misty-meadow-08424188`. Production has not been migrated by this work.
+- On 2026-10-27 the 15 pending migrations through
+  `20261023220000_maintenance_first_replacement_deadline.sql` applied cleanly to
+  that disposable branch; a second `npm run db:push` applied none. Integration
+  probes passed with fixtures rolled back: `tests/integration/core-flows.cjs`,
+  `garage-account-concurrency.cjs`, `workshop-benchmark.cjs`, and
+  `offline-fuel-receipts.cjs`.
 - Local disposable configuration and credentials are kept in ignored
   `.env.finish-app`; do not commit or publish that file.
-- This Windows host exhibited stalled asynchronous tool startup. The ignored
-  `.env.finish-tools.cjs` preloads Vite/Wrangler for local diagnostics; it is not
-  an application dependency or release artifact.

@@ -7,7 +7,7 @@ const { randomUUID } = require("node:crypto");
 const postgres = require("postgres");
 async function verify() {
   if (
-    process.env.WORKSHOP_BENCHMARK_TEST_BRANCH !== "br-dawn-glitter-ac0vy5bm"
+    process.env.WORKSHOP_BENCHMARK_TEST_BRANCH !== "br-twilight-hat-ac2ujtl1"
   ) {
     throw new Error(
       "Explicit disposable workshop test branch opt-in is required",

@@ -88,4 +88,37 @@ describe("public surface contracts", () => {
     expect(roadmap).toContain("diretamente no Mercado Livre");
     expect(roadmap).not.toContain("Comparação anônima por modelo");
   });
+
+  it("lists shipped product flows as done rather than next or planned", () => {
+    const roadmap = source("src/routes/(public)/roadmap/+page.svelte");
+    const doneBlock = roadmap.slice(
+      roadmap.indexOf('status: "done"'),
+      roadmap.indexOf('status: "next"'),
+    );
+    const nextBlock = roadmap.slice(
+      roadmap.indexOf('status: "next"'),
+      roadmap.indexOf('status: "exploring"'),
+    );
+
+    for (const title of [
+      "Previsão da próxima troca",
+      "Vida útil estimada do pneu",
+      "Custo total por km rodado",
+      "Garagem compartilhada",
+      "Lembretes no seu calendário",
+      "Comparativo de oficinas",
+      "Posto mais barato perto de você",
+      "Moto Track em inglês",
+      "Leitura de odômetro por foto",
+    ]) {
+      expect(doneBlock).toContain(title);
+      expect(nextBlock).not.toContain(title);
+    }
+
+    expect(nextBlock).toContain("Compra de peças dentro do app");
+    expect(nextBlock).toContain("Mais motos com agenda exata");
+    expect(nextBlock).toContain("quatro anos Dafra");
+    expect(roadmap).not.toContain("só duas entradas do catálogo");
+    expect(roadmap).not.toContain('status: "planned"');
+  });
 });
