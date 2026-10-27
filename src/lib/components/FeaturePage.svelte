@@ -1,5 +1,8 @@
+<svelte:options runes={false} />
+
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { resolve } from "$app/paths";
   import type { SubmitFunction } from "@sveltejs/kit";
   import Download from "lucide-svelte/icons/download";
   import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -8,6 +11,7 @@
   import PageAction from "$lib/components/app/PageAction.svelte";
   import RecordSheet from "$lib/components/app/RecordSheet.svelte";
   import PageOverflowMenu from "$lib/components/app/PageOverflowMenu.svelte";
+  import ActivityTimeline from "$lib/components/app/ActivityTimeline.svelte";
   import ActionMenu, {
     type ActionChoice,
   } from "$lib/components/app/ActionMenu.svelte";
@@ -254,6 +258,9 @@
       : kind === "number" || kind === "money"
         ? "number"
         : "text";
+
+  $: primaryColumn = feature.listColumns[0];
+  $: metaColumns = feature.listColumns.slice(1);
 </script>
 
 <section class="grid gap-6" aria-busy={formBusy}>
@@ -273,14 +280,17 @@
       <PageOverflowMenu label={$t("authenticatedUx.moreActions")}>
         <a
           class="focus-ring flex items-center gap-2 rounded px-3 py-2 text-sm text-[var(--fg)] hover:bg-[var(--line)]"
-          href={`/${routeSlug}/export.csv`}
+          href={resolve(`/${routeSlug}/export.csv` as `/${string}`)}
         >
           <Download size={14} aria-hidden="true" />
           {$t("common.exportCsv")}
         </a>
+        <slot name="overflow" />
       </PageOverflowMenu>
     </svelte:fragment>
   </PageHeader>
+
+  <slot name="afterHeader" />
 
   {#if actionChoices && actionChoices.length > 0}
     <ActionMenu
@@ -320,203 +330,178 @@
     </p>
   {/if}
 
-  <div class="panel overflow-hidden">
-    <div
-      class="border-[var(--accent)]/20 flex items-center justify-between gap-3 border-b bg-[var(--accent-soft)] px-4 py-2.5"
-    >
-      <span class="label-tech text-[var(--accent)]"
-        >{$t(
-          rows.length === 1
-            ? "feature.recordCountOne"
-            : "feature.recordCountOther",
-          { count: rows.length },
-        )}</span
+  <ActivityTimeline
+    title={$t(
+      rows.length === 1
+        ? "feature.recordCountOne"
+        : "feature.recordCountOther",
+      { count: rows.length },
+    )}
+    emptyMessage={$t("feature.noRecords")}
+    items={rows}
+  >
+    <svelte:fragment slot="empty">
+      <div
+        class="mx-auto max-w-sm rounded border border-dashed border-[var(--line)] p-8"
       >
-    </div>
-    <div class="feature-table-scroll overflow-x-auto">
-      <table class="feature-table w-full text-left text-sm">
-        <caption class="sr-only"
-          >{$t("feature.recordsCaption", { feature: feature.title })}</caption
+        <p class="display text-2xl">{$t("feature.noRecords")}</p>
+        <p class="mt-2 text-sm text-[var(--muted)]">
+          {$t("feature.noRecordsHint")}
+        </p>
+        <button
+          type="button"
+          class="button-primary mt-4 min-h-11"
+          on:click={handleActionClick}
         >
-        <thead
-          class="border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--fg)_3%,transparent)] text-[var(--muted)]"
-        >
-          <tr>
-            {#each feature.listColumns as column (column)}
-              <th class="label-tech px-4 py-3 text-left" scope="col"
-                >{labelForColumn(column)}</th
-              >
-            {/each}
-            <th class="label-tech px-4 py-3 text-left" scope="col"
-              >{$t("feature.updatedAt")}</th
+          {$t("feature.addFirst")}
+        </button>
+      </div>
+    </svelte:fragment>
+
+    <svelte:fragment slot="item" let:item>
+      {@const row = item as Record<string, unknown>}
+      <div
+        class="flex flex-col gap-3 px-1 py-1 sm:flex-row sm:items-start sm:justify-between"
+      >
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
+            {#if primaryColumn}
+              {@const primaryHref = fileHref(row, primaryColumn)}
+              {#if primaryHref}
+                <a
+                  class="text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+                  href={resolve(primaryHref as `/${string}`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {$t("common.openFile")}
+                </a>
+              {:else}
+                <span class="text-sm font-semibold text-[var(--fg)]">
+                  {valueFor(row, primaryColumn)}
+                </span>
+              {/if}
+            {/if}
+          </div>
+
+          {#if metaColumns.length > 0}
+            <div
+              class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--muted)]"
             >
-            <th class="label-tech px-4 py-3 text-left" scope="col"
-              >{$t("common.actions")}</th
-            >
-          </tr>
-        </thead>
-        <tbody>
-          {#each rows as row (row.id ?? JSON.stringify(row))}
-            <tr class="row-hover border-b border-[var(--line)]">
-              {#each feature.listColumns as column (column)}
+              {#each metaColumns as column (column)}
                 {@const href = fileHref(row, column)}
-                <td class="px-4 py-3" data-label={labelForColumn(column)}>
+                <span class="inline-flex min-w-0 items-center gap-1">
+                  <span class="label-tech text-[10px] opacity-80"
+                    >{labelForColumn(column)}</span
+                  >
                   {#if href}
                     <a
                       class="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                      {href}
+                      href={resolve(href as `/${string}`)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       {$t("common.openFile")}
                     </a>
                   {:else}
-                    {valueFor(row, column)}
+                    <span class="truncate">{valueFor(row, column)}</span>
                   {/if}
-                </td>
+                </span>
               {/each}
-              <td
-                class="px-4 py-3 text-xs text-[var(--muted)]"
-                data-label={$t("feature.updatedAt")}
+            </div>
+          {/if}
+
+          <p class="mt-1 text-xs text-[var(--muted)]">
+            {$t("feature.updatedAt")}:
+            {#if row.updated_at && typeof row.updated_at === "string"}
+              {$format.date(row.updated_at, {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })}
+            {:else}
+              {valueFor(row, "updated_at")}
+            {/if}
+          </p>
+        </div>
+
+        <div class="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+          {#if feature.slug === "reminders" || routeSlug === "reminders"}
+            <form
+              method="POST"
+              action="?/snoozeDays"
+              use:enhance={enhanceWithStatus}
+            >
+              <input type="hidden" name="id" value={String(row.id ?? "")} />
+              <input type="hidden" name="days" value="7" />
+              <button
+                class="button-secondary min-h-11 px-3 py-1 text-xs"
+                type="submit"
+                disabled={formBusy}
               >
-                {#if row.updated_at && typeof row.updated_at === "string"}
-                  {$format.date(row.updated_at, {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                {:else}
-                  {valueFor(row, "updated_at")}
-                {/if}
-              </td>
-              <td
-                class="feature-actions px-4 py-3"
-                data-label={$t("common.actions")}
+                {$t("reminders.snoozeDays")}
+              </button>
+            </form>
+            <form
+              method="POST"
+              action="?/snoozeKm"
+              use:enhance={enhanceWithStatus}
+            >
+              <input type="hidden" name="id" value={String(row.id ?? "")} />
+              <input type="hidden" name="km" value="500" />
+              <button
+                class="button-secondary min-h-11 px-3 py-1 text-xs"
+                type="submit"
+                disabled={formBusy}
               >
-                <div class="flex flex-wrap gap-2">
-                  {#if feature.slug === "reminders" || routeSlug === "reminders"}
-                    <form
-                      method="POST"
-                      action="?/snoozeDays"
-                      use:enhance={enhanceWithStatus}
-                    >
-                      <input
-                        type="hidden"
-                        name="id"
-                        value={String(row.id ?? "")}
-                      />
-                      <input type="hidden" name="days" value="7" />
-                      <button
-                        class="button-secondary min-h-11 px-3 py-1 text-xs"
-                        type="submit"
-                        disabled={formBusy}
-                      >
-                        {$t("reminders.snoozeDays")}
-                      </button>
-                    </form>
-                    <form
-                      method="POST"
-                      action="?/snoozeKm"
-                      use:enhance={enhanceWithStatus}
-                    >
-                      <input
-                        type="hidden"
-                        name="id"
-                        value={String(row.id ?? "")}
-                      />
-                      <input type="hidden" name="km" value="500" />
-                      <button
-                        class="button-secondary min-h-11 px-3 py-1 text-xs"
-                        type="submit"
-                        disabled={formBusy}
-                      >
-                        {$t("reminders.snoozeKm")}
-                      </button>
-                    </form>
-                    <form
-                      method="POST"
-                      action="?/complete"
-                      use:enhance={enhanceWithStatus}
-                    >
-                      <input
-                        type="hidden"
-                        name="completion_version"
-                        value={String(row.completion_version ?? 0)}
-                      />
-                      <input
-                        type="hidden"
-                        name="id"
-                        value={String(row.id ?? "")}
-                      />
-                      <button
-                        class="button-primary min-h-11 px-3 py-1 text-xs"
-                        type="submit"
-                        disabled={formBusy}
-                      >
-                        {$t("reminders.complete")}
-                      </button>
-                    </form>
-                  {/if}
-                  <button
-                    type="button"
-                    class="button-secondary min-h-11 px-3 py-1 text-xs"
-                    on:click={() => openEdit(row)}
-                  >
-                    {$t("common.edit")}
-                  </button>
-                  <!-- Deleting was a single unguarded click with no undo.
-                       enhance awaits this callback before it fires the
-                       request, so the dialog can gate the submit. -->
-                  <form
-                    method="POST"
-                    action="?/record"
-                    use:enhance={enhanceDelete}
-                  >
-                    <input type="hidden" name="_intent" value="delete" />
-                    <input
-                      type="hidden"
-                      name="id"
-                      value={String(row.id ?? "")}
-                    />
-                    <button
-                      class="button-danger min-h-11 px-3 py-1 text-xs"
-                      type="submit"
-                      disabled={formBusy}
-                    >
-                      {$t("common.delete")}
-                    </button>
-                  </form>
-                </div>
-              </td>
-            </tr>
-          {:else}
-            <tr>
-              <td
-                class="px-4 py-16 text-center"
-                colspan={feature.listColumns.length + 2}
+                {$t("reminders.snoozeKm")}
+              </button>
+            </form>
+            <form
+              method="POST"
+              action="?/complete"
+              use:enhance={enhanceWithStatus}
+            >
+              <input
+                type="hidden"
+                name="completion_version"
+                value={String(row.completion_version ?? 0)}
+              />
+              <input type="hidden" name="id" value={String(row.id ?? "")} />
+              <button
+                class="button-primary min-h-11 px-3 py-1 text-xs"
+                type="submit"
+                disabled={formBusy}
               >
-                <div
-                  class="mx-auto max-w-sm rounded border border-dashed border-[var(--line)] p-8"
-                >
-                  <p class="display text-2xl">{$t("feature.noRecords")}</p>
-                  <p class="mt-2 text-sm text-[var(--muted)]">
-                    {$t("feature.noRecordsHint")}
-                  </p>
-                  <button
-                    type="button"
-                    class="button-primary mt-4"
-                    on:click={handleActionClick}
-                  >
-                    {$t("feature.addFirst")}
-                  </button>
-                </div>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-  </div>
+                {$t("reminders.complete")}
+              </button>
+            </form>
+          {/if}
+          <button
+            type="button"
+            class="button-secondary min-h-11 px-3 py-1 text-xs"
+            on:click={() => openEdit(row)}
+          >
+            {$t("common.edit")}
+          </button>
+          <!-- Deleting was a single unguarded click with no undo.
+               enhance awaits this callback before it fires the
+               request, so the dialog can gate the submit. -->
+          <form method="POST" action="?/record" use:enhance={enhanceDelete}>
+            <input type="hidden" name="_intent" value="delete" />
+            <input type="hidden" name="id" value={String(row.id ?? "")} />
+            <button
+              class="button-danger min-h-11 px-3 py-1 text-xs"
+              type="submit"
+              disabled={formBusy}
+            >
+              {$t("common.delete")}
+            </button>
+          </form>
+        </div>
+      </div>
+    </svelte:fragment>
+  </ActivityTimeline>
 
   <RecordSheet
     bind:this={createSheet}
@@ -814,105 +799,3 @@
   </RecordSheet>
 </section>
 
-<style>
-  .row-hover {
-    transition: background 0.15s ease;
-  }
-
-  .row-hover:hover {
-    background: color-mix(in srgb, var(--accent) 4%, transparent);
-  }
-
-  /* At phone/tablet widths, a 760px table hides the action column behind an
-     invisible horizontal canvas. Keep the semantic table, but let each row
-     become a labelled card until the wide desktop layout has room for every
-     column. */
-  @media (max-width: 1279px) {
-    .feature-table-scroll {
-      overflow-x: visible;
-    }
-
-    .feature-table {
-      min-width: 0;
-      border-collapse: separate;
-      border-spacing: 0 0.75rem;
-    }
-
-    .feature-table thead {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
-    .feature-table tbody {
-      display: grid;
-      gap: 0.75rem;
-    }
-
-    .feature-table tbody tr {
-      display: block;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-radius: 4px;
-      background: var(--panel);
-    }
-
-    .feature-table tbody tr td {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 1rem;
-      min-width: 0;
-      border-bottom: 1px solid var(--line);
-      padding: 0.75rem 1rem;
-    }
-
-    .feature-table tbody tr td::before {
-      flex: 0 0 36%;
-      min-width: 0;
-      color: var(--muted);
-      content: attr(data-label);
-      font-family: "Barlow Condensed", Barlow, ui-sans-serif, sans-serif;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      line-height: 1.2;
-      text-transform: uppercase;
-    }
-
-    .feature-table tbody tr td > * {
-      min-width: 0;
-      max-width: 64%;
-      overflow-wrap: anywhere;
-    }
-
-    .feature-table tbody tr td:last-child {
-      border-bottom: 0;
-    }
-
-    .feature-table tbody tr td.feature-actions {
-      display: block;
-    }
-
-    .feature-table tbody tr td.feature-actions::before {
-      display: block;
-      margin-bottom: 0.65rem;
-    }
-
-    .feature-table tbody tr td.feature-actions > div {
-      max-width: none;
-    }
-  }
-
-  @media (min-width: 1280px) {
-    .feature-table {
-      min-width: 760px;
-    }
-  }
-</style>

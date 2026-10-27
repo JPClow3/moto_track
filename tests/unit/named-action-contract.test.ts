@@ -26,6 +26,17 @@ describe("SvelteKit named action contract", () => {
     expect(source.match(/action="\?\/record"/g)).toHaveLength(3);
   });
 
+  it("renders FeaturePage records as an ActivityTimeline instead of a table", () => {
+    const source = readFileSync(
+      "src/lib/components/FeaturePage.svelte",
+      "utf8",
+    );
+
+    expect(source).toContain("ActivityTimeline");
+    expect(source).not.toContain("feature-table");
+    expect(source).not.toMatch(/<table\b/);
+  });
+
   it("posts both tire delete forms to the named delete action", () => {
     const source = readFileSync("src/routes/(app)/tires/+page.svelte", "utf8");
 

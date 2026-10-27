@@ -156,6 +156,7 @@ export const ptBR = {
       "Copie agora: o link só aparece uma vez. Quem tiver este endereço poderá ver os títulos e datas dos seus lembretes. Revogue-o para impedir novas atualizações; eventos já importados precisam ser removidos no calendário.",
     expires: "Válido até",
     revoke: "Revogar link",
+    empty: "Nenhum link de calendário ativo ainda. Gere um abaixo.",
   },
   nearby: {
     heading: "Postos próximos e preços registrados",
@@ -171,6 +172,8 @@ export const ptBR = {
     radius: "Distância máxima (km)",
     empty:
       "Nenhum posto com localização e preço recente para este combustível nesta distância.",
+    needLocation:
+      "Informe sua localização para comparar postos próximos com os preços que você registrou.",
     directions: "Como chegar",
     fuelType: "Combustível",
   },
@@ -187,6 +190,7 @@ export const ptBR = {
       "Informe data, valor e odômetro da compra para calcular o custo por km.",
     noDistance:
       "O custo por km estará disponível quando houver distância percorrida desde a compra.",
+    empty: "Cadastre uma moto na garagem para acompanhar o custo total por km.",
     fuel: "Combustível",
     maintenance: "Manutenção",
     tires: "Pneus",
@@ -299,6 +303,10 @@ export const ptBR = {
     costsTitle: "Custos profissionais",
     profitabilityTitle: "Rentabilidade das sessões",
     noSessions: "Registre turnos para ver a rentabilidade aqui.",
+    maintenanceReserveLabel: "Reserva de manutenção por km",
+    depreciationLabel: "Depreciação por km",
+    fixedCostLabel: "Custo fixo diário",
+    saveCosts: "Salvar custos",
     reserveHelp: "Quanto guardar por km rodado para manutenção.",
     depreciationHelp: "Perda de valor da moto por km rodado.",
     fixedCostHelp: "Custo diário fixo: seguro, estacionamento, mensalidades.",
@@ -1021,6 +1029,8 @@ export const ptBR = {
     limitReached: "Limite da garagem atingido",
     upgradeToPro: "Faça upgrade para Pro para adicionar mais motos",
     generateReport: "Gerar relatório",
+    generateReportHelp:
+      "Gere um link seguro com histórico de manutenções e custos para valorizar sua moto na venda.",
     exportData: "Exportar dados",
   },
   onboarding: {

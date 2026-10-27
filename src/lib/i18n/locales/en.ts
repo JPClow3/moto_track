@@ -148,6 +148,7 @@ export const en: Messages = {
       "Copy it now: the link is shown only once. Anyone with this address can see reminder titles and dates. Revoke it to stop future updates; remove previously imported events in your calendar.",
     expires: "Expires",
     revoke: "Revoke link",
+    empty: "No active calendar link yet. Generate one below.",
   },
   nearby: {
     heading: "Nearby stations and recorded prices",
@@ -161,6 +162,8 @@ export const en: Messages = {
     radius: "Maximum distance (km)",
     empty:
       "No station with coordinates and a recent price for this fuel within this distance.",
+    needLocation:
+      "Enter your location to compare nearby stations with the prices you recorded.",
     directions: "Directions",
     fuelType: "Fuel",
   },
@@ -176,6 +179,7 @@ export const en: Messages = {
     missing: "Enter purchase date, price and mileage to calculate cost per km.",
     noDistance:
       "Cost per km becomes available once you have traveled since purchase.",
+    empty: "Add a motorcycle in the garage to track total cost per km.",
     fuel: "Fuel",
     maintenance: "Maintenance",
     tires: "Tires",
@@ -282,6 +286,10 @@ export const en: Messages = {
     costsTitle: "Professional costs",
     profitabilityTitle: "Session profitability",
     noSessions: "Log sessions to see profitability here.",
+    maintenanceReserveLabel: "Maintenance reserve per km",
+    depreciationLabel: "Depreciation per km",
+    fixedCostLabel: "Fixed daily cost",
+    saveCosts: "Save costs",
     reserveHelp: "Amount to set aside per km for maintenance.",
     depreciationHelp: "Bike value loss per km ridden.",
     fixedCostHelp: "Fixed daily costs: insurance, parking, subscriptions.",
@@ -996,6 +1004,8 @@ export const en: Messages = {
     limitReached: "Garage limit reached",
     upgradeToPro: "Upgrade to Pro to add more motorcycles",
     generateReport: "Generate report",
+    generateReportHelp:
+      "Create a secure link with maintenance history and costs to support selling your motorcycle.",
     exportData: "Export data",
   },
   onboarding: {

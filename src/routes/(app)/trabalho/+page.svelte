@@ -1,5 +1,6 @@
+<svelte:options runes={false} />
+
 <script lang="ts">
-  import { appCopy } from "$lib/i18n/app-copy";
   import FeaturePage from "$components/FeaturePage.svelte";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
@@ -88,7 +89,7 @@
       {/each}
     </select>
     <label class="field-label" for="work-maintenance-reserve">
-      {appCopy($locale, "Reserva de manutenção por km")}
+      {$t("trabalho.maintenanceReserveLabel")}
     </label>
     <input
       class="field"
@@ -100,7 +101,7 @@
     />
     <p class="field-help">{$t("trabalho.reserveHelp")}</p>
     <label class="field-label" for="work-depreciation">
-      {appCopy($locale, "Depreciação por km")}
+      {$t("trabalho.depreciationLabel")}
     </label>
     <input
       class="field"
@@ -112,7 +113,7 @@
     />
     <p class="field-help">{$t("trabalho.depreciationHelp")}</p>
     <label class="field-label" for="work-fixed-cost">
-      {appCopy($locale, "Custo fixo diário")}
+      {$t("trabalho.fixedCostLabel")}
     </label>
     <input
       class="field"
@@ -124,16 +125,16 @@
     />
     <p class="field-help">{$t("trabalho.fixedCostHelp")}</p>
     <button
-      class="button-secondary justify-self-start"
+      class="button-secondary min-h-11 justify-self-start"
       type="submit"
       disabled={formBusy}
     >
-      {appCopy($locale, "Salvar custos")}
+      {$t("trabalho.saveCosts")}
     </button>
   </form>
   <div class="panel p-5">
     <h2 class="display text-xl">{$t("trabalho.profitabilityTitle")}</h2>
-    {#each data.summaries as s}
+    {#each data.summaries as s, index (index)}
       <p class="mt-2 text-sm">
         {formatDate($locale, s.work_date)} · {$t("trabalho.profitLabel", {
           value: brl(s.profitability.profitCents),
