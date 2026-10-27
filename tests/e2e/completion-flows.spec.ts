@@ -40,6 +40,9 @@ test.describe("completed core flows", () => {
     const reminder = (await response.json()).result;
     try {
       await page.reload();
+      // Calendar subscription lives in the page overflow menu after the
+      // authenticated UX cleanup — open that before creating a link.
+      await page.getByRole("button", { name: "Mais ações", exact: true }).click();
       await page
         .getByRole("button", { name: "Gerar link de assinatura", exact: true })
         .click();
@@ -90,8 +93,13 @@ test.describe("completed core flows", () => {
       })
       .last();
     const card = section.locator("article").first();
-    await card.locator("summary").click();
-    await card.getByLabel("Data da compra", { exact: true }).fill("2026-01-01");
+    const purchaseDate = card.getByLabel("Data da compra", { exact: true });
+    // Setup form lives in <details>; open it when the bike already has a basis.
+    if (!(await purchaseDate.isVisible())) {
+      await card.getByText("Configurar custo de aquisição", { exact: true }).click();
+    }
+    await expect(purchaseDate).toBeVisible();
+    await purchaseDate.fill("2026-01-01");
     await card.getByLabel("Odômetro na compra (km)", { exact: true }).fill("0");
     await card
       .getByLabel("Valor de compra (R$)", { exact: true })

@@ -87,10 +87,10 @@ test.describe("nearby prices, OCR confirmation and staff manual sources", () => 
       await context.setGeolocation({ latitude: -4, longitude: -20 });
       await page.goto("/fuel");
       await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
-      const nearby = page.locator("details").filter({
+      // Nearby stations are an always-visible panel (not a collapsed details).
+      const nearby = page.locator("section, .panel").filter({
         has: page.locator("#nearby-fuel"),
       });
-      await nearby.locator("summary").click();
       await nearby
         .getByRole("button", {
           name: /Usar localização atual|Use current location/i,
@@ -213,10 +213,9 @@ test.describe("nearby prices, OCR confirmation and staff manual sources", () => 
       const card = page.locator("article").filter({
         has: page.getByRole("heading", { name: snapshot.name, exact: true }),
       });
-      await card.locator("details").first().locator("summary").first().click();
+      // Odometer photo scan is always visible under the bike card (not details).
       const scanForm = card.locator('form[action="?/scanOdometer"]');
       const scanner = scanForm.locator("..");
-      await scanner.locator(":scope > summary").click();
       await scanForm.locator('[name="photo"]').setInputFiles({
         name: "synthetic-odometer.png",
         mimeType: "image/png",

@@ -62,7 +62,13 @@
     >
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div on:click={close}>
+      <div
+        on:click={(event) => {
+          // Keep forms mounted through submit — closing mid-click aborts enhance.
+          if ((event.target as HTMLElement | null)?.closest?.("form")) return;
+          close();
+        }}
+      >
         <slot />
       </div>
     </div>
