@@ -347,7 +347,9 @@
                 {act.title}
               </p>
               <p class="text-xs text-[var(--muted)]">
-                {act.date}{act.subtitle ? ` · ${act.subtitle}` : ""}
+                {$format.date(act.date)}{act.subtitle
+                  ? ` · ${act.subtitle}`
+                  : ""}
               </p>
             </div>
           </div>

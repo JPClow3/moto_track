@@ -370,7 +370,7 @@
 
     <main
       id="main-content"
-      class="app-main mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-8"
+      class="app-main mx-auto w-full min-w-0 max-w-7xl flex-1 overflow-x-hidden px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-8"
       tabindex="-1"
     >
       <slot />

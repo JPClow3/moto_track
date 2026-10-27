@@ -72,6 +72,22 @@ function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** Normalize postgres.js Date objects (and ISO strings) to YYYY-MM-DD. */
+function toDateKey(value: unknown): string {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  if (typeof value === "string" && value) {
+    const isoDay = value.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(isoDay)) return isoDay;
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+  }
+  return "";
+}
+
 function formValue(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim();
 }
@@ -520,19 +536,19 @@ export async function load({ locals, url }) {
     spend: spendByMonth(
       [
         ...fuelRows.map((row) => ({
-          date: String(row.date ?? ""),
+          date: toDateKey(row.date),
           amountCents: Number(row.total_price_cents ?? 0),
         })),
         ...maintenanceRows.map((row) => ({
-          date: String(row.date ?? ""),
+          date: toDateKey(row.date),
           amountCents: Number(row.cost_cents ?? 0),
         })),
         ...tireRows.map((row) => ({
-          date: String(row.installed_at ?? ""),
+          date: toDateKey(row.installed_at),
           amountCents: Number(row.cost_cents ?? 0),
         })),
         ...feeRows.map((row) => ({
-          date: String(row.due_date ?? ""),
+          date: toDateKey(row.due_date),
           amountCents: Number(row.amount_cents ?? 0),
         })),
       ],
@@ -546,10 +562,10 @@ export async function load({ locals, url }) {
     }),
     activity: activityCalendar(
       [
-        ...fuelRows.map((row) => String(row.date ?? "")),
-        ...maintenanceRows.map((row) => String(row.date ?? "")),
-        ...tireRows.map((row) => String(row.installed_at ?? "")),
-        ...feeRows.map((row) => String(row.due_date ?? "")),
+        ...fuelRows.map((row) => toDateKey(row.date)),
+        ...maintenanceRows.map((row) => toDateKey(row.date)),
+        ...tireRows.map((row) => toDateKey(row.installed_at)),
+        ...feeRows.map((row) => toDateKey(row.due_date)),
       ].filter(Boolean),
       { today },
     ),
@@ -565,7 +581,7 @@ export async function load({ locals, url }) {
       ...fuelRows.map((row) => ({
         id: `fuel-${row.id ?? row.date}-${row.odometer_km}`,
         type: "fuel",
-        date: String(row.date ?? ""),
+        date: toDateKey(row.date),
         title: `${row.liters ?? 0}L ${tr("dashboard.costFuel")}`,
         subtitle: row.odometer_km
           ? formatDistance(locale, Number(row.odometer_km))
@@ -576,7 +592,7 @@ export async function load({ locals, url }) {
       ...maintenanceRows.map((row) => ({
         id: `maint-${row.id ?? row.date}-${row.odometer_km}`,
         type: "maintenance",
-        date: String(row.date ?? ""),
+        date: toDateKey(row.date),
         title: String(row.maintenance_type ?? tr("dashboard.costMaintenance")),
         subtitle: row.odometer_km
           ? formatDistance(locale, Number(row.odometer_km))
@@ -587,7 +603,7 @@ export async function load({ locals, url }) {
       ...tireRows.map((row) => ({
         id: `tire-${row.id ?? row.installed_at}`,
         type: "tires",
-        date: String(row.installed_at ?? ""),
+        date: toDateKey(row.installed_at),
         title: tr("dashboard.costTires"),
         subtitle: row.wear_percent ? `${row.wear_percent}%` : "",
         amountCents: Number(row.cost_cents ?? 0),
@@ -596,7 +612,7 @@ export async function load({ locals, url }) {
       ...feeRows.map((row) => ({
         id: `fee-${row.id ?? row.due_date}`,
         type: "expenses",
-        date: String(row.due_date ?? ""),
+        date: toDateKey(row.due_date),
         title: String(row.fee_type ?? tr("dashboard.costFees")),
         subtitle: "",
         amountCents: Number(row.amount_cents ?? 0),
