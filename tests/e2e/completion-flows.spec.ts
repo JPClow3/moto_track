@@ -42,7 +42,9 @@ test.describe("completed core flows", () => {
       await page.reload();
       // Calendar subscription lives in the page overflow menu after the
       // authenticated UX cleanup — open that before creating a link.
-      await page.getByRole("button", { name: "Mais ações", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Mais ações", exact: true })
+        .click();
       await page
         .getByRole("button", { name: "Gerar link de assinatura", exact: true })
         .click();
