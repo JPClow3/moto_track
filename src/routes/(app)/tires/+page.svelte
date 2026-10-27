@@ -28,6 +28,20 @@
   const km = (value: number) =>
     Number(value).toLocaleString($locale ?? "pt-BR");
 
+  /** Format Date/ISO/YYYY-MM-DD for list UI; empty/invalid → common.empty. */
+  function formatRowDate(value: unknown): string {
+    if (value instanceof Date) {
+      if (!Number.isFinite(value.getTime())) return $t("common.empty");
+      return $format.date(value);
+    }
+    if (typeof value === "string" || typeof value === "number") {
+      if (value === "") return $t("common.empty");
+      if (!Number.isFinite(new Date(value).getTime())) return $t("common.empty");
+      return $format.date(value);
+    }
+    return $t("common.empty");
+  }
+
   type LifeEstimate = { projectedChangeKm: number; remainingKm: number } | null;
   type TireRow = Record<string, unknown> & {
     id: string;
@@ -505,7 +519,9 @@
                 <dt class="label-tech text-[10px]">
                   {$t("tires.installedAtLabel")}
                 </dt>
-                <dd class="text-[var(--fg)]">{String(tire.installed_at)}</dd>
+                <dd class="text-[var(--fg)]">
+                  {formatRowDate(tire.installed_at)}
+                </dd>
               </div>
               <div>
                 <dt class="label-tech text-[10px]">
@@ -566,7 +582,9 @@
         >
           <div class="min-w-0">
             <p class="text-xs font-medium text-[var(--muted)]">
-              {pressure.motorcycles?.name ?? "—"} · {pressure.date}
+              {pressure.motorcycles?.name ?? "—"} · {formatRowDate(
+                pressure.date,
+              )}
             </p>
             <p class="mt-0.5 text-base font-bold">
               {pressure.psi_front}/{pressure.psi_rear}
@@ -624,7 +642,7 @@
           {#each historyTires as tire (tire.id)}
             <tr class="row-hover border-b border-[var(--line)]">
               <td class="px-4 py-3" data-label={$t("tires.dateLabel")}
-                >{String(tire.installed_at)}</td
+                >{formatRowDate(tire.installed_at)}</td
               >
               <td class="px-4 py-3" data-label={$t("tires.positionLabel")}
                 >{positionLabel(tire.position)}</td

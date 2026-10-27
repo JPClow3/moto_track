@@ -29,6 +29,20 @@
   const brl = (cents: number) => formatMoney($locale, cents);
   const km = (value: number) => Number(value).toLocaleString($locale);
 
+  /** Format Date/ISO/YYYY-MM-DD for list UI; empty/invalid → common.empty. */
+  function formatRowDate(value: unknown): string {
+    if (value instanceof Date) {
+      if (!Number.isFinite(value.getTime())) return $t("common.empty");
+      return $format.date(value);
+    }
+    if (typeof value === "string" || typeof value === "number") {
+      if (value === "") return $t("common.empty");
+      if (!Number.isFinite(new Date(value).getTime())) return $t("common.empty");
+      return $format.date(value);
+    }
+    return $t("common.empty");
+  }
+
   type MarketplaceOffer = {
     id: string;
     title: string;
@@ -767,7 +781,7 @@
             <div class="min-w-0">
               <div class="flex items-center gap-2">
                 <span class="label-tech text-xs text-[var(--muted)]">
-                  {String(row.date ?? "")}
+                  {formatRowDate(row.date)}
                 </span>
                 <span class="text-xs text-[var(--muted)]">·</span>
                 <span class="text-xs font-semibold text-[var(--accent)]">
@@ -1645,7 +1659,7 @@
               <div class="min-w-0 break-words">
                 <p class="text-sm font-medium">
                   {photo.maintenance_records
-                    ? `${photo.maintenance_records.date} · ${photo.maintenance_records.maintenance_type}`
+                    ? `${formatRowDate(photo.maintenance_records.date)} · ${photo.maintenance_records.maintenance_type}`
                     : $t("maintenance.recordFallback")}
                 </p>
                 {#if photo.caption}

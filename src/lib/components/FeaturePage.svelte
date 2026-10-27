@@ -149,6 +149,19 @@
     if (key.endsWith("_millicents") && typeof value === "number") {
       return formatPreciseMoney($locale, value);
     }
+    // Fallback when field.kind is missing/mismatched: still format real dates
+    // instead of String(Date) which dumps a long locale timestamp and overflows.
+    if (value instanceof Date && Number.isFinite(value.getTime())) {
+      return formatDate($locale, value);
+    }
+    if (
+      typeof value === "string" &&
+      (/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+        /^\d{4}-\d{2}-\d{2}T/.test(value)) &&
+      Number.isFinite(new Date(value).getTime())
+    ) {
+      return formatDate($locale, value);
+    }
     return String(value);
   }
 

@@ -3,7 +3,7 @@
   import { actionMessage } from "$lib/i18n/action-messages";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
-  import { locale, t } from "$lib/i18n/store";
+  import { locale, t, format } from "$lib/i18n/store";
   import { formatMoney, formatPreciseMoney } from "$lib/i18n";
   import {
     queueOfflineFuelSubmission,
@@ -40,6 +40,20 @@
   const brl = (cents: number) => formatMoney($locale, cents);
   const price = (millicents: number) => formatPreciseMoney($locale, millicents);
   const today = () => new Date().toISOString().slice(0, 10);
+
+  /** Format Date/ISO/YYYY-MM-DD for list UI; empty/invalid → common.empty. */
+  function formatRowDate(value: unknown): string {
+    if (value instanceof Date) {
+      if (!Number.isFinite(value.getTime())) return $t("common.empty");
+      return $format.date(value);
+    }
+    if (typeof value === "string" || typeof value === "number") {
+      if (value === "") return $t("common.empty");
+      if (!Number.isFinite(new Date(value).getTime())) return $t("common.empty");
+      return $format.date(value);
+    }
+    return $t("common.empty");
+  }
 
   $: defaults = data.preferences[0] ?? {};
   let stationIdChoice = String(data.preferences[0]?.station_id ?? "");
@@ -673,7 +687,7 @@
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-2">
             <span class="text-sm font-semibold text-[var(--fg)]"
-              >{row.date}</span
+              >{formatRowDate(row.date)}</span
             >
             {#if row.motorcycle_id}
               <span
@@ -733,7 +747,7 @@
               class="button-danger min-h-11 px-3 py-1 text-xs"
               type="submit"
               disabled={formBusy}
-              aria-label={`${$t("common.delete")} ${row.date}`}
+              aria-label={`${$t("common.delete")} ${formatRowDate(row.date)}`}
             >
               {$t("common.delete")}
             </button>
