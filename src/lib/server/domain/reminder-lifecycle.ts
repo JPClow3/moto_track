@@ -66,8 +66,13 @@ export async function completeReminder(
       for update
     `;
     if (!reminder) throw new Error("Lembrete não encontrado.");
-    if (!reminder.is_active || reminder.completion_version !== expectedVersion)
+    // Inactive reminders are idempotent completes. A version mismatch while
+    // still active means the form is stale (plan refresh / edit) — do not
+    // pretend success without writing the maintenance receipt.
+    if (!reminder.is_active)
       return { ok: true as const, alreadyCompleted: true };
+    if (reminder.completion_version !== expectedVersion)
+      throw new Error("Atualize a página antes de concluir o lembrete.");
 
     let currentKm: number | null = null;
     if (reminder.motorcycle_id) {

@@ -522,6 +522,19 @@ describe("authenticated UX primitives contract", () => {
     expect(trabalhoSrc).not.toContain('class="panel grid gap-2 p-5"');
   });
 
+  it("keeps ownership setup details open state sticky per motorcycle", () => {
+    const ownershipSrc = source("src/lib/components/OwnershipCosts.svelte");
+    expect(ownershipSrc).toContain("openByMotorcycleId");
+    expect(ownershipSrc).toContain("ontoggle");
+    expect(ownershipSrc).not.toContain("open={!motorcycle.ready}");
+  });
+
+  it("loads reminder snooze fields for dashboard health scoring", () => {
+    const dashboardSrc = source("src/routes/(app)/dashboard/+page.server.ts");
+    expect(dashboardSrc).toContain("snoozed_until_date");
+    expect(dashboardSrc).toContain("snoozed_until_km");
+  });
+
   it("rebuilds Reports with PageHeader, generate report action, and no PageAction import", async () => {
     const reportsSrc = source("src/routes/(app)/reports/+page.svelte");
     expect(reportsSrc).toContain("PageHeader");
