@@ -168,7 +168,7 @@ export async function load({ locals, url }) {
       locals.db<Row[]>`
         select id, name, brand, model, year, current_odometer_km
         from motorcycles
-        where owner_id = ${ownerId} and is_active = true
+        where owner_id = ${ownerId} and is_active = true and deleted_at is null
         order by name
       `,
       markLoadError,
