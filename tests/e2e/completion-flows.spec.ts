@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import { openDisposableDb } from "./helpers/disposable-db";
+import {
+  openDisposableDb,
+  restoreActiveMotorcycles,
+} from "./helpers/disposable-db";
 
 test.describe("completed core flows", () => {
   // Multi-step journeys against a real Neon/Auth branch, like the other
@@ -179,9 +182,15 @@ test.describe("completed core flows", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].odometer_override_km).toBe(1200);
     } finally {
-      await sql`delete from motorcycles where owner_id = ${ownerId} and name in ${sql(names)}`;
-      if (reserved && active.length)
-        await sql`update motorcycles set is_active = true where owner_id = ${ownerId} and id in ${sql(active.map((bike) => bike.id))}`;
+      await sql.begin(async (db) => {
+        await db`delete from motorcycles where owner_id = ${ownerId} and name in ${db(names)}`;
+        if (reserved)
+          await restoreActiveMotorcycles(
+            db,
+            ownerId,
+            active.map((bike) => bike.id),
+          );
+      });
       await fixture.close();
     }
   });

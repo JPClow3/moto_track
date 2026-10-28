@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { motorcycleSlots, openDisposableDb } from "./helpers/disposable-db";
+import {
+  motorcycleSlots,
+  openDisposableDb,
+  restoreActiveMotorcycles,
+} from "./helpers/disposable-db";
 
 test.describe("exact catalog item occurrence acceptance", () => {
   // Multi-step journeys against a real Neon/Auth branch, like the other
@@ -181,9 +185,14 @@ test.describe("exact catalog item occurrence acceptance", () => {
       }
     } finally {
       try {
-        await sql`delete from motorcycles where owner_id = ${ownerId} and name = ${name}`;
-        if (active.length)
-          await sql`update motorcycles set is_active = true where owner_id = ${ownerId} and id in ${sql(active.map((row) => row.id))} and deleted_at is null`;
+        await sql.begin(async (db) => {
+          await db`delete from motorcycles where owner_id = ${ownerId} and name = ${name}`;
+          await restoreActiveMotorcycles(
+            db,
+            ownerId,
+            active.map((row) => row.id),
+          );
+        });
       } finally {
         await fixture.close();
       }

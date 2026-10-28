@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
-import { motorcycleSlots, openDisposableDb } from "./helpers/disposable-db";
+import {
+  motorcycleSlots,
+  openDisposableDb,
+  restoreActiveMotorcycles,
+} from "./helpers/disposable-db";
 
 const hasAuth = Boolean(
   process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD,
@@ -158,8 +162,11 @@ test.describe("confirmed tire wear observations", () => {
               await db`delete from fuel_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
               await db`delete from tire_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
               await db`delete from motorcycles where owner_id = ${ownerId} and id = ${motorcycleId}`;
-              if (active.length)
-                await db`update motorcycles set is_active = true where owner_id = ${ownerId} and id in ${db(active.map((row) => row.id))}`;
+              await restoreActiveMotorcycles(
+                db,
+                ownerId,
+                active.map((row) => row.id),
+              );
             })
             .catch(async (cause: unknown) => {
               throw new Error(

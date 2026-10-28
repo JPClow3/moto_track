@@ -2,7 +2,10 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { stringify } from "devalue";
 import type { Sql } from "postgres";
-import { openDisposableDb } from "./helpers/disposable-db";
+import {
+  openDisposableDb,
+  restoreActiveMotorcycles,
+} from "./helpers/disposable-db";
 
 type OdometerSnapshot = {
   id: string;
@@ -276,8 +279,11 @@ test.describe("nearby prices, OCR confirmation and staff manual sources", () => 
           }
           if (createdBikeId)
             await db`delete from motorcycles where id = ${createdBikeId} and owner_id = ${ownerId}`;
-          if (reserved.length)
-            await db`update motorcycles set is_active = true where owner_id = ${ownerId} and id in ${db(reserved.map((row) => row.id))}`;
+          await restoreActiveMotorcycles(
+            db,
+            ownerId,
+            reserved.map((row) => row.id),
+          );
         });
         // Preserve all four odometer values exactly; general updated_at keeps its normal trigger.
         if (before && !createdBikeId)
