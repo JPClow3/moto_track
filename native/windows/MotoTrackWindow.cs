@@ -35,6 +35,8 @@ internal sealed class MotoTrackWindow : Form
         button.Click += click; toolbar.Items.Add(button);
     }
     private static bool Owned(Uri uri) => uri.Scheme == Uri.UriSchemeHttps && uri.Host == Origin.Host && uri.IsDefaultPort;
+    // Same paths as Android and iOS: native clients never open pricing, checkout or the portal.
+    private static bool Restricted(Uri uri) => uri.AbsolutePath.TrimEnd('/') is "/precos" or "/billing" or "/billing/checkout" or "/billing/portal";
     private async Task InitializeAsync()
     {
         try
@@ -53,6 +55,12 @@ internal sealed class MotoTrackWindow : Form
             core.NavigationStarting += (_, args) =>
             {
                 if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri)) { args.Cancel = true; return; }
+                if (Owned(uri) && Restricted(uri))
+                {
+                    args.Cancel = true;
+                    core.Navigate(new Uri(Origin, "/app-info").AbsoluteUri);
+                    return;
+                }
                 if (!Owned(uri))
                 {
                     args.Cancel = true;
