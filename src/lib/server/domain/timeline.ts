@@ -57,6 +57,8 @@ export const TIMELINE_HREF: Record<TimelineKind, string> = {
 
 export const TIMELINE_TOTAL_CURRENCY = "BRL";
 export const TIMELINE_WINDOW_MONTHS = 12;
+/** Per-source row cap for one window; see `completeTimelineBound`. */
+export const TIMELINE_SOURCE_LIMIT = 500;
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -115,6 +117,40 @@ export function compareTimelineEntries(a: TimelineEntry, b: TimelineEntry) {
     TIMELINE_KINDS.indexOf(a.kind) - TIMELINE_KINDS.indexOf(b.kind);
   if (kindOrder !== 0) return kindOrder;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+/**
+ * When a source returned `limit` rows, its rows older than its oldest returned
+ * day may be missing, and so may some on that day. Returns the exclusive lower
+ * bound above which every source is complete: the start of the month after
+ * that day, so shown months keep correct totals, or the next day when the
+ * month cut would leave nothing. Null when nothing was truncated, or when even
+ * the day cut would leave nothing (more than `limit` rows on one day), so the
+ * page never repeats itself.
+ */
+export function completeTimelineBound(
+  sources: TimelineEntry[][],
+  limit = TIMELINE_SOURCE_LIMIT,
+): string | null {
+  let cutoff: string | null = null;
+  for (const rows of sources) {
+    if (rows.length < limit) continue;
+    const oldest = rows.reduce(
+      (min, entry) => (entry.date < min ? entry.date : min),
+      rows[0].date,
+    );
+    if (!cutoff || oldest > cutoff) cutoff = oldest;
+  }
+  if (!cutoff) return null;
+  const [year, month] = cutoff.split("-").map(Number);
+  const nextMonth = new Date(Date.UTC(year, month, 1))
+    .toISOString()
+    .slice(0, 10);
+  const shown = (bound: string) =>
+    sources.some((rows) => rows.some((entry) => entry.date >= bound));
+  if (shown(nextMonth)) return nextMonth;
+  const nextDay = shiftDay(cutoff, 1);
+  return shown(nextDay) ? nextDay : null;
 }
 
 export function mergeTimeline(...sources: TimelineEntry[][]): TimelineEntry[] {
@@ -300,7 +336,7 @@ export async function loadTimeline(db: Sql, query: TimelineQuery) {
             where f.owner_id = ${ownerId} ${bike("f")}
               and f.date >= ${start} ${upper("f.date")}
             order by f.date desc, f.odometer_km desc
-            limit 500
+            limit ${TIMELINE_SOURCE_LIMIT}
           `)
         : skip,
       wants("maintenance")
@@ -313,7 +349,7 @@ export async function loadTimeline(db: Sql, query: TimelineQuery) {
             where r.owner_id = ${ownerId} ${bike("r")}
               and r.date >= ${start} ${upper("r.date")}
             order by r.date desc, r.odometer_km desc
-            limit 500
+            limit ${TIMELINE_SOURCE_LIMIT}
           `)
         : skip,
       wants("tires")
@@ -326,7 +362,7 @@ export async function loadTimeline(db: Sql, query: TimelineQuery) {
             where t.owner_id = ${ownerId} ${bike("t")}
               and t.installed_at >= ${start} ${upper("t.installed_at")}
             order by t.installed_at desc, t.installed_odometer_km desc
-            limit 500
+            limit ${TIMELINE_SOURCE_LIMIT}
           `)
         : skip,
       // A fee is history once paid, or once its due date has passed; an
@@ -343,7 +379,7 @@ export async function loadTimeline(db: Sql, query: TimelineQuery) {
               and coalesce(a.paid_date, a.due_date) >= ${start}
               ${end ? db`and coalesce(a.paid_date, a.due_date) < ${end}` : db``}
             order by coalesce(a.paid_date, a.due_date) desc
-            limit 500
+            limit ${TIMELINE_SOURCE_LIMIT}
           `)
         : skip,
       wants("expenses")
@@ -355,7 +391,7 @@ export async function loadTimeline(db: Sql, query: TimelineQuery) {
             where i.owner_id = ${ownerId} ${bike("i")}
               and i.coverage_start >= ${start} ${upper("i.coverage_start")}
             order by i.coverage_start desc
-            limit 500
+            limit ${TIMELINE_SOURCE_LIMIT}
           `)
         : skip,
       safe(db<Row[]>`
@@ -396,14 +432,23 @@ export async function loadTimeline(db: Sql, query: TimelineQuery) {
       `).then(([row]) => parseCalendarDay(row?.day)),
     ]);
 
-  const entries = mergeTimeline(
+  const sources = [
     fuel.map(fuelEntry),
     maintenance.map(maintenanceEntry),
     tires.map(tireEntry),
     fees.map(feeEntry),
     insurance.map(insuranceEntry),
-  );
-  return { entries, olderDay, failed };
+  ];
+  const entries = mergeTimeline(...sources);
+  // A capped source ends this page early; "see more" then resumes at the
+  // bound, so the rows it held back appear on the next page.
+  const bound = completeTimelineBound(sources);
+  if (!bound) return { entries, olderDay, failed };
+  return {
+    entries: entries.filter((entry) => entry.date >= bound),
+    olderDay: shiftDay(bound, -1),
+    failed,
+  };
 }
 
 /** `?before=` for the next page: the day after the newest older record. */

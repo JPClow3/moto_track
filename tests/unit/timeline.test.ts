@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  completeTimelineBound,
   feeEntry,
   filterTimeline,
   fuelEntry,
@@ -267,5 +268,49 @@ describe("paging window", () => {
     expect(parseCalendarDay("2026-2-1")).toBeNull();
     expect(parseCalendarDay("'; drop table x")).toBeNull();
     expect(parseCalendarDay(undefined)).toBeNull();
+  });
+});
+
+describe("truncated sources", () => {
+  it("leaves the window alone when no source reached its cap", () => {
+    expect(
+      completeTimelineBound(
+        [[fuel("f1", "2026-10-20", 900)], [service("s1", "2026-01-02", 100)]],
+        3,
+      ),
+    ).toBeNull();
+  });
+
+  it("ends the page at the first complete month after a capped source's oldest day", () => {
+    const capped = [
+      fuel("f1", "2026-10-20", 900),
+      fuel("f2", "2026-09-15", 800),
+      fuel("f3", "2026-08-30", 700),
+    ];
+    const bound = completeTimelineBound(
+      [capped, [service("s1", "2026-08-10", 600)]],
+      3,
+    );
+    // August may be missing capped rows, so it moves whole to the next page.
+    expect(bound).toBe("2026-09-01");
+    expect(nextBefore("2026-08-31")).toBe(bound);
+  });
+
+  it("falls back to a day cut when the newest month alone exceeds the cap", () => {
+    const capped = [
+      fuel("f1", "2026-10-20", 900),
+      fuel("f2", "2026-10-15", 800),
+      fuel("f3", "2026-10-10", 700),
+    ];
+    expect(completeTimelineBound([capped], 3)).toBe("2026-10-11");
+  });
+
+  it("keeps a page whose capped rows share one day instead of repeating it", () => {
+    const capped = [
+      fuel("f1", "2026-10-10", 900),
+      fuel("f2", "2026-10-10", 800),
+      fuel("f3", "2026-10-10", 700),
+    ];
+    expect(completeTimelineBound([capped], 3)).toBeNull();
   });
 });
