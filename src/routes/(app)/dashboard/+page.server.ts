@@ -408,7 +408,9 @@ export async function load({ locals, url, parent }) {
           ],
           readings: [...heroFuelRows, ...heroMaintenanceRows].map((row) => ({
             date: String(row.date ?? ""),
-            odometerKm: Number(row.odometer_km ?? 0),
+            // Missing is not 0 km: a 0 reading is a valid baseline.
+            odometerKm:
+              row.odometer_km == null ? Number.NaN : Number(row.odometer_km),
           })),
           today,
           days: COST_WINDOW_DAYS,

@@ -172,7 +172,8 @@ export function costPerKmWindow({
       day: isoDateValue(reading.date),
       km: Number(reading.odometerKm),
     }))
-    .filter((reading) => reading.km > 0 && reading.day <= today);
+    // 0 km is a real reading (a new bike's baseline); only reject negatives.
+    .filter((reading) => reading.km >= 0 && reading.day <= today);
 
   const inside = dated.filter((reading) => reading.day > start);
   if (!inside.length) return null;

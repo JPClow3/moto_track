@@ -204,6 +204,44 @@ describe("costPerKmWindow", () => {
     ).toEqual({ cents: 3000, distanceKm: 200, centsPerKm: 15 });
   });
 
+  it("keeps a new bike's 0 km reading as the distance baseline", () => {
+    expect(
+      costPerKmWindow({
+        spend: [{ date: "2026-10-20", amountCents: 5000 }],
+        readings: [
+          { date: "2026-10-05", odometerKm: 0 },
+          { date: "2026-10-20", odometerKm: 100 },
+        ],
+        today,
+      }),
+    ).toEqual({ cents: 5000, distanceKm: 100, centsPerKm: 50 });
+    expect(
+      costPerKmWindow({
+        spend: [{ date: "2026-10-20", amountCents: 5000 }],
+        readings: [
+          { date: "2026-10-05", odometerKm: 0 },
+          { date: "2026-10-12", odometerKm: 50 },
+          { date: "2026-10-20", odometerKm: 100 },
+        ],
+        today,
+      }),
+    ).toMatchObject({ distanceKm: 100 });
+  });
+
+  it("ignores a missing reading instead of treating it as 0 km", () => {
+    expect(
+      costPerKmWindow({
+        spend: [{ date: "2026-10-20", amountCents: 5000 }],
+        readings: [
+          { date: "2026-10-05", odometerKm: Number.NaN },
+          { date: "2026-10-12", odometerKm: 10_000 },
+          { date: "2026-10-20", odometerKm: 10_100 },
+        ],
+        today,
+      }),
+    ).toMatchObject({ distanceKm: 100 });
+  });
+
   it("returns null when the window has no measurable distance", () => {
     expect(
       costPerKmWindow({
