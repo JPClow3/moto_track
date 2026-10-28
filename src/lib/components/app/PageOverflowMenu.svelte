@@ -40,7 +40,7 @@
   <button
     bind:this={triggerButton}
     type="button"
-    class="focus-ring flex h-11 w-11 cursor-pointer items-center justify-center rounded border border-[var(--line)] bg-[var(--panel)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--fg)]"
+    class="focus-ring flex h-11 w-11 cursor-pointer items-center justify-center rounded border border-[var(--line)] bg-[var(--panel)] text-[var(--muted)] transition hover:border-[var(--fg-soft)] hover:text-[var(--fg)]"
     aria-haspopup="menu"
     aria-expanded={open}
     aria-label={label || $t("authenticatedUx.moreActions")}
@@ -48,7 +48,7 @@
     on:click={toggle}
   >
     <slot name="trigger">
-      <Ellipsis size={18} aria-hidden="true" />
+      <Ellipsis size={20} aria-hidden="true" />
     </slot>
   </button>
 

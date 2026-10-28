@@ -1,6 +1,7 @@
 import { error } from "@sveltejs/kit";
 import { actionMessage } from "$lib/i18n/action-messages";
 import { shareTokenHash } from "$server/domain/sale-report-share";
+import { isoDateValue, isoTimestampValue } from "$server/domain/date-value";
 import type { PublicSaleReport } from "$types/sale-report";
 
 /**
@@ -91,10 +92,11 @@ export async function load({ params, locals }) {
     );
   }
 
+  // Increment in SQL: a read-then-write from concurrent views lost counts.
   await locals.db`
     update sale_report_shares
-    set access_count = ${Number(share.access_count ?? 0) + 1},
-        last_accessed_at = ${new Date().toISOString()}
+    set access_count = access_count + 1,
+        last_accessed_at = now()
     where id = ${String(share.id)}
   `;
 
@@ -125,7 +127,9 @@ export async function load({ params, locals }) {
     },
     serviceCount: maintenance.length,
     timeline: timeline.map((event) => ({
-      date: String(event.date ?? ""),
+      // A `date` column arrives as midnight-UTC Date; String() of it rendered
+      // a day early for buyers west of UTC.
+      date: isoDateValue(event.date),
       type: String(event.maintenance_type ?? "") || null,
       odometerKm:
         event.odometer_km === null || event.odometer_km === undefined
@@ -134,7 +138,7 @@ export async function load({ params, locals }) {
       description: String(event.description ?? "") || null,
       costCents: Number(event.cost_cents ?? 0),
     })),
-    expiresAt: String(share.expires_at ?? ""),
+    expiresAt: isoTimestampValue(share.expires_at) ?? "",
   };
 
   // Return only the mapped projection — anything on `report` is public.

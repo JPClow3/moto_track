@@ -15,6 +15,7 @@ import { validDate } from "$server/domain/maintenance-forecast";
 import { assertOwnedFuelReferences } from "$server/domain/fuel-reference-guards";
 import { lockAccountActor, lockObjectOwner } from "$server/db/owner-lock";
 
+import { latestCalendarDay } from "$lib/utils/calendar-day";
 export async function load({ locals, params }) {
   const membership = await requireGarageMembership(
     locals.db,
@@ -129,7 +130,7 @@ export const actions = localizedActions({
         const odometer = Number(payload.odometer_km);
         if (
           !date ||
-          date > new Date().toISOString().slice(0, 10) ||
+          date > latestCalendarDay() ||
           !Number.isInteger(odometer) ||
           odometer < 0 ||
           odometer > 2147483647

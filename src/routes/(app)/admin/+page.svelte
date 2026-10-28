@@ -2,6 +2,8 @@
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import MetricCard from "$components/MetricCard.svelte";
+  import StatusBadge from "$components/ui/StatusBadge.svelte";
+  import { showToast } from "$components/ui/toast";
   import { t, locale, format } from "$lib/i18n/store";
   import { adminMessages, adminText, adminValue } from "$lib/i18n/admin";
   export let data;
@@ -10,59 +12,51 @@
   $: copy = adminMessages($locale);
 
   let formBusy = false;
-  let statusMessage = "";
-  let statusRole: "status" | "alert" = "status";
+  let errorMessage = "";
 
+  // Success confirms with a toast; only failures stay inline.
   const enhanceWithStatus: SubmitFunction = () => {
     formBusy = true;
-    statusMessage = "";
+    errorMessage = "";
     return async ({ result, update }) => {
       formBusy = false;
-      statusRole = result.type === "success" ? "status" : "alert";
-      statusMessage =
-        result.type === "success"
-          ? copy.operationComplete
-          : String(
-              "data" in result && result.data?.message
-                ? result.data.message
-                : copy.operationFailed,
-            );
+      if (result.type === "success") {
+        showToast(copy.operationComplete);
+      } else {
+        errorMessage = String(
+          "data" in result && result.data?.message
+            ? result.data.message
+            : copy.operationFailed,
+        );
+      }
       await update();
     };
+  };
+
+  const thClass = "label-tech px-3 py-2 font-semibold text-[var(--muted)]";
+  const tdClass = "px-3 py-2";
+  const shortDateTime: Intl.DateTimeFormatOptions = {
+    dateStyle: "short",
+    timeStyle: "short",
   };
 </script>
 
 <svelte:head><title>{copy.pageTitle}</title></svelte:head>
 
 <section class="grid gap-6" aria-busy={formBusy}>
-  <div>
-    <p class="eyebrow">
-      <span class="slash-rule" aria-hidden="true"></span>{copy.admin}
-    </p>
-    <h1 class="display text-4xl">{copy.consoleTitle}</h1>
-    <p class="mt-2 text-sm text-[var(--muted)]">{copy.description}</p>
-  </div>
+  <header class="border-b border-[var(--line)] pb-5 pt-1">
+    <h1 class="display text-3xl sm:text-4xl">{copy.consoleTitle}</h1>
+    <p class="mt-1.5 text-sm text-[var(--muted)]">{copy.description}</p>
+  </header>
 
-  {#if form?.message}
+  {#if form?.message || errorMessage}
     <div
-      class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
+      class="rounded-md border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]"
       role="alert"
       aria-live="assertive"
     >
-      {form.message}
+      {errorMessage || form?.message}
     </div>
-  {/if}
-
-  {#if statusMessage}
-    <p
-      class={statusRole === "alert"
-        ? "rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-        : "rounded border border-[var(--line)] bg-[var(--panel)] p-3 text-sm"}
-      role={statusRole}
-      aria-live={statusRole === "alert" ? "assertive" : "polite"}
-    >
-      {statusMessage}
-    </p>
   {/if}
 
   {#if !data.isStaff}
@@ -107,14 +101,16 @@
       </div>
 
       {#if !data.workerOperations.available}
-        <p class="rounded border border-warning/30 bg-warning/10 p-3 text-sm">
+        <p
+          class="rounded-md border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-sm"
+        >
           {copy.workerUnavailable}
         </p>
       {:else}
         <div class="grid gap-3 sm:grid-cols-2">
-          <div class="rounded border border-[var(--line)] p-3">
+          <div class="rounded-md border border-[var(--line)] p-3">
             <h3 class="text-sm font-semibold">{copy.r2Queue}</h3>
-            <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+            <dl class="numeric mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
               <dt class="text-[var(--muted)]">{copy.queued}</dt>
               <dd>{data.workerOperations.deletionBacklog?.queued ?? 0}</dd>
               <dt class="text-[var(--muted)]">{copy.readyToRetry}</dt>
@@ -138,7 +134,7 @@
             </dl>
           </div>
 
-          <div class="rounded border border-[var(--line)] p-3">
+          <div class="rounded-md border border-[var(--line)] p-3">
             <h3 class="text-sm font-semibold">{copy.latestRun}</h3>
             {#if data.workerOperations.recentRuns[0]}
               {@const run = data.workerOperations.recentRuns[0]}
@@ -146,11 +142,11 @@
                 {adminValue($locale, "origin", run.trigger_source)}
                 · {adminValue($locale, "status", run.status)} · {$format.date(
                   run.started_at,
-                  { dateStyle: "short", timeStyle: "short" },
+                  shortDateTime,
                 )}
               </p>
               {#if run.failure_codes.length}
-                <p class="mt-1 text-sm text-danger">
+                <p class="mt-1 text-sm text-[var(--danger)]">
                   {copy.failures}: {run.failure_codes
                     .map((code: string) => adminValue($locale, "failure", code))
                     .join(", ")}
@@ -170,7 +166,7 @@
           </div>
         </div>
 
-        <div class="rounded border border-[var(--line)] p-3">
+        <div class="rounded-md border border-[var(--line)] p-3">
           <h3 class="text-sm font-semibold">{copy.cronTitle}</h3>
           <p class="mt-2 text-sm">
             {copy.referenceTime} ·
@@ -183,7 +179,7 @@
               {copy.lastRecorded}
               {$format.date(
                 data.workerOperations.latestScheduledRun.started_at,
-                { dateStyle: "short", timeStyle: "short" },
+                shortDateTime,
               )}
               · {adminValue(
                 $locale,
@@ -207,47 +203,47 @@
         </div>
 
         <details>
-          <summary class="cursor-pointer text-sm font-medium"
+          <summary
+            class="focus-ring flex min-h-11 cursor-pointer items-center rounded text-sm font-semibold"
             >{copy.recentRuns}</summary
           >
-          <div class="mt-2 overflow-x-auto">
+          <div class="data-table mt-2 overflow-x-auto">
             <table class="w-full text-left text-sm">
-              <thead>
-                <tr class="text-xs text-[var(--muted)]">
-                  <th class="py-1 pr-4 font-medium">{copy.started}</th>
-                  <th class="py-1 pr-4 font-medium">{copy.origin}</th>
-                  <th class="py-1 pr-4 font-medium">{copy.status}</th>
-                  <th class="py-1 pr-4 font-medium">{copy.due}</th>
-                  <th class="py-1 pr-4 font-medium">{copy.deletions}</th>
-                  <th class="py-1 font-medium">{copy.failures}</th>
+              <thead
+                class="border-y border-[var(--line)] bg-[var(--panel-sunken)]"
+              >
+                <tr>
+                  <th class={thClass} scope="col">{copy.started}</th>
+                  <th class={thClass} scope="col">{copy.origin}</th>
+                  <th class={thClass} scope="col">{copy.status}</th>
+                  <th class={thClass} scope="col">{copy.due}</th>
+                  <th class={thClass} scope="col">{copy.deletions}</th>
+                  <th class={thClass} scope="col">{copy.failures}</th>
                 </tr>
               </thead>
               <tbody>
                 {#each data.workerOperations.recentRuns as run (run.started_at)}
-                  <tr class="border-t border-[var(--line)]">
-                    <td class="py-1.5 pr-4">
-                      {$format.date(run.started_at, {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
+                  <tr class="border-b border-[var(--line)]">
+                    <td class="{tdClass} numeric" data-label={copy.started}>
+                      {$format.date(run.started_at, shortDateTime)}
                     </td>
-                    <td class="py-1.5 pr-4">
+                    <td class={tdClass} data-label={copy.origin}>
                       {adminValue($locale, "origin", run.trigger_source)}
                     </td>
-                    <td class="py-1.5 pr-4"
+                    <td class={tdClass} data-label={copy.status}
                       >{adminValue($locale, "status", run.status)}</td
                     >
-                    <td class="py-1.5 pr-4">
+                    <td class="{tdClass} numeric" data-label={copy.due}>
                       {run.reminders_due ?? "—"}
                       ({run.reminders_emailed ?? 0} email /
                       {run.reminders_pushed ?? 0} push)
                     </td>
-                    <td class="py-1.5 pr-4">
+                    <td class="{tdClass} numeric" data-label={copy.deletions}>
                       {run.deletions_succeeded ?? 0}/{run.deletions_attempted ??
                         0} ({run.deletions_failed ?? 0}
                       {copy.failureCount})
                     </td>
-                    <td class="py-1.5">
+                    <td class={tdClass} data-label={copy.failures}>
                       {run.failure_codes.length
                         ? run.failure_codes
                             .map((code: string) =>
@@ -259,7 +255,9 @@
                   </tr>
                 {:else}
                   <tr>
-                    <td colspan="6" class="py-4 text-center text-[var(--muted)]"
+                    <td
+                      colspan="6"
+                      class="px-3 py-4 text-center text-[var(--muted)]"
                       >{copy.noRuns}</td
                     >
                   </tr>
@@ -280,23 +278,28 @@
         use:enhance={enhanceWithStatus}
       >
         <h2 class="display text-xl">{copy.siteSettings}</h2>
-        <label class="field-label" for="admin-company">{copy.company}</label>
-        <input
-          class="field"
-          id="admin-company"
-          name="company_name"
-          value={data.settings?.company_name ?? "Moto Track"}
-        />
-        <label class="field-label" for="admin-support-email"
-          >{copy.supportEmail}</label
-        >
-        <input
-          class="field"
-          id="admin-support-email"
-          name="support_email"
-          value={data.settings?.support_email ?? ""}
-          placeholder={copy.supportEmailPlaceholder}
-        />
+        <div class="field-group">
+          <label class="field-label" for="admin-company">{copy.company}</label>
+          <input
+            class="field"
+            id="admin-company"
+            name="company_name"
+            value={data.settings?.company_name ?? "Moto Track"}
+          />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="admin-support-email"
+            >{copy.supportEmail}</label
+          >
+          <input
+            class="field"
+            id="admin-support-email"
+            name="support_email"
+            type="email"
+            value={data.settings?.support_email ?? ""}
+            placeholder={copy.supportEmailPlaceholder}
+          />
+        </div>
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="field-group">
             <label class="field-label" for="admin-support-phone"
@@ -306,8 +309,8 @@
               class="field"
               id="admin-support-phone"
               name="support_phone"
+              type="tel"
               value={data.settings?.support_phone ?? ""}
-              placeholder={copy.phone}
             />
           </div>
           <div class="field-group">
@@ -318,8 +321,8 @@
               class="field"
               id="admin-support-whatsapp"
               name="support_whatsapp"
+              type="tel"
               value={data.settings?.support_whatsapp ?? ""}
-              placeholder={copy.whatsapp}
             />
           </div>
         </div>
@@ -331,7 +334,6 @@
               id="admin-city"
               name="address_city"
               value={data.settings?.address_city ?? ""}
-              placeholder={copy.city}
             />
           </div>
           <div class="field-group">
@@ -341,7 +343,6 @@
               id="admin-state"
               name="address_state"
               value={data.settings?.address_state ?? ""}
-              placeholder={copy.state}
             />
           </div>
         </div>
@@ -353,7 +354,6 @@
               id="admin-dpo-name"
               name="dpo_name"
               value={data.settings?.dpo_name ?? ""}
-              placeholder={copy.dpo}
             />
           </div>
           <div class="field-group">
@@ -364,8 +364,8 @@
               class="field"
               id="admin-dpo-email"
               name="dpo_email"
+              type="email"
               value={data.settings?.dpo_email ?? ""}
-              placeholder={copy.dpoEmail}
             />
           </div>
         </div>
@@ -381,38 +381,36 @@
         use:enhance={enhanceWithStatus}
       >
         <h2 class="display text-xl">{copy.newArticle}</h2>
-        <label class="field-label" for="article-title">{copy.title}</label>
-        <input
-          class="field"
-          id="article-title"
-          name="title"
-          placeholder={copy.title}
-          required
-        />
-        <label class="field-label" for="article-slug">{copy.slug}</label>
-        <input
-          class="field"
-          id="article-slug"
-          name="slug"
-          placeholder={copy.slugPlaceholder}
-        />
-        <label class="field-label" for="article-summary">{copy.summary}</label>
-        <input
-          class="field"
-          id="article-summary"
-          name="summary"
-          placeholder={copy.summary}
-          required
-        />
-        <label class="field-label" for="article-body">{copy.body}</label>
-        <textarea
-          class="field min-h-32"
-          id="article-body"
-          name="body"
-          placeholder={copy.body}
-          required
-        ></textarea>
-        <label class="flex items-center gap-2 text-sm" for="article-published"
+        <div class="field-group">
+          <label class="field-label" for="article-title">{copy.title}</label>
+          <input class="field" id="article-title" name="title" required />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="article-slug">{copy.slug}</label>
+          <input
+            class="field"
+            id="article-slug"
+            name="slug"
+            placeholder={copy.slugPlaceholder}
+          />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="article-summary">{copy.summary}</label
+          >
+          <input class="field" id="article-summary" name="summary" required />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="article-body">{copy.body}</label>
+          <textarea
+            class="field min-h-32"
+            id="article-body"
+            name="body"
+            required
+          ></textarea>
+        </div>
+        <label
+          class="flex min-h-11 items-center gap-2 text-sm font-semibold"
+          for="article-published"
           ><input
             id="article-published"
             type="checkbox"
@@ -438,23 +436,11 @@
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="field-group">
             <label class="field-label" for="template-brand">{copy.brand}</label>
-            <input
-              class="field"
-              id="template-brand"
-              name="brand"
-              placeholder={copy.brand}
-              required
-            />
+            <input class="field" id="template-brand" name="brand" required />
           </div>
           <div class="field-group">
             <label class="field-label" for="template-model">{copy.model}</label>
-            <input
-              class="field"
-              id="template-model"
-              name="model"
-              placeholder={copy.model}
-              required
-            />
+            <input class="field" id="template-model" name="model" required />
           </div>
         </div>
         <div class="grid gap-3 sm:grid-cols-4">
@@ -467,7 +453,8 @@
               id="template-year-from"
               name="year_from"
               type="number"
-              placeholder={copy.firstYear}
+              inputmode="numeric"
+              step="1"
               required
             />
           </div>
@@ -480,7 +467,8 @@
               id="template-year-to"
               name="year_to"
               type="number"
-              placeholder={copy.lastYear}
+              inputmode="numeric"
+              step="1"
             />
           </div>
           <div class="field-group">
@@ -492,6 +480,8 @@
               id="template-engine"
               name="engine_cc"
               type="number"
+              inputmode="numeric"
+              step="1"
               placeholder="cc"
               required
             />
@@ -508,101 +498,164 @@
             />
           </div>
         </div>
-        <label class="field-label" for="template-variant">{copy.variant}</label>
-        <input
-          class="field"
-          id="template-variant"
-          name="variant"
-          placeholder={copy.variantPlaceholder}
-        />
-        <p class="text-xs text-[var(--muted)]">{copy.templateHidden}</p>
+        <div class="field-group">
+          <label class="field-label" for="template-variant"
+            >{copy.variant}</label
+          >
+          <input
+            class="field"
+            id="template-variant"
+            name="variant"
+            placeholder={copy.variantPlaceholder}
+          />
+          <p class="field-help">{copy.templateHidden}</p>
+        </div>
         <button class="button-secondary" type="submit" disabled={formBusy}
           >{copy.createTemplate}</button
         >
       </form>
 
-      <div class="panel p-4">
-        <h2 class="display text-xl">{copy.dataRequests}</h2>
-        <div class="mt-3 grid gap-2 text-sm">
-          {#each data.requests as request}
-            <div
-              class="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] py-2"
-            >
-              <span>
-                {adminValue($locale, "request", request.request_type)} · {adminValue(
-                  $locale,
-                  "status",
-                  request.status,
-                )} · {$format.date(String(request.created_at), {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
-              </span>
-              {#if request.status === "open"}
-                <form
-                  method="POST"
-                  action="?/fulfillDataRequest"
-                  use:enhance={enhanceWithStatus}
-                >
-                  <input type="hidden" name="id" value={request.id} />
-                  <button
-                    class="button-secondary px-3 py-1.5 text-xs"
-                    disabled={formBusy}
-                    type="submit">{copy.markFulfilled}</button
+      <section class="panel overflow-hidden" aria-labelledby="admin-requests">
+        <h2 class="display px-4 pb-3 pt-4 text-xl" id="admin-requests">
+          {copy.dataRequests}
+        </h2>
+        {#if data.requests.length}
+          <div class="data-table">
+            <table class="w-full text-left text-sm">
+              <thead
+                class="border-y border-[var(--line)] bg-[var(--panel-sunken)]"
+              >
+                <tr>
+                  <th class={thClass} scope="col">{copy.requestType}</th>
+                  <th class={thClass} scope="col">{copy.status}</th>
+                  <th class={thClass} scope="col">{copy.requestedAt}</th>
+                  <th class={thClass} scope="col"
+                    ><span class="sr-only">{$t("common.actions")}</span></th
                   >
-                </form>
-              {/if}
-            </div>
-          {:else}
-            <p class="text-[var(--muted)]">{copy.noRequests}</p>
-          {/each}
-        </div>
-      </div>
+                </tr>
+              </thead>
+              <tbody>
+                {#each data.requests as request (request.id)}
+                  <tr class="border-b border-[var(--line)] last:border-b-0">
+                    <td class={tdClass} data-label={copy.requestType}
+                      >{adminValue(
+                        $locale,
+                        "request",
+                        request.request_type,
+                      )}</td
+                    >
+                    <td class={tdClass} data-label={copy.status}
+                      ><StatusBadge
+                        tone={request.status === "open"
+                          ? "info"
+                          : request.status === "fulfilled"
+                            ? "ok"
+                            : "neutral"}
+                        >{adminValue(
+                          $locale,
+                          "status",
+                          request.status,
+                        )}</StatusBadge
+                      ></td
+                    >
+                    <td class="{tdClass} numeric" data-label={copy.requestedAt}
+                      >{$format.date(
+                        String(request.created_at),
+                        shortDateTime,
+                      )}</td
+                    >
+                    <td class="{tdClass} text-right">
+                      {#if request.status === "open"}
+                        <form
+                          method="POST"
+                          action="?/fulfillDataRequest"
+                          use:enhance={enhanceWithStatus}
+                        >
+                          <input type="hidden" name="id" value={request.id} />
+                          <button
+                            class="button-secondary"
+                            disabled={formBusy}
+                            type="submit">{copy.markFulfilled}</button
+                          >
+                        </form>
+                      {/if}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {:else}
+          <p
+            class="border-t border-[var(--line)] px-4 py-4 text-sm text-[var(--muted)]"
+          >
+            {copy.noRequests}
+          </p>
+        {/if}
+      </section>
 
-      <div class="panel p-4 xl:col-span-2">
-        <h2 class="display text-xl">{copy.sourcesTitle}</h2>
-        <p class="mt-1 text-sm text-[var(--muted)]">{copy.sourceMethod}</p>
-        <div class="mt-3 overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-left text-xs text-[var(--muted)]">
-                <th class="py-1 pr-4 font-medium">{copy.model}</th>
-                <th class="py-1 pr-4 font-medium">{copy.years}</th>
-                <th class="py-1 pr-4 font-medium">{copy.document}</th>
-                <th class="py-1 pr-4 font-medium">{copy.verifiedAt}</th>
-                <th class="py-1 font-medium">{copy.items}</th>
+      <section
+        class="panel overflow-hidden xl:col-span-2"
+        aria-labelledby="admin-sources"
+      >
+        <div class="px-4 pb-3 pt-4">
+          <h2 class="display text-xl" id="admin-sources">
+            {copy.sourcesTitle}
+          </h2>
+          <p class="mt-1 text-sm text-[var(--muted)]">{copy.sourceMethod}</p>
+        </div>
+        <div class="data-table overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead
+              class="border-y border-[var(--line)] bg-[var(--panel-sunken)]"
+            >
+              <tr>
+                <th class={thClass} scope="col">{copy.model}</th>
+                <th class={thClass} scope="col">{copy.years}</th>
+                <th class={thClass} scope="col">{copy.document}</th>
+                <th class={thClass} scope="col">{copy.verifiedAt}</th>
+                <th class="{thClass} text-right" scope="col">{copy.items}</th>
               </tr>
             </thead>
             <tbody>
               {#each data.manualSources as source}
-                <tr class="border-t border-[var(--line)]">
-                  <td class="py-1.5 pr-4">
-                    {source.brand}
-                    {source.model}
-                    {source.variant}
-                    {#if source.is_exact_schedule}
+                <tr class="border-b border-[var(--line)] last:border-b-0">
+                  <td class={tdClass} data-label={copy.model}>
+                    <span class="inline-flex flex-wrap items-center gap-2">
                       <span
-                        class="label-tech ml-1 rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] text-[var(--accent)]"
-                        >{copy.exact}</span
+                        >{source.brand}
+                        {source.model}
+                        {source.variant}</span
                       >
-                    {/if}
+                      {#if source.is_exact_schedule}
+                        <StatusBadge tone="ok">{copy.exact}</StatusBadge>
+                      {/if}
+                    </span>
                   </td>
-                  <td class="py-1.5 pr-4">
+                  <td class="{tdClass} numeric" data-label={copy.years}>
                     {source.year_from}–{source.year_to ?? source.year_from}
                   </td>
-                  <td class="py-1.5 pr-4">{source.document_version}</td>
-                  <td class="py-1.5 pr-4">{source.last_verified_date}</td>
+                  <td class={tdClass} data-label={copy.document}
+                    >{source.document_version}</td
+                  >
+                  <td class="{tdClass} numeric" data-label={copy.verifiedAt}
+                    >{source.last_verified_date}</td
+                  >
                   <td
-                    class="py-1.5 {source.maintenance_count === 0
-                      ? 'font-semibold text-danger'
+                    class="{tdClass} numeric text-right {source.maintenance_count ===
+                    0
+                      ? 'font-semibold text-[var(--warning)]'
                       : ''}"
+                    data-label={copy.items}
                   >
                     {source.maintenance_count}
                   </td>
                 </tr>
               {:else}
                 <tr>
-                  <td colspan="5" class="py-4 text-center text-[var(--muted)]"
+                  <td
+                    colspan="5"
+                    class="px-3 py-4 text-center text-[var(--muted)]"
                     >{copy.noSources}</td
                   >
                 </tr>
@@ -610,7 +663,7 @@
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   {/if}
 </section>

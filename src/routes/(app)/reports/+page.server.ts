@@ -11,6 +11,7 @@ import { isoDateValue } from "$server/domain/date-value";
 import { lockObjectOwner } from "$server/db/owner-lock";
 import type { Sql } from "postgres";
 
+import { latestCalendarDay } from "$lib/utils/calendar-day";
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
 }
@@ -47,7 +48,7 @@ export const actions = localizedActions({
     );
     if (
       !date ||
-      date > new Date().toISOString().slice(0, 10) ||
+      date > latestCalendarDay() ||
       mileage === null ||
       !Number.isInteger(mileage) ||
       mileage < 0 ||
@@ -86,7 +87,10 @@ export const actions = localizedActions({
   createShare: async ({ request, locals, platform }) => {
     const form = await request.formData();
     const motorcycleId = String(form.get("motorcycle_id") ?? "");
-    const days = Math.max(Number(form.get("days") ?? 14), 1);
+    const requestedDays = Math.round(Number(form.get("days") ?? 14));
+    const days = Number.isFinite(requestedDays)
+      ? Math.min(Math.max(requestedDays, 1), 90)
+      : 14;
     const [motorcycle] = await locals.db<Row[]>`
       select id from motorcycles
       where id = ${motorcycleId} and owner_id = ${locals.user!.id} and is_active = true

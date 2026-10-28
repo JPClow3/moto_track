@@ -48,7 +48,7 @@ test("cold offline recovery exports and discards local drafts without account da
     .poll(
       () =>
         page.evaluate(async () => {
-          const cache = await caches.open("moto-track-offline-v2");
+          const cache = await caches.open("moto-track-offline-v3");
           const locale = await cache.match("/__moto-track-offline-locale__");
           // An object, so a failure names the condition that never held.
           // The offline navigation below needs an activated worker, not a
@@ -125,6 +125,12 @@ test("serves a standalone Moto Track manifest", async ({ request }) => {
         sizes: "512x512",
         type: "image/png",
       },
+      {
+        src: "/brand/web/maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
     ],
   });
 });
@@ -139,12 +145,12 @@ test("pre-caches an offline fallback for a previously unavailable connection", a
       () =>
         page.evaluate(async () => {
           const keys = await caches.keys();
-          const cache = await caches.open("moto-track-offline-v2");
+          const cache = await caches.open("moto-track-offline-v3");
           const pt = await cache.match("/offline-pt-BR.html");
           const en = await cache.match("/offline-en.html");
           const ssr = await cache.match("/offline");
           return (
-            keys.includes("moto-track-offline-v2") && Boolean(pt && en) && !ssr
+            keys.includes("moto-track-offline-v3") && Boolean(pt && en) && !ssr
           );
         }),
       { timeout: 20_000 },
@@ -164,7 +170,7 @@ test("uses the explicit English preference for a standalone offline fallback wit
     .poll(
       () =>
         page.evaluate(async () => {
-          const cache = await caches.open("moto-track-offline-v2");
+          const cache = await caches.open("moto-track-offline-v3");
           const saved = await cache.match("/__moto-track-offline-locale__");
           const registration =
             await navigator.serviceWorker.getRegistration("/");

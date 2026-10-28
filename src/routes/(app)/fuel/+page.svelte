@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { appCopy } from "$lib/i18n/app-copy";
+  import { calendarDay } from "$lib/utils/calendar-day";
   import { actionMessage } from "$lib/i18n/action-messages";
   import { enhance } from "$app/forms";
+  import { afterNavigate, replaceState } from "$app/navigation";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { locale, t } from "$lib/i18n/store";
   import { formatMoney, formatPreciseMoney } from "$lib/i18n";
@@ -14,6 +15,9 @@
   import NearbyStations from "$components/NearbyStations.svelte";
   import LocationFields from "$components/LocationFields.svelte";
   import TrendChart from "$components/charts/TrendChart.svelte";
+  import EmptyState from "$components/ui/EmptyState.svelte";
+  import StatusBadge from "$components/ui/StatusBadge.svelte";
+  import { showToast } from "$components/ui/toast";
   import PageHeader from "$lib/components/app/PageHeader.svelte";
   import BikeContextBar from "$lib/components/app/BikeContextBar.svelte";
   import SignalStrip, {
@@ -26,6 +30,7 @@
   import RecordSheet from "$lib/components/app/RecordSheet.svelte";
   import PageOverflowMenu from "$lib/components/app/PageOverflowMenu.svelte";
   import ActivityTimeline from "$lib/components/app/ActivityTimeline.svelte";
+  import CloudOff from "lucide-svelte/icons/cloud-off";
   import Download from "lucide-svelte/icons/download";
   import Filter from "lucide-svelte/icons/filter";
   import Upload from "lucide-svelte/icons/upload";
@@ -39,14 +44,52 @@
 
   const brl = (cents: number) => formatMoney($locale, cents);
   const price = (millicents: number) => formatPreciseMoney($locale, millicents);
-  const today = () => new Date().toISOString().slice(0, 10);
+  const today = () => calendarDay();
+
+  // Decimal fields are text inputs (pt-BR riders type "4,59"); the server
+  // parses both marks. Accepts "4,59", "4.59", "1.234,56" and "1,234.56".
+  const DECIMAL_PATTERN = "[0-9]+([.,][0-9]{3})*([.,][0-9]+)?";
+
+  /** Prefill a decimal field in the rider's own notation, without grouping. */
+  const decimalInput = (
+    value: unknown,
+    maximumFractionDigits: number,
+    minimumFractionDigits = 0,
+  ) => {
+    if (value === null || value === undefined || value === "") return "";
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "";
+    return new Intl.NumberFormat($locale, {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    }).format(number);
+  };
 
   $: defaults = data.preferences[0] ?? {};
+  $: hasRecords = data.rows.length > 0;
+  // The fill-up "Repeat last" copies: the selected bike's latest, or the
+  // latest overall when viewing all bikes.
+  $: lastRecord = (
+    selectedMotorcycleId === "all"
+      ? data.rows[0]
+      : data.rows.find(
+          (row: Record<string, unknown>) =>
+            String(row.motorcycle_id ?? "") === selectedMotorcycleId,
+        )
+  ) as Record<string, unknown> | undefined;
   let stationIdChoice = String(data.preferences[0]?.station_id ?? "");
 
-  let selectedMotorcycleId = String(
-    data.preferences[0]?.motorcycle_id ?? data.motorcycles[0]?.id ?? "all",
-  );
+  // Default view follows the shell's active bike (first bike when unset), and
+  // follows it again whenever the rider switches bikes.
+  const activeOrFirstId = () =>
+    String(data.activeMotorcycleId ?? data.motorcycles[0]?.id ?? "all");
+  let selectedMotorcycleId = activeOrFirstId();
+  let syncedActiveId: unknown = data.activeMotorcycleId;
+  $: if (data.activeMotorcycleId !== syncedActiveId) {
+    syncedActiveId = data.activeMotorcycleId;
+    selectedMotorcycleId = activeOrFirstId();
+  }
   $: selectedMotorcycle =
     data.motorcycles.find(
       (moto: Record<string, unknown>) =>
@@ -109,12 +152,12 @@
     ]),
   );
 
-  // Status & dialog state
-  let offlineMessage = "";
+  // Status & dialog state. Successes go to a toast; only failures stay inline.
   let formBusy = false;
-  let statusMessage = "";
-  let statusRole: "status" | "alert" = "status";
+  let errorMessage = "";
   let confirmDialog: ConfirmDialog;
+
+  $: visibleError = errorMessage || data.errorMessage || form?.message || "";
 
   // Sheet dialog refs
   let actionMenu: ActionMenu;
@@ -123,6 +166,30 @@
   let repeatSheet: RecordSheet;
   let importSheet: RecordSheet;
   let preferencesSheet: RecordSheet;
+
+  /** "Repeat last" is the fastest path once there is a previous fill-up. */
+  function openNewSheet() {
+    if (lastRecord) repeatSheet?.open();
+    else manualSheet?.open();
+  }
+
+  // Quick-log deep link: /fuel?new=1 opens the new fill-up sheet once, then
+  // drops the param so a refresh doesn't reopen it.
+  afterNavigate(({ to }) => {
+    const url = to?.url;
+    if (!url || url.searchParams.get("new") !== "1") return;
+    openNewSheet();
+    const clean = new URL(url);
+    clean.searchParams.delete("new");
+    // The router finishes initialising after the first afterNavigate pass.
+    setTimeout(() => {
+      try {
+        replaceState(`${clean.pathname}${clean.search}${clean.hash}`, {});
+      } catch {
+        history.replaceState(history.state, "", clean);
+      }
+    }, 0);
+  });
 
   // OCR state
   let ocrReview = false;
@@ -138,6 +205,12 @@
   // Preferences sheet tabs
   let preferencesTab: "defaults" | "stations" | "grades" | "review" =
     "defaults";
+  $: preferencesTabs = [
+    { id: "defaults", label: $t("fuel.defaultsTitle") },
+    { id: "stations", label: $t("fuel.stationsHeading") },
+    { id: "grades", label: $t("fuel.gradesHeading") },
+    { id: "review", label: $t("fuel.reviewTitle") },
+  ] as const;
 
   // Action menu choices
   $: actionChoices = [
@@ -152,7 +225,7 @@
       label: $t("authenticatedUx.enterManually"),
       description: $t("authenticatedUx.enterManuallyDesc"),
     },
-    ...(data.rows.length > 0
+    ...(lastRecord
       ? [
           {
             id: "fuel-repeat",
@@ -201,7 +274,6 @@
         data.summary.averageConsumption != null
           ? `${Number(data.summary.averageConsumption).toFixed(1)} km/L`
           : "—",
-      hint: $t("fuel.trendHint"),
     },
     {
       label: $t("fuel.statsCostPerKm"),
@@ -212,53 +284,75 @@
     },
   ] satisfies Signal[];
 
-  const finishStatus = (result: {
+  type EnhanceResult = {
     type: string;
-    data?: { message?: unknown };
-  }) => {
+    data?: { message?: unknown; imported?: unknown };
+  };
+
+  const finishStatus = (result: EnhanceResult, successMessage?: string) => {
     if (result.type === "success") {
-      statusRole = "status";
-      statusMessage = $t("common.actionSuccess");
-    } else {
-      statusRole = "alert";
-      statusMessage = String(result.data?.message ?? $t("error.serverBody"));
+      errorMessage = "";
+      showToast(successMessage ?? $t("common.actionSuccess"));
+    } else if (result.type !== "redirect") {
+      errorMessage = String(result.data?.message ?? $t("error.serverBody"));
     }
   };
 
-  const enhanceWithStatus: SubmitFunction = () => {
-    formBusy = true;
-    statusMessage = "";
-    return async ({ result, update }) => {
-      formBusy = false;
-      finishStatus(result);
-      await update();
+  const enhanceWith =
+    (successMessage: string): SubmitFunction =>
+    () => {
+      formBusy = true;
+      errorMessage = "";
+      return async ({ result, update }) => {
+        formBusy = false;
+        finishStatus(result, successMessage);
+        await update();
+      };
     };
-  };
 
-  const enhanceDelete: SubmitFunction = async ({ cancel }) => {
-    const ok = await confirmDialog.ask($t("feature.confirmDelete"));
-    if (!ok) {
-      cancel();
-      return;
-    }
+  const enhanceDeleteWith =
+    (successMessage: string): SubmitFunction =>
+    async ({ cancel }) => {
+      const ok = await confirmDialog.ask($t("feature.confirmDelete"));
+      if (!ok) {
+        cancel();
+        return;
+      }
+      formBusy = true;
+      errorMessage = "";
+      return async ({ result, update }) => {
+        formBusy = false;
+        finishStatus(result, successMessage);
+        await update();
+      };
+    };
+
+  const handleImportConfirm: SubmitFunction = () => {
     formBusy = true;
-    statusMessage = "";
+    errorMessage = "";
     return async ({ result, update }) => {
       formBusy = false;
-      finishStatus(result);
+      const imported = Number(
+        (result as EnhanceResult).data?.imported ?? Number.NaN,
+      );
+      finishStatus(
+        result,
+        Number.isFinite(imported)
+          ? $t("fuelUx.imported", { count: imported })
+          : undefined,
+      );
       await update();
     };
   };
 
   const handleCreateRecord: SubmitFunction = ({ formData, cancel }) => {
-    offlineMessage = "";
     formBusy = true;
-    statusMessage = "";
+    errorMessage = "";
     if (navigator.onLine) {
       void requestOfflineFuelSync().catch(() => undefined);
       return async ({ result, update }) => {
         formBusy = false;
-        finishStatus(result);
+        finishStatus(result, $t("fuelUx.saved"));
         if (result.type === "success") {
           manualSheet?.close();
           scanSheet?.close();
@@ -271,33 +365,31 @@
     void queueOfflineFuelSubmission(formData, $locale, data.user?.id)
       .then(() => {
         formBusy = false;
-        statusRole = "status";
-        offlineMessage = $t("offline.fuelQueued");
+        showToast($t("offline.fuelQueued"), {
+          tone: "info",
+          action: { label: $t("offline.draftsTitle"), href: "/offline" },
+        });
         manualSheet?.close();
         scanSheet?.close();
         ocrReview = false;
       })
       .catch((error) => {
         formBusy = false;
-        statusRole = "alert";
-        offlineMessage =
+        errorMessage =
           error instanceof Error ? error.message : $t("offline.queueFailed");
       });
   };
 
   const handleOcrScan: SubmitFunction = () => {
     formBusy = true;
-    statusMessage = "";
+    errorMessage = "";
     return async ({ result, update }) => {
       formBusy = false;
       if (result.type === "success") {
-        statusRole = "status";
         ocrReview = true;
       } else {
-        statusRole = "alert";
-        statusMessage = String(
-          (result as { data?: { message?: unknown } }).data?.message ??
-            $t("error.serverBody"),
+        errorMessage = String(
+          (result as EnhanceResult).data?.message ?? $t("error.serverBody"),
         );
       }
       await update();
@@ -306,10 +398,10 @@
 
   const handleRepeatSubmit: SubmitFunction = () => {
     formBusy = true;
-    statusMessage = "";
+    errorMessage = "";
     return async ({ result, update }) => {
       formBusy = false;
-      finishStatus(result);
+      finishStatus(result, $t("fuelUx.saved"));
       if (result.type === "success") {
         repeatSheet?.close();
       }
@@ -319,21 +411,24 @@
 
   const handleImportPreview: SubmitFunction = () => {
     formBusy = true;
-    statusMessage = "";
+    errorMessage = "";
     return async ({ result, update }) => {
       formBusy = false;
-      finishStatus(result);
       if (result.type === "success") {
         importSheet?.close();
+      } else {
+        finishStatus(result);
       }
       await update();
     };
   };
+
+  const menuItemClass =
+    "focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--panel-sunken)]";
 </script>
 
 <section class="grid gap-6" aria-busy={formBusy}>
   <PageHeader
-    eyebrow={$t("nav.fuel")}
     title={$t("fuel.pageTitle")}
     description={$t("fuel.pageSubtitle")}
   >
@@ -347,32 +442,39 @@
 
     <svelte:fragment slot="overflow">
       <PageOverflowMenu label={$t("authenticatedUx.moreActions")}>
-        <a
-          class="focus-ring flex items-center gap-2 rounded px-3 py-2 text-sm text-[var(--fg)] hover:bg-[var(--panel-sunken)]"
-          href="/fuel/export.csv"
-        >
-          <Download size={16} class="text-[var(--muted)]" aria-hidden="true" />
-          <span>{$t("common.exportCsv")}</span>
-        </a>
+        {#if hasRecords}
+          <a class={menuItemClass} href="/fuel/export.csv">
+            <Download
+              size={16}
+              class="text-[var(--muted)]"
+              aria-hidden="true"
+            />
+            <span>{$t("common.exportCsv")}</span>
+          </a>
+          <button
+            type="button"
+            class={menuItemClass}
+            on:click={() => (showFilters = !showFilters)}
+          >
+            <Filter size={16} class="text-[var(--muted)]" aria-hidden="true" />
+            <span>{$t("authenticatedUx.filters")}</span>
+          </button>
+        {/if}
         <button
           type="button"
-          class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--panel-sunken)]"
-          on:click={() => (showFilters = !showFilters)}
-        >
-          <Filter size={16} class="text-[var(--muted)]" aria-hidden="true" />
-          <span>{$t("authenticatedUx.filters")}</span>
-        </button>
-        <button
-          type="button"
-          class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--panel-sunken)]"
+          class={menuItemClass}
           on:click={() => importSheet.open()}
         >
           <Upload size={16} class="text-[var(--muted)]" aria-hidden="true" />
           <span>{$t("fuel.importTitle")}</span>
         </button>
+        <a class={menuItemClass} href="/offline">
+          <CloudOff size={16} class="text-[var(--muted)]" aria-hidden="true" />
+          <span>{$t("offline.draftsTitle")}</span>
+        </a>
         <button
           type="button"
-          class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--panel-sunken)]"
+          class={menuItemClass}
           on:click={() => {
             preferencesTab = "defaults";
             preferencesSheet.open();
@@ -387,7 +489,7 @@
         </button>
         <button
           type="button"
-          class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--panel-sunken)]"
+          class={menuItemClass}
           on:click={() => {
             preferencesTab = "stations";
             preferencesSheet.open();
@@ -398,7 +500,7 @@
         </button>
         <button
           type="button"
-          class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--panel-sunken)]"
+          class={menuItemClass}
           on:click={() => {
             preferencesTab = "grades";
             preferencesSheet.open();
@@ -409,7 +511,7 @@
         </button>
         <button
           type="button"
-          class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--panel-sunken)]"
+          class={menuItemClass}
           on:click={() => {
             preferencesTab = "review";
             preferencesSheet.open();
@@ -433,7 +535,7 @@
           <svelte:fragment slot="selection">
             {#if data.motorcycles.length > 1}
               <select
-                class="field max-w-[180px] py-1 text-xs"
+                class="field max-w-[180px] py-1"
                 bind:value={selectedMotorcycleId}
                 on:change={() => {
                   if (selectedMotorcycleId !== "all") {
@@ -454,40 +556,14 @@
     </svelte:fragment>
   </PageHeader>
 
-  {#if data.errorMessage || form?.message}
+  {#if visibleError}
     <div
-      class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
+      class="rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]"
       role="alert"
       aria-live="assertive"
     >
-      {data.errorMessage || form?.message}
+      {visibleError}
     </div>
-  {/if}
-
-  {#if offlineMessage}
-    <p
-      class={statusRole === "alert"
-        ? "rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-        : "rounded border border-[var(--line)] bg-[var(--panel)] p-3 text-sm"}
-      role={statusRole}
-      aria-live={statusRole === "alert" ? "assertive" : "polite"}
-    >
-      {offlineMessage}
-    </p>
-  {/if}
-
-  <a class="text-sm underline" href="/offline">{$t("offline.draftsTitle")}</a>
-
-  {#if statusMessage && !offlineMessage}
-    <p
-      class={statusRole === "alert"
-        ? "rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-        : "rounded border border-[var(--line)] bg-[var(--panel)] p-3 text-sm"}
-      role={statusRole}
-      aria-live={statusRole === "alert" ? "assertive" : "polite"}
-    >
-      {statusMessage}
-    </p>
   {/if}
 
   <ConfirmDialog
@@ -496,40 +572,12 @@
     destructive
   />
 
-  <!-- Key signals -->
-  <SignalStrip {signals} />
-  <NearbyStations
-    stations={data.stations.map((station: Record<string, unknown>) => ({
-      ...station,
-      id: String(station.id),
-      name: String(station.name),
-    }))}
-    records={data.rows}
-    grades={data.grades.map((grade: Record<string, unknown>) => ({
-      id: String(grade.id),
-      name: String(grade.name),
-    }))}
-  />
-
-  <!-- Compact Trend Chart -->
-  {#if data.consumption.length >= 2}
-    <div class="panel p-3 sm:p-4">
-      <div class="mb-2 flex items-center justify-between gap-2">
-        <h2 class="label-tech text-xs text-[var(--muted)]">
-          {$t("fuel.trendHeading")}
-        </h2>
-        <span class="text-xs text-[var(--muted)]">{$t("fuel.trendHint")}</span>
-      </div>
-      <TrendChart points={data.consumption} unit="km/L" />
-    </div>
-  {/if}
-
   <!-- CSV Import Preview Confirmation -->
   {#if form?.previewRows}
     <div class="panel p-4">
       <h2 class="font-semibold">{$t("fuel.importPreviewHeading")}</h2>
-      <div class="fuel-table-scroll mt-3 overflow-x-auto">
-        <table class="fuel-table w-full text-left text-sm">
+      <div class="data-table mt-3 overflow-x-auto">
+        <table class="w-full text-left text-sm">
           <thead>
             <tr>
               <th>#</th>
@@ -545,19 +593,28 @@
               <tr class="border-t border-[var(--line)]">
                 <td class="py-2" data-label="#">{row.row}</td>
                 <td data-label={$t("fuel.colDate")}>{row.data.date}</td>
-                <td data-label={$t("fuel.colKm")}>{row.data.odometer_km}</td>
-                <td data-label={$t("fuel.colLiters")}>{row.data.liters}</td>
-                <td data-label={$t("fuel.colTotal")}>
+                <td class="numeric" data-label={$t("fuel.colKm")}>
+                  {row.data.odometer_km}
+                </td>
+                <td class="numeric" data-label={$t("fuel.colLiters")}>
+                  {row.data.liters}
+                </td>
+                <td class="numeric" data-label={$t("fuel.colTotal")}>
                   {brl(row.data.total_price_cents)}
                 </td>
                 <td data-label={$t("common.status")}>
-                  {row.errors.length
-                    ? row.errors
+                  {#if row.errors.length}
+                    <StatusBadge tone="overdue">
+                      {row.errors
                         .map((message: string) =>
                           actionMessage($locale, message),
                         )
-                        .join(" ")
-                    : $t("fuel.statusValid")}
+                        .join(" ")}
+                    </StatusBadge>
+                  {:else}
+                    <StatusBadge tone="ok">{$t("fuel.statusValid")}</StatusBadge
+                    >
+                  {/if}
                 </td>
               </tr>
             {/each}
@@ -568,22 +625,24 @@
         class="mt-4 flex flex-wrap items-end gap-3"
         method="POST"
         action="?/importConfirm"
-        use:enhance={enhanceWithStatus}
+        use:enhance={handleImportConfirm}
       >
         <input type="hidden" name="rows_json" value={form.validRowsJson} />
-        <label class="field-label" for="fuel-import-motorcycle">
-          {$t("fuel.motorcycleLabel")}
-        </label>
-        <select
-          class="field max-w-xs"
-          id="fuel-import-motorcycle"
-          name="motorcycle_id"
-        >
-          <option value="">{$t("fuel.filterAllMotorcycles")}</option>
-          {#each data.motorcycles as moto}
-            <option value={moto.id}>{moto.name}</option>
-          {/each}
-        </select>
+        <div class="field-group">
+          <label class="field-label" for="fuel-import-motorcycle">
+            {$t("fuel.motorcycleLabel")}
+          </label>
+          <select
+            class="field max-w-xs"
+            id="fuel-import-motorcycle"
+            name="motorcycle_id"
+          >
+            <option value="">{$t("fuel.filterAllMotorcycles")}</option>
+            {#each data.motorcycles as moto}
+              <option value={moto.id}>{moto.name}</option>
+            {/each}
+          </select>
+        </div>
         <button class="button-primary" type="submit" disabled={formBusy}>
           {$t("fuel.importConfirmAction")}
         </button>
@@ -591,177 +650,215 @@
     </div>
   {/if}
 
-  <!-- Filters drawer / bar -->
-  {#if showFilters || hasActiveFilters}
-    <div class="panel grid gap-3 p-3 sm:grid-cols-3 sm:p-4">
-      <div class="field-group min-w-0">
-        <label class="field-label text-xs" for="fuel-filter-motorcycle">
-          {$t("fuel.motorcycleLabel")}
-        </label>
-        <select
-          class="field py-1.5 text-xs"
-          id="fuel-filter-motorcycle"
-          bind:value={filterMotorcycle}
-        >
-          <option value="all">{$t("fuel.filterAllMotorcycles")}</option>
-          {#each data.motorcycles as moto}
-            <option value={moto.id}>{moto.name}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="field-group min-w-0">
-        <label class="field-label text-xs" for="fuel-filter-station">
-          {$t("fuel.colStation")}
-        </label>
-        <input
-          class="field py-1.5 text-xs"
-          id="fuel-filter-station"
-          type="search"
-          placeholder={$t("fuel.filterStationPlaceholder")}
-          bind:value={filterStation}
-        />
-      </div>
-      <div class="field-group min-w-0">
-        <label class="field-label text-xs" for="fuel-filter-period">
-          {$t("fuel.filterPeriod")}
-        </label>
-        <select
-          class="field py-1.5 text-xs"
-          id="fuel-filter-period"
-          bind:value={filterPeriod}
-        >
-          <option value="90d">{$t("fuel.period90d")}</option>
-          <option value="12m">{$t("fuel.period12m")}</option>
-          <option value="all">{$t("fuel.periodAll")}</option>
-        </select>
-      </div>
-    </div>
-  {/if}
+  {#if !hasRecords}
+    <EmptyState
+      icon={Fuel}
+      title={$t("fuel.emptyRecords")}
+      description={$t("fuel.emptyRecordsHint")}
+    >
+      {#snippet action()}
+        <button class="button-primary" type="button" on:click={openNewSheet}>
+          {$t("fuelUx.emptyAction")}
+        </button>
+      {/snippet}
+    </EmptyState>
+  {:else}
+    <!-- Key signals -->
+    <SignalStrip {signals} />
 
-  <!-- Activity Timeline of records -->
-  <ActivityTimeline
-    title={$t("fuel.historyHeading")}
-    emptyMessage={$t("fuel.emptyRecords")}
-    items={filteredRows}
-  >
-    <svelte:fragment slot="header-action">
-      <div class="flex items-center gap-3">
-        <span class="text-xs text-[var(--muted)]">
-          {$t("fuel.resultCount", { count: filteredRows.length })}
-        </span>
-        {#if hasActiveFilters}
-          <button
-            type="button"
-            class="text-xs font-semibold text-[var(--accent)] hover:underline"
-            on:click={() => {
-              filterMotorcycle = "all";
-              filterStation = "";
-              filterPeriod = "all";
-            }}
+    <!-- Compact Trend Chart -->
+    {#if data.consumption.length >= 2}
+      <div class="panel p-3 sm:p-4">
+        <div class="mb-2 flex items-center justify-between gap-2">
+          <h2 class="label-tech text-xs text-[var(--muted)]">
+            {$t("fuel.trendHeading")}
+          </h2>
+          <span class="text-xs text-[var(--muted)]">{$t("fuel.trendHint")}</span
           >
-            {appCopy($locale, "Limpar filtros")}
-          </button>
-        {/if}
-      </div>
-    </svelte:fragment>
-
-    <svelte:fragment slot="item" let:item>
-      {@const row = item}
-      <div
-        class="flex flex-col gap-2 px-1 py-1 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div class="min-w-0 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-sm font-semibold text-[var(--fg)]"
-              >{row.date}</span
-            >
-            {#if row.motorcycle_id}
-              <span
-                class="label-tech rounded bg-[var(--panel-sunken)] px-1.5 py-0.5 text-[10px] text-[var(--muted)]"
-              >
-                {motorcycleNameById.get(String(row.motorcycle_id)) ?? "—"}
-              </span>
-            {/if}
-            {#if row.station_name}
-              <span class="truncate text-xs text-[var(--muted)]">
-                · {row.station_name}
-              </span>
-            {/if}
-          </div>
-          <div
-            class="mt-1 flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]"
-          >
-            <span>
-              <strong class="font-medium text-[var(--fg)]"
-                >{row.odometer_km}</strong
-              >
-              km
-            </span>
-            <span>
-              <strong class="font-medium text-[var(--fg)]">
-                {Number(row.liters).toFixed(3)}
-              </strong>
-              L
-            </span>
-            <span>{price(Number(row.price_per_liter_millicents))}/L</span>
-            {#if row.receipt_file_key}
-              <a
-                class="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                href={privateFileUrl(String(row.receipt_file_key))}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {$t("common.openFile")}
-              </a>
-            {/if}
-          </div>
         </div>
+        <TrendChart points={data.consumption} unit="km/L" />
+      </div>
+    {/if}
 
-        <div
-          class="flex shrink-0 items-center justify-between gap-4 sm:justify-end"
-        >
-          <span class="display numeric text-lg font-bold text-[var(--fg)]">
-            {brl(Number(row.total_price_cents))}
+    <NearbyStations
+      stations={data.stations.map((station: Record<string, unknown>) => ({
+        ...station,
+        id: String(station.id),
+        name: String(station.name),
+      }))}
+      records={data.rows}
+      grades={data.grades.map((grade: Record<string, unknown>) => ({
+        id: String(grade.id),
+        name: String(grade.name),
+      }))}
+    />
+
+    <!-- Filters drawer / bar -->
+    {#if showFilters || hasActiveFilters}
+      <div class="panel grid gap-3 p-3 sm:grid-cols-3 sm:p-4">
+        <div class="field-group min-w-0">
+          <label class="field-label" for="fuel-filter-motorcycle">
+            {$t("fuel.motorcycleLabel")}
+          </label>
+          <select
+            class="field"
+            id="fuel-filter-motorcycle"
+            bind:value={filterMotorcycle}
+          >
+            <option value="all">{$t("fuel.filterAllMotorcycles")}</option>
+            {#each data.motorcycles as moto}
+              <option value={moto.id}>{moto.name}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="field-group min-w-0">
+          <label class="field-label" for="fuel-filter-station">
+            {$t("fuel.colStation")}
+          </label>
+          <input
+            class="field"
+            id="fuel-filter-station"
+            type="search"
+            autocomplete="off"
+            placeholder={$t("fuel.filterStationPlaceholder")}
+            bind:value={filterStation}
+          />
+        </div>
+        <div class="field-group min-w-0">
+          <label class="field-label" for="fuel-filter-period">
+            {$t("fuel.filterPeriod")}
+          </label>
+          <select
+            class="field"
+            id="fuel-filter-period"
+            bind:value={filterPeriod}
+          >
+            <option value="90d">{$t("fuel.period90d")}</option>
+            <option value="12m">{$t("fuel.period12m")}</option>
+            <option value="all">{$t("fuel.periodAll")}</option>
+          </select>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Activity Timeline of records -->
+    <ActivityTimeline title={$t("fuel.historyHeading")} items={filteredRows}>
+      <svelte:fragment slot="header-action">
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-[var(--muted)]">
+            {$t("fuel.resultCount", { count: filteredRows.length })}
           </span>
-          <form
-            method="POST"
-            action="?/deleteRecord"
-            use:enhance={enhanceDelete}
-          >
-            <input type="hidden" name="id" value={row.id} />
+          {#if hasActiveFilters}
             <button
-              class="button-danger min-h-11 px-3 py-1 text-xs"
-              type="submit"
-              disabled={formBusy}
-              aria-label={`${$t("common.delete")} ${row.date}`}
+              type="button"
+              class="focus-ring text-xs font-semibold text-[var(--fg)] underline underline-offset-2"
+              on:click={() => {
+                filterMotorcycle = "all";
+                filterStation = "";
+                filterPeriod = "all";
+              }}
             >
-              {$t("common.delete")}
+              {$t("fuelUx.clearFilters")}
             </button>
-          </form>
+          {/if}
         </div>
-      </div>
-    </svelte:fragment>
+      </svelte:fragment>
 
-    <svelte:fragment slot="empty">
-      <div class="py-4 text-center">
-        <p class="display text-2xl">{$t("fuel.emptyRecords")}</p>
-        <p class="mt-2 text-sm text-[var(--muted)]">
-          {data.rows.length > 0
-            ? $t("fuel.filterEmptyHint")
-            : $t("fuel.emptyRecordsHint")}
-        </p>
-        {#if data.rows.length === 0}
-          <button
-            class="button-secondary mt-4 inline-block min-h-11"
-            type="button"
-            on:click={() => actionMenu.open()}
+      <svelte:fragment slot="item" let:item>
+        {@const row = item}
+        <div
+          class="flex flex-col gap-2 px-1 py-1 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold text-[var(--fg)]"
+                >{row.date}</span
+              >
+              {#if row.motorcycle_id}
+                <span
+                  class="rounded bg-[var(--panel-sunken)] px-1.5 py-0.5 text-xs font-medium text-[var(--muted)]"
+                >
+                  {motorcycleNameById.get(String(row.motorcycle_id)) ?? "—"}
+                </span>
+              {/if}
+              {#if row.station_name}
+                <span class="truncate text-xs text-[var(--muted)]">
+                  · {row.station_name}
+                </span>
+              {/if}
+            </div>
+            <div
+              class="mt-1 flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]"
+            >
+              <span class="numeric">
+                <strong class="font-medium text-[var(--fg)]"
+                  >{row.odometer_km}</strong
+                >
+                km
+              </span>
+              <span class="numeric">
+                <strong class="font-medium text-[var(--fg)]">
+                  {decimalInput(row.liters, 3, 3)}
+                </strong>
+                L
+              </span>
+              <span class="numeric"
+                >{price(Number(row.price_per_liter_millicents))}/L</span
+              >
+              {#if row.receipt_file_key}
+                <a
+                  class="font-medium text-[var(--fg)] underline underline-offset-2"
+                  href={privateFileUrl(String(row.receipt_file_key))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {$t("common.openFile")}
+                </a>
+              {/if}
+            </div>
+          </div>
+
+          <div
+            class="flex shrink-0 items-center justify-between gap-4 sm:justify-end"
           >
-            {$t("fuel.newRecordTitle")}
-          </button>
-        {/if}
-      </div>
-    </svelte:fragment>
-  </ActivityTimeline>
+            <span class="display numeric text-lg font-bold text-[var(--fg)]">
+              {brl(Number(row.total_price_cents))}
+            </span>
+            <form
+              method="POST"
+              action="?/deleteRecord"
+              use:enhance={enhanceDeleteWith($t("fuelUx.deleted"))}
+            >
+              <input type="hidden" name="id" value={row.id} />
+              <button
+                class="button-danger min-h-11 px-3 py-1 text-sm"
+                type="submit"
+                disabled={formBusy}
+                aria-label={`${$t("common.delete")} ${row.date}`}
+              >
+                {$t("common.delete")}
+              </button>
+            </form>
+          </div>
+        </div>
+      </svelte:fragment>
+
+      <svelte:fragment slot="empty">
+        <p class="text-sm text-[var(--muted)]">{$t("fuel.filterEmptyHint")}</p>
+        <button
+          class="button-secondary mt-4 min-h-11"
+          type="button"
+          on:click={() => {
+            filterMotorcycle = "all";
+            filterStation = "";
+            filterPeriod = "all";
+          }}
+        >
+          {$t("fuelUx.clearFilters")}
+        </button>
+      </svelte:fragment>
+    </ActivityTimeline>
+  {/if}
 </section>
 
 <!-- Action Menu (Primary Action Modal Choices) -->
@@ -830,16 +927,11 @@
       </div>
     </form>
   {:else}
-    <div
-      class="mb-4 rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm"
+    <p
+      class="mb-4 rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm text-[var(--muted)]"
     >
-      <p class="font-semibold text-[var(--accent)]">
-        {$t("fuel.ocrFoundTitle")}
-      </p>
-      <p class="mt-1 text-xs text-[var(--muted)]">
-        {$t("fuel.ocrFoundHint")}
-      </p>
-    </div>
+      {$t("fuel.ocrFoundHint")}
+    </p>
 
     <form
       class="grid gap-3"
@@ -848,21 +940,22 @@
       enctype="multipart/form-data"
       use:enhance={handleCreateRecord}
     >
-      <label class="field-label" for="ocr-motorcycle">
-        {$t("fuel.motorcycleLabel")}
-      </label>
-      <select class="field" id="ocr-motorcycle" name="motorcycle_id">
-        <option value="">{$t("fuel.motorcycleLabel")}</option>
-        {#each data.motorcycles as moto}
-          <option
-            value={moto.id}
-            selected={selectedMotorcycleId === moto.id ||
-              defaults.motorcycle_id === moto.id}
-          >
-            {moto.name}
-          </option>
-        {/each}
-      </select>
+      <div class="field-group">
+        <label class="field-label" for="ocr-motorcycle">
+          {$t("fuel.motorcycleLabel")}
+        </label>
+        <select class="field" id="ocr-motorcycle" name="motorcycle_id">
+          <option value="">{$t("fuel.motorcycleLabel")}</option>
+          {#each data.motorcycles as moto}
+            <option
+              value={moto.id}
+              selected={selectedMotorcycleId === String(moto.id)}
+            >
+              {moto.name}
+            </option>
+          {/each}
+        </select>
+      </div>
 
       <div class="grid gap-3 sm:grid-cols-2">
         <div class="field-group">
@@ -880,13 +973,19 @@
         </div>
         <div class="field-group">
           <label class="field-label" for="ocr-odometer">
-            {$t("fuel.odometerLabel")}
+            {$t("fuel.odometerLabel")} (km)
           </label>
           <input
             class="field"
             id="ocr-odometer"
             type="number"
+            inputmode="numeric"
+            min="0"
+            step="1"
             name="odometer_km"
+            placeholder={latestOdometerForSelected != null
+              ? String(latestOdometerForSelected)
+              : ""}
             required
           />
         </div>
@@ -900,10 +999,14 @@
           <input
             class="field"
             id="ocr-liters"
-            type="number"
-            step="0.001"
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            pattern={DECIMAL_PATTERN}
+            title={$t("fuelUx.decimalHint")}
+            placeholder={$t("fuelUx.litersPlaceholder")}
             name="liters"
-            value={form?.ocr?.liters ?? ""}
+            value={decimalInput(form?.ocr?.liters, 3)}
             required
           />
         </div>
@@ -914,10 +1017,14 @@
           <input
             class="field"
             id="ocr-total-price"
-            type="number"
-            step="0.01"
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            pattern={DECIMAL_PATTERN}
+            title={$t("fuelUx.decimalHint")}
+            placeholder={$t("fuelUx.moneyPlaceholder")}
             name="total_price"
-            value={form?.ocr?.total_price ?? ""}
+            value={decimalInput(form?.ocr?.total_price, 2, 2)}
             required
           />
         </div>
@@ -930,10 +1037,14 @@
         <input
           class="field"
           id="ocr-price-per-liter"
-          type="number"
-          step="0.001"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          pattern={DECIMAL_PATTERN}
+          title={$t("fuelUx.decimalHint")}
+          placeholder={$t("fuelUx.pricePerLiterPlaceholder")}
           name="price_per_liter"
-          value={form?.ocr?.price_per_liter ?? ""}
+          value={decimalInput(form?.ocr?.price_per_liter, 3)}
         />
       </div>
 
@@ -1056,21 +1167,22 @@
     enctype="multipart/form-data"
     use:enhance={handleCreateRecord}
   >
-    <label class="field-label" for="fuel-manual-motorcycle">
-      {$t("fuel.motorcycleLabel")}
-    </label>
-    <select class="field" id="fuel-manual-motorcycle" name="motorcycle_id">
-      <option value="">{$t("fuel.motorcycleLabel")}</option>
-      {#each data.motorcycles as moto}
-        <option
-          value={moto.id}
-          selected={selectedMotorcycleId === moto.id ||
-            defaults.motorcycle_id === moto.id}
-        >
-          {moto.name}
-        </option>
-      {/each}
-    </select>
+    <div class="field-group">
+      <label class="field-label" for="fuel-manual-motorcycle">
+        {$t("fuel.motorcycleLabel")}
+      </label>
+      <select class="field" id="fuel-manual-motorcycle" name="motorcycle_id">
+        <option value="">{$t("fuel.motorcycleLabel")}</option>
+        {#each data.motorcycles as moto}
+          <option
+            value={moto.id}
+            selected={selectedMotorcycleId === String(moto.id)}
+          >
+            {moto.name}
+          </option>
+        {/each}
+      </select>
+    </div>
 
     <div class="grid gap-3 sm:grid-cols-2">
       <div class="field-group">
@@ -1088,13 +1200,19 @@
       </div>
       <div class="field-group">
         <label class="field-label" for="fuel-manual-odometer">
-          {$t("fuel.odometerLabel")}
+          {$t("fuel.odometerLabel")} (km)
         </label>
         <input
           class="field"
           id="fuel-manual-odometer"
           type="number"
+          inputmode="numeric"
+          min="0"
+          step="1"
           name="odometer_km"
+          placeholder={latestOdometerForSelected != null
+            ? String(latestOdometerForSelected)
+            : ""}
           required
         />
       </div>
@@ -1108,8 +1226,12 @@
         <input
           class="field"
           id="fuel-manual-liters"
-          type="number"
-          step="0.001"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          pattern={DECIMAL_PATTERN}
+          title={$t("fuelUx.decimalHint")}
+          placeholder={$t("fuelUx.litersPlaceholder")}
           name="liters"
           required
         />
@@ -1121,8 +1243,12 @@
         <input
           class="field"
           id="fuel-manual-total-price"
-          type="number"
-          step="0.01"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          pattern={DECIMAL_PATTERN}
+          title={$t("fuelUx.decimalHint")}
+          placeholder={$t("fuelUx.moneyPlaceholder")}
           name="total_price"
           required
         />
@@ -1136,11 +1262,15 @@
       <input
         class="field"
         id="fuel-manual-price-per-liter"
-        type="number"
-        step="0.001"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        pattern={DECIMAL_PATTERN}
+        title={$t("fuelUx.decimalHint")}
+        placeholder={$t("fuelUx.pricePerLiterPlaceholder")}
         name="price_per_liter"
         value={defaults.price_per_liter_millicents
-          ? defaults.price_per_liter_millicents / 100000
+          ? decimalInput(defaults.price_per_liter_millicents / 100000, 3)
           : ""}
       />
     </div>
@@ -1192,7 +1322,7 @@
           value={defaults.station_name ?? ""}
           disabled={Boolean(stationIdChoice)}
         />
-        <p class="field-help text-xs text-[var(--muted)]">
+        <p class="field-help">
           {$t("fuel.stationNameHelp")}
         </p>
       </div>
@@ -1277,6 +1407,11 @@
     action="?/repeatLast"
     use:enhance={handleRepeatSubmit}
   >
+    <input
+      type="hidden"
+      name="motorcycle_id"
+      value={String(lastRecord?.motorcycle_id ?? "")}
+    />
     <div class="grid gap-3 sm:grid-cols-2">
       <div class="field-group">
         <label class="field-label" for="fuel-repeat-date">
@@ -1293,13 +1428,19 @@
       </div>
       <div class="field-group">
         <label class="field-label" for="fuel-repeat-odometer">
-          {$t("fuel.newOdometerLabel")}
+          {$t("fuel.newOdometerLabel")} (km)
         </label>
         <input
           class="field"
           id="fuel-repeat-odometer"
           type="number"
+          inputmode="numeric"
+          min="0"
+          step="1"
           name="odometer_km"
+          placeholder={lastRecord?.odometer_km != null
+            ? String(lastRecord.odometer_km)
+            : ""}
           required
         />
       </div>
@@ -1312,10 +1453,14 @@
         <input
           class="field"
           id="fuel-repeat-liters"
-          type="number"
-          step="0.001"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          pattern={DECIMAL_PATTERN}
+          title={$t("fuelUx.decimalHint")}
+          placeholder={$t("fuelUx.litersPlaceholder")}
           name="liters"
-          value={data.rows[0]?.liters ?? ""}
+          value={decimalInput(lastRecord?.liters, 3)}
           required
         />
       </div>
@@ -1326,11 +1471,15 @@
         <input
           class="field"
           id="fuel-repeat-total"
-          type="number"
-          step="0.01"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          pattern={DECIMAL_PATTERN}
+          title={$t("fuelUx.decimalHint")}
+          placeholder={$t("fuelUx.moneyPlaceholder")}
           name="total_price"
-          value={data.rows[0]?.total_price_cents
-            ? (Number(data.rows[0].total_price_cents) / 100).toFixed(2)
+          value={lastRecord?.total_price_cents
+            ? decimalInput(Number(lastRecord.total_price_cents) / 100, 2, 2)
             : ""}
           required
         />
@@ -1377,7 +1526,6 @@
         accept=".csv,text/csv"
         required
       />
-      <p class="field-help text-xs text-[var(--muted)]">{$t("fuel.csvHelp")}</p>
     </div>
     <div
       class="flex items-center justify-end gap-3 border-t border-[var(--line)] pt-3"
@@ -1405,49 +1553,20 @@
 >
   <div class="space-y-4">
     <!-- Tabs header -->
-    <div
-      class="flex flex-wrap gap-1 border-b border-[var(--line)] pb-2 text-xs"
-    >
-      <button
-        type="button"
-        class="focus-ring rounded px-2.5 py-1 font-medium transition {preferencesTab ===
-        'defaults'
-          ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)]'
-          : 'text-[var(--muted)] hover:text-[var(--fg)]'}"
-        on:click={() => (preferencesTab = "defaults")}
-      >
-        {$t("fuel.defaultsTitle")}
-      </button>
-      <button
-        type="button"
-        class="focus-ring rounded px-2.5 py-1 font-medium transition {preferencesTab ===
-        'stations'
-          ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)]'
-          : 'text-[var(--muted)] hover:text-[var(--fg)]'}"
-        on:click={() => (preferencesTab = "stations")}
-      >
-        {$t("fuel.stationsHeading")}
-      </button>
-      <button
-        type="button"
-        class="focus-ring rounded px-2.5 py-1 font-medium transition {preferencesTab ===
-        'grades'
-          ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)]'
-          : 'text-[var(--muted)] hover:text-[var(--fg)]'}"
-        on:click={() => (preferencesTab = "grades")}
-      >
-        {$t("fuel.gradesHeading")}
-      </button>
-      <button
-        type="button"
-        class="focus-ring rounded px-2.5 py-1 font-medium transition {preferencesTab ===
-        'review'
-          ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)]'
-          : 'text-[var(--muted)] hover:text-[var(--fg)]'}"
-        on:click={() => (preferencesTab = "review")}
-      >
-        {$t("fuel.reviewTitle")}
-      </button>
+    <div class="flex flex-wrap gap-1 border-b border-[var(--line)] pb-2">
+      {#each preferencesTabs as tab (tab.id)}
+        <button
+          type="button"
+          aria-pressed={preferencesTab === tab.id}
+          class="focus-ring min-h-11 rounded px-3 py-1 text-sm transition {preferencesTab ===
+          tab.id
+            ? 'bg-[var(--panel-sunken)] font-semibold text-[var(--fg)]'
+            : 'font-medium text-[var(--muted)] hover:text-[var(--fg)]'}"
+          on:click={() => (preferencesTab = tab.id)}
+        >
+          {tab.label}
+        </button>
+      {/each}
     </div>
 
     <!-- Tab 1: Defaults -->
@@ -1456,7 +1575,7 @@
         class="grid gap-3"
         method="POST"
         action="?/saveDefaults"
-        use:enhance={enhanceWithStatus}
+        use:enhance={enhanceWith($t("fuelUx.defaultsSaved"))}
       >
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="field-group">
@@ -1499,7 +1618,17 @@
             <label class="field-label" for="defaults-price">
               {$t("fuel.pricePerLiterLabel")}
             </label>
-            <input class="field" id="defaults-price" name="price_per_liter" />
+            <input
+              class="field"
+              id="defaults-price"
+              name="price_per_liter"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              pattern={DECIMAL_PATTERN}
+              title={$t("fuelUx.decimalHint")}
+              placeholder={$t("fuelUx.pricePerLiterPlaceholder")}
+            />
           </div>
         </div>
 
@@ -1518,12 +1647,18 @@
             <label class="field-label" for="defaults-fuel-type">
               {$t("fuel.fuelTypeLabel")}
             </label>
-            <input
+            <select
               class="field"
               id="defaults-fuel-type"
               name="fuel_type"
               value="gasoline"
-            />
+            >
+              <option value="gasoline">{$t("fuel.typeGasoline")}</option>
+              <option value="ethanol">{$t("fuel.typeEthanol")}</option>
+              <option value="flex">{$t("fuel.typeFlex")}</option>
+              <option value="diesel">{$t("fuel.typeDiesel")}</option>
+              <option value="gnv">{$t("fuel.typeGnv")}</option>
+            </select>
           </div>
         </div>
 
@@ -1555,7 +1690,7 @@
           class="grid gap-3"
           method="POST"
           action="?/saveStation"
-          use:enhance={enhanceWithStatus}
+          use:enhance={enhanceWith($t("fuelUx.stationSaved"))}
         >
           <div class="grid gap-3 sm:grid-cols-2">
             <div class="field-group">
@@ -1618,7 +1753,7 @@
                     class="mt-3 grid gap-3"
                     method="POST"
                     action="?/saveStation"
-                    use:enhance={enhanceWithStatus}
+                    use:enhance={enhanceWith($t("fuelUx.stationSaved"))}
                   >
                     <input type="hidden" name="id" value={station.id} />
                     <input type="hidden" name="name" value={station.name} />
@@ -1644,8 +1779,8 @@
                     />
                     <LocationFields
                       id={`station-${station.id}`}
-                      latitude={String(station.latitude ?? "")}
-                      longitude={String(station.longitude ?? "")}
+                      latitude={decimalInput(station.latitude, 6)}
+                      longitude={decimalInput(station.longitude, 6)}
                     />
                     <button
                       class="button-primary justify-self-start"
@@ -1657,12 +1792,13 @@
                 <form
                   method="POST"
                   action="?/deleteStation"
-                  use:enhance={enhanceDelete}
+                  use:enhance={enhanceDeleteWith($t("fuelUx.stationDeleted"))}
                 >
                   <input type="hidden" name="id" value={station.id} />
                   <button
-                    class="button-danger min-h-11 px-3 py-1 text-xs"
+                    class="button-danger min-h-11 px-3 py-1 text-sm"
                     disabled={formBusy}
+                    aria-label={`${$t("common.delete")} ${station.name}`}
                   >
                     {$t("common.delete")}
                   </button>
@@ -1683,7 +1819,7 @@
           class="grid gap-3"
           method="POST"
           action="?/saveGrade"
-          use:enhance={enhanceWithStatus}
+          use:enhance={enhanceWith($t("fuelUx.gradeSaved"))}
         >
           <div class="grid gap-3 sm:grid-cols-2">
             <div class="field-group">
@@ -1696,12 +1832,18 @@
               <label class="field-label" for="grade-type">
                 {$t("fuel.fuelTypeLabel")}
               </label>
-              <input
+              <select
                 class="field"
                 id="grade-type"
                 name="fuel_type"
                 value="gasoline"
-              />
+              >
+                <option value="gasoline">{$t("fuel.typeGasoline")}</option>
+                <option value="ethanol">{$t("fuel.typeEthanol")}</option>
+                <option value="flex">{$t("fuel.typeFlex")}</option>
+                <option value="diesel">{$t("fuel.typeDiesel")}</option>
+                <option value="gnv">{$t("fuel.typeGnv")}</option>
+              </select>
             </div>
           </div>
           <div class="grid gap-3 sm:grid-cols-3">
@@ -1709,7 +1851,16 @@
               <label class="field-label" for="grade-octane">
                 {$t("fuel.octaneLabel")}
               </label>
-              <input class="field" id="grade-octane" name="octane_rating" />
+              <input
+                class="field"
+                id="grade-octane"
+                name="octane_rating"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="1"
+                placeholder="95"
+              />
             </div>
             <div class="field-group">
               <label class="field-label" for="grade-ethanol">
@@ -1719,6 +1870,12 @@
                 class="field"
                 id="grade-ethanol"
                 name="ethanol_percentage"
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                pattern={DECIMAL_PATTERN}
+                title={$t("fuelUx.decimalHint")}
+                placeholder={$t("fuelUx.percentPlaceholder")}
               />
             </div>
             <div class="field-group">
@@ -1729,6 +1886,12 @@
                 class="field"
                 id="grade-price"
                 name="default_price_per_liter"
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                pattern={DECIMAL_PATTERN}
+                title={$t("fuelUx.decimalHint")}
+                placeholder={$t("fuelUx.pricePerLiterPlaceholder")}
               />
             </div>
           </div>
@@ -1759,12 +1922,13 @@
                 <form
                   method="POST"
                   action="?/deleteGrade"
-                  use:enhance={enhanceDelete}
+                  use:enhance={enhanceDeleteWith($t("fuelUx.gradeDeleted"))}
                 >
                   <input type="hidden" name="id" value={grade.id} />
                   <button
-                    class="button-danger min-h-11 px-3 py-1 text-xs"
+                    class="button-danger min-h-11 px-3 py-1 text-sm"
                     disabled={formBusy}
+                    aria-label={`${$t("common.delete")} ${grade.name}`}
                   >
                     {$t("common.delete")}
                   </button>
@@ -1784,7 +1948,7 @@
         class="grid gap-3"
         method="POST"
         action="?/saveReviewSettings"
-        use:enhance={enhanceWithStatus}
+        use:enhance={enhanceWith($t("fuelUx.reviewSaved"))}
       >
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="field-group">
@@ -1811,7 +1975,9 @@
               class="field"
               id="review-interval"
               type="number"
+              inputmode="numeric"
               min="1"
+              step="1"
               name="fillups_interval"
               value="10"
             />

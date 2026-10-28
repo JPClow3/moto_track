@@ -16,6 +16,10 @@ import { syncMotorcycleOdometer } from "$server/domain/odometer";
 import { syncLinkedReminder } from "$server/domain/record-sync";
 import { relativeReplacementMonths } from "$server/domain/maintenance-schedule";
 import {
+  REMINDER_NOTIFICATION_RESET,
+  reminderScheduleChanged,
+} from "$server/domain/reminders";
+import {
   assertCanCreateReminder,
   assertCanCreateUpload,
   assertCanCreateWorkSession,
@@ -489,6 +493,8 @@ export function featureActions(slug: string): Actions {
             if (feature.table === "reminders") {
               payload.completion_version =
                 Number(row.completion_version ?? 0) + 1;
+              if (reminderScheduleChanged(row, payload))
+                Object.assign(payload, REMINDER_NOTIFICATION_RESET);
             }
           }
           if (

@@ -1,0 +1,14 @@
+.env*
+.svelte-kit/
+.wrangler/
+build/
+dist/
+coverage/
+test-results/
+playwright-report/
+native/**/bin/
+native/**/obj/
+native/**/build/
+native/**/.gradle/
+native/packages/
+.claude/

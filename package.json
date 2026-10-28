@@ -18,11 +18,12 @@
     "db:verify": "node db/verify-migrations.mjs",
     "import:legacy": "tsx scripts/import-legacy-data.ts",
     "worker:dev": "wrangler dev -c workers/reminders/wrangler.toml",
-    "worker:deploy": "wrangler deploy -c workers/reminders/wrangler.toml"
+    "worker:deploy": "wrangler deploy -c workers/reminders/wrangler.toml",
+    "assets:photos": "node launch-assets/source/prepare-photos.mjs",
+    "assets:render": "node launch-assets/source/render.mjs"
   },
   "dependencies": {
-    "@fontsource/barlow": "^5.2.8",
-    "@fontsource/barlow-condensed": "^5.2.8",
+    "@fontsource-variable/archivo": "^5.2.8",
     "@neondatabase/auth": "^0.4.2-beta",
     "@sentry/browser": "^10.75.0",
     "@sveltejs/adapter-cloudflare": "^7.0.5",
@@ -56,6 +57,7 @@
     "prettier": "^3.6.2",
     "prettier-plugin-svelte": "^3.4.0",
     "prettier-plugin-tailwindcss": "^0.8.1",
+    "sharp": "^0.35.5",
     "svelte-check": "^4.3.0",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.3",
@@ -70,7 +72,7 @@
     "@better-auth/core": "1.6.25",
     "@better-auth/telemetry": "1.6.25",
     "@better-auth/passkey": "1.6.25",
-    "sharp": "0.35.5",
+    "sharp": "$sharp",
     "@sveltejs/kit": {
       "cookie": "0.7.2"
     },

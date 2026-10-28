@@ -24,6 +24,7 @@ vi.mock("$server/domain/features", () => ({
       slug,
       table: "fuel_records",
       listColumns: ["date", "station_name"],
+      fields: [{ key: "date", kind: "date" }],
     };
   },
 }));
@@ -132,6 +133,27 @@ describe("localized export presentation", () => {
       expect(response.headers.get("content-language")).toBe(locale);
     },
   );
+
+  it("writes Date values as ISO and neutralizes spreadsheet formulas", async () => {
+    const rows = [
+      {
+        date: new Date("2026-10-23T00:00:00.000Z"),
+        created_at: new Date("2026-10-23T14:05:00.000Z"),
+        station_name: '=HYPERLINK("https://evil.example")',
+        odometer_km: -1,
+      },
+    ];
+    const db = vi.fn((query: unknown) =>
+      typeof query === "string" ? query : Promise.resolve(rows),
+    );
+    const response = await csvExport({
+      params: { feature: "fuel" },
+      locals: { db, locale: "pt-BR", user: { id: "owner" } },
+    } as never);
+    expect(await response.text()).toBe(
+      'date,created_at,station_name,odometer_km\n"2026-10-23","2026-10-23T14:05:00.000Z","\'=HYPERLINK(""https://evil.example"")","-1"',
+    );
+  });
 
   it("returns a localized missing-export error before reading any data", async () => {
     const db = vi.fn();

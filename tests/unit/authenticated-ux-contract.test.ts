@@ -408,7 +408,12 @@ describe("authenticated UX primitives contract", () => {
     });
 
     expect(body).toContain("page-header");
-    expect(body).toContain("bike-context-bar");
+    // The bike home leads with a hero card for the active bike, then one-tap
+    // quick-log deep links into each page's "new record" sheet.
+    expect(body).toContain("bike-hero");
+    expect(body).toContain('href="/fuel?new=1"');
+    expect(body).toContain('href="/maintenance?new=1"');
+    expect(body).toContain('href="/expenses?new=1"');
     expect(body).toContain("activity-timeline");
     expect(body).toContain("page-action");
     expect(body).toContain("<dialog");

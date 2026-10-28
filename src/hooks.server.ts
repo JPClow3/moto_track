@@ -2,11 +2,16 @@ import { redirect, type Handle } from "@sveltejs/kit";
 import { getDb } from "$server/db/client";
 import { resolveSession } from "$server/auth/session";
 import { ensureAccount } from "$server/auth/bootstrap";
+import {
+  nativePurchasesRestricted,
+  nativeRestrictedPath,
+} from "$lib/domain/distribution";
 import { LOCALE_COOKIE, resolveLocale } from "$lib/i18n";
 import { preserveAppScripts } from "$server/domain/page-html";
 
 const protectedPrefixes = [
   "/dashboard",
+  "/history",
   "/garage",
   "/fuel",
   "/maintenance",
@@ -41,6 +46,14 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.cookies.get(LOCALE_COOKIE),
     event.request.headers.get("accept-language"),
   );
+
+  // Native mobile builds ship without hosted purchase CTAs. This header only
+  // removes purchase surfaces; ownership and entitlement checks remain unchanged.
+  if (nativePurchasesRestricted(event.request.headers.get("user-agent"))) {
+    if (nativeRestrictedPath(event.url.pathname))
+      throw redirect(303, "/app-info");
+    if (event.url.pathname === "/") throw redirect(303, "/dashboard");
+  }
 
   // Platform probes must not resolve Neon Auth or construct a database
   // client. `/healthz` itself also avoids `select 1`, which was keeping the

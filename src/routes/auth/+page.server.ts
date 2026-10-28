@@ -1,3 +1,4 @@
+import { nativePlatform } from "$lib/domain/distribution";
 import { fail, redirect, type Actions } from "@sveltejs/kit";
 import { safeInternalRedirect } from "$server/auth-redirect";
 import { createTranslator } from "$lib/i18n";
@@ -50,6 +51,11 @@ export const actions: Actions = {
     throw redirect(303, redirectTo);
   },
   google: async (event) => {
+    if (nativePlatform(event.request.headers?.get("user-agent") ?? null)) {
+      return fail(403, {
+        message: createTranslator(event.locals.locale)("auth.nativeEmail"),
+      });
+    }
     const { request, url } = event;
     const form = await request.formData().catch(() => new FormData());
     const redirectTo = safeInternalRedirect(

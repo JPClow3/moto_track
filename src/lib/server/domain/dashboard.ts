@@ -1,7 +1,7 @@
 import type { FuelRecord } from "./fuel";
 import { isoDateValue } from "./date-value";
 
-export type SpendEvent = { date: string; amountCents: number };
+export type SpendEvent = { date: string | Date; amountCents: number };
 
 export type ConsumptionPoint = { date: string; kmPerLiter: number };
 
@@ -73,7 +73,7 @@ export function spendByMonth(
 
   for (const event of events) {
     if (!event.date) continue;
-    const key = event.date.slice(0, 7);
+    const key = isoDateValue(event.date).slice(0, 7);
     // Only months inside the window exist as buckets; anything older is ignored.
     if (!buckets.has(key)) continue;
     buckets.set(key, (buckets.get(key) ?? 0) + Math.max(event.amountCents, 0));
@@ -106,13 +106,13 @@ export function costBreakdown(sources: {
  * Monday-to-Sunday week and the last column contains today.
  */
 export function activityCalendar(
-  dates: string[],
+  dates: Array<string | Date>,
   { today, weeks = 18 }: { today: string; weeks?: number },
 ): ActivityCell[] {
   const counts = new Map<string, number>();
   for (const date of dates) {
     if (!date) continue;
-    const day = date.slice(0, 10);
+    const day = isoDateValue(date);
     counts.set(day, (counts.get(day) ?? 0) + 1);
   }
 
@@ -127,4 +127,76 @@ export function activityCalendar(
     cells.push({ date: day, count: counts.get(day) ?? 0 });
   }
   return cells;
+}
+
+export type OdometerReading = { date: string | Date; odometerKm: number };
+
+export type WindowCostPerKm = {
+  cents: number;
+  distanceKm: number;
+  centsPerKm: number;
+};
+
+function shiftDays(day: string, delta: number) {
+  const date = new Date(`${day}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + delta);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * What riding cost per km over the trailing `days`, ending today.
+ *
+ * Spend is every event dated inside the window. Distance runs from the last
+ * odometer reading before the window (when it is recent enough to bound the
+ * window, at most `days` earlier) or else the first reading inside it, to the
+ * highest reading inside it. Returns null when the window has no measurable
+ * distance, so a quiet month shows "no data" instead of a divide-by-zero.
+ */
+export function costPerKmWindow({
+  spend,
+  readings,
+  today,
+  days = 30,
+}: {
+  spend: SpendEvent[];
+  readings: OdometerReading[];
+  today: string;
+  days?: number;
+}): WindowCostPerKm | null {
+  const start = shiftDays(today, -days);
+  const oldestBaseline = shiftDays(start, -days);
+
+  const dated = readings
+    .filter((reading) => reading.date && Number.isFinite(reading.odometerKm))
+    .map((reading) => ({
+      day: isoDateValue(reading.date),
+      km: Number(reading.odometerKm),
+    }))
+    .filter((reading) => reading.km > 0 && reading.day <= today);
+
+  const inside = dated.filter((reading) => reading.day > start);
+  if (!inside.length) return null;
+
+  const before = dated
+    .filter((reading) => reading.day <= start && reading.day >= oldestBaseline)
+    .sort((a, b) => b.day.localeCompare(a.day) || b.km - a.km)[0];
+  const end = Math.max(...inside.map((reading) => reading.km));
+  const baseline = before
+    ? before.km
+    : Math.min(...inside.map((reading) => reading.km));
+  const distanceKm = end - baseline;
+  if (distanceKm <= 0) return null;
+
+  const cents = spend.reduce((sum, event) => {
+    if (!event.date) return sum;
+    const day = isoDateValue(event.date);
+    if (day <= start || day > today) return sum;
+    return sum + Math.max(Number(event.amountCents) || 0, 0);
+  }, 0);
+
+  return {
+    cents,
+    distanceKm,
+    centsPerKm: Math.round((cents / distanceKm) * 100) / 100,
+  };
 }

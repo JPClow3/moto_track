@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildDueNow } from "$server/domain/due-now";
+import {
+  buildDueNow,
+  mostUrgentFor,
+  rankAttention,
+  type AttentionReminder,
+  type DueNowItem,
+} from "$server/domain/due-now";
 
 type PlanRow = Record<string, unknown>;
 
@@ -166,5 +172,91 @@ describe("due-now attention list", () => {
     });
     expect(item.officialUrl).toBe("https://example.invalid/manual.pdf");
     expect(item.pageReference).toBe("p. 32–34");
+  });
+});
+
+describe("bike home attention ranking", () => {
+  const dueItem = (overrides: Partial<DueNowItem> = {}): DueNowItem => ({
+    id: "plan-1",
+    motorcycleId: "bike-1",
+    motorcycleName: "Moto 1",
+    maintenanceType: "Óleo do motor",
+    urgency: "due_now",
+    confidence: "unknown",
+    dueKm: 6000,
+    estimatedCostCents: 11000,
+    officialUrl: "",
+    documentVersion: "",
+    pageReference: "",
+    ...overrides,
+  });
+  const reminder = (
+    overrides: Partial<AttentionReminder> = {},
+  ): AttentionReminder => ({
+    id: "rem-1",
+    title: "Corrente",
+    motorcycleId: "bike-1",
+    motorcycleName: "Moto 1",
+    status: "due_soon",
+    remainingKm: 150,
+    remainingDays: null,
+    ...overrides,
+  });
+
+  it("puts an overdue reminder ahead of a plan item that is only due", () => {
+    const ranked = rankAttention({
+      dueNow: [dueItem()],
+      reminders: [
+        reminder({ id: "late", status: "overdue", remainingKm: -50 }),
+      ],
+    });
+    expect(ranked.map((item) => [item.id, item.tone])).toEqual([
+      ["late", "overdue"],
+      ["plan-1", "due"],
+    ]);
+  });
+
+  it("leaves reminders that are still fine off the list", () => {
+    expect(
+      rankAttention({
+        dueNow: [],
+        reminders: [
+          reminder({ status: "ok" }),
+          reminder({ status: "unknown" }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it("orders reminders of the same tone by the closest due point", () => {
+    const ranked = rankAttention({
+      dueNow: [],
+      reminders: [
+        reminder({ id: "far", remainingKm: 190 }),
+        reminder({ id: "near", remainingKm: 20 }),
+        reminder({ id: "dated", remainingKm: null, remainingDays: 3 }),
+      ],
+    });
+    expect(ranked.map((item) => item.id)).toEqual(["near", "far", "dated"]);
+  });
+
+  it("leads the bike home with that bike's item, or a garage-wide one", () => {
+    const ranked = rankAttention({
+      dueNow: [
+        dueItem({
+          id: "other-bike",
+          motorcycleId: "bike-2",
+          urgency: "overdue",
+        }),
+      ],
+      reminders: [
+        reminder({ id: "licence", motorcycleId: null, motorcycleName: "" }),
+      ],
+    });
+    expect(mostUrgentFor(ranked, "bike-1")?.id).toBe("licence");
+    expect(mostUrgentFor(ranked, "bike-2")?.id).toBe("other-bike");
+    expect(
+      mostUrgentFor(rankAttention({ dueNow: [], reminders: [] }), "bike-1"),
+    ).toBeNull();
   });
 });

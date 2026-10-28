@@ -1,8 +1,25 @@
 <script lang="ts">
+  import { calendarDay } from "$lib/utils/calendar-day";
   import { enhance } from "$app/forms";
-  import { format, t } from "$lib/i18n/store";
+  import { format, locale, t } from "$lib/i18n/store";
+  import { showToast } from "$components/ui/toast";
+  import type { SubmitFunction } from "@sveltejs/kit";
   import type { ownershipSummary } from "$server/domain/ownership-report";
   export let motorcycles: ReturnType<typeof ownershipSummary>[];
+
+  /** Purchase price prefill in the rider's decimal separator. */
+  const priceValue = (cents: unknown) => {
+    if (cents === null || cents === undefined) return "";
+    const value = String(Number(cents) / 100);
+    return $locale === "en" ? value : value.replace(".", ",");
+  };
+
+  const enhanceBasis: SubmitFunction =
+    () =>
+    async ({ result, update }) => {
+      if (result.type === "success") showToast($t("recordsUx.purchaseSaved"));
+      await update({ reset: false });
+    };
 </script>
 
 <section class="grid gap-4" aria-labelledby="ownership-heading">
@@ -15,7 +32,7 @@
       <article class="panel grid content-start gap-4 p-5">
         <h3 class="display text-xl">{motorcycle.name}</h3>
         {#if motorcycle.ready}
-          <p class="display text-3xl">
+          <p class="display numeric text-3xl">
             {motorcycle.costPerKmCents === null
               ? "—"
               : `${$format.money(motorcycle.costPerKmCents)}/km`}
@@ -28,29 +45,57 @@
           <dl class="grid grid-cols-2 gap-3 text-sm">
             <div>
               <dt class="text-[var(--muted)]">{$t("ownership.total")}</dt>
-              <dd>{$format.money(motorcycle.totalCents)}</dd>
+              <dd class="numeric">{$format.money(motorcycle.totalCents)}</dd>
             </div>
             <div>
               <dt class="text-[var(--muted)]">{$t("ownership.distance")}</dt>
-              <dd>
+              <dd class="numeric">
                 {$format.distance(Math.max(0, motorcycle.distanceKm ?? 0))}
               </dd>
             </div>
             <div>
-              <dt class="text-[var(--muted)]">{$t("ownership.fuel")}</dt>
-              <dd>{$format.money(Number(motorcycle.fuel_cents))}</dd>
+              <dt class="flex items-center gap-2 text-[var(--muted)]">
+                <span
+                  class="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--cat-fuel)]"
+                  aria-hidden="true"
+                ></span>{$t("ownership.fuel")}
+              </dt>
+              <dd class="numeric">
+                {$format.money(Number(motorcycle.fuel_cents))}
+              </dd>
             </div>
             <div>
-              <dt class="text-[var(--muted)]">{$t("ownership.maintenance")}</dt>
-              <dd>{$format.money(Number(motorcycle.maintenance_cents))}</dd>
+              <dt class="flex items-center gap-2 text-[var(--muted)]">
+                <span
+                  class="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--cat-maintenance)]"
+                  aria-hidden="true"
+                ></span>{$t("ownership.maintenance")}
+              </dt>
+              <dd class="numeric">
+                {$format.money(Number(motorcycle.maintenance_cents))}
+              </dd>
             </div>
             <div>
-              <dt class="text-[var(--muted)]">{$t("ownership.tires")}</dt>
-              <dd>{$format.money(Number(motorcycle.tire_cents))}</dd>
+              <dt class="flex items-center gap-2 text-[var(--muted)]">
+                <span
+                  class="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--cat-tires)]"
+                  aria-hidden="true"
+                ></span>{$t("ownership.tires")}
+              </dt>
+              <dd class="numeric">
+                {$format.money(Number(motorcycle.tire_cents))}
+              </dd>
             </div>
             <div>
-              <dt class="text-[var(--muted)]">{$t("ownership.fees")}</dt>
-              <dd>{$format.money(Number(motorcycle.fee_cents))}</dd>
+              <dt class="flex items-center gap-2 text-[var(--muted)]">
+                <span
+                  class="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--cat-fees)]"
+                  aria-hidden="true"
+                ></span>{$t("ownership.fees")}
+              </dt>
+              <dd class="numeric">
+                {$format.money(Number(motorcycle.fee_cents))}
+              </dd>
             </div>
           </dl>
         {:else}<p class="text-sm text-[var(--muted)]">
@@ -64,7 +109,7 @@
             class="mt-4 grid gap-3"
             method="POST"
             action="?/saveOwnershipBasis"
-            use:enhance
+            use:enhance={enhanceBasis}
           >
             <input type="hidden" name="motorcycle_id" value={motorcycle.id} />
             <label class="field-group" for={`purchase-date-${motorcycle.id}`}
@@ -74,7 +119,7 @@
                 name="purchase_date"
                 type="date"
                 value={motorcycle.purchase_date ?? ""}
-                max={new Date().toISOString().slice(0, 10)}
+                max={calendarDay()}
                 required
               /></label
             >
@@ -84,6 +129,7 @@
                 id={`purchase-km-${motorcycle.id}`}
                 name="purchase_odometer_km"
                 type="number"
+                inputmode="numeric"
                 min="0"
                 max={motorcycle.current_odometer_km}
                 step="1"
@@ -96,12 +142,11 @@
                 class="field"
                 id={`purchase-price-${motorcycle.id}`}
                 name="purchase_price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={motorcycle.purchase_price_cents === null
-                  ? ""
-                  : Number(motorcycle.purchase_price_cents) / 100}
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                placeholder={$locale === "en" ? "0.00" : "0,00"}
+                value={priceValue(motorcycle.purchase_price_cents)}
                 required
               /></label
             >

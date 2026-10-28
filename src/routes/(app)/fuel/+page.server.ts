@@ -3,7 +3,10 @@ import { fail, type Actions } from "@sveltejs/kit";
 import {
   averageConsumption,
   costPerKm,
+  parseDecimalInput,
   parseFuelImportRows,
+  parseIntegerInput,
+  parseLocalizedNumber,
   parseFuelCsv,
   parseReceiptFile,
 } from "$server/domain/fuel";
@@ -32,21 +35,31 @@ import {
   acceptOfflineFuelSubmission,
 } from "$server/domain/offline-fuel-replay";
 
+import { appToday } from "$lib/utils/calendar-day";
 type Row = Record<string, unknown>;
 
+// Riders type "4,59" (pt-BR) as often as "4.59"; decimal fields are text
+// inputs, so every amount goes through the localized parser.
 function cents(value: FormDataEntryValue | null) {
-  const parsed = Number(String(value ?? "0").replace(",", "."));
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+  return Math.round(parseDecimalInput(value) * 100);
 }
 
 function millicents(value: FormDataEntryValue | null) {
-  const parsed = Number(String(value ?? "0").replace(",", "."));
-  return Number.isFinite(parsed) ? Math.round(parsed * 100000) : 0;
+  return Math.round(parseDecimalInput(value) * 100000);
 }
 
 function numberValue(value: FormDataEntryValue | null) {
-  const parsed = Number(String(value ?? "0").replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : 0;
+  return parseDecimalInput(value);
+}
+
+function integerValue(value: FormDataEntryValue | null) {
+  return parseIntegerInput(value);
+}
+
+function coordinateValue(value: string, limit: number) {
+  if (!value) return null;
+  const parsed = parseLocalizedNumber(value);
+  return parsed !== null && Math.abs(parsed) <= limit ? parsed : Number.NaN;
 }
 
 function messageFrom(err: unknown) {
@@ -132,8 +145,8 @@ async function createFuelRecord({
     motorcycle_id: String(form.get("motorcycle_id") || "") || null,
     station_id: String(form.get("station_id") || "") || null,
     fuel_grade_id: String(form.get("fuel_grade_id") || "") || null,
-    date: String(form.get("date") || new Date().toISOString().slice(0, 10)),
-    odometer_km: Math.round(numberValue(form.get("odometer_km"))),
+    date: String(form.get("date") || appToday()),
+    odometer_km: integerValue(form.get("odometer_km")),
     liters,
     total_price_cents: totalCents,
     price_per_liter_millicents: pricePerLiter,
@@ -244,8 +257,10 @@ async function createFuelRecord({
   return offlineId ? { ok: true, offlineSubmissionId: id } : { ok: true };
 }
 
-export async function load({ locals }) {
+export async function load({ locals, parent }) {
   const user = locals.user!;
+  // Awaiting parent() makes this load re-run after a bike switch.
+  const { activeMotorcycleId } = await parent();
   const [
     fuelResult,
     motorcycles,
@@ -301,10 +316,19 @@ export async function load({ locals }) {
     0,
   );
 
+  const defaultMotorcycleId =
+    motorcycles.find((moto) => String(moto.id) === activeMotorcycleId)?.id ??
+    motorcycles[0]?.id ??
+    null;
+
   return {
     errorMessage: fuelResult.error ?? "",
     rows: fuelRows,
     motorcycles,
+    /** The shell's active bike, else the first one: the page's default view. */
+    activeMotorcycleId: defaultMotorcycleId
+      ? String(defaultMotorcycleId)
+      : null,
     stations,
     grades,
     preferences,
@@ -399,14 +423,24 @@ export const actions: Actions = localizedActions({
   },
   repeatLast: async ({ request, locals, platform }) => {
     const form = await request.formData();
+    // Repeat the selected bike's last fill-up; without one, the latest overall.
+    const motorcycleId = String(form.get("motorcycle_id") || "");
     let last: Row | undefined;
     try {
-      [last] = await locals.db<Row[]>`
-        select * from fuel_records
-        where owner_id = ${locals.user!.id}
-        order by date desc, odometer_km desc
-        limit 1
-      `;
+      [last] = motorcycleId
+        ? await locals.db<Row[]>`
+            select * from fuel_records
+            where owner_id = ${locals.user!.id}
+              and motorcycle_id = ${motorcycleId}
+            order by date desc, odometer_km desc
+            limit 1
+          `
+        : await locals.db<Row[]>`
+            select * from fuel_records
+            where owner_id = ${locals.user!.id}
+            order by date desc, odometer_km desc
+            limit 1
+          `;
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
@@ -497,14 +531,12 @@ export const actions: Actions = localizedActions({
     const ownerId = locals.user!.id;
     const latitude = String(form.get("latitude") ?? "").trim();
     const longitude = String(form.get("longitude") ?? "").trim();
+    const latitudeValue = coordinateValue(latitude, 90);
+    const longitudeValue = coordinateValue(longitude, 180);
     if (
       Boolean(latitude) !== Boolean(longitude) ||
-      (latitude &&
-        (!Number.isFinite(Number(latitude)) ||
-          Math.abs(Number(latitude)) > 90)) ||
-      (longitude &&
-        (!Number.isFinite(Number(longitude)) ||
-          Math.abs(Number(longitude)) > 180))
+      Number.isNaN(latitudeValue) ||
+      Number.isNaN(longitudeValue)
     ) {
       return fail(400, {
         message: "Informe latitude e longitude válidas, ou deixe ambas vazias.",
@@ -517,8 +549,8 @@ export const actions: Actions = localizedActions({
       city: String(form.get("city") ?? ""),
       state: String(form.get("state") ?? ""),
       notes: String(form.get("notes") ?? ""),
-      latitude: latitude ? Number(latitude) : null,
-      longitude: longitude ? Number(longitude) : null,
+      latitude: latitudeValue,
+      longitude: longitudeValue,
     };
     try {
       if (id) {
@@ -557,7 +589,7 @@ export const actions: Actions = localizedActions({
       owner_id: ownerId,
       name: String(form.get("name") ?? ""),
       fuel_type: String(form.get("fuel_type") ?? "gasoline"),
-      octane_rating: Math.round(numberValue(form.get("octane_rating"))),
+      octane_rating: integerValue(form.get("octane_rating")),
       ethanol_percentage: numberValue(form.get("ethanol_percentage")),
       default_price_per_liter_millicents: millicents(
         form.get("default_price_per_liter"),
@@ -650,7 +682,7 @@ export const actions: Actions = localizedActions({
           owner_id: ownerId,
           motorcycle_id: String(form.get("motorcycle_id") || ""),
           fillups_interval: Math.max(
-            Math.round(numberValue(form.get("fillups_interval")) || 10),
+            integerValue(form.get("fillups_interval")) || 10,
             1,
           ),
           is_active: form.get("is_active") === "true",

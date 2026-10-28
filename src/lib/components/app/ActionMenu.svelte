@@ -84,7 +84,7 @@
           aria-label={closeLabel || $t("common.close")}
           on:click={close}
         >
-          <X size={18} aria-hidden="true" />
+          <X size={20} aria-hidden="true" />
         </button>
       </header>
     {/if}
@@ -103,7 +103,7 @@
             </span>
             {#if choice.recommended}
               <span
-                class="label-tech rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent)]"
+                class="label-tech shrink-0 rounded border border-[var(--line)] bg-[var(--panel-sunken)] px-1.5 py-0.5 text-[var(--fg)]"
               >
                 {recommendedLabel || $t("pricing.recommended")}
               </span>

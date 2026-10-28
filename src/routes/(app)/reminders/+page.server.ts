@@ -10,7 +10,14 @@ import {
   snoozeDateTarget,
   snoozeKmTarget,
 } from "$server/domain/reminder-lifecycle";
+import {
+  evaluateReminder,
+  sortByUrgency,
+  type ReminderInput,
+  type UrgencyStatus,
+} from "$server/domain/reminders";
 
+import { appToday } from "$lib/utils/calendar-day";
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
 }
@@ -86,7 +93,7 @@ export const actions = localizedActions({
     const ownerId = locals.user!.id;
     try {
       const target = snoozeDateTarget(
-        new Date().toISOString().slice(0, 10),
+        appToday(),
         Number(form.get("days") ?? 7),
       );
       const updated = await locals.db`
@@ -156,14 +163,48 @@ export const actions = localizedActions({
   },
 });
 
+type OdometerRow = { id: string; current_odometer_km: number | null };
+
 export async function load({ locals }) {
-  const [feature, calendars] = await Promise.all([
+  const ownerId = locals.user!.id;
+  const [feature, calendars, odometers] = await Promise.all([
     loadFeature(locals.db, "reminders", locals.user!),
     locals.db<Array<{ id: string; token_prefix: string; expires_at: string }>>`
       select id, token_prefix, expires_at::text from calendar_feeds
-      where owner_id = ${locals.user!.id} and revoked_at is null and expires_at > now()
+      where owner_id = ${ownerId} and revoked_at is null and expires_at > now()
       order by created_at desc
     `,
+    locals.db<OdometerRow[]>`
+      select id, current_odometer_km from motorcycles
+      where owner_id = ${ownerId} and deleted_at is null
+    `.catch(() => [] as OdometerRow[]),
   ]);
-  return { ...feature, calendars };
+  const odometerFor = new Map(
+    odometers.map((row) => [row.id, Number(row.current_odometer_km ?? 0)]),
+  );
+  const today = appToday();
+  // Each row carries its evaluated status so the list can lead with what is
+  // overdue instead of the database order.
+  const rows = sortByUrgency(
+    feature.rows.map((row) => ({
+      ...row,
+      ...urgencyFor(row, odometerFor, today),
+    })),
+    (row) => row.urgency,
+  );
+  return { ...feature, rows, calendars };
+}
+
+function urgencyFor(
+  row: Record<string, unknown>,
+  odometerFor: Map<string, number>,
+  today: string,
+): { urgency: UrgencyStatus; snoozed: boolean } {
+  if (row.is_active === false) return { urgency: "inactive", snoozed: false };
+  const evaluation = evaluateReminder(row as unknown as ReminderInput, {
+    currentOdometerKm:
+      odometerFor.get(String(row.motorcycle_id ?? "")) ?? Number.NaN,
+    today,
+  });
+  return { urgency: evaluation.status, snoozed: evaluation.snoozed === true };
 }

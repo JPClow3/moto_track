@@ -2,6 +2,7 @@ import type { Sql } from "postgres";
 import { isoDateValue } from "./date-value";
 import { lockObjectOwner } from "../db/owner-lock";
 
+import { appToday } from "../../utils/calendar-day";
 export const WORKSHOP_MIN_ACCOUNTS = 5;
 export const WORKSHOP_MAX_LABOR_CENTS = 1_000_000;
 export const WORKSHOP_STATES = [
@@ -110,7 +111,7 @@ export function workshopRegion(city: unknown, state: unknown) {
 
 export function workshopRecordEligible(
   record: WorkshopRecord,
-  today = new Date().toISOString().slice(0, 10),
+  today = appToday(),
 ) {
   const date = isoDateValue(record.date);
   const parsedDate = new Date(`${date}T00:00:00.000Z`);

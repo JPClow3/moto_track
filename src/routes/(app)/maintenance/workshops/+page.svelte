@@ -1,8 +1,14 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import type { SubmitFunction } from "@sveltejs/kit";
   import { format, locale } from "$lib/i18n/store";
   import { workshopMessages } from "$lib/i18n/workshop-comparison";
   import PageHeader from "$components/app/PageHeader.svelte";
+  import ConfirmDialog from "$components/ConfirmDialog.svelte";
+  import EmptyState from "$components/ui/EmptyState.svelte";
+  import StatusBadge from "$components/ui/StatusBadge.svelte";
+  import { showToast } from "$components/ui/toast";
+  import { Workshop } from "$components/icons";
   import type { ActionData, PageData } from "./$types";
 
   export let data: PageData;
@@ -13,6 +19,7 @@
   let state = "";
   let consent = false;
   let busy = false;
+  let confirmDialog: ConfirmDialog;
   $: text = workshopMessages($locale);
   $: selected = data.records.find((record) => record.id === recordId);
   $: services = [
@@ -26,9 +33,16 @@
     consent = false;
   }
 
+  /** Labor is a text input (inputmode="decimal"): show the rider's own
+   *  separator. The server accepts "50,25" and "50.25". */
+  function laborValue(cents: number) {
+    const value = (cents / 100).toFixed(2);
+    return $locale === "en" ? value : value.replace(".", ",");
+  }
+
   function review(contribution: PageData["contributions"][number]) {
     recordId = contribution.record_id;
-    laborAmount = (contribution.labor_cents / 100).toFixed(2);
+    laborAmount = laborValue(contribution.labor_cents);
     city = contribution.city_name;
     state = contribution.state_code;
     consent = false;
@@ -37,6 +51,30 @@
       ?.scrollIntoView({ behavior: "smooth" });
     document.getElementById("workshop-labor")?.focus({ preventScroll: true });
   }
+
+  const enhanceContribute: SubmitFunction = () => {
+    busy = true;
+    return async ({ result, update }) => {
+      busy = false;
+      consent = false;
+      if (result.type === "success") showToast(text.saved);
+      await update({ reset: false });
+    };
+  };
+
+  const enhanceWithdraw: SubmitFunction = async ({ cancel }) => {
+    const ok = await confirmDialog.ask(text.withdrawConfirm);
+    if (!ok) {
+      cancel();
+      return;
+    }
+    busy = true;
+    return async ({ result, update }) => {
+      busy = false;
+      if (result.type === "success") showToast(text.withdrawn);
+      await update();
+    };
+  };
 </script>
 
 <svelte:head><title>{text.title} · Moto Track</title></svelte:head>
@@ -44,34 +82,44 @@
 <div class="grid gap-6">
   <PageHeader title={text.title} description={text.subtitle}>
     <svelte:fragment slot="actions"
-      ><a class="button-secondary" href="/maintenance">{text.back}</a
+      ><a class="button-secondary min-h-11" href="/maintenance">{text.back}</a
       ></svelte:fragment
     >
   </PageHeader>
+
+  <ConfirmDialog bind:this={confirmDialog} confirmLabel={text.withdraw} />
+
   <div class="panel grid gap-2 p-5 text-sm text-[var(--muted)]">
     <p>{text.privacy}</p>
     <p>{text.method}</p>
   </div>
-  {#if data.loadError}<p class="panel p-4 text-danger" role="alert">
+  {#if data.loadError}
+    <p
+      class="rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]"
+      role="alert"
+    >
       {text.loadError}
-    </p>{/if}
-  {#if form && "message" in form}<p class="panel p-4 text-danger" role="alert">
+    </p>
+  {/if}
+  {#if form && "message" in form}
+    <p
+      class="rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]"
+      role="alert"
+    >
       {form.message}
-    </p>{/if}
-  {#if form && "saved" in form}<p class="panel p-4" role="status">
-      {text.saved}
-    </p>{/if}
-  {#if form && "withdrawn" in form}<p class="panel p-4" role="status">
-      {text.withdrawn}
-    </p>{/if}
+    </p>
+  {/if}
 
   <section class="panel grid gap-4 p-5" aria-labelledby="workshop-search-title">
     <h2 class="display text-2xl" id="workshop-search-title">
       {text.searchTitle}
     </h2>
     <form method="GET" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <label class="field-group" for="workshop-search-service"
-        ><span class="field-label">{text.service}</span><input
+      <div class="field-group">
+        <label class="field-label" for="workshop-search-service"
+          >{text.service}</label
+        >
+        <input
           class="field"
           id="workshop-search-service"
           name="service"
@@ -81,10 +129,12 @@
           maxlength="120"
           required
           aria-describedby="workshop-service-help"
-        /></label
-      >
-      <label class="field-group" for="workshop-search-city"
-        ><span class="field-label">{text.city}</span><input
+        />
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="workshop-search-city">{text.city}</label
+        >
+        <input
           class="field"
           id="workshop-search-city"
           name="city"
@@ -92,65 +142,82 @@
           minlength="2"
           maxlength="120"
           required
-        /></label
-      >
-      <label class="field-group" for="workshop-search-state"
-        ><span class="field-label">{text.state}</span><select
+        />
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="workshop-search-state"
+          >{text.state}</label
+        >
+        <select
           class="field"
           id="workshop-search-state"
           name="state"
           value={data.filters.state}
           required
-          ><option value="">{text.chooseState}</option
-          >{#each data.states as uf}<option value={uf}>{uf}</option
-            >{/each}</select
-        ></label
-      >
+        >
+          <option value="">{text.chooseState}</option>
+          {#each data.states as uf (uf)}<option value={uf}>{uf}</option>{/each}
+        </select>
+      </div>
       <button
-        class="button-primary self-end"
+        class="button-primary min-h-11 self-end"
         type="submit"
         disabled={data.loadError}>{text.search}</button
       >
     </form>
-    <datalist id="workshop-services"
-      >{#each services as service}<option value={service}
-        ></option>{/each}</datalist
-    >
+    <datalist id="workshop-services">
+      {#each services as service (service)}<option value={service}
+        ></option>{/each}
+    </datalist>
     <p class="text-sm text-[var(--muted)]" id="workshop-service-help">
       {text.serviceHelp}
     </p>
     {#if !data.loadError}
-      {#if !data.requested}<p class="text-sm text-[var(--muted)]">
-          {text.start}
-        </p>
-      {:else if !data.validSearch}<p class="text-sm text-danger" role="alert">
+      {#if !data.requested}
+        <p class="text-sm text-[var(--muted)]">{text.start}</p>
+      {:else if !data.validSearch}
+        <p class="text-sm text-[var(--danger)]" role="alert">
           {text.invalidSearch}
         </p>
-      {:else if !data.summaries.length}<p
-          class="rounded-xl border border-[var(--line)] p-4 text-sm"
-          role="status"
-        >
-          {text.insufficient}
-        </p>
+      {:else if !data.summaries.length}
+        <div role="status">
+          <EmptyState
+            compact
+            icon={Workshop}
+            title={text.noComparisonTitle}
+            description={text.insufficient}
+          />
+        </div>
       {:else}
-        <div class="overflow-x-auto">
+        <div class="data-table sm:overflow-x-auto">
           <table class="w-full text-left text-sm">
             <thead
-              ><tr class="border-b border-[var(--line)]"
-                ><th class="p-3">{text.workshop}</th><th class="p-3"
-                  >{text.average}</th
-                ><th class="p-3">{text.accounts}</th></tr
-              ></thead
-            ><tbody
-              >{#each data.summaries as summary}<tr
-                  class="border-b border-[var(--line)]"
-                  ><td class="break-words p-3 font-semibold"
-                    >{summary.workshop}</td
-                  ><td class="whitespace-nowrap p-3"
-                    >{$format.money(summary.averageLaborCents)}</td
-                  ><td class="p-3">{$format.number(summary.accounts)}</td></tr
-                >{/each}</tbody
+              class="border-b border-[var(--line)] bg-[var(--accent-wash)] text-[var(--muted)]"
             >
+              <tr>
+                <th class="p-3 font-semibold">{text.workshop}</th>
+                <th class="p-3 font-semibold">{text.average}</th>
+                <th class="p-3 font-semibold">{text.accounts}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each data.summaries as summary, index (index)}
+                <tr class="border-b border-[var(--line)]">
+                  <td
+                    class="break-words p-3 font-semibold"
+                    data-label={text.workshop}>{summary.workshop}</td
+                  >
+                  <td
+                    class="numeric whitespace-nowrap p-3"
+                    data-label={text.average}
+                    >{$format.money(summary.averageLaborCents)}</td
+                  >
+                  <td class="numeric p-3" data-label={text.accounts}
+                    >{$format.number(summary.accounts)}</td
+                  >
+                </tr>
+              {/each}
+            </tbody>
           </table>
         </div>
       {/if}
@@ -165,23 +232,17 @@
     <h2 class="display text-2xl" id="workshop-contribute-title">
       {text.participateTitle}
     </h2>
-    <p class="text-sm text-[var(--muted)]">{text.participateHelp}</p>
     {#if data.records.length}
+      <p class="text-sm text-[var(--muted)]">{text.participateHelp}</p>
       <form
         class="grid gap-4"
         method="POST"
         action="?/contribute"
-        use:enhance={() => {
-          busy = true;
-          return async ({ update }) => {
-            busy = false;
-            consent = false;
-            await update({ reset: false });
-          };
-        }}
+        use:enhance={enhanceContribute}
       >
-        <label class="field-group" for="workshop-record"
-          ><span class="field-label">{text.record}</span><select
+        <div class="field-group">
+          <label class="field-label" for="workshop-record">{text.record}</label>
+          <select
             class="field"
             id="workshop-record"
             name="record_id"
@@ -191,28 +252,29 @@
               consent = false;
               laborAmount = "";
             }}
-            ><option value="">{text.chooseRecord}</option
-            >{#each data.records as record}<option value={record.id}
+          >
+            <option value="">{text.chooseRecord}</option>
+            {#each data.records as record (record.id)}<option value={record.id}
                 >{$format.date(record.date)} · {record.maintenance_type} · {record.workshop}</option
-              >{/each}</select
-          ></label
-        >
+              >{/each}
+          </select>
+        </div>
         {#if selected}<p class="text-sm">
-            {text.total}: <strong>{$format.money(selected.cost_cents)}</strong>
+            {text.total}:
+            <strong class="numeric">{$format.money(selected.cost_cents)}</strong
+            >
           </p>{/if}
         <div class="grid gap-3 sm:grid-cols-3">
-          <label class="field-group" for="workshop-labor"
-            ><span class="field-label">{text.labor}</span><input
+          <div class="field-group">
+            <label class="field-label" for="workshop-labor">{text.labor}</label>
+            <input
               class="field"
               id="workshop-labor"
               name="labor_amount"
-              type="number"
+              type="text"
               inputmode="decimal"
-              min="0.01"
-              max={selected
-                ? Math.min(selected.cost_cents / 100, 10000)
-                : 10000}
-              step="0.01"
+              autocomplete="off"
+              pattern={"\\d{1,5}([.,]\\d{1,2})?"}
               value={laborAmount}
               on:input={(event) => {
                 laborAmount = event.currentTarget.value;
@@ -220,10 +282,11 @@
               }}
               required
               aria-describedby="workshop-labor-help"
-            /></label
-          >
-          <label class="field-group" for="workshop-city"
-            ><span class="field-label">{text.city}</span><input
+            />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="workshop-city">{text.city}</label>
+            <input
               class="field"
               id="workshop-city"
               name="city"
@@ -231,20 +294,22 @@
               minlength="2"
               maxlength="120"
               required
-            /></label
-          >
-          <label class="field-group" for="workshop-state"
-            ><span class="field-label">{text.state}</span><select
+            />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="workshop-state">{text.state}</label>
+            <select
               class="field"
               id="workshop-state"
               name="state"
               bind:value={state}
               required
-              ><option value="">{text.chooseState}</option
-              >{#each data.states as uf}<option value={uf}>{uf}</option
-                >{/each}</select
-            ></label
-          >
+            >
+              <option value="">{text.chooseState}</option>
+              {#each data.states as uf (uf)}<option value={uf}>{uf}</option
+                >{/each}
+            </select>
+          </div>
         </div>
         <p class="text-sm text-[var(--muted)]" id="workshop-labor-help">
           {text.laborHelp}
@@ -260,17 +325,30 @@
           /><span>{text.consent}</span></label
         >
         <button
-          class="button-primary justify-self-start"
+          class="button-primary min-h-11 justify-self-start"
           type="submit"
           disabled={busy || data.loadError}>{text.save}</button
         >
       </form>
-    {:else}<p class="text-sm text-[var(--muted)]">{text.noRecords}</p>{/if}
+    {:else}
+      <EmptyState
+        compact
+        icon={Workshop}
+        title={text.noRecordsTitle}
+        description={text.noRecords}
+      >
+        {#snippet action()}
+          <a class="button-primary min-h-11" href="/maintenance?new=1"
+            >{text.logService}</a
+          >
+        {/snippet}
+      </EmptyState>
+    {/if}
   </section>
 
   <section class="panel grid gap-4 p-5" aria-labelledby="workshop-own-title">
     <h2 class="display text-2xl" id="workshop-own-title">{text.ownTitle}</h2>
-    {#each data.contributions as contribution}
+    {#each data.contributions as contribution (contribution.record_id)}
       <div
         class="grid gap-3 border-t border-[var(--line)] pt-4 sm:grid-cols-[1fr_auto]"
       >
@@ -281,34 +359,41 @@
           <p class="text-sm">
             {contribution.city_name}/{contribution.state_code} · {$format.date(
               contribution.serviced_on,
-            )} · {$format.money(contribution.labor_cents)}
+            )} ·
+            <span class="numeric"
+              >{$format.money(contribution.labor_cents)}</span
+            >
           </p>
-          <p class="mt-1 text-sm text-[var(--muted)]">
-            {contribution.current ? text.active : text.changed}
-          </p>
+          {#if contribution.current}
+            <StatusBadge class="mt-2" tone="ok">{text.active}</StatusBadge>
+          {:else}
+            <p class="mt-1 text-sm text-[var(--warning)]">{text.changed}</p>
+          {/if}
         </div>
         <div class="flex flex-wrap items-start gap-2">
           <button
-            class="button-secondary"
+            class="button-secondary min-h-11"
             type="button"
             on:click={() => review(contribution)}
             disabled={!data.records.some(
               (record) => record.id === contribution.record_id,
             )}>{text.edit}</button
           >
-          <form method="POST" action="?/withdraw" use:enhance>
+          <form method="POST" action="?/withdraw" use:enhance={enhanceWithdraw}>
             <input
               type="hidden"
               name="record_id"
               value={contribution.record_id}
-            /><button class="button-secondary" type="submit"
-              >{text.withdraw}</button
+            /><button
+              class="button-danger min-h-11"
+              type="submit"
+              disabled={busy}>{text.withdraw}</button
             >
           </form>
         </div>
       </div>
-    {:else}<p class="text-sm text-[var(--muted)]">
-        {text.noContributions}
-      </p>{/each}
+    {:else}
+      <EmptyState compact icon={Workshop} title={text.noContributions} />
+    {/each}
   </section>
 </div>

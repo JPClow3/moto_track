@@ -7,16 +7,18 @@ import {
   activityCalendar,
   consumptionTrend,
   costBreakdown,
+  costPerKmWindow,
   spendByMonth,
 } from "$server/domain/dashboard";
+import { formatDistance, translate, type MessageKey } from "$lib/i18n";
 import {
-  formatDistance,
-  formatMoney,
-  formatNumber,
-  translate,
-  type MessageKey,
-} from "$lib/i18n";
-import { buildDueNow } from "$server/domain/due-now";
+  buildDueNow,
+  mostUrgentFor,
+  rankAttention,
+  type AttentionItem,
+  type AttentionReminder,
+} from "$server/domain/due-now";
+import { privateFileUrl } from "$lib/utils/private-file-url";
 import {
   BENCHMARK_MIN_SAMPLE_SIZE,
   comparableBenchmarkMetrics,
@@ -26,8 +28,13 @@ import {
   type BenchmarkPosition,
 } from "$server/domain/model-benchmark";
 import type { FuelRecord } from "$server/domain/fuel";
+import { isoDateValue } from "$server/domain/date-value";
 
+import { appToday } from "$lib/utils/calendar-day";
 const DOCUMENT_HORIZON_DAYS = 30;
+const COST_WINDOW_DAYS = 30;
+/** Rows of "also needs attention" under the bike home's lead item. */
+const ATTENTION_LIMIT = 4;
 
 type Row = Record<string, unknown>;
 
@@ -79,8 +86,8 @@ function formValue(form: FormData, key: string) {
 const sumCents = (rows: Row[], key: string) =>
   rows.reduce((sum, row) => sum + Number(row[key] ?? 0), 0);
 
-function daysUntil(date: string, today: string) {
-  const target = new Date(`${date.slice(0, 10)}T00:00:00.000Z`).getTime();
+function daysUntil(date: unknown, today: string) {
+  const target = new Date(`${isoDateValue(date)}T00:00:00.000Z`).getTime();
   const now = new Date(`${today}T00:00:00.000Z`).getTime();
   if (!Number.isFinite(target)) return null;
   return Math.round((target - now) / 86_400_000);
@@ -100,14 +107,17 @@ function rowsOrEmpty<T>(
   });
 }
 
-export async function load({ locals, url }) {
+export async function load({ locals, url, parent }) {
   const user = locals.user;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = appToday();
 
   if (!user) {
     return {
       today,
-      metrics: [],
+      hero: null,
+      nextDue: null,
+      attention: [],
+      headline: null,
       garage: [],
       health: null,
       consumption: [],
@@ -131,7 +141,10 @@ export async function load({ locals, url }) {
   } catch {
     return {
       today,
-      metrics: [],
+      hero: null,
+      nextDue: null,
+      attention: [],
+      headline: null,
       garage: [],
       health: null,
       consumption: [],
@@ -168,16 +181,18 @@ export async function load({ locals, url }) {
   ] = await Promise.all([
     rowsOrEmpty(
       locals.db<Row[]>`
-        select id, name, brand, model, year, current_odometer_km
+        select id, name, brand, model, year, current_odometer_km, photo_key
         from motorcycles
-        where owner_id = ${ownerId} and is_active = true
+        where owner_id = ${ownerId} and is_active = true and deleted_at is null
         order by name
       `,
       markLoadError,
     ),
+    // Date columns are cast to text: postgres.js returns `date` as a JS Date,
+    // and `String(Date)` is not the YYYY-MM-DD the charts bucket by.
     rowsOrEmpty(
       locals.db<Row[]>`
-        select motorcycle_id, date, odometer_km, liters, total_price_cents, tank_full
+        select id, motorcycle_id, date::text as date, odometer_km, liters, total_price_cents, tank_full
         from fuel_records
         where owner_id = ${ownerId}
       `,
@@ -186,7 +201,8 @@ export async function load({ locals, url }) {
     rowsOrEmpty(
       locals.db<Row[]>`
         select id, title, motorcycle_id, trigger_type, trigger_value_km,
-          trigger_value_days, reference_km, reference_date
+          trigger_value_days, reference_km, reference_date::text as reference_date,
+          snoozed_until_date::text as snoozed_until_date, snoozed_until_km
         from reminders
         where owner_id = ${ownerId} and is_active = true
       `,
@@ -194,7 +210,7 @@ export async function load({ locals, url }) {
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
-        select motorcycle_id, installed_at, cost_cents, wear_percent
+        select id, motorcycle_id, installed_at::text as installed_at, cost_cents, wear_percent
         from tire_records
         where owner_id = ${ownerId} and is_active = true
       `,
@@ -202,7 +218,7 @@ export async function load({ locals, url }) {
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
-        select name, motorcycle_id, valid_until
+        select name, motorcycle_id, valid_until::text as valid_until
         from motorcycle_documents
         where owner_id = ${ownerId}
       `,
@@ -210,7 +226,7 @@ export async function load({ locals, url }) {
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
-        select motorcycle_id, date, odometer_km, cost_cents, maintenance_type
+        select id, motorcycle_id, date::text as date, odometer_km, cost_cents, maintenance_type
         from maintenance_records
         where owner_id = ${ownerId}
       `,
@@ -218,7 +234,7 @@ export async function load({ locals, url }) {
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
-        select due_date, amount_cents, fee_type
+        select id, motorcycle_id, due_date::text as due_date, amount_cents, fee_type
         from annual_fees
         where owner_id = ${ownerId}
       `,
@@ -242,12 +258,14 @@ export async function load({ locals, url }) {
     ),
   ]);
 
-  const summary = dashboardSummary(fuelRows as never);
   const odometerFor = new Map(
     motorcycleRows.map((row) => [
       String(row.id),
       Number(row.current_odometer_km ?? 0),
     ]),
+  );
+  const nameFor = new Map(
+    motorcycleRows.map((row) => [String(row.id), String(row.name ?? "Moto")]),
   );
 
   const dueNow = buildDueNow({
@@ -259,7 +277,7 @@ export async function load({ locals, url }) {
   // a CRLV valid for another two years is not a problem to solve today.
   const expiringDocuments = documentRows.filter((row) => {
     if (!row.valid_until) return false;
-    const remaining = daysUntil(String(row.valid_until), today);
+    const remaining = daysUntil(row.valid_until, today);
     return remaining !== null && remaining <= DOCUMENT_HORIZON_DAYS;
   });
 
@@ -272,6 +290,12 @@ export async function load({ locals, url }) {
       id,
       name: String(row.name ?? "Sem nome"),
       detail: [row.brand, row.model].filter(Boolean).join(" ") || "—",
+      modelLabel: [row.brand, row.model, row.year]
+        .filter(
+          (value) => value !== null && value !== undefined && value !== "",
+        )
+        .join(" "),
+      photoUrl: privateFileUrl(row.photo_key ? String(row.photo_key) : null),
       odometer,
       health: healthScore({
         reminders: reminderRows.filter(
@@ -296,28 +320,104 @@ export async function load({ locals, url }) {
       )
     : null;
 
-  const upcoming = reminderRows
+  // The bike home leads with one motorcycle: the one chosen in the shell's bike
+  // switcher (resolved by the layout; awaiting parent() re-runs this load after
+  // a switch), else the first active bike by name. Every query above is
+  // owner-scoped, so an id from another account simply does not match.
+  const { activeMotorcycleId } = await parent();
+  const hero =
+    garage.find((entry) => entry.id === activeMotorcycleId) ??
+    garage[0] ??
+    null;
+  const heroId = hero?.id ?? "";
+
+  const evaluatedReminders: AttentionReminder[] = reminderRows
+    .filter((row) => {
+      // A reminder for an archived bike has no live odometer to measure from.
+      const motorcycleId = row.motorcycle_id ? String(row.motorcycle_id) : null;
+      return motorcycleId === null || odometerFor.has(motorcycleId);
+    })
     .map((row) => {
+      const motorcycleId = row.motorcycle_id ? String(row.motorcycle_id) : null;
       const evaluation = evaluateReminder(row as unknown as ReminderInput, {
-        currentOdometerKm: odometerFor.get(String(row.motorcycle_id)) ?? 0,
+        currentOdometerKm: motorcycleId
+          ? (odometerFor.get(motorcycleId) ?? 0)
+          : 0,
         today,
       });
       return {
         id: String(row.id),
         title: String(row.title ?? "Lembrete"),
+        motorcycleId,
+        motorcycleName: motorcycleId ? (nameFor.get(motorcycleId) ?? "") : "",
         status: evaluation.status,
         remainingKm: evaluation.remaining_km ?? null,
         remainingDays: evaluation.remaining_days ?? null,
       };
-    })
+    });
+
+  const upcoming = evaluatedReminders
     .filter((entry) => entry.status !== "unknown")
     .sort((a, b) => {
       const rank = { overdue: 0, due_soon: 1, ok: 2, unknown: 3 } as const;
       return rank[a.status] - rank[b.status];
     })
-    .slice(0, 4);
+    .slice(0, 4)
+    .map(({ id, title, status, remainingKm, remainingDays }) => ({
+      id,
+      title,
+      status,
+      remainingKm,
+      remainingDays,
+    }));
 
-  const fuelSpend = summary.fuel_spend_cents;
+  const ranked = rankAttention({ dueNow, reminders: evaluatedReminders });
+  const nextDue: AttentionItem | null = hero
+    ? mostUrgentFor(ranked, heroId)
+    : null;
+  const attention = ranked
+    .filter((item) => item !== nextDue)
+    .slice(0, ATTENTION_LIMIT);
+
+  // Headline numbers describe the bike on screen, not the garage blend: mixing
+  // two bikes' tanks would also corrupt the full-tank-to-full-tank intervals.
+  const forHero = (row: Row) => String(row.motorcycle_id ?? "") === heroId;
+  const heroFuelRows = fuelRows.filter(forHero);
+  const heroMaintenanceRows = maintenanceRows.filter(forHero);
+  const heroTireRows = tireRows.filter(forHero);
+  const heroSummary = dashboardSummary(heroFuelRows as never);
+  const headline = hero
+    ? {
+        windowDays: COST_WINDOW_DAYS,
+        // Fuel, service and tires; annual fees are left out so a once-a-year
+        // IPVA bill cannot swamp one month's cost per km.
+        costPerKm: costPerKmWindow({
+          spend: [
+            ...heroFuelRows.map((row) => ({
+              date: String(row.date ?? ""),
+              amountCents: Number(row.total_price_cents ?? 0),
+            })),
+            ...heroMaintenanceRows.map((row) => ({
+              date: String(row.date ?? ""),
+              amountCents: Number(row.cost_cents ?? 0),
+            })),
+            ...heroTireRows.map((row) => ({
+              date: String(row.installed_at ?? ""),
+              amountCents: Number(row.cost_cents ?? 0),
+            })),
+          ],
+          readings: [...heroFuelRows, ...heroMaintenanceRows].map((row) => ({
+            date: String(row.date ?? ""),
+            odometerKm: Number(row.odometer_km ?? 0),
+          })),
+          today,
+          days: COST_WINDOW_DAYS,
+        }),
+        averageConsumptionKmL: heroSummary.average_consumption_km_l || null,
+      }
+    : null;
+
+  const fuelSpend = sumCents(fuelRows, "total_price_cents");
   const maintenanceSpend = sumCents(maintenanceRows, "cost_cents");
   const tireSpend = sumCents(tireRows, "cost_cents");
   const feeSpend = sumCents(feeRows, "amount_cents");
@@ -326,42 +426,12 @@ export async function load({ locals, url }) {
   // read the reader's locale off locals rather than baking one in.
   const locale = locals.locale;
   const tr = (key: MessageKey) => translate(locale, key);
-  const primary = motorcycleRows[0];
-  const metrics = [
-    {
-      label: tr("dashboard.metricBikes"),
-      value: formatNumber(locale, motorcycleRows.length),
-      detail: tr("dashboard.metricBikesDetail"),
-      href: "/garage",
-    },
-    {
-      label: tr("dashboard.metricOdometer"),
-      value: formatDistance(locale, Number(primary?.current_odometer_km ?? 0)),
-      detail: String(primary?.name ?? tr("dashboard.noActiveBike")),
-      href: "/garage",
-    },
-    {
-      label: tr("dashboard.metricConsumption"),
-      value: summary.average_consumption_km_l
-        ? `${formatNumber(locale, summary.average_consumption_km_l)} km/L`
-        : tr("dashboard.noData"),
-      detail: tr("dashboard.metricConsumptionDetail"),
-      href: "/fuel",
-    },
-    {
-      label: tr("dashboard.metricCostPerKm"),
-      value: summary.cost_per_km
-        ? formatMoney(locale, summary.cost_per_km * 100)
-        : tr("dashboard.noData"),
-      detail: tr("dashboard.metricCostPerKmDetail"),
-      href: "/fuel",
-    },
-  ];
 
   // Benchmarking is opt-in and scoped to one selected motorcycle. The query
   // parameter lets a rider choose another bike in the form without silently
   // changing which model is being compared on the next render.
-  const requestedBenchmarkMotorcycleId = url.searchParams.get("benchmark");
+  const requestedBenchmarkMotorcycleId =
+    url.searchParams.get("benchmark") ?? heroId;
   const benchmarkMotorcycle =
     motorcycleRows.find(
       (row) =>
@@ -508,11 +578,14 @@ export async function load({ locals, url }) {
 
   return {
     today,
-    metrics,
+    hero,
+    nextDue,
+    attention,
+    headline,
     garage,
     health: health?.health ?? null,
     healthMotorcycle: garage.length > 1 ? (health?.name ?? null) : null,
-    consumption: consumptionTrend(fuelRows as never).map((point) => ({
+    consumption: consumptionTrend(heroFuelRows as never).map((point) => ({
       date: point.date,
       value: point.kmPerLiter,
     })),

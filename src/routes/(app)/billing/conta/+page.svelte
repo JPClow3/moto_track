@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { page } from "$app/stores";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { onMount } from "svelte";
-  import { ChevronDown, Check, Bell, ShieldCheck } from "lucide-svelte";
+  import ChevronDown from "lucide-svelte/icons/chevron-down";
+  import Bell from "lucide-svelte/icons/bell";
+  import ShieldCheck from "lucide-svelte/icons/shield-check";
   import {
     disablePushNotifications,
     enablePushNotifications,
@@ -12,6 +15,10 @@
   import type { MessageKey } from "$lib/i18n";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
   import PageHeader from "$lib/components/app/PageHeader.svelte";
+  import StatusBadge, {
+    type StatusTone,
+  } from "$components/ui/StatusBadge.svelte";
+  import { showToast } from "$components/ui/toast";
 
   type ApiToken = {
     id: string;
@@ -43,6 +50,10 @@
   $: trialEndsAt = data.billingSummary?.trialEndsAt ?? null;
   $: nextBillingAt =
     data.billingSummary?.nextBillingAt ?? data.profile?.current_period_end;
+  // Plan state as a status tone: past due is the one critical state here.
+  $: planTone = (
+    trialEndsAt ? "info" : isCancelling ? "due" : isPastDue ? "overdue" : "ok"
+  ) as StatusTone;
   const dateOptions: Intl.DateTimeFormatOptions = {
     day: "numeric",
     month: "long",
@@ -144,8 +155,7 @@
         { method: "DELETE" },
       );
       if (!response.ok) throw new Error();
-      tokenStatusRole = "status";
-      tokenMessage = $t("conta.tokenRevoked");
+      showToast($t("conta.tokenRevoked"));
       await loadTokens();
     } catch {
       tokenStatusRole = "alert";
@@ -224,12 +234,22 @@
       themeBusy = false;
     }
   }
-  function enhanceAction(action: string): SubmitFunction {
+  function enhanceAction(action: "export" | "deletion"): SubmitFunction {
     return () => {
       pendingAction = action;
-      return async ({ update }) => {
+      return async ({ result, update }) => {
         try {
           await update();
+          if (result.type === "success") {
+            if (action === "deletion") deletionConfirmation = "";
+            showToast(
+              $t(
+                action === "export"
+                  ? "garageUx.exportRequested"
+                  : "garageUx.deletionRequested",
+              ),
+            );
+          }
         } finally {
           pendingAction = "";
         }
@@ -251,19 +271,25 @@
           };
     return labels[String(value)] ? $t(labels[String(value)]) : String(value);
   }
+  function requestTone(status: string | Date): StatusTone {
+    const value = String(status);
+    if (value === "completed" || value === "fulfilled") return "ok";
+    if (value === "open" || value === "pending" || value === "processing")
+      return "info";
+    return "neutral";
+  }
 </script>
 
 <svelte:head><title>{$t("conta.title")} · Moto Track</title></svelte:head>
 <section class="mx-auto grid w-full max-w-4xl gap-6">
   <PageHeader
-    eyebrow={$t("conta.eyebrow")}
     title={$t("conta.heading")}
     description={$t("conta.description")}
   />
-  {#if form?.message}<p
-      class="rounded border border-[var(--line)] bg-[var(--panel)] p-4 text-sm"
-      class:text-danger={!form.ok}
-      role={form.ok ? "status" : "alert"}
+  <!-- Successful requests confirm with a toast; only failures stay inline. -->
+  {#if form?.message && !form.ok}<p
+      class="rounded-md border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)]"
+      role="alert"
     >
       {form.message}
     </p>{/if}
@@ -293,15 +319,14 @@
           <p class="display text-4xl">
             {isPro ? "Moto Track Pro" : "Moto Track Free"}
           </p>
-          <span
-            class="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-2.5 py-1 text-xs font-semibold"
-            ><Check size={13} aria-hidden="true" />{trialEndsAt
+          <StatusBadge tone={planTone}
+            >{trialEndsAt
               ? $t("conta.trialBadge")
               : isCancelling
                 ? $t("conta.cancellingBadge")
                 : isPastDue
                   ? $t("conta.paymentPending")
-                  : $t("conta.activeBadge")}</span
+                  : $t("conta.activeBadge")}</StatusBadge
           >
         </div>
         <p class="mt-3 max-w-xl text-sm leading-relaxed">
@@ -313,16 +338,18 @@
         </p>
       </div>
       <div class="grid gap-2 md:justify-items-end">
-        {#if isPro}<a class="button-primary min-h-11" href="/billing/portal"
-            >{$t("conta.manageSubscription")}</a
-          >
+        {#if isPro}{#if !$page.data?.nativeStore}<a
+              class="button-primary min-h-11"
+              href="/billing/portal">{$t("conta.manageSubscription")}</a
+            >{/if}
           <p class="text-xs text-[var(--muted)]">{$t("conta.portalHint")}</p>
-        {:else}<a class="button-primary min-h-11" href="/precos"
-            >{$t("conta.upgrade")}</a
-          >{#if hasBillingCustomer}<a
-              class="button-secondary min-h-11"
-              href="/billing/portal">{$t("conta.updatePayment")}</a
-            >{/if}{/if}
+        {:else}{#if !$page.data?.nativeStore}<a
+              class="button-primary min-h-11"
+              href="/precos">{$t("conta.upgrade")}</a
+            >{/if}{#if hasBillingCustomer}{#if !$page.data?.nativeStore}<a
+                class="button-secondary min-h-11"
+                href="/billing/portal">{$t("conta.updatePayment")}</a
+              >{/if}{/if}{/if}
       </div>
     </div>
     {#if isPro}
@@ -358,7 +385,9 @@
       </dl>
     {/if}
     {#if isCancelling || isPastDue}<p
-        class="border-t border-[var(--line)] px-5 py-4 text-sm sm:px-6"
+        class="border-t border-[var(--line)] px-5 py-4 text-sm sm:px-6 {isPastDue
+          ? 'bg-[var(--accent-soft)]'
+          : 'bg-[var(--warning-soft)]'}"
         role="status"
       >
         {isCancelling
@@ -384,7 +413,7 @@
         {$t("conta.preferencesHint")}
       </p>
       <div class="mt-5">
-        <label for="account-theme" class="text-sm font-medium"
+        <label for="account-theme" class="field-label"
           >{$t("conta.theme")}</label
         >
         <select
@@ -440,7 +469,7 @@
         id="personal-data-heading"
         class="flex items-center gap-2 font-semibold"
       >
-        <ShieldCheck size={17} aria-hidden="true" />{$t("conta.personalData")}
+        <ShieldCheck size={20} aria-hidden="true" />{$t("conta.personalData")}
       </h2>
       <p class="mt-1 text-sm leading-relaxed text-[var(--muted)]">
         {$t("conta.personalDataHint")}
@@ -464,10 +493,10 @@
         </form>
       </div>
       <div class="mt-5 border-t border-[var(--line)] pt-4">
-        <h3 class="text-xs font-semibold">{$t("conta.requests")}</h3>
+        <h3 class="text-sm font-semibold">{$t("conta.requests")}</h3>
         <ul class="mt-2 grid gap-3 text-sm">
           {#each data.requests as request}<li
-              class="flex flex-wrap justify-between gap-1"
+              class="flex flex-wrap items-center justify-between gap-2"
             >
               <div>
                 <p>{requestLabel(request.request_type, "type")}</p>
@@ -480,8 +509,8 @@
                     )}</time
                   >{/if}
               </div>
-              <span class="text-xs text-[var(--muted)]"
-                >{requestLabel(request.status, "status")}</span
+              <StatusBadge tone={requestTone(request.status)}
+                >{requestLabel(request.status, "status")}</StatusBadge
               >
             </li>
           {:else}<li class="text-sm text-[var(--muted)]">
@@ -555,7 +584,7 @@
                 </p>
               </div>
               {#if token.is_active}<button
-                  class="button-secondary min-h-11"
+                  class="button-danger min-h-11"
                   type="button"
                   on:click={() => revokeApiToken(token.id)}
                   disabled={tokenBusy}>{$t("conta.revokeToken")}</button
@@ -618,7 +647,7 @@
     display: none;
   }
   summary:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--focus);
     outline-offset: 3px;
     border-radius: 4px;
   }

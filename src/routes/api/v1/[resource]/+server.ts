@@ -12,6 +12,11 @@ import {
   syncChangedRecordOdometers,
 } from "$server/domain/crud";
 import { lockObjectOwner } from "$server/db/owner-lock";
+import { planCapMessage } from "$lib/i18n/action-messages";
+import {
+  REMINDER_NOTIFICATION_RESET,
+  reminderScheduleChanged,
+} from "$server/domain/reminders";
 import type { Sql } from "postgres";
 import {
   enqueueObjectDeletions,
@@ -39,6 +44,14 @@ const apiResources: Record<
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
+}
+
+// A Free-plan trigger firing means a concurrent write beat the guard above;
+// answer as the guard would have.
+function apiFailure(err: unknown) {
+  const raw = messageFrom(err);
+  const message = planCapMessage(raw);
+  return error(message === raw ? 400 : 403, message);
 }
 
 function resourceOrThrow(resource: string) {
@@ -77,7 +90,7 @@ export async function GET(event) {
     `;
     return json({ results });
   } catch (err) {
-    throw error(400, messageFrom(err));
+    throw apiFailure(err);
   }
 }
 
@@ -132,7 +145,7 @@ export async function POST(event) {
       });
     });
   } catch (err) {
-    throw error(400, messageFrom(err));
+    throw apiFailure(err);
   }
   return json({ result }, { status: 201 });
 }
@@ -167,9 +180,12 @@ export async function PATCH(event) {
         ...existing,
         ...normalized.payload,
       });
-      if (config.table === "reminders")
+      if (config.table === "reminders") {
         normalized.payload.completion_version =
           Number(existing.completion_version ?? 0) + 1;
+        if (reminderScheduleChanged(existing, normalized.payload))
+          Object.assign(normalized.payload, REMINDER_NOTIFICATION_RESET);
+      }
       [result] = await db<Array<Record<string, unknown>>>`
       update ${db(config.table)}
       set ${db(normalized.payload)}
@@ -190,7 +206,7 @@ export async function PATCH(event) {
     });
   } catch (err) {
     if (isHttpError(err)) throw err;
-    throw error(400, messageFrom(err));
+    throw apiFailure(err);
   }
   if (!result) throw error(404, "Record not found.");
   return json({ result });
@@ -245,7 +261,7 @@ export async function DELETE(event) {
     });
   } catch (err) {
     if (isHttpError(err)) throw err;
-    throw error(400, messageFrom(err));
+    throw apiFailure(err);
   }
   await deleteQueuedObjectsBestEffort({
     db: event.locals.db,

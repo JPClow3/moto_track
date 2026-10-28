@@ -1,7 +1,11 @@
 <script lang="ts">
   import { locale } from "$lib/i18n/store";
   import { legalCopy, termsSections } from "$lib/i18n/legal";
-  import { ArrowRight, FileText, Mail, Printer, Scale } from "lucide-svelte";
+  import ArrowRight from "lucide-svelte/icons/arrow-right";
+  import FileText from "lucide-svelte/icons/file-text";
+  import Mail from "lucide-svelte/icons/mail";
+  import Printer from "lucide-svelte/icons/printer";
+  import Scale from "lucide-svelte/icons/scale";
 
   let { data } = $props();
   const { supportEmail } = $derived(data.contact);
@@ -19,7 +23,7 @@
 <section class="relative overflow-hidden border-b border-[var(--line)]">
   <div class="grid-backdrop" aria-hidden="true"></div>
   <div class="accent-glow legal-glow" aria-hidden="true"></div>
-  <div class="relative mx-auto max-w-6xl px-6 py-16 sm:py-20">
+  <div class="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
       {copy.terms.eyebrow}
@@ -39,7 +43,7 @@
         class="button-secondary gap-2"
         type="button"
         onclick={() => window.print()}
-        ><Printer class="h-4 w-4" /> {copy.print}</button
+        ><Printer size={20} aria-hidden="true" /> {copy.print}</button
       >
     </div>
     <p
@@ -51,7 +55,7 @@
 </section>
 
 <section
-  class="mx-auto grid max-w-6xl gap-12 px-6 py-14 lg:grid-cols-[15rem_minmax(0,1fr)] lg:py-20"
+  class="mx-auto grid max-w-6xl gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:py-20"
 >
   <aside class="lg:sticky lg:top-24 lg:self-start">
     <p class="label-tech text-[var(--muted)]">{copy.contents}</p>
@@ -63,7 +67,8 @@
         <a
           class="focus-ring legal-nav-link inline-flex min-h-11 w-full items-center px-4 py-2 text-sm text-[var(--muted)]"
           href={`#${section.id}`}
-          ><span class="label-tech mr-2 text-[var(--accent)]">0{index + 1}</span
+          ><span class="label-tech numeric mr-2 text-[var(--muted)]"
+            >0{index + 1}</span
           >{section.title}</a
         >
       {/each}
@@ -75,13 +80,21 @@
       class="mb-12 grid gap-4 border-b border-[var(--line)] pb-6 sm:grid-cols-2"
     >
       <div class="flex gap-3">
-        <FileText class="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
+        <FileText
+          size={20}
+          class="mt-0.5 shrink-0 text-[var(--muted)]"
+          aria-hidden="true"
+        />
         <p class="text-sm leading-relaxed text-[var(--muted)]">
           {copy.terms.refund}
         </p>
       </div>
       <div class="flex gap-3">
-        <Scale class="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
+        <Scale
+          size={20}
+          class="mt-0.5 shrink-0 text-[var(--muted)]"
+          aria-hidden="true"
+        />
         <p class="text-sm leading-relaxed text-[var(--muted)]">
           {copy.terms.cancel}
         </p>
@@ -92,7 +105,7 @@
         id={section.id}
         class="scroll-mt-28 border-b border-[var(--line)] py-9 first:pt-0"
       >
-        <p class="label-tech text-[var(--accent)]">0{index + 1}</p>
+        <p class="label-tech numeric text-[var(--muted)]">0{index + 1}</p>
         <h2 class="display mt-3 text-3xl sm:text-4xl">{section.title}</h2>
         {#each section.paragraphs as paragraph}<p
             class="mt-4 leading-relaxed text-[var(--muted)]"
@@ -106,16 +119,20 @@
     >
       <div class="corner-slashes" aria-hidden="true"></div>
       <div class="relative flex gap-4">
-        <Mail class="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
+        <Mail
+          size={20}
+          class="mt-0.5 shrink-0 text-paper/70"
+          aria-hidden="true"
+        />
         <div>
           <h2 class="display text-2xl">{copy.terms.supportHeading}</h2>
-          <p class="mt-2 text-sm leading-relaxed text-paper/65">
+          <p class="mt-2 text-sm leading-relaxed text-paper/70">
             {copy.terms.supportText(supportEmail)}
           </p>
           <a
-            class="focus-ring mt-4 inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-[var(--accent)]"
+            class="focus-ring mt-4 inline-flex min-h-11 items-center gap-2 rounded px-1 text-sm font-semibold text-paper underline underline-offset-4"
             href={`mailto:${supportEmail}`}
-            >{copy.email} <ArrowRight class="h-4 w-4" /></a
+            >{copy.email} <ArrowRight size={16} aria-hidden="true" /></a
           >
         </div>
       </div>
@@ -137,7 +154,7 @@
   }
   .legal-nav-link:hover {
     color: var(--fg);
-    border-left: 2px solid var(--accent);
+    border-left: 2px solid var(--fg);
     padding-left: calc(1rem - 2px);
   }
   .corner-slashes {

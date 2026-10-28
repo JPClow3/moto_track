@@ -5,6 +5,10 @@
   export let longitude = "";
   let busy = false;
   let message = "";
+  // Text inputs so pt-BR riders can type "-23,55"; the server and the nearby
+  // search both accept a comma or a dot. No decimal inputmode: the iOS decimal
+  // keypad has no minus key, and every Brazilian coordinate is negative.
+  const COORDINATE_PATTERN = "-?[0-9]+([.,][0-9]+)?";
   function locate() {
     message = "";
     if (!navigator.geolocation) {
@@ -33,13 +37,14 @@
       >{$t("nearby.latitude")}</label
     >
     <input
-      class="field"
+      class="field numeric"
       id={`${id}-latitude`}
       name="latitude"
-      type="number"
-      min="-90"
-      max="90"
-      step="any"
+      type="text"
+      autocomplete="off"
+      pattern={COORDINATE_PATTERN}
+      title={$t("fuelUx.decimalHint")}
+      placeholder={$t("fuelUx.latitudePlaceholder")}
       value={latitude}
       on:input={(event) => (latitude = event.currentTarget.value)}
     />
@@ -49,13 +54,14 @@
       >{$t("nearby.longitude")}</label
     >
     <input
-      class="field"
+      class="field numeric"
       id={`${id}-longitude`}
       name="longitude"
-      type="number"
-      min="-180"
-      max="180"
-      step="any"
+      type="text"
+      autocomplete="off"
+      pattern={COORDINATE_PATTERN}
+      title={$t("fuelUx.decimalHint")}
+      placeholder={$t("fuelUx.longitudePlaceholder")}
       value={longitude}
       on:input={(event) => (longitude = event.currentTarget.value)}
     />
@@ -68,4 +74,6 @@
   on:click={locate}
   >{busy ? $t("nearby.locating") : $t("nearby.useLocation")}</button
 >
-{#if message}<p class="text-sm text-danger" role="alert">{message}</p>{/if}
+{#if message}<p class="text-sm text-[var(--danger)]" role="alert">
+    {message}
+  </p>{/if}

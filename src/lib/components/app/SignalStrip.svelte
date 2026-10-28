@@ -7,7 +7,6 @@
 </script>
 
 <script lang="ts">
-  export let eyebrow = "";
   export let title = "";
   export let description = "";
   export let signals: Signal[] = [];
@@ -19,10 +18,7 @@
   <div class="signal-strip border-y border-[var(--line)] py-3">
     {#if title}
       <div class="mb-2">
-        {#if eyebrow}
-          <p class="eyebrow text-[10px]">{eyebrow}</p>
-        {/if}
-        <h3 class="label-tech text-xs text-[var(--muted)]">{title}</h3>
+        <h3 class="label-tech text-[var(--muted)]">{title}</h3>
         {#if description}
           <p class="text-xs text-[var(--muted)]">{description}</p>
         {/if}
@@ -34,7 +30,7 @@
     >
       {#each displayedSignals as signal, i (signal.label + i)}
         <div class="py-2.5 sm:px-4 sm:py-1 first:sm:pl-0 last:sm:pr-0">
-          <p class="label-tech text-[10px] text-[var(--muted)]">
+          <p class="label-tech text-[var(--muted)]">
             {signal.label}
           </p>
           <p

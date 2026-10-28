@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { calendarDay } from "$lib/utils/calendar-day";
   import { format, t } from "$lib/i18n/store";
+  import type { MessageKey } from "$lib/i18n";
   import LocationFields from "./LocationFields.svelte";
   import {
     nearbyStations,
@@ -14,6 +16,15 @@
   let longitude = "";
   let radius = 10;
   let fuelType = "";
+  const fuelTypeKeys: Record<string, MessageKey> = {
+    gasoline: "fuel.typeGasoline",
+    ethanol: "fuel.typeEthanol",
+    flex: "fuel.typeFlex",
+    diesel: "fuel.typeDiesel",
+    gnv: "fuel.typeGnv",
+  };
+  // Coordinates may be typed with a pt-BR decimal comma ("-23,55").
+  const decimal = (value: string) => value.trim().replace(",", ".");
   $: fuelTypes = [
     ...new Set(
       records
@@ -23,18 +34,28 @@
   ].sort();
   $: if (!fuelType && fuelTypes.length) fuelType = fuelTypes[0];
   $: [selectedFuel, selectedGrade] = fuelType.split("::");
-  $: ready =
-    coordinate(latitude, 90) !== null && coordinate(longitude, 180) !== null;
+  $: lat = decimal(latitude);
+  $: lng = decimal(longitude);
+  $: ready = coordinate(lat, 90) !== null && coordinate(lng, 180) !== null;
   $: results = ready
     ? nearbyStations(stations, records, {
-        latitude: Number(latitude),
-        longitude: Number(longitude),
+        latitude: Number(lat),
+        longitude: Number(lng),
         radiusKm: radius,
         fuelType: selectedFuel,
         fuelGradeId: selectedGrade,
-        today: new Date().toISOString().slice(0, 10),
+        today: calendarDay(),
       })
     : [];
+
+  function fuelLabel(fuel: string) {
+    const [type, gradeId] = fuel.split("::");
+    const typeLabel = Object.hasOwn(fuelTypeKeys, type)
+      ? $t(fuelTypeKeys[type])
+      : type;
+    if (!gradeId) return typeLabel;
+    return `${typeLabel} · ${grades.find((g) => g.id === gradeId)?.name ?? gradeId}`;
+  }
 </script>
 
 <details class="panel p-5">
@@ -43,29 +64,31 @@
     <p class="text-sm text-[var(--muted)]">{$t("nearby.help")}</p>
     <LocationFields id="nearby" bind:latitude bind:longitude />
     <div class="grid gap-3 sm:grid-cols-2">
-      <label class="field-group" for="nearby-radius"
-        ><span class="field-label">{$t("nearby.radius")}</span><input
+      <div class="field-group">
+        <label class="field-label" for="nearby-radius"
+          >{$t("nearby.radius")}</label
+        >
+        <input
           class="field"
           id="nearby-radius"
           type="number"
+          inputmode="numeric"
           min="1"
           max="100"
+          step="1"
           bind:value={radius}
-        /></label
-      >
-      <label class="field-group" for="nearby-fuel"
-        ><span class="field-label">{$t("nearby.fuelType")}</span><select
-          class="field"
-          id="nearby-fuel"
-          bind:value={fuelType}
+        />
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="nearby-fuel"
+          >{$t("nearby.fuelType")}</label
         >
+        <select class="field" id="nearby-fuel" bind:value={fuelType}>
           {#each fuelTypes as fuel}<option value={fuel}
-              >{fuel.split("::")[0]}{fuel.split("::")[1]
-                ? ` · ${grades.find((g) => g.id === fuel.split("::")[1])?.name ?? fuel.split("::")[1]}`
-                : ""}</option
+              >{fuelLabel(fuel)}</option
             >{/each}
-        </select></label
-      >
+        </select>
+      </div>
     </div>
     {#if ready}
       <ul class="grid gap-3" aria-live="polite">
@@ -75,14 +98,18 @@
           >
             <div>
               <p class="font-semibold">
-                {station.name} · {$format.preciseMoney(
-                  station.priceMillicents,
-                )}/L
+                {station.name} ·
+                <span class="numeric"
+                  >{$format.preciseMoney(station.priceMillicents)}/L</span
+                >
               </p>
               <p class="text-sm text-[var(--muted)]">
-                {$format.number(station.distanceKm, {
-                  maximumFractionDigits: 1,
-                })} km · {$format.date(station.observedDate)}
+                <span class="numeric"
+                  >{$format.number(station.distanceKm, {
+                    maximumFractionDigits: 1,
+                  })} km</span
+                >
+                · {$format.date(station.observedDate)}
               </p>
             </div>
             <a

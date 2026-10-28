@@ -19,21 +19,23 @@ export default {
         paper: "#fafafa",
         steel: "#71717a",
 
-        // Red is the only red. A filled red button reads as destructive
-        // because red never appears as a filled surface anywhere else.
-        danger: "#dc2626",
-
-        // Status colours are deliberately low-chroma so red stays the
-        // loudest thing on the page.
-        success: "#15803d",
-        warning: "#b45309",
-
-        // Legacy aliases removed: pages use brand/success tokens directly.
-        // (signal/moss previously pointed here as temporary redirects.)
+        // Theme-aware role colours. These resolve to the CSS tokens in app.css
+        // so they follow dark mode; static hex values here used to fail
+        // contrast on dark panels.
+        danger: "var(--danger)",
+        success: "var(--success)",
+        warning: "var(--warning)",
+        info: "var(--info)",
+        cat: {
+          fuel: "var(--cat-fuel)",
+          maintenance: "var(--cat-maintenance)",
+          tires: "var(--cat-tires)",
+          fees: "var(--cat-fees)",
+        },
       },
       fontFamily: {
-        sans: ["Barlow", "ui-sans-serif", "system-ui", "sans-serif"],
-        display: ["Barlow Condensed", "Barlow", "ui-sans-serif", "sans-serif"],
+        sans: ["Archivo Variable", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["Archivo Variable", "ui-sans-serif", "sans-serif"],
       },
       boxShadow: {
         panel: "0 1px 2px rgba(24, 24, 27, 0.04)",

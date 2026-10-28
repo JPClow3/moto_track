@@ -2,13 +2,11 @@
   import { locale } from "$lib/i18n/store";
   import { publicCopy } from "$lib/i18n/public-copy";
   import { onMount } from "svelte";
-  import {
-    ArrowRight,
-    Check,
-    CircleDashed,
-    Compass,
-    Wrench,
-  } from "lucide-svelte";
+  import ArrowRight from "lucide-svelte/icons/arrow-right";
+  import Check from "lucide-svelte/icons/check";
+  import CircleDashed from "lucide-svelte/icons/circle-dashed";
+  import Compass from "lucide-svelte/icons/compass";
+  import Wrench from "lucide-svelte/icons/wrench";
 
   type Status = "done" | "next" | "planned" | "exploring";
 
@@ -202,7 +200,7 @@
 
   const dotClass: Record<Status, string> = {
     done: "bg-success",
-    next: "bg-[var(--accent)]",
+    next: "bg-[var(--info)]",
     planned: "bg-[var(--muted)]",
     exploring: "bg-[var(--line)] ring-1 ring-[var(--muted)]",
   };
@@ -303,7 +301,7 @@
   <div class="grid-backdrop" aria-hidden="true"></div>
   <div class="accent-glow header-glow" aria-hidden="true"></div>
 
-  <div class="relative mx-auto max-w-6xl px-6 py-16 sm:py-20">
+  <div class="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
       {publicCopy($locale, "Transparência")}
@@ -376,7 +374,7 @@
 
 <!-- ── GROUPS ──────────────────────────────────────────────── -->
 {#each groups as group (group.status)}
-  <section class="border-b border-[var(--line)] px-6 py-16">
+  <section class="border-b border-[var(--line)] px-4 py-16 sm:px-6">
     <div
       class="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[18rem_1fr] lg:gap-16"
     >
@@ -407,15 +405,13 @@
               aria-hidden="true"
             >
               {#if group.status === "done"}
-                <Check class="h-3.5 w-3.5 text-success" />
+                <Check size={16} class="text-success" />
               {:else}
                 <span class="h-2 w-2 rounded-full {dotClass[group.status]}"
                 ></span>
               {/if}
             </span>
-            <h3
-              class="display text-xl transition-colors group-hover:text-[var(--accent)]"
-            >
+            <h3 class="display text-xl">
               {publicCopy($locale, item.title)}
             </h3>
             <p class="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
@@ -429,13 +425,15 @@
 {/each}
 
 <!-- ── CTA ─────────────────────────────────────────────────── -->
-<section class="relative overflow-hidden bg-ink px-6 py-24 text-paper">
+<section
+  class="relative overflow-hidden bg-ink px-4 py-20 text-paper sm:px-6 sm:py-24"
+>
   <div class="cta-slashes" aria-hidden="true"></div>
   <div class="relative mx-auto max-w-3xl text-center">
     <h2 class="display text-5xl sm:text-6xl">
       {publicCopy($locale, "Faltou alguma coisa?")}
     </h2>
-    <p class="mx-auto mt-5 max-w-xl text-lg text-paper/60">
+    <p class="mx-auto mt-5 max-w-xl text-lg text-paper/70">
       {publicCopy(
         $locale,
         "O que entra nessa lista sai do que os motociclistas pedem. Crie sua conta e diga o que a sua moto precisa.",
@@ -444,10 +442,10 @@
     <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
       <a class="button-accent px-7 py-3.5 text-base shadow-brand" href="/auth">
         {publicCopy($locale, "Criar conta")}
-        <ArrowRight class="h-4 w-4" />
+        <ArrowRight size={20} />
       </a>
       <a
-        class="button-secondary border-paper/20 bg-transparent px-7 py-3.5 text-base text-paper hover:border-[var(--accent)]"
+        class="button-secondary border-paper/20 bg-transparent px-7 py-3.5 text-base text-paper hover:border-paper/60"
         href="/blog"
       >
         {publicCopy($locale, "Ler os guias")}
@@ -498,8 +496,8 @@
   }
   .gauge .fill {
     height: 100%;
-    background: var(--accent);
-    box-shadow: 0 0 20px -2px var(--accent-ring);
+    /* Delivered work is "done", so the gauge is green, not brand red. */
+    background: var(--success);
   }
   .gauge .ticks {
     position: absolute;
@@ -545,6 +543,6 @@
     background: var(--panel);
   }
   .item:hover .marker {
-    border-color: var(--accent);
+    border-color: var(--fg-soft);
   }
 </style>

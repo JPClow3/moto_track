@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from "$app/stores";
   import { locale } from "$lib/i18n/store";
   import { legalCopy } from "$lib/i18n/legal";
   $: copy = legalCopy($locale);
@@ -12,7 +13,7 @@
 <section class="relative overflow-hidden border-b border-[var(--line)]">
   <div class="grid-backdrop" aria-hidden="true"></div>
   <div class="accent-glow legal-glow" aria-hidden="true"></div>
-  <div class="relative mx-auto max-w-3xl px-6 py-16 sm:py-20">
+  <div class="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20">
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
       {copy.cancellation.eyebrow}
@@ -24,9 +25,10 @@
     <p class="mt-4 max-w-2xl leading-relaxed text-[var(--muted)]">
       {copy.cancellation.conditions}
     </p>
-    <a href="/billing/portal" class="button-secondary mt-8"
-      >{copy.cancellation.portal}</a
-    >
+    {#if !$page.data?.nativeStore}<a
+        href="/billing/portal"
+        class="button-secondary mt-8">{copy.cancellation.portal}</a
+      >{/if}
   </div>
 </section>
 

@@ -5,6 +5,7 @@
   import type { Snippet } from "svelte";
   import { requestOfflineFuelSync } from "$lib/utils/offline-fuel";
   import { saveOfflineLocale } from "$lib/utils/offline-cache";
+  import ToastRegion from "$lib/components/ui/ToastRegion.svelte";
   import {
     DEFAULT_LOCALE,
     normalizeReleasedLocale,
@@ -135,3 +136,5 @@
 </script>
 
 {@render children()}
+
+<ToastRegion />

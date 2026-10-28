@@ -7,6 +7,7 @@ import {
   relativeReplacementMonths,
 } from "./maintenance-schedule";
 
+import { appToday } from "../../utils/calendar-day";
 type CompletionRow = {
   id: string;
   motorcycle_id: string | null;
@@ -45,7 +46,7 @@ export async function completeReminder(
   ownerId: string,
   reminderId: string,
   expectedVersion: number,
-  today = new Date().toISOString().slice(0, 10),
+  today = appToday(),
 ) {
   if (
     !Number.isSafeInteger(expectedVersion) ||
