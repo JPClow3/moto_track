@@ -13,12 +13,10 @@ const data = async (path, type) =>
   type +
   ";base64," +
   (await readFile(resolve(root, path))).toString("base64");
+// The app's single family (docs/design-system.md): Archivo Variable, whose
+// width axis provides the condensed display style.
 const font = await data(
-  "node_modules/@fontsource/barlow/files/barlow-latin-400-normal.woff2",
-  "font/woff2",
-);
-const bold = await data(
-  "node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2",
+  "node_modules/@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2",
   "font/woff2",
 );
 const logo = await data(
@@ -31,14 +29,12 @@ const photos = await Promise.all(
   ),
 );
 const fonts =
-  "@font-face{font-family:Barlow;src:url(" +
+  "@font-face{font-family:Archivo;src:url(" +
   font +
-  ")}@font-face{font-family:Condensed;src:url(" +
-  bold +
-  ");font-weight:700}";
+  ") format('woff2-variations');font-weight:100 900;font-stretch:62% 125%}";
 const common =
   fonts +
-  "*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101012;color:#fafafa;font-family:Barlow,sans-serif}h1,h2,p{margin:0}h1,h2{font-family:Condensed,sans-serif;font-weight:700;letter-spacing:-.02em}";
+  "*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101012;color:#fafafa;font-family:Archivo,sans-serif}h1,h2,p{margin:0}h1,h2{font-stretch:76%;font-weight:750;line-height:1.05;letter-spacing:-.02em}";
 const browser = await chromium.launch({
   headless: true,
   ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH

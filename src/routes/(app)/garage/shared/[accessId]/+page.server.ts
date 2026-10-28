@@ -126,6 +126,10 @@ export const actions = localizedActions({
             createTranslator(locals.locale)("sharing.checkFields"),
           );
         const payload = normalized.payload;
+        // Recurring intervals become owner reminders with email/push; like
+        // plan stages, schedules are owner-only and the shared form has none.
+        delete payload.interval_km;
+        delete payload.interval_days;
         const date = validDate(payload.date);
         const odometer = Number(payload.odometer_km);
         if (

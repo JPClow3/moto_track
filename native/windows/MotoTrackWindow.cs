@@ -62,13 +62,28 @@ internal sealed class MotoTrackWindow : Form
             core.NewWindowRequested += (_, args) =>
             {
                 args.Handled = true;
-                if (args.IsUserInitiated && Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps) OpenExternal(uri);
+                if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri)) return;
+                // The system browser has no WebView2 session cookies, so app
+                // links (target="_blank") stay in this window, signed in.
+                if (Owned(uri)) core.Navigate(uri.AbsoluteUri);
+                else if (args.IsUserInitiated && uri.Scheme == Uri.UriSchemeHttps) OpenExternal(uri);
             };
             core.NavigationCompleted += (_, args) => { if (!args.IsSuccess && args.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled) ShowFailure(); };
             core.PermissionRequested += (_, args) =>
             {
                 if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri) || !Owned(uri)) { args.State = CoreWebView2PermissionState.Deny; return; }
-                if (args.PermissionKind == CoreWebView2PermissionKind.Geolocation) args.State = MessageBox.Show(this, Copy("Permitir localização para consultar postos próximos?", "Allow location to find nearby fuel stations?"), "Moto Track", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes ? CoreWebView2PermissionState.Allow : CoreWebView2PermissionState.Deny;
+                if (args.PermissionKind != CoreWebView2PermissionKind.Geolocation) return;
+                // Without a deferral WebView2 resolves the request when this
+                // handler returns, before the rider answers the dialog.
+                var deferral = args.GetDeferral();
+                BeginInvoke((Action)(() =>
+                {
+                    try
+                    {
+                        args.State = MessageBox.Show(this, Copy("Permitir localização para consultar postos próximos?", "Allow location to find nearby fuel stations?"), "Moto Track", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes ? CoreWebView2PermissionState.Allow : CoreWebView2PermissionState.Deny;
+                    }
+                    finally { deferral.Complete(); }
+                }));
             };
             core.DownloadStarting += (_, args) =>
             {
