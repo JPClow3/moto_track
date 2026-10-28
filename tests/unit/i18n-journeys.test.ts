@@ -52,7 +52,11 @@ describe("translated product journeys", () => {
       "src/routes/(public)/roadmap/+page.svelte",
     ]) {
       const source = readFileSync(resolve(path), "utf8");
-      const script = source.match(/<script[^>]*>([\s\S]*?)<\/script>/)![1];
+      // Extracts this repo's own component script for parsing, not untrusted
+      // HTML; still match tag case and whitespace the way HTML does.
+      const script = source.match(
+        /<script\b[^>]*>([\s\S]*?)<\/script\s*>/i,
+      )![1];
       const ast = ts.createSourceFile(
         path,
         script,
