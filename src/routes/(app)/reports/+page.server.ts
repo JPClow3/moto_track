@@ -93,7 +93,7 @@ export const actions = localizedActions({
       : 14;
     const [motorcycle] = await locals.db<Row[]>`
       select id from motorcycles
-      where id = ${motorcycleId} and owner_id = ${locals.user!.id} and is_active = true
+      where id = ${motorcycleId} and owner_id = ${locals.user!.id} and is_active = true and deleted_at is null
     `;
     if (!motorcycle) return fail(404, { message: "Moto não encontrada." });
     const token = `${crypto.randomUUID().replaceAll("-", "")}${crypto.randomUUID().replaceAll("-", "")}`;
@@ -166,7 +166,7 @@ export async function load({ locals, url }) {
       `.catch(() => [] as Row[]),
     locals.db<MotorcycleOption[]>`
         select id, name, brand, model, year from motorcycles
-        where owner_id = ${ownerId} and is_active = true
+        where owner_id = ${ownerId} and is_active = true and deleted_at is null
         order by name
       `.catch(() => [] as MotorcycleOption[]),
     locals.db<ShareRow[]>`
