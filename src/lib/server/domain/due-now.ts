@@ -43,10 +43,13 @@ function confidenceFor(status: string): DueNowConfidence {
  * slot and hide that a second bike needs attention too. Each bike surfaces its
  * most urgent item before any bike surfaces its second.
  */
+/** Garage-wide "due now" list length. */
+export const DUE_NOW_LIMIT = 5;
+
 export function buildDueNow({
   rows,
   odometerByMotorcycle,
-  limit = 5,
+  limit = DUE_NOW_LIMIT,
   today = appToday(),
 }: {
   rows: Row[];

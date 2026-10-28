@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDueNow,
+  DUE_NOW_LIMIT,
   mostUrgentFor,
   rankAttention,
   type AttentionReminder,
@@ -157,6 +158,30 @@ describe("due-now attention list", () => {
     expect(buildDueNow({ rows, odometerByMotorcycle: new Map() })).toHaveLength(
       5,
     );
+  });
+
+  it("keeps a sixth bike's item when uncapped, and caps to the same five", () => {
+    // The dashboard picks the selected bike's lead item from the uncapped list,
+    // then shows the first DUE_NOW_LIMIT of it garage-wide.
+    const rows = Array.from({ length: 6 }, (_, index) =>
+      plan({
+        id: `p${index}`,
+        motorcycle_id: `bike-${index}`,
+        motorcycle_name: `Moto ${index}`,
+        initial_history_status: "not_done",
+      }),
+    );
+    const capped = buildDueNow({ rows, odometerByMotorcycle: new Map() });
+    const all = buildDueNow({
+      rows,
+      odometerByMotorcycle: new Map(),
+      limit: Number.POSITIVE_INFINITY,
+    });
+    expect(capped.some((item) => item.motorcycleId === "bike-5")).toBe(false);
+    expect(
+      mostUrgentFor(rankAttention({ dueNow: all, reminders: [] }), "bike-5"),
+    ).toMatchObject({ id: "p5", motorcycleId: "bike-5" });
+    expect(all.slice(0, DUE_NOW_LIMIT)).toEqual(capped);
   });
 
   it("carries the manual reference through when the plan has one", () => {

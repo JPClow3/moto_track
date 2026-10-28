@@ -13,6 +13,7 @@ import {
 import { formatDistance, translate, type MessageKey } from "$lib/i18n";
 import {
   buildDueNow,
+  DUE_NOW_LIMIT,
   mostUrgentFor,
   rankAttention,
   type AttentionItem,
@@ -210,9 +211,10 @@ export async function load({ locals, url, parent }) {
     ),
     rowsOrEmpty(
       locals.db<Row[]>`
-        select id, motorcycle_id, installed_at::text as installed_at, cost_cents, wear_percent
+        select id, motorcycle_id, installed_at::text as installed_at, cost_cents, wear_percent,
+          is_active
         from tire_records
-        where owner_id = ${ownerId} and is_active = true
+        where owner_id = ${ownerId}
       `,
       markLoadError,
     ),
@@ -268,10 +270,18 @@ export async function load({ locals, url, parent }) {
     motorcycleRows.map((row) => [String(row.id), String(row.name ?? "Moto")]),
   );
 
-  const dueNow = buildDueNow({
+  // A retired tire's purchase still counts as spending; only active tires
+  // describe the bike's current tire health.
+  const activeTireRows = tireRows.filter((row) => row.is_active === true);
+
+  // Uncapped, so the bike on screen can always find its own lead item; the
+  // garage-wide list keeps the same per-bike spread, capped.
+  const allDueNow = buildDueNow({
     rows: planRows,
     odometerByMotorcycle: odometerFor,
+    limit: Number.POSITIVE_INFINITY,
   });
+  const dueNow = allDueNow.slice(0, DUE_NOW_LIMIT);
 
   // Only documents actually inside the renewal window count against health —
   // a CRLV valid for another two years is not a problem to solve today.
@@ -303,7 +313,7 @@ export async function load({ locals, url, parent }) {
         ) as unknown as ReminderInput[],
         currentOdometerKm: odometer,
         today,
-        tireWear: tireRows
+        tireWear: activeTireRows
           .filter((tire) => String(tire.motorcycle_id) === id)
           .map((tire) => Number(tire.wear_percent ?? 0))
           .filter((wear) => Number.isFinite(wear) && wear > 0),
@@ -371,12 +381,17 @@ export async function load({ locals, url, parent }) {
       remainingDays,
     }));
 
-  const ranked = rankAttention({ dueNow, reminders: evaluatedReminders });
   const nextDue: AttentionItem | null = hero
-    ? mostUrgentFor(ranked, heroId)
+    ? mostUrgentFor(
+        rankAttention({ dueNow: allDueNow, reminders: evaluatedReminders }),
+        heroId,
+      )
     : null;
-  const attention = ranked
-    .filter((item) => item !== nextDue)
+  const attention = rankAttention({ dueNow, reminders: evaluatedReminders })
+    .filter(
+      (item) =>
+        !nextDue || item.kind !== nextDue.kind || item.id !== nextDue.id,
+    )
     .slice(0, ATTENTION_LIMIT);
 
   // Headline numbers describe the bike on screen, not the garage blend: mixing
@@ -631,7 +646,7 @@ export async function load({ locals, url, parent }) {
     dueNow,
     counts: {
       reminders: reminderRows.length,
-      tires: tireRows.length,
+      tires: activeTireRows.length,
       documents: expiringDocuments.length,
     },
     benchmark,
