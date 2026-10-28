@@ -102,6 +102,17 @@ test.describe("workshop opt-in acceptance on the isolated branch", () => {
         await form
           .getByRole("button", { name: "Withdraw contribution", exact: true })
           .click();
+        // Withdrawal confirms in a modal before the form action runs.
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await dialog
+          .getByRole("button", { name: "Withdraw contribution", exact: true })
+          .click();
+        await expect(
+          page
+            .locator('[aria-live="polite"]')
+            .getByText(/^Contribution withdrawn from the comparison\./),
+        ).toBeVisible();
         await expect(form).toHaveCount(0);
       };
       await withdraw(ownerRecords[1]);
