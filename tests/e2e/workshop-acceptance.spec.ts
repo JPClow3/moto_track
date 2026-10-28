@@ -73,8 +73,11 @@ test.describe("workshop opt-in acceptance on the isolated branch", () => {
         await page
           .getByRole("button", { name: "Confirm sharing", exact: true })
           .click();
+        // Saves are confirmed by the global toast, an aria-live region.
         await expect(
-          page.getByRole("status").filter({ hasText: "Contribution saved." }),
+          page
+            .locator('[aria-live="polite"]')
+            .getByText(/^Contribution saved\./),
         ).toBeVisible();
       };
       await contribute(ownerRecords[0], "50.00");

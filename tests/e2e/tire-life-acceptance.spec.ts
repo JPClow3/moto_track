@@ -32,6 +32,9 @@ test.describe("confirmed tire wear observations", () => {
     const active = await sql<Array<{ id: string }>>`
       select id from motorcycles where owner_id = ${ownerId} and is_active = true and deleted_at is null
     `;
+    console.log(
+      `tire-life start: ${active.length} active; motorcycles: ${await motorcycleSlots(sql, ownerId)}`,
+    );
     const marker = `tire-observation-${Date.now()}`;
     let tireId = "";
     let fuelId = "";
@@ -150,13 +153,20 @@ test.describe("confirmed tire wear observations", () => {
         }
       } finally {
         try {
-          await sql.begin(async (db) => {
-            await db`delete from fuel_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
-            await db`delete from tire_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
-            await db`delete from motorcycles where owner_id = ${ownerId} and id = ${motorcycleId}`;
-            if (active.length)
-              await db`update motorcycles set is_active = true where owner_id = ${ownerId} and id in ${db(active.map((row) => row.id))}`;
-          });
+          await sql
+            .begin(async (db) => {
+              await db`delete from fuel_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
+              await db`delete from tire_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
+              await db`delete from motorcycles where owner_id = ${ownerId} and id = ${motorcycleId}`;
+              if (active.length)
+                await db`update motorcycles set is_active = true where owner_id = ${ownerId} and id in ${db(active.map((row) => row.id))}`;
+            })
+            .catch(async (cause: unknown) => {
+              throw new Error(
+                `Restoring ${active.length} active bike(s) failed; motorcycles: ${await motorcycleSlots(sql, ownerId)}`,
+                { cause },
+              );
+            });
         } finally {
           await fixture.close();
         }

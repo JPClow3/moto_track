@@ -334,10 +334,8 @@ test.describe("nearby prices, OCR confirmation and staff manual sources", () => 
       await sql`update profiles set is_staff = true where id = ${ownerId}`;
       await page.goto("/admin");
       await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
-      const panel = page.locator("div.panel").filter({
-        has: page.getByRole("heading", {
-          name: /Fontes do catálogo por verificação|Catalog sources by verification/i,
-        }),
+      const panel = page.getByRole("region", {
+        name: /Fontes do catálogo por verificação|Catalog sources by verification/i,
       });
       const table = panel.getByRole("table");
       await expect(table).toBeVisible();

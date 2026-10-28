@@ -38,9 +38,11 @@ test.describe("shared garage acceptance", () => {
       await expect(page.locator("#sharing-url")).toHaveValue(
         /\/garage\/invite\/[a-f0-9]{64}$/,
       );
+      // The invitee's email is its own table cell, outside the revoke form.
       const outgoing = page
-        .locator('form[action="?/revokeInvitation"]')
-        .filter({ hasText: email });
+        .getByRole("row")
+        .filter({ hasText: email })
+        .locator('form[action="?/revokeInvitation"]');
       const outgoingId = await outgoing.locator('[name="id"]').inputValue();
       await outgoing.getByRole("button").click();
       await expect(outgoing).toHaveCount(0);

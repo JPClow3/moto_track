@@ -55,15 +55,39 @@ test.describe("exact catalog item occurrence acceptance", () => {
       ).toBeEnabled();
       // Settle the action before asserting: a create that commits after the
       // cleanup below would leave a second active bike for later suites.
-      const [created] = await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.request().method() === "POST" &&
-            response.url().includes("?/create"),
-          { timeout: 60_000 },
-        ),
-        create.locator('button[type="submit"]').click(),
-      ]);
+      const response = page.waitForResponse(
+        (candidate) =>
+          candidate.request().method() === "POST" &&
+          candidate.url().includes("?/create"),
+        { timeout: 60_000 },
+      );
+      response.catch(() => undefined); // Reported below with form state.
+      // A bounded click surfaces an element covering the button directly.
+      await create.locator('button[type="submit"]').click({ timeout: 15_000 });
+      let created: Awaited<typeof response>;
+      try {
+        created = await response;
+      } catch (cause) {
+        // Name the fields the browser refused, e.g. one hidden in a closed
+        // <details>, which blocks submission without any visible error.
+        const validity = await create.evaluate((form: HTMLFormElement) => ({
+          valid: form.checkValidity(),
+          invalid: Array.from(form.elements)
+            .filter(
+              (element) =>
+                "checkValidity" in element &&
+                !(element as HTMLInputElement).checkValidity(),
+            )
+            .map(
+              (element) =>
+                (element as HTMLInputElement).name || element.id || "?",
+            ),
+        }));
+        throw new Error(
+          `Create request was never sent; form: ${JSON.stringify(validity)}`,
+          { cause },
+        );
+      }
       const createdBody = await created.text();
       expect(createdBody, createdBody).toContain('"type":"success"');
       await expect(
