@@ -524,4 +524,16 @@ describe("authenticated UX primitives contract", () => {
     expect(body).not.toContain("page-action");
     expect(body).toContain("Exportar dados");
   }, 15000);
+
+  it.each(["fuel", "maintenance", "tires"])(
+    "re-selects the shell's active bike on /%s when the shell switches bikes",
+    (route) => {
+      // SvelteKit reuses the page component across shell bike switches, so a
+      // one-time initializer would keep saving against the previous bike.
+      const pageSrc = source(`src/routes/(app)/${route}/+page.svelte`);
+      expect(pageSrc).toMatch(
+        /\$: if \(data\.activeMotorcycleId !== syncedActiveId\) \{\s+syncedActiveId = data\.activeMotorcycleId;\s+selectedMotorcycleId = activeOrFirstId\(\);/,
+      );
+    },
+  );
 });

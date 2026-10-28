@@ -82,10 +82,17 @@
   $: marketplaceState = form?.marketplace as MarketplaceState | undefined;
 
   // Defaults to the shell's active bike (resolved server-side), so the page
-  // view and the ?new=1 sheet start on the bike the rider picked.
-  let selectedMotorcycleId = String(
-    data.activeMotorcycleId ?? data.motorcycles[0]?.id ?? "",
-  );
+  // view and the ?new=1 sheet start on the bike the rider picked. SvelteKit
+  // reuses this component when the shell switches bikes, so follow that
+  // change too (as /fuel does) while keeping page-local picks in between.
+  const activeOrFirstId = () =>
+    String(data.activeMotorcycleId ?? data.motorcycles[0]?.id ?? "");
+  let selectedMotorcycleId = activeOrFirstId();
+  let syncedActiveId: unknown = data.activeMotorcycleId;
+  $: if (data.activeMotorcycleId !== syncedActiveId) {
+    syncedActiveId = data.activeMotorcycleId;
+    selectedMotorcycleId = activeOrFirstId();
+  }
   $: currentMotorcycle =
     data.motorcycles.find(
       (m: Record<string, unknown>) =>
