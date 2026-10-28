@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
+import { parse } from "svelte/compiler";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   error,
@@ -52,11 +53,12 @@ describe("translated product journeys", () => {
       "src/routes/(public)/roadmap/+page.svelte",
     ]) {
       const source = readFileSync(resolve(path), "utf8");
-      // Extracts this repo's own component script for parsing, not untrusted
-      // HTML; still match tag case and whitespace the way HTML does.
-      const script = source.match(
-        /<script\b[^>]*>([\s\S]*?)<\/script\s*>/i,
-      )![1];
+      // Let Svelte's own parser locate the instance script instead of
+      // matching tags by hand.
+      // Acorn nodes carry offsets the ESTree types leave out.
+      const { start, end } = parse(source, { modern: true }).instance!
+        .content as unknown as { start: number; end: number };
+      const script = source.slice(start, end);
       const ast = ts.createSourceFile(
         path,
         script,
