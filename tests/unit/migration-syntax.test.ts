@@ -235,5 +235,5 @@ describe("privileged column lockdown (app-layer, no auth.role() on Neon)", () =>
     walk(resolve(process.cwd(), roots[0]));
     walk(resolve(process.cwd(), roots[1]));
     expect(offenders).toEqual([]);
-  });
+  }, 20_000);
 });

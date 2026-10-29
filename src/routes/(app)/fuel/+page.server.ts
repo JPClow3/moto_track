@@ -1,8 +1,12 @@
+import { localizedActions } from "$server/domain/localized-actions";
 import { fail, type Actions } from "@sveltejs/kit";
 import {
   averageConsumption,
   costPerKm,
+  parseDecimalInput,
   parseFuelImportRows,
+  parseIntegerInput,
+  parseLocalizedNumber,
   parseFuelCsv,
   parseReceiptFile,
 } from "$server/domain/fuel";
@@ -20,22 +24,42 @@ import {
 import { runtimeEnv } from "$server/runtime";
 import { syncMotorcycleOdometer } from "$server/domain/odometer";
 import { assertCanCreateUpload } from "$server/domain/entitlement-guards";
+import { assertOwnedFuelReferences } from "$server/domain/fuel-reference-guards";
+import { assertOwnedMotorcycleReference } from "$server/domain/crud";
+import {
+  matchesFuelReplay,
+  offlineFuelId,
+  OfflineFuelConflict,
+  offlineFuelFingerprint,
+  resolveOfflineFuelSubmission,
+  acceptOfflineFuelSubmission,
+} from "$server/domain/offline-fuel-replay";
 
+import { appToday } from "$lib/utils/calendar-day";
 type Row = Record<string, unknown>;
 
+// Riders type "4,59" (pt-BR) as often as "4.59"; decimal fields are text
+// inputs, so every amount goes through the localized parser.
 function cents(value: FormDataEntryValue | null) {
-  const parsed = Number(String(value ?? "0").replace(",", "."));
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+  return Math.round(parseDecimalInput(value) * 100);
 }
 
 function millicents(value: FormDataEntryValue | null) {
-  const parsed = Number(String(value ?? "0").replace(",", "."));
-  return Number.isFinite(parsed) ? Math.round(parsed * 100000) : 0;
+  return Math.round(parseDecimalInput(value) * 100000);
 }
 
 function numberValue(value: FormDataEntryValue | null) {
-  const parsed = Number(String(value ?? "0").replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : 0;
+  return parseDecimalInput(value);
+}
+
+function integerValue(value: FormDataEntryValue | null) {
+  return parseIntegerInput(value);
+}
+
+function coordinateValue(value: string, limit: number) {
+  if (!value) return null;
+  const parsed = parseLocalizedNumber(value);
+  return parsed !== null && Math.abs(parsed) <= limit ? parsed : Number.NaN;
 }
 
 function messageFrom(err: unknown) {
@@ -52,8 +76,29 @@ async function createFuelRecord({
   platform: App.Platform | undefined;
 }) {
   const user = locals.user!;
-  const id = crypto.randomUUID();
+  const offlineRequested = form.has("offline_submission_id");
+  const offlineId = offlineFuelId(form.get("offline_submission_id"));
+  const offlineConflict = () =>
+    fail(409, {
+      message:
+        "Não foi possível confirmar este envio offline. Atualize a página e revise o registro.",
+    });
+  if (
+    offlineRequested &&
+    (!offlineId || form.get("offline_owner_id") !== user.id)
+  )
+    return offlineConflict();
+  const id = offlineId ?? crypto.randomUUID();
   const receipt = form.get("receipt_file");
+  if (
+    offlineRequested &&
+    [...form.values()].some((value) => value instanceof File && value.size > 0)
+  ) {
+    return fail(400, {
+      message:
+        "Envios offline não aceitam arquivos. Envie o comprovante quando estiver online.",
+    });
+  }
   let receiptFileKey = "";
   let uploadedReceipt:
     | {
@@ -100,8 +145,8 @@ async function createFuelRecord({
     motorcycle_id: String(form.get("motorcycle_id") || "") || null,
     station_id: String(form.get("station_id") || "") || null,
     fuel_grade_id: String(form.get("fuel_grade_id") || "") || null,
-    date: String(form.get("date") || new Date().toISOString().slice(0, 10)),
-    odometer_km: Math.round(numberValue(form.get("odometer_km"))),
+    date: String(form.get("date") || appToday()),
+    odometer_km: integerValue(form.get("odometer_km")),
     liters,
     total_price_cents: totalCents,
     price_per_liter_millicents: pricePerLiter,
@@ -112,13 +157,41 @@ async function createFuelRecord({
     receipt_file_key: receiptFileKey || null,
   };
 
+  let inserted = true;
   try {
-    await locals.db.begin(async (transaction) => {
+    const fingerprint = offlineId
+      ? await offlineFuelFingerprint(payload)
+      : null;
+    inserted = await locals.db.begin(async (transaction) => {
       const db = transaction as unknown as typeof locals.db;
-      if (uploadedReceipt) await lockObjectOwner(db, user.id);
-      await db`
-        insert into fuel_records ${db(payload)}
-      `;
+      await lockObjectOwner(db, user.id);
+      if (
+        offlineId &&
+        (await resolveOfflineFuelSubmission(
+          db,
+          user.id,
+          payload,
+          fingerprint!,
+        )) === "accepted"
+      )
+        return false;
+      await assertOwnedFuelReferences(db, user.id, payload);
+      if (offlineId) {
+        const rows = await db<
+          Array<{ id: string }>
+        >`insert into fuel_records ${db(payload)} on conflict (id) do nothing returning id`;
+        if (!rows.length) {
+          const [existing] = await db<
+            Row[]
+          >`select *, date::text as date from fuel_records where id = ${id}`;
+          if (!existing || !matchesFuelReplay(existing, payload))
+            throw new OfflineFuelConflict();
+          await acceptOfflineFuelSubmission(db, user.id, id, fingerprint!);
+          return false;
+        }
+      } else {
+        await db`insert into fuel_records ${db(payload)}`;
+      }
       if (uploadedReceipt) {
         await db`
           insert into object_files ${db({
@@ -133,8 +206,16 @@ async function createFuelRecord({
           })}
         `;
       }
+      if (offlineId)
+        await acceptOfflineFuelSubmission(db, user.id, id, fingerprint!);
+      if (payload.motorcycle_id)
+        await syncMotorcycleOdometer(db, user.id, payload.motorcycle_id, {
+          strict: true,
+        });
+      return true;
     });
   } catch (err) {
+    if (err instanceof OfflineFuelConflict) return offlineConflict();
     await queueUploadedOrphansBestEffort({
       db: locals.db,
       objectKeys: uploadedReceipt ? [uploadedReceipt.objectKey] : [],
@@ -143,6 +224,9 @@ async function createFuelRecord({
     });
     return fail(400, { message: messageFrom(err) });
   }
+
+  // A replay acknowledges the original commit without repeating side effects.
+  if (!inserted) return { ok: true, offlineSubmissionId: id };
 
   // Best-effort cache of the last-used fuel preferences for this combo. The
   // Supabase version never checked this upsert's result either, so failures
@@ -170,15 +254,13 @@ async function createFuelRecord({
     // Ignored — see comment above.
   }
 
-  if (payload.motorcycle_id) {
-    await syncMotorcycleOdometer(locals.db, user.id, payload.motorcycle_id);
-  }
-
-  return { ok: true };
+  return offlineId ? { ok: true, offlineSubmissionId: id } : { ok: true };
 }
 
-export async function load({ locals }) {
+export async function load({ locals, parent }) {
   const user = locals.user!;
+  // Awaiting parent() makes this load re-run after a bike switch.
+  const { activeMotorcycleId } = await parent();
   const [
     fuelResult,
     motorcycles,
@@ -197,7 +279,7 @@ export async function load({ locals }) {
     ),
     locals.db<Row[]>`
       select id, name, current_odometer_km from motorcycles
-      where owner_id = ${user.id} and is_active = true
+      where owner_id = ${user.id} and is_active = true and deleted_at is null
       order by name
     `.catch(() => [] as Row[]),
     locals.db<Row[]>`
@@ -234,10 +316,19 @@ export async function load({ locals }) {
     0,
   );
 
+  const defaultMotorcycleId =
+    motorcycles.find((moto) => String(moto.id) === activeMotorcycleId)?.id ??
+    motorcycles[0]?.id ??
+    null;
+
   return {
     errorMessage: fuelResult.error ?? "",
     rows: fuelRows,
     motorcycles,
+    /** The shell's active bike, else the first one: the page's default view. */
+    activeMotorcycleId: defaultMotorcycleId
+      ? String(defaultMotorcycleId)
+      : null,
     stations,
     grades,
     preferences,
@@ -261,7 +352,7 @@ export async function load({ locals }) {
   };
 }
 
-export const actions: Actions = {
+export const actions: Actions = localizedActions({
   createRecord: async ({ request, locals, platform }) => {
     return createFuelRecord({
       form: await request.formData(),
@@ -310,6 +401,10 @@ export const actions: Actions = {
             and source_table = 'fuel_records'
             and source_id = ${id}
         `;
+        if (existing.motorcycle_id)
+          await syncMotorcycleOdometer(db, ownerId, existing.motorcycle_id, {
+            strict: true,
+          });
         return {
           existing,
           objectKeys: files.map((file) => file.object_key),
@@ -324,25 +419,28 @@ export const actions: Actions = {
       ownerId,
       platform,
     });
-    if (deleted.existing?.motorcycle_id) {
-      await syncMotorcycleOdometer(
-        locals.db,
-        ownerId,
-        deleted.existing.motorcycle_id,
-      );
-    }
     return { ok: true };
   },
   repeatLast: async ({ request, locals, platform }) => {
     const form = await request.formData();
+    // Repeat the selected bike's last fill-up; without one, the latest overall.
+    const motorcycleId = String(form.get("motorcycle_id") || "");
     let last: Row | undefined;
     try {
-      [last] = await locals.db<Row[]>`
-        select * from fuel_records
-        where owner_id = ${locals.user!.id}
-        order by date desc, odometer_km desc
-        limit 1
-      `;
+      [last] = motorcycleId
+        ? await locals.db<Row[]>`
+            select * from fuel_records
+            where owner_id = ${locals.user!.id}
+              and motorcycle_id = ${motorcycleId}
+            order by date desc, odometer_km desc
+            limit 1
+          `
+        : await locals.db<Row[]>`
+            select * from fuel_records
+            where owner_id = ${locals.user!.id}
+            order by date desc, odometer_km desc
+            limit 1
+          `;
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
@@ -403,8 +501,12 @@ export const actions: Actions = {
     const ownerId = locals.user!.id;
     const motorcycleId = String(form.get("motorcycle_id") || "");
     try {
-      await locals.db`
-        insert into fuel_records ${locals.db(
+      await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as typeof locals.db;
+        await lockObjectOwner(db, ownerId);
+        await assertOwnedMotorcycleReference(db, ownerId, motorcycleId || null);
+        await db`
+        insert into fuel_records ${db(
           rows.map((row) => ({
             ...row,
             id: crypto.randomUUID(),
@@ -413,11 +515,13 @@ export const actions: Actions = {
           })),
         )}
       `;
+        if (motorcycleId)
+          await syncMotorcycleOdometer(db, ownerId, motorcycleId, {
+            strict: true,
+          });
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
-    }
-    if (motorcycleId) {
-      await syncMotorcycleOdometer(locals.db, ownerId, motorcycleId);
     }
     return { ok: true, imported: rows.length };
   },
@@ -425,6 +529,19 @@ export const actions: Actions = {
     const form = await request.formData();
     const id = String(form.get("id") ?? "");
     const ownerId = locals.user!.id;
+    const latitude = String(form.get("latitude") ?? "").trim();
+    const longitude = String(form.get("longitude") ?? "").trim();
+    const latitudeValue = coordinateValue(latitude, 90);
+    const longitudeValue = coordinateValue(longitude, 180);
+    if (
+      Boolean(latitude) !== Boolean(longitude) ||
+      Number.isNaN(latitudeValue) ||
+      Number.isNaN(longitudeValue)
+    ) {
+      return fail(400, {
+        message: "Informe latitude e longitude válidas, ou deixe ambas vazias.",
+      });
+    }
     const payload = {
       owner_id: ownerId,
       name: String(form.get("name") ?? ""),
@@ -432,6 +549,8 @@ export const actions: Actions = {
       city: String(form.get("city") ?? ""),
       state: String(form.get("state") ?? ""),
       notes: String(form.get("notes") ?? ""),
+      latitude: latitudeValue,
+      longitude: longitudeValue,
     };
     try {
       if (id) {
@@ -470,7 +589,7 @@ export const actions: Actions = {
       owner_id: ownerId,
       name: String(form.get("name") ?? ""),
       fuel_type: String(form.get("fuel_type") ?? "gasoline"),
-      octane_rating: Math.round(numberValue(form.get("octane_rating"))),
+      octane_rating: integerValue(form.get("octane_rating")),
       ethanol_percentage: numberValue(form.get("ethanol_percentage")),
       default_price_per_liter_millicents: millicents(
         form.get("default_price_per_liter"),
@@ -510,8 +629,16 @@ export const actions: Actions = {
     const form = await request.formData();
     const ownerId = locals.user!.id;
     try {
-      await locals.db`
-        insert into fuel_preferences ${locals.db({
+      await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as typeof locals.db;
+        await lockObjectOwner(db, ownerId);
+        await assertOwnedFuelReferences(db, ownerId, {
+          motorcycle_id: String(form.get("motorcycle_id") || "") || null,
+          station_id: String(form.get("station_id") || "") || null,
+          fuel_grade_id: String(form.get("fuel_grade_id") || "") || null,
+        });
+        await db`
+        insert into fuel_preferences ${db({
           owner_id: ownerId,
           motorcycle_id: String(form.get("motorcycle_id") || "") || null,
           station_id: String(form.get("station_id") || "") || null,
@@ -528,6 +655,7 @@ export const actions: Actions = {
           tank_full = excluded.tank_full,
           last_used_at = excluded.last_used_at
       `;
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
@@ -540,12 +668,21 @@ export const actions: Actions = {
       // `fuel_review_preferences` is unique on `motorcycle_id` alone, so the
       // `where` on the update guards against overwriting another owner's row
       // (there's no RLS backstop to fall back on anymore).
-      await locals.db`
-        insert into fuel_review_preferences ${locals.db({
+      await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as typeof locals.db;
+        await lockObjectOwner(db, ownerId);
+        await assertOwnedMotorcycleReference(
+          db,
+          ownerId,
+          String(form.get("motorcycle_id") || ""),
+          { required: true },
+        );
+        await db`
+        insert into fuel_review_preferences ${db({
           owner_id: ownerId,
           motorcycle_id: String(form.get("motorcycle_id") || ""),
           fillups_interval: Math.max(
-            Math.round(numberValue(form.get("fillups_interval")) || 10),
+            integerValue(form.get("fillups_interval")) || 10,
             1,
           ),
           is_active: form.get("is_active") === "true",
@@ -555,9 +692,10 @@ export const actions: Actions = {
           is_active = excluded.is_active
         where fuel_review_preferences.owner_id = ${ownerId}
       `;
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
     return { ok: true };
   },
-};
+});

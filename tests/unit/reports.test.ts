@@ -48,6 +48,34 @@ describe("reports domain", () => {
       expect(score.status).toBe("attention");
     });
 
+    it("ignores snoozed reminders while the deferral is still active", () => {
+      const score = healthScore({
+        reminders: [
+          {
+            trigger_type: "by_km",
+            reference_km: 10000,
+            trigger_value_km: 4000,
+            snoozed_until_km: 16000,
+          },
+          {
+            trigger_type: "by_date",
+            reference_date: "2026-06-01",
+            trigger_value_days: 0,
+            snoozed_until_date: "2026-08-01",
+          },
+        ],
+        currentOdometerKm: 15000,
+        today: "2026-07-12",
+        tireWear: [],
+        documentsExpiring: 0,
+      });
+
+      expect(score).toEqual({
+        total: 100,
+        status: "ready",
+      });
+    });
+
     it("drops status to 'overdue' if score is below 50", () => {
       const score = healthScore({
         reminders: [

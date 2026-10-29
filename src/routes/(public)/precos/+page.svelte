@@ -64,7 +64,7 @@
   <link rel="canonical" href="https://moto-track.net/precos" />
 </svelte:head>
 
-<div class="relative overflow-hidden px-6 py-24">
+<div class="relative overflow-hidden px-4 py-16 sm:px-6 sm:py-24">
   <div class="grid-backdrop" aria-hidden="true"></div>
   <div class="accent-glow page-glow" aria-hidden="true"></div>
 
@@ -78,7 +78,7 @@
       <p class="mt-5 text-lg text-[var(--muted)]">{$t("pricing.subtitle")}</p>
       {#if checkoutState === "error"}
         <p
-          class="mt-6 rounded-panel border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"
+          class="mt-6 rounded-panel border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
           role="alert"
         >
           {$t("pricing.checkoutError")}
@@ -99,7 +99,7 @@
 
     <div class="mt-16 grid gap-6 md:grid-cols-2">
       <!-- Free -->
-      <div class="panel flex flex-col p-8">
+      <div class="panel flex flex-col p-6 sm:p-8">
         <h2 class="display text-3xl">{$t("pricing.freeName")}</h2>
         <p class="mt-2 text-sm text-[var(--muted)]">
           {$t("pricing.freeTagline")}
@@ -130,18 +130,18 @@
 
       <!-- Pro — inverted surface, matching the landing page. -->
       <div
-        class="relative flex flex-col overflow-hidden rounded-panel bg-[var(--panel-invert)] p-8 text-paper shadow-lift"
+        class="relative flex flex-col overflow-hidden rounded-panel bg-[var(--panel-invert)] p-6 text-paper shadow-lift sm:p-8"
       >
         <div class="corner-slashes" aria-hidden="true"></div>
         <div class="flex items-center justify-between">
           <h2 class="display text-3xl">{$t("pricing.proName")}</h2>
           <span
-            class="label-tech rounded-sm bg-[var(--accent-solid)] px-2.5 py-1 text-white"
+            class="label-tech rounded-sm border border-white/25 px-2.5 py-1 text-paper"
           >
             {$t("pricing.recommended")}
           </span>
         </div>
-        <p class="mt-2 text-sm text-paper/60">{$t("pricing.proTagline")}</p>
+        <p class="mt-2 text-sm text-paper/70">{$t("pricing.proTagline")}</p>
 
         <form method="GET" action="/billing/checkout">
           <fieldset
@@ -163,10 +163,10 @@
           <!-- Live from Dodo Payments, so this can't drift from what checkout charges. -->
           <div class="my-8">
             {#if data.pricing.monthly}
-              <p class="display numeric text-6xl text-[var(--accent)]">
+              <p class="display numeric text-6xl text-paper">
                 {planPrice(data.pricing.monthly)}
               </p>
-              <p class="mt-2 text-xs text-paper/50">
+              <p class="mt-2 text-xs text-paper/70">
                 {$t("pricing.perMonth")}
                 {#if annualSavings > 0}
                   &middot; {$t("pricing.annualSaves", {
@@ -175,10 +175,8 @@
                 {/if}
               </p>
             {:else}
-              <p class="display numeric text-6xl text-[var(--accent)]">
-                R$&nbsp;—
-              </p>
-              <p class="mt-2 text-xs text-paper/50">
+              <p class="display numeric text-6xl text-paper">R$&nbsp;—</p>
+              <p class="mt-2 text-xs text-paper/70">
                 {$t("pricing.priceConfirmedAtCheckout")}
               </p>
             {/if}
@@ -191,7 +189,7 @@
           <ul class="mb-8 flex-1 space-y-3.5">
             {#each proPlan as item, i (i)}
               <li class="flex items-start gap-3 text-sm text-paper/80">
-                <span class="tick tick--accent" aria-hidden="true"></span>
+                <span class="tick bg-paper/60" aria-hidden="true"></span>
                 <span>
                   {#each item as seg, j (j)}
                     {#if seg.b}<strong class="text-paper">{seg.t}</strong
@@ -250,17 +248,17 @@
   }
 
   .billing-choice:has(input:checked) {
-    border-color: var(--accent);
+    border-color: #fafafa;
     background: rgb(255 255 255 / 0.08);
     color: white;
   }
 
   .billing-choice:has(input:focus-visible) {
-    outline: 2px solid var(--accent);
+    outline: 2px solid #fafafa;
     outline-offset: 2px;
   }
 
   .billing-choice small {
-    color: rgb(255 255 255 / 0.55);
+    color: rgb(255 255 255 / 0.7);
   }
 </style>

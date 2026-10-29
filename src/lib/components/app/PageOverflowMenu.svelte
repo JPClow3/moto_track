@@ -8,7 +8,10 @@
   let open = false;
   let triggerButton: HTMLButtonElement;
 
-  function toggle() {
+  function toggle(event: MouseEvent) {
+    // Prevent the same click from reaching svelte:window handleDocumentClick,
+    // which would immediately close the menu after open (Playwright race).
+    event.stopPropagation();
     open = !open;
   }
 
@@ -40,7 +43,7 @@
   <button
     bind:this={triggerButton}
     type="button"
-    class="focus-ring flex h-11 w-11 cursor-pointer items-center justify-center rounded border border-[var(--line)] bg-[var(--panel)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--fg)]"
+    class="focus-ring flex h-11 w-11 cursor-pointer items-center justify-center rounded border border-[var(--line)] bg-[var(--panel)] text-[var(--muted)] transition hover:border-[var(--fg-soft)] hover:text-[var(--fg)]"
     aria-haspopup="menu"
     aria-expanded={open}
     aria-label={label || $t("authenticatedUx.moreActions")}
@@ -48,23 +51,29 @@
     on:click={toggle}
   >
     <slot name="trigger">
-      <Ellipsis size={18} aria-hidden="true" />
+      <Ellipsis size={20} aria-hidden="true" />
     </slot>
   </button>
 
-  {#if open}
+  <!-- Keep panel mounted so form enhance (e.g. createCalendar) can complete after close. -->
+  <div
+    class="menu-content absolute top-full z-40 mt-1 min-w-[12rem] rounded border border-[var(--line)] bg-[var(--panel)] p-1.5 shadow-lift {align ===
+    'right'
+      ? 'right-0'
+      : 'left-0'}"
+    role="menu"
+    hidden={!open}
+  >
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
-      class="menu-content absolute top-full z-40 mt-1 min-w-[12rem] rounded border border-[var(--line)] bg-[var(--panel)] p-1.5 shadow-lift {align ===
-      'right'
-        ? 'right-0'
-        : 'left-0'}"
-      role="menu"
+      on:click={(event) => {
+        // Keep forms mounted through submit — closing mid-click aborts enhance.
+        if ((event.target as HTMLElement | null)?.closest?.("form")) return;
+        close();
+      }}
     >
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div on:click={close}>
-        <slot />
-      </div>
+      <slot />
     </div>
-  {/if}
+  </div>
 </div>

@@ -1,12 +1,11 @@
 import postgres from "postgres";
+import { dev } from "$app/environment";
 import { runtimeEnv } from "$server/runtime";
 
 // Hyperdrive pools connections for us on the edge, so a small `max` here is
-// intentional, not a bottleneck. `prepare: false` is required for Hyperdrive
-// (and any other transaction-pooling proxy) since prepared statements can't
-// be pinned to a single backend connection through a pooler.
+// intentional, not a bottleneck. Keep the driver scoped to this request;
+// Hyperdrive owns the underlying origin connection pool.
 const POOLED_OPTIONS = {
-  prepare: false,
   max: 1,
   // Keep cold-fail fast when the Hyperdrive local placeholder (or a down
   // Postgres) is unreachable — public pages catch query errors and still
@@ -14,7 +13,7 @@ const POOLED_OPTIONS = {
   connect_timeout: 5,
 } satisfies postgres.Options<Record<string, never>>;
 
-function resolveConnectionString(platform?: App.Platform): string {
+function resolveConnection(platform?: App.Platform) {
   // Production must use Hyperdrive even if a legacy DATABASE_URL secret is
   // still present. Wrangler exposes the configured localConnectionString as a
   // binding during local emulation; the port-1 sentinel is intentionally
@@ -22,14 +21,14 @@ function resolveConnectionString(platform?: App.Platform): string {
   const hyperdriveUrl = platform?.env?.HYPERDRIVE?.connectionString;
   const directUrl = runtimeEnv(platform).DATABASE_URL;
   if (hyperdriveUrl && !isLocalHyperdriveSentinel(hyperdriveUrl)) {
-    return hyperdriveUrl;
+    return { connectionString: hyperdriveUrl, hyperdrive: true };
   }
   if (directUrl) {
-    return directUrl;
+    return { connectionString: directUrl, hyperdrive: false };
   }
 
   if (hyperdriveUrl) {
-    return hyperdriveUrl;
+    return { connectionString: hyperdriveUrl, hyperdrive: false };
   }
 
   throw new Error(
@@ -76,10 +75,17 @@ function sslForConnection(connectionString: string): "require" | undefined {
  * be shared here.
  */
 export function getDb(platform?: App.Platform): postgres.Sql {
-  const connectionString = resolveConnectionString(platform);
+  const { connectionString, hyperdrive } = resolveConnection(platform);
 
   return postgres(connectionString, {
     ...POOLED_OPTIONS,
+    // Hyperdrive supports prepared statements. Disabling them adds parameter
+    // discovery messages that its transaction pool cannot reliably handle.
+    prepare: hyperdrive,
+    // Vite's Node process has no Workers request cleanup. A request-scoped
+    // direct client must release its idle socket instead of accumulating one
+    // connection for every page or API request. Active queries are unaffected.
+    idle_timeout: hyperdrive && !dev ? undefined : 5,
     ssl: sslForConnection(connectionString),
   });
 }

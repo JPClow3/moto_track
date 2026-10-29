@@ -1,3 +1,4 @@
+import { localizedActions } from "$server/domain/localized-actions";
 import { fail, type Actions } from "@sveltejs/kit";
 import {
   hasProAccess,
@@ -69,10 +70,11 @@ export async function load({ locals, url, platform }) {
     theme: userProfile?.theme ?? "system",
     requests: requests.map(normalizeDates),
     checkout: url.searchParams.get("checkout"),
+    portal: url.searchParams.get("portal"),
   };
 }
 
-export const actions: Actions = {
+export const actions: Actions = localizedActions({
   requestExport: async ({ locals }) => {
     try {
       await locals.db`
@@ -108,4 +110,4 @@ export const actions: Actions = {
     }
     return { ok: true, message: "Solicitação de exclusão registrada." };
   },
-};
+});

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>Offline - Moto Track</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <link rel="stylesheet" href="/offline.css" />
+    <script src="/offline-drafts.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <p class="brand">MOTO TRACK</p>
+      <h1>Você está offline</h1>
+      <p>
+        O Moto Track está offline. Reconecte para sincronizar seus dados mais
+        recentes.
+      </p>
+      <p>
+        Abastecimentos guardados serão enviados quando a conexão voltar e sua
+        sessão estiver ativa.
+      </p>
+      <nav aria-label="Opções de conexão">
+        <a class="button-primary" href="">Tentar novamente</a
+        ><a href="/">Voltar ao início</a>
+      </nav>
+      <section aria-labelledby="drafts-title">
+        <h2 id="drafts-title">Rascunhos locais de abastecimento</h2>
+        <p id="drafts-help"></p>
+        <p id="drafts-status" role="status"></p>
+        <div class="actions">
+          <button id="drafts-export" type="button" disabled>
+            Exportar todos os rascunhos locais</button
+          ><button
+            id="drafts-discard"
+            class="button-danger"
+            type="button"
+            disabled
+          >
+            Descartar todos os rascunhos locais</button
+          ><a id="drafts-review" href="/offline"
+            >Revisar rascunhos quando online</a
+          >
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

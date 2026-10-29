@@ -5,6 +5,7 @@ import {
   billingEnvironment,
   assertExpiredCheckoutCanBeReplaced,
   checkoutSessionHasExpired,
+  CheckoutPreflightError,
   createCheckoutSession,
   customerSubscriptionHistory,
   dodoClient,
@@ -71,6 +72,7 @@ export async function GET({ locals, url, platform }) {
     );
   }
   let destination: string;
+  let attemptedCheckoutId: string | null = null;
   try {
     const environment = billingEnvironment(platform);
     // Commit the customer binding BEFORE creating any payable checkout. A lost
@@ -267,6 +269,7 @@ export async function GET({ locals, url, platform }) {
     });
     if (intent.destination) destination = intent.destination;
     else {
+      attemptedCheckoutId = intent.attemptId;
       destination = await locals.db.begin(async (tx) => {
         await lockAccount(tx, user.id, environment);
         const profile = await readProfile(tx, user.id);
@@ -308,6 +311,29 @@ export async function GET({ locals, url, platform }) {
       });
     }
   } catch (error) {
+    if (error instanceof CheckoutPreflightError && attemptedCheckoutId) {
+      // Only preflight failures prove CREATE was never called. Keep uncertain
+      // provider mutations locked, and never clear another attempt's intent.
+      try {
+        const environment = billingEnvironment(platform);
+        await locals.db.begin(async (tx) => {
+          await lockAccount(tx, user.id, environment);
+          const profile = await readProfile(tx, user.id);
+          if (profile?.billing_checkout_session_id !== attemptedCheckoutId)
+            return;
+          await tx`
+            update subscription_profiles set billing_checkout_session_id = ${""},
+              billing_checkout_url = ${""}, billing_checkout_created_at = ${null}
+            where owner_id = ${user.id}
+          `;
+        });
+      } catch (cleanupError) {
+        console.error(
+          "Failed to release unused Dodo checkout intent",
+          cleanupError,
+        );
+      }
+    }
     if (error instanceof ExistingSubscriptionError)
       throw redirect(303, "/billing/portal");
     console.error("Failed to create Dodo checkout session", error);

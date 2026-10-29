@@ -1,5 +1,11 @@
 import type { Sql } from "postgres";
 import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
+import { isoDateValue } from "$server/domain/date-value";
+import { nextScheduleMilestone } from "$server/domain/maintenance-schedule";
+import {
+  REMINDER_NOTIFICATION_RESET,
+  reminderScheduleChanged,
+} from "$server/domain/reminders";
 
 export type LinkedReminder = {
   title: string;
@@ -16,6 +22,12 @@ type RecordPayload = Record<string, unknown>;
 function numberValue(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function odometerValue(value: unknown) {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function stringValue(value: unknown) {
@@ -45,7 +57,7 @@ export function reminderForRecord(
   if (table === "maintenance_records") {
     const intervalKm = numberValue(payload.interval_km);
     const intervalDays = numberValue(payload.interval_days);
-    const referenceKm = numberValue(payload.odometer_km);
+    const referenceKm = odometerValue(payload.odometer_km);
     const referenceDate = dateValue(payload.date);
     if (!intervalKm && !intervalDays) return null;
     return {
@@ -94,15 +106,22 @@ async function upsertMarkedReminder(
   values: Record<string, unknown>,
   { failOnCap = false }: { failOnCap?: boolean } = {},
 ) {
-  const [existing] = await db<{ id: string }[]>`
-    select id from reminders
+  const [existing] = await db<Array<Record<string, unknown> & { id: string }>>`
+    select id, motorcycle_id, trigger_type, trigger_value_km, trigger_value_days,
+      reference_km, reference_date, is_active
+    from reminders
     where owner_id = ${ownerId} and notes = ${marker}
   `;
 
   if (existing) {
+    // A renewed document or a corrected service moves the due point; the
+    // previous notification belonged to the old one.
+    const update = reminderScheduleChanged(existing, values)
+      ? { ...values, ...REMINDER_NOTIFICATION_RESET }
+      : values;
     await db`
       update reminders
-      set ${db(values)}
+      set ${db(update)}
       where id = ${existing.id} and owner_id = ${ownerId}
     `;
     return { ok: true as const, created: false };
@@ -132,7 +151,19 @@ export async function syncLinkedReminder(
   payload: RecordPayload,
 ) {
   const marker = `auto:${table}:${recordId}`;
-  const reminder = reminderForRecord(table, recordId, payload);
+  let reminder = reminderForRecord(table, recordId, payload);
+  if (table === "maintenance_records" && payload.motorcycle_id) {
+    const [plan] = await db<Array<{ id: string }>>`
+      select id from maintenance_plan_items
+      where owner_id = ${ownerId} and motorcycle_id = ${String(payload.motorcycle_id)}
+        and lower(btrim(maintenance_type)) = lower(btrim(${String(payload.maintenance_type ?? "")}))
+        and is_active = true
+      limit 1
+    `;
+    // The plan is reconciled by the record's transaction. Keeping one reminder
+    // per receipt as well would continue to notify for obsolete services.
+    if (plan) reminder = null;
+  }
 
   if (!reminder) {
     const [existing] = await db<{ id: string }[]>`
@@ -217,8 +248,42 @@ export async function syncPlanReminder(
     reference_km?: number | null;
   },
 ) {
-  const [existing] = await db<{ id: string }[]>`
-    select id from reminders
+  const [history] = await db<
+    Array<{
+      last_done_km: number | null;
+      last_done_date: unknown;
+      is_active: boolean;
+      schedule_milestones: unknown;
+      recurrence_km: number | null;
+      recurrence_months: number | null;
+      last_completed_milestone: number | null;
+      in_service_date: unknown;
+      calendar_anchor_mode: "in_service" | "last_service";
+    }>
+  >`
+    select p.last_done_km, p.last_done_date, p.is_active, p.schedule_milestones,
+      p.recurrence_km, p.recurrence_months, p.last_completed_milestone, m.in_service_date,
+      p.calendar_anchor_mode
+    from maintenance_plan_items p
+    join motorcycles m on m.id = p.motorcycle_id and m.owner_id = p.owner_id
+    where p.id = ${plan.id} and p.owner_id = ${ownerId}
+  `;
+  if (!history) return { ok: false as const, message: "Plano não encontrado." };
+  const phase = nextScheduleMilestone({
+    milestones: history.schedule_milestones,
+    recurrenceKm: history.recurrence_km,
+    recurrenceMonths: history.recurrence_months,
+    completedMilestone: history.last_completed_milestone,
+    inServiceDate: history.in_service_date,
+    calendarAnchorMode: history.calendar_anchor_mode,
+    lastServiceDate: history.last_done_date,
+  });
+  const [existing] = await db<
+    Array<Record<string, unknown> & { id: string; is_active: boolean }>
+  >`
+    select id, is_active, motorcycle_id, trigger_type, trigger_value_km,
+      trigger_value_days, reference_km, reference_date
+    from reminders
     where owner_id = ${ownerId} and linked_plan_item_id = ${plan.id}
   `;
 
@@ -226,24 +291,44 @@ export async function syncPlanReminder(
     owner_id: ownerId,
     motorcycle_id: plan.motorcycle_id,
     title: `Plano: ${plan.maintenance_type}`,
-    trigger_type: (plan.interval_km ? "by_interval" : "by_date") as
-      "by_interval" | "by_date",
-    trigger_value_km: plan.interval_km,
-    trigger_value_days: plan.interval_days,
-    reference_km: plan.reference_km ?? null,
-    is_active: true,
-    send_email: true,
-    send_push: true,
+    trigger_type: (phase || (plan.interval_km && plan.interval_days)
+      ? "by_interval"
+      : plan.interval_km
+        ? "by_km"
+        : "by_date") as "by_interval" | "by_km" | "by_date",
+    trigger_value_km: phase ? phase.dueKm : plan.interval_km,
+    trigger_value_days: phase ? 0 : plan.interval_days,
+    reference_km: phase
+      ? phase.dueKm === null
+        ? null
+        : 0
+      : (history.last_done_km ?? null),
+    reference_date: phase
+      ? phase.dueDate
+      : history.last_done_date
+        ? isoDateValue(history.last_done_date)
+        : null,
+    is_active: history.is_active,
+    is_recurring: true,
     linked_plan_item_id: plan.id,
     updated_at: new Date().toISOString(),
   };
 
   if (existing) {
+    const update = {
+      ...values,
+      is_active: history.is_active && existing.is_active,
+    };
     await db`
       update reminders
-      set ${db(values)}
+      set ${db(
+        reminderScheduleChanged(existing, update)
+          ? { ...update, ...REMINDER_NOTIFICATION_RESET }
+          : update,
+      )}
       where id = ${existing.id} and owner_id = ${ownerId}
     `;
+    await clearSupersededRecordReminders(db, ownerId, plan);
     return { ok: true as const };
   }
 
@@ -251,7 +336,22 @@ export async function syncPlanReminder(
   if (blocked) return { ok: false as const, message: blocked };
 
   await db`
-    insert into reminders ${db(values)}
+    insert into reminders ${db({ ...values, send_email: true, send_push: true })}
   `;
+  await clearSupersededRecordReminders(db, ownerId, plan);
   return { ok: true as const };
+}
+
+async function clearSupersededRecordReminders(
+  db: Sql,
+  ownerId: string,
+  plan: { motorcycle_id: string; maintenance_type: string },
+) {
+  await db`
+    delete from reminders r using maintenance_records m
+    where r.owner_id = ${ownerId} and m.owner_id = ${ownerId}
+      and r.notes = 'auto:maintenance_records:' || m.id::text
+      and m.motorcycle_id = ${plan.motorcycle_id}
+      and lower(btrim(m.maintenance_type)) = lower(btrim(${plan.maintenance_type}))
+  `;
 }

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { render } from "svelte/server";
 import { readable } from "svelte/store";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
   createTranslator,
@@ -41,6 +41,17 @@ vi.mock("$lib/i18n/store", () => ({
 
 const source = (path: string) =>
   readFileSync(resolve(process.cwd(), path), "utf8");
+
+// These assertions measure the rendered contracts. Compile the large page
+// modules once with a separate startup budget, before their render assertions.
+beforeAll(async () => {
+  await Promise.all([
+    import("../../src/routes/(app)/fuel/+page.svelte"),
+    import("../../src/routes/(app)/maintenance/+page.svelte"),
+    import("../../src/routes/(app)/tires/+page.svelte"),
+    import("../../src/routes/(app)/dashboard/+page.svelte"),
+  ]);
+}, 60_000);
 
 describe("authenticated UX primitives contract", () => {
   it("renders a labelled native record dialog with close button and title", async () => {
@@ -397,7 +408,12 @@ describe("authenticated UX primitives contract", () => {
     });
 
     expect(body).toContain("page-header");
-    expect(body).toContain("bike-context-bar");
+    // The bike home leads with a hero card for the active bike, then one-tap
+    // quick-log deep links into each page's "new record" sheet.
+    expect(body).toContain("bike-hero");
+    expect(body).toContain('href="/fuel?new=1"');
+    expect(body).toContain('href="/maintenance?new=1"');
+    expect(body).toContain('href="/expenses?new=1"');
     expect(body).toContain("activity-timeline");
     expect(body).toContain("page-action");
     expect(body).toContain("<dialog");
@@ -477,6 +493,12 @@ describe("authenticated UX primitives contract", () => {
     expect(body).toContain("<dialog");
   }, 15000);
 
+  it("loads reminder snooze fields for dashboard health scoring", () => {
+    const dashboardSrc = source("src/routes/(app)/dashboard/+page.server.ts");
+    expect(dashboardSrc).toContain("snoozed_until_date");
+    expect(dashboardSrc).toContain("snoozed_until_km");
+  });
+
   it("rebuilds Reports with PageHeader, generate report action, and no PageAction import", async () => {
     const reportsSrc = source("src/routes/(app)/reports/+page.svelte");
     expect(reportsSrc).toContain("PageHeader");
@@ -508,4 +530,16 @@ describe("authenticated UX primitives contract", () => {
     expect(body).not.toContain("page-action");
     expect(body).toContain("Exportar dados");
   }, 15000);
+
+  it.each(["fuel", "maintenance", "tires"])(
+    "re-selects the shell's active bike on /%s when the shell switches bikes",
+    (route) => {
+      // SvelteKit reuses the page component across shell bike switches, so a
+      // one-time initializer would keep saving against the previous bike.
+      const pageSrc = source(`src/routes/(app)/${route}/+page.svelte`);
+      expect(pageSrc).toMatch(
+        /\$: if \(data\.activeMotorcycleId !== syncedActiveId\) \{\s+syncedActiveId = data\.activeMotorcycleId;\s+selectedMotorcycleId = activeOrFirstId\(\);/,
+      );
+    },
+  );
 });

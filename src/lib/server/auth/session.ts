@@ -1,5 +1,11 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { runtimeEnv } from "$server/runtime";
+import { createTranslator, DEFAULT_LOCALE, type MessageKey } from "$lib/i18n";
+import {
+  forgetCachedSession,
+  readCachedSession,
+  rememberSession,
+} from "$server/auth/session-cache";
 
 // Neon Auth (Managed Better Auth) is hosted on a *different* domain than this
 // app, so we can't let its `__Secure-` session cookie ride back to the browser
@@ -119,6 +125,48 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
   }
 }
 
+type SessionLoad = {
+  session: AuthSession | null;
+  user: AuthUser | null;
+};
+
+const inflightSessionLoads = new Map<string, Promise<SessionLoad>>();
+
+function sessionFromPayload(data: Record<string, unknown>): {
+  session: AuthSession;
+  user: AuthUser;
+} | null {
+  const session = data.session as Record<string, unknown> | null | undefined;
+  const user = data.user as Record<string, unknown> | null | undefined;
+  if (!session || !user) return null;
+  const id = (user.id ?? session.userId) as string | undefined;
+  if (!id) return null;
+  const expiresAt = session.expiresAt;
+  return {
+    session: {
+      userId: id,
+      expiresAt: typeof expiresAt === "string" ? expiresAt : undefined,
+    },
+    user: { id, email: (user.email as string | null) ?? null },
+  };
+}
+
+async function loadSession(
+  event: RequestEvent,
+  token: string,
+): Promise<SessionLoad> {
+  const res = await call(event, "/get-session", { token });
+  if (!res.ok) return { session: null, user: null };
+  const resolved = sessionFromPayload(await readJson(res));
+  if (!resolved) return { session: null, user: null };
+  try {
+    await rememberSession(token, resolved);
+  } catch {
+    // A cache write must not fail an otherwise valid session.
+  }
+  return resolved;
+}
+
 /** Resolve the current user from the app's session cookie, or null. */
 export async function resolveSession(
   event: RequestEvent,
@@ -126,25 +174,43 @@ export async function resolveSession(
   const token = event.cookies.get(APP_SESSION_COOKIE);
   if (!token) return { session: null, user: null };
 
-  const res = await call(event, "/get-session", { token });
-  if (!res.ok) return { session: null, user: null };
-  const data = await readJson(res);
-  const session = data.session as Record<string, unknown> | null | undefined;
-  const user = data.user as Record<string, unknown> | null | undefined;
-  if (!session || !user) return { session: null, user: null };
+  const cached = await readCachedSession(token);
+  if (cached) return cached;
 
-  const id = (user.id ?? session.userId) as string | undefined;
-  if (!id) return { session: null, user: null };
-  return {
-    session: {
-      userId: id,
-      expiresAt: session.expiresAt as string | undefined,
-    },
-    user: { id, email: (user.email as string | null) ?? null },
-  };
+  // Parallel requests in one isolate share one Neon Auth round trip.
+  // Each get-session reads neon_auth.session and neon_auth.jwks.
+  const existing = inflightSessionLoads.get(token);
+  if (existing) return existing;
+  const pending = loadSession(event, token).finally(() => {
+    inflightSessionLoads.delete(token);
+  });
+  inflightSessionLoads.set(token, pending);
+  const loaded = await pending;
+  return { session: loaded.session, user: loaded.user };
 }
 
 type Result = { ok: boolean; message?: string };
+
+function authError(
+  event: RequestEvent,
+  data: Record<string, unknown>,
+  fallback: MessageKey,
+) {
+  const codes: Record<string, MessageKey> = {
+    INVALID_EMAIL_OR_PASSWORD: "auth.invalidCredentials",
+    INVALID_PASSWORD: "auth.invalidCredentials",
+    USER_NOT_FOUND: "auth.invalidCredentials",
+    USER_ALREADY_EXISTS: "auth.accountExists",
+    USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "auth.accountExists",
+    INVALID_EMAIL: "auth.invalidEmail",
+    PASSWORD_TOO_SHORT: "auth.passwordTooShort",
+    INVALID_TOKEN: "auth.invalidReset",
+  };
+  const code = String(data.code ?? "");
+  return createTranslator(event.locals?.locale ?? DEFAULT_LOCALE)(
+    Object.hasOwn(codes, code) ? codes[code] : fallback,
+  );
+}
 
 async function authenticate(
   event: RequestEvent,
@@ -154,11 +220,11 @@ async function authenticate(
   const res = await call(event, path, { method: "POST", body });
   if (!res.ok) {
     const data = await readJson(res);
-    return { ok: false, message: (data.message as string) ?? "Auth failed." };
+    return { ok: false, message: authError(event, data, "auth.failed") };
   }
   const token = extractUpstreamToken(res);
   if (!token) {
-    return { ok: false, message: "No session issued." };
+    return { ok: false, message: authError(event, {}, "auth.failed") };
   }
   storeSession(event, token);
   return { ok: true };
@@ -179,6 +245,52 @@ export function signUpEmail(
   name: string,
 ) {
   return authenticate(event, "/sign-up/email", { email, password, name });
+}
+
+/** Verification is always bound to the signed-in account, never a submitted email. */
+export async function requestEmailVerification(
+  event: RequestEvent,
+): Promise<Result> {
+  if (!event.locals.user?.email)
+    return {
+      ok: false,
+      message: authError(event, {}, "auth.verificationSignIn"),
+    };
+  const response = await call(event, "/email-otp/send-verification-otp", {
+    method: "POST",
+    token: event.cookies.get(APP_SESSION_COOKIE),
+    body: { email: event.locals.user.email, type: "email-verification" },
+  });
+  return response.ok
+    ? { ok: true }
+    : {
+        ok: false,
+        message: authError(event, {}, "auth.verificationSendFailed"),
+      };
+}
+
+export async function verifyEmailAddress(
+  event: RequestEvent,
+  code: string,
+): Promise<Result> {
+  if (!event.locals.user?.email || !/^\d{4,10}$/.test(code))
+    return {
+      ok: false,
+      message: authError(event, {}, "auth.verificationRequired"),
+    };
+  const response = await call(event, "/email-otp/verify-email", {
+    method: "POST",
+    token: event.cookies.get(APP_SESSION_COOKIE),
+    body: { email: event.locals.user.email, otp: code },
+  });
+  if (!response.ok)
+    return {
+      ok: false,
+      message: authError(event, {}, "auth.verificationInvalid"),
+    };
+  const token = extractUpstreamToken(response);
+  if (token) storeSession(event, token);
+  return { ok: true };
 }
 
 export async function completeSocialSignIn(
@@ -207,6 +319,7 @@ export async function completeSocialSignIn(
 export async function signOut(event: RequestEvent) {
   const token = event.cookies.get(APP_SESSION_COOKIE);
   if (token) {
+    await forgetCachedSession(token);
     // Best-effort upstream revocation; the local cookie clear is what matters.
     try {
       await call(event, "/sign-out", { method: "POST", body: {}, token });
@@ -229,11 +342,11 @@ export async function socialSignInUrl(
   });
   if (!res.ok) {
     const data = await readJson(res);
-    return { url: null, message: (data.message as string) ?? "OAuth failed." };
+    return { url: null, message: authError(event, data, "auth.googleFailed") };
   }
   const challenge = extractUpstreamCookie(res, UPSTREAM_OAUTH_CHALLENGE_COOKIE);
   if (!challenge) {
-    return { url: null, message: "No OAuth challenge was issued." };
+    return { url: null, message: authError(event, {}, "auth.googleFailed") };
   }
   storeOAuthChallenge(event, challenge);
   const data = await readJson(res);
@@ -253,7 +366,7 @@ export async function requestPasswordReset(
     const data = await readJson(res);
     return {
       ok: false,
-      message: (data.message as string) ?? "Request failed.",
+      message: authError(event, data, "auth.requestFailed"),
     };
   }
   return { ok: true };
@@ -270,7 +383,7 @@ export async function resetPassword(
   });
   if (!res.ok) {
     const data = await readJson(res);
-    return { ok: false, message: (data.message as string) ?? "Reset failed." };
+    return { ok: false, message: authError(event, data, "auth.resetFailed") };
   }
   return { ok: true };
 }

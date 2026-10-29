@@ -3,12 +3,14 @@
 
   export let cells: Array<{ date: string; count: number }> = [];
 
+  // Neutral ink ramp: activity is a record of what was done, not an alarm, so
+  // it stays out of the status and category colours.
   const LEVELS = [
     "var(--line)",
-    "color-mix(in srgb, var(--accent) 25%, var(--panel))",
-    "color-mix(in srgb, var(--accent) 55%, var(--panel))",
-    "color-mix(in srgb, var(--accent) 78%, var(--panel))",
-    "var(--accent)",
+    "color-mix(in srgb, var(--fg) 25%, var(--panel))",
+    "color-mix(in srgb, var(--fg) 50%, var(--panel))",
+    "color-mix(in srgb, var(--fg) 75%, var(--panel))",
+    "var(--fg)",
   ];
 
   // Four filled steps, so a single busy day cannot flatten the whole scale.
@@ -49,7 +51,7 @@
     >
       {#each dayLabels as day, i (i)}
         <span
-          class="label-tech flex h-[13px] items-center text-[9px] text-[var(--muted)]"
+          class="label-tech flex h-[13px] items-center text-xs leading-none text-[var(--muted)]"
           >{day}</span
         >
       {/each}
@@ -87,13 +89,13 @@
       {$t("dashboard.activeDays", { count: activeDays })}
     </p>
     <div class="flex items-center gap-1.5">
-      <span class="label-tech text-[9px] text-[var(--muted)]"
+      <span class="label-tech text-xs text-[var(--muted)]"
         >{$t("dashboard.less")}</span
       >
       {#each LEVELS as tone (tone)}
         <span class="cell" style={`background:${tone}`}></span>
       {/each}
-      <span class="label-tech text-[9px] text-[var(--muted)]"
+      <span class="label-tech text-xs text-[var(--muted)]"
         >{$t("dashboard.more")}</span
       >
     </div>
@@ -115,7 +117,7 @@
 
   .heatmap:focus-visible {
     border-radius: 2px;
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--focus);
     outline-offset: 4px;
   }
 

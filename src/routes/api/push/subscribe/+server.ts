@@ -18,7 +18,13 @@ export async function POST({ request, locals, platform }) {
   const p256dh = typeof body?.keys?.p256dh === "string" ? body.keys.p256dh : "";
   const auth = typeof body?.keys?.auth === "string" ? body.keys.auth : "";
   const secret = runtimeEnv(platform).PUSH_ENCRYPTION_KEY;
-  if (!endpoint || !p256dh || !auth || !secret)
+  if (!secret) {
+    throw error(
+      503,
+      "Push notifications are not configured in this environment.",
+    );
+  }
+  if (!endpoint || !p256dh || !auth)
     throw error(400, "Invalid subscription data.");
   if (!isAllowedPushEndpoint(endpoint)) {
     throw error(400, "Unsupported push endpoint.");

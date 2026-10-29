@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>Offline - Moto Track</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <link rel="stylesheet" href="/offline.css" />
+    <script src="/offline-drafts.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <p class="brand">MOTO TRACK</p>
+      <h1>You're offline</h1>
+      <p>Moto Track is offline. Reconnect to sync your latest data.</p>
+      <p>
+        Queued fill-ups will be sent when the connection returns and your
+        session is active.
+      </p>
+      <nav aria-label="Connection options">
+        <a class="button-primary" href="">Try again</a
+        ><a href="/">Back to home</a>
+      </nav>
+      <section aria-labelledby="drafts-title">
+        <h2 id="drafts-title">Local fill-up drafts</h2>
+        <p id="drafts-help"></p>
+        <p id="drafts-status" role="status"></p>
+        <div class="actions">
+          <button id="drafts-export" type="button" disabled>
+            Export all local drafts</button
+          ><button
+            id="drafts-discard"
+            class="button-danger"
+            type="button"
+            disabled
+          >
+            Discard all local drafts</button
+          ><a id="drafts-review" href="/offline">Review drafts when online</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

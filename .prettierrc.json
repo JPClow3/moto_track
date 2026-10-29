@@ -3,7 +3,10 @@
   "overrides": [
     {
       "files": "*.svelte",
-      "options": { "parser": "svelte" }
+      "options": {
+        "parser": "svelte"
+      }
     }
-  ]
+  ],
+  "endOfLine": "auto"
 }

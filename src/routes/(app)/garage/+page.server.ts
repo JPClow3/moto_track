@@ -1,4 +1,7 @@
+import { localizedActions } from "$server/domain/localized-actions";
+import { createTranslator } from "$lib/i18n";
 import { fail } from "@sveltejs/kit";
+import { extractOcrText, parseOdometerText } from "$server/domain/fuel";
 import type { Sql } from "postgres";
 import { runtimeEnv } from "$server/runtime";
 import {
@@ -15,7 +18,11 @@ import {
   resolveCatalogSelection,
 } from "$server/domain/motorcycle-catalog";
 import { translate } from "$lib/i18n";
+import { validDate } from "$server/domain/maintenance-forecast";
+import { isoDateValue } from "$server/domain/date-value";
+import { lockObjectOwner } from "$server/db/owner-lock";
 
+import { latestCalendarDay } from "$lib/utils/calendar-day";
 type Row = Record<string, unknown>;
 type TemplateDocument = {
   template_id: string;
@@ -67,7 +74,7 @@ async function canAddActiveMotorcycle(
   try {
     const [row] = await db<{ count: number }[]>`
       select count(*)::int as count from motorcycles
-      where owner_id = ${ownerId} and is_active = true
+      where owner_id = ${ownerId} and is_active = true and deleted_at is null
     `;
     activeCount = row?.count ?? 0;
   } catch {
@@ -102,6 +109,9 @@ export async function load({ locals, platform }) {
     loadError = true;
   };
   const [motorcycles, profileRows, models] = await Promise.all([
+    // Deliberately no `deleted_at is null`: archiving soft-deletes the row
+    // (see `archiveMotorcycle`), and this list is the only place an archived
+    // motorcycle can be restored from.
     rowsOrEmpty(
       locals.db<Row[]>`
         select * from motorcycles
@@ -144,6 +154,7 @@ export async function load({ locals, platform }) {
     Row & { motorcycle_specs: Row[] }
   >((motorcycle) => ({
     ...motorcycle,
+    in_service_date: isoDateValue(motorcycle.in_service_date),
     motorcycle_specs: [specsByMotorcycle.get(String(motorcycle.id))].filter(
       (spec): spec is Row => Boolean(spec),
     ),
@@ -209,13 +220,51 @@ export async function load({ locals, platform }) {
         new Date(),
         runtimeEnv(platform).DODO_PAYMENTS_ENVIRONMENT ?? "live_mode",
       ) ||
-      motorcyclesWithSpecs.filter((motorcycle) => motorcycle.is_active).length <
-        FREE_ACTIVE_MOTORCYCLE_LIMIT,
+      // Matches the database cap trigger: soft-deleted rows hold no slot.
+      motorcyclesWithSpecs.filter(
+        (motorcycle) => motorcycle.is_active && !motorcycle.deleted_at,
+      ).length < FREE_ACTIVE_MOTORCYCLE_LIMIT,
     errorMessage: loadError ? translate(locals.locale, "common.loadError") : "",
   };
 }
 
-export const actions = {
+export const actions = localizedActions({
+  scanOdometer: async ({ request, locals, platform }) => {
+    const form = await request.formData();
+    const id = value(form, "motorcycle_id");
+    const [bike] = await locals.db<Array<{ id: string }>>`
+      select id from motorcycles where id = ${id} and owner_id = ${locals.user!.id} and deleted_at is null
+    `;
+    if (!bike)
+      return fail(404, {
+        message: createTranslator(locals.locale)("garage.motorcycleNotFound"),
+      });
+    const photo = form.get("photo");
+    if (
+      !(photo instanceof File) ||
+      !["image/jpeg", "image/png", "image/webp"].includes(photo.type) ||
+      photo.size === 0
+    ) {
+      return fail(400, {
+        message: "Envie uma foto do painel em JPEG, PNG ou WebP.",
+      });
+    }
+    try {
+      const km = parseOdometerText(
+        await extractOcrText(photo, {
+          apiKey: runtimeEnv(platform).MISTRAL_API_KEY,
+        }),
+      );
+      if (km === null)
+        return fail(400, {
+          message:
+            "Não foi possível identificar o odômetro com segurança. Digite a leitura ou envie uma foto mais nítida.",
+        });
+      return { ok: true, odometerScan: { motorcycleId: id, km } };
+    } catch (err) {
+      return fail(400, { message: messageFrom(err) });
+    }
+  },
   create: async ({ request, locals, platform }) => {
     const form = await request.formData();
     const ownerId = locals.user!.id;
@@ -263,6 +312,7 @@ export const actions = {
     const motorcycleId = crypto.randomUUID();
     try {
       await locals.db.begin(async (tx) => {
+        await lockObjectOwner(tx as unknown as Sql, ownerId);
         await tx`
           insert into motorcycles ${tx({
             id: motorcycleId,
@@ -330,15 +380,49 @@ export const actions = {
       return fail(403, { message: "O plano Free permite uma moto ativa." });
     }
     try {
-      await locals.db`
-        update motorcycles
-        set ${locals.db(restoreMotorcycle())}
-        where id = ${value(form, "id")} and owner_id = ${ownerId}
-      `;
+      await locals.db.begin(async (tx) => {
+        await lockObjectOwner(tx as unknown as Sql, ownerId);
+        await tx`
+          update motorcycles
+          set ${tx(restoreMotorcycle())}
+          where id = ${value(form, "id")} and owner_id = ${ownerId}
+        `;
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
     return { ok: true };
+  },
+  saveServiceStart: async ({ request, locals }) => {
+    const form = await request.formData();
+    const motorcycleId = value(form, "motorcycle_id");
+    const raw = value(form, "in_service_date");
+    const date = raw ? validDate(raw) : null;
+    if (
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
+        motorcycleId,
+      ) ||
+      (raw && (!date || date > latestCalendarDay()))
+    ) {
+      return fail(400, {
+        message: createTranslator(locals.locale)("garage.invalidServiceStart"),
+      });
+    }
+    const ownerId = locals.user!.id;
+    // The in-service trigger locks plans, then their reminders; reminder
+    // completion takes the owner lock first, so take it here too.
+    const updated = await locals.db.begin(async (tx) => {
+      await lockObjectOwner(tx as unknown as Sql, ownerId);
+      return tx`
+        update motorcycles set in_service_date = ${date}, updated_at = now()
+        where id = ${motorcycleId} and owner_id = ${ownerId} and deleted_at is null returning id
+      `;
+    });
+    return updated.length
+      ? { ok: true }
+      : fail(404, {
+          message: createTranslator(locals.locale)("garage.motorcycleNotFound"),
+        });
   },
   saveSpecs: async ({ request, locals }) => {
     const form = await request.formData();
@@ -390,16 +474,27 @@ export const actions = {
     }
     const ownerId = locals.user!.id;
     try {
-      await locals.db`
-        update motorcycles
-        set odometer_override_km = ${override},
-          odometer_override_at = ${new Date().toISOString()}
-        where id = ${motorcycleId} and owner_id = ${ownerId}
-      `;
+      await locals.db.begin(async (tx) => {
+        const db = tx as unknown as Sql;
+        await lockObjectOwner(db, ownerId);
+        const updated = await db`
+          update motorcycles
+          set odometer_override_km = ${override},
+            odometer_override_at = ${new Date().toISOString()}
+          where id = ${motorcycleId} and owner_id = ${ownerId} and deleted_at is null
+          returning id
+        `;
+        if (!updated.length)
+          throw new Error(
+            createTranslator(locals.locale)("garage.motorcycleNotFound"),
+          );
+        await syncMotorcycleOdometer(db, ownerId, motorcycleId, {
+          strict: true,
+        });
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
-    await syncMotorcycleOdometer(locals.db, ownerId, motorcycleId);
     return { ok: true };
   },
-};
+});

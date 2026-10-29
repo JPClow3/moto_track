@@ -1,9 +1,7 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -60,7 +58,8 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/moto_track_test
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        timeout-minutes: 10
+        run: npx playwright install --with-deps chromium
 
       - name: Require authenticated E2E credentials
         env:
@@ -86,7 +85,9 @@ jobs:
           get_auth_url: true
 
       - name: Apply pending migrations to isolated Neon E2E branch
-        run: npm run db:push
+        run: |
+          node --input-type=module -e 'import { appendFileSync } from "node:fs"; appendFileSync(process.env.GITHUB_ENV, `E2E_DISPOSABLE_DATABASE_HOST=${new URL(process.env.DATABASE_URL).hostname}\n`);'
+          npm run db:push
         env:
           DATABASE_URL: ${{ steps.e2e-neon.outputs.db_url }}
 
@@ -95,6 +96,7 @@ jobs:
         env:
           CI: true
           DATABASE_URL: ${{ steps.e2e-neon.outputs.db_url }}
+          E2E_DISPOSABLE_BRANCH: ${{ steps.e2e-neon.outputs.branch_id }}
           E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
           E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
           NEON_AUTH_JWKS_URL: ${{ steps.e2e-neon.outputs.auth_url }}/.well-known/jwks.json

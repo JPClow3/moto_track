@@ -1,0 +1,21 @@
+plugins { id 'com.android.application' }
+android {
+  namespace 'net.mototrack.app'
+  compileSdk 36
+  defaultConfig {
+    applicationId 'net.mototrack.app'
+    minSdk 26
+    targetSdk 36
+    versionCode 1
+    versionName '1.0.0'
+    buildConfigField 'String', 'APP_ORIGIN', '"https://moto-track.net"'
+  }
+  buildFeatures { buildConfig true }
+  buildTypes {
+    debug { applicationIdSuffix '.preview'; versionNameSuffix '-preview' }
+    release { minifyEnabled false }
+  }
+  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+
+dependencies { implementation "androidx.activity:activity:1.12.4" }

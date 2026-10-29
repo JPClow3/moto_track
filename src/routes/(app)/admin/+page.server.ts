@@ -1,3 +1,5 @@
+import { localizedActions } from "$server/domain/localized-actions";
+import { adminActionMessage } from "$lib/i18n/admin";
 import { fail } from "@sveltejs/kit";
 import { isStaffUser as staffState } from "$server/domain/staff";
 import {
@@ -101,36 +103,37 @@ export async function load({ locals }) {
   };
 }
 
-export const actions = {
-  fulfillDataRequest: async ({ request, locals, platform }) => {
-    if (!(await staffState(locals)))
-      return fail(403, { message: "Staff only." });
-    const form = await request.formData();
-    const id = String(form.get("id") ?? "");
+export const actions = localizedActions(
+  {
+    fulfillDataRequest: async ({ request, locals, platform }) => {
+      if (!(await staffState(locals)))
+        return fail(403, { message: "Staff only." });
+      const form = await request.formData();
+      const id = String(form.get("id") ?? "");
 
-    let existing:
-      | {
-          owner_id: string;
-          request_type: string;
-          status: string;
-          billing_provider: "dodo" | "legacy";
-          billing_environment: "test_mode" | "live_mode" | null;
-          billing_customer_id: string;
-          billing_subscription_id: string;
-        }
-      | undefined;
-    try {
-      [existing] = await locals.db<
-        Array<{
-          owner_id: string;
-          request_type: string;
-          status: string;
-          billing_provider: "dodo" | "legacy";
-          billing_environment: "test_mode" | "live_mode" | null;
-          billing_customer_id: string;
-          billing_subscription_id: string;
-        }>
-      >`
+      let existing:
+        | {
+            owner_id: string;
+            request_type: string;
+            status: string;
+            billing_provider: "dodo" | "legacy";
+            billing_environment: "test_mode" | "live_mode" | null;
+            billing_customer_id: string;
+            billing_subscription_id: string;
+          }
+        | undefined;
+      try {
+        [existing] = await locals.db<
+          Array<{
+            owner_id: string;
+            request_type: string;
+            status: string;
+            billing_provider: "dodo" | "legacy";
+            billing_environment: "test_mode" | "live_mode" | null;
+            billing_customer_id: string;
+            billing_subscription_id: string;
+          }>
+        >`
         select request.owner_id, request.request_type, request.status,
           coalesce(subscription.billing_provider, 'dodo') as billing_provider,
           subscription.billing_environment,
@@ -141,29 +144,30 @@ export const actions = {
           on subscription.owner_id = request.owner_id
         where request.id = ${id}
       `;
-    } catch (err) {
-      return fail(400, { message: messageFrom(err) });
-    }
-    if (!existing) return fail(404, { message: "Solicitação não encontrada." });
-    if (existing.status !== "open") {
-      return fail(400, { message: "Solicitação já processada." });
-    }
+      } catch (err) {
+        return fail(400, { message: messageFrom(err) });
+      }
+      if (!existing)
+        return fail(404, { message: "Solicitação não encontrada." });
+      if (existing.status !== "open") {
+        return fail(400, { message: "Solicitação já processada." });
+      }
 
-    if (existing.request_type === "deletion") {
-      const deletionOwnerId = existing.owner_id;
-      // Checkout, webhooks, and account deletion share the same owner lock.
-      // Provider termination must use a fresh profile while holding this lock;
-      // otherwise a checkout can commit a new customer between cancellation
-      // and the local cascade. Provider failures roll back every local change.
-      let objectKeys: string[];
-      let billingTerminationStarted = false;
-      let billingTerminated = false;
-      try {
-        objectKeys = await locals.db.begin(async (transaction) => {
-          const db = transaction as unknown as typeof locals.db;
-          await db`select pg_advisory_xact_lock(hashtextextended(${deletionOwnerId}, 0))`;
-          await lockObjectOwner(db, deletionOwnerId);
-          const [fresh] = await db<Array<NonNullable<typeof existing>>>`
+      if (existing.request_type === "deletion") {
+        const deletionOwnerId = existing.owner_id;
+        // Checkout, webhooks, and account deletion share the same owner lock.
+        // Provider termination must use a fresh profile while holding this lock;
+        // otherwise a checkout can commit a new customer between cancellation
+        // and the local cascade. Provider failures roll back every local change.
+        let objectKeys: string[];
+        let billingTerminationStarted = false;
+        let billingTerminated = false;
+        try {
+          objectKeys = await locals.db.begin(async (transaction) => {
+            const db = transaction as unknown as typeof locals.db;
+            await db`select pg_advisory_xact_lock(hashtextextended(${deletionOwnerId}, 0))`;
+            await lockObjectOwner(db, deletionOwnerId);
+            const [fresh] = await db<Array<NonNullable<typeof existing>>>`
             select request.owner_id, request.request_type, request.status,
               coalesce(subscription.billing_provider, 'dodo') as billing_provider,
               subscription.billing_environment,
@@ -175,53 +179,53 @@ export const actions = {
             where request.id = ${id} and request.owner_id = ${deletionOwnerId}
             for update of request
           `;
-          if (
-            !fresh ||
-            fresh.status !== "open" ||
-            fresh.request_type !== "deletion"
-          ) {
-            throw new Error(
-              "A solicitação deixou de estar aberta antes da exclusão.",
+            if (
+              !fresh ||
+              fresh.status !== "open" ||
+              fresh.request_type !== "deletion"
+            ) {
+              throw new Error(
+                "A solicitação deixou de estar aberta antes da exclusão.",
+              );
+            }
+            existing = fresh;
+            billingTerminationStarted = true;
+            if (
+              existing.billing_provider !== "dodo" &&
+              (existing.billing_customer_id || existing.billing_subscription_id)
+            ) {
+              throw new Error(
+                "Confirme o encerramento da cobrança anterior antes de excluir esta conta.",
+              );
+            }
+            await terminateBillingForAccount(
+              {
+                customerId: existing.billing_customer_id,
+                subscriptionId: existing.billing_subscription_id,
+                environment: existing.billing_environment,
+              },
+              platform,
             );
-          }
-          existing = fresh;
-          billingTerminationStarted = true;
-          if (
-            existing.billing_provider !== "dodo" &&
-            (existing.billing_customer_id || existing.billing_subscription_id)
-          ) {
-            throw new Error(
-              "Confirme o encerramento da cobrança anterior antes de excluir esta conta.",
-            );
-          }
-          await terminateBillingForAccount(
-            {
-              customerId: existing.billing_customer_id,
-              subscriptionId: existing.billing_subscription_id,
-              environment: existing.billing_environment,
-            },
-            platform,
-          );
-          billingTerminated = true;
-          // Keep benchmark associations until after billing is blocked/canceled.
-          const files = await db<Array<{ object_key: string }>>`
+            billingTerminated = true;
+            // Keep benchmark associations until after billing is blocked/canceled.
+            const files = await db<Array<{ object_key: string }>>`
             select object_key from object_files
             where owner_id = ${existing.owner_id}
             for update
           `;
-          await enqueueObjectDeletions(
-            db,
-            existing.owner_id,
-            files.map((file) => file.object_key),
-          );
-          await db`
+            await enqueueObjectDeletions(
+              db,
+              existing.owner_id,
+              files.map((file) => file.object_key),
+            );
+            await db`
             delete from anonymous_model_benchmark_contributions contribution
             using model_benchmark_submission_guards guard
             where guard.owner_id = ${existing.owner_id}
               and guard.contribution_id = contribution.id
               and guard.model_key = contribution.model_key
           `;
-          await db`
+            await db`
             insert into account_deletion_tombstones (
               owner_id,
               billing_provider,
@@ -242,7 +246,7 @@ export const actions = {
               billing_subscription_id = excluded.billing_subscription_id,
               deleted_at = now()
           `;
-          const deleted = await db<Array<{ id: string }>>`
+            const deleted = await db<Array<{ id: string }>>`
             delete from neon_auth."user" account
             where account.id = ${existing.owner_id}
               and exists (
@@ -253,56 +257,56 @@ export const actions = {
               )
             returning account.id
           `;
-          if (!deleted.length) {
-            throw new Error(
-              "A solicitação deixou de estar aberta antes da exclusão.",
-            );
-          }
-          return files.map((file) => file.object_key);
-        });
-      } catch (err) {
-        const retryNote = (
-          billingTerminated
-            ? `A cobrança foi encerrada, mas a exclusão local falhou. A solicitação continua aberta e pode ser tentada novamente. ${messageFrom(err)}`
-            : `Não foi possível concluir a exclusão e encerrar a cobrança. Os dados locais foram preservados e a solicitação continua aberta. ${messageFrom(err)}`
-        ).slice(0, 1000);
-        await locals.db`
+            if (!deleted.length) {
+              throw new Error(
+                "A solicitação deixou de estar aberta antes da exclusão.",
+              );
+            }
+            return files.map((file) => file.object_key);
+          });
+        } catch (err) {
+          const retryNote = (
+            billingTerminated
+              ? `A cobrança foi encerrada, mas a exclusão local falhou. A solicitação continua aberta e pode ser tentada novamente. ${messageFrom(err)}`
+              : `Não foi possível concluir a exclusão e encerrar a cobrança. Os dados locais foram preservados e a solicitação continua aberta. ${messageFrom(err)}`
+          ).slice(0, 1000);
+          await locals.db`
           update account_data_requests set notes = ${retryNote}
           where id = ${id} and owner_id = ${existing.owner_id} and status = 'open'
         `.catch(() => undefined);
-        return fail(
-          billingTerminationStarted && !billingTerminated ? 502 : 400,
-          {
-            message: retryNote,
-          },
-        );
+          return fail(
+            billingTerminationStarted && !billingTerminated ? 502 : 400,
+            {
+              message: retryNote,
+            },
+          );
+        }
+        await deleteQueuedObjectsBestEffort({
+          db: locals.db,
+          objectKeys,
+          ownerId: existing.owner_id,
+          platform,
+        });
+        return { ok: true };
       }
-      await deleteQueuedObjectsBestEffort({
-        db: locals.db,
-        objectKeys,
-        ownerId: existing.owner_id,
-        platform,
-      });
-      return { ok: true };
-    }
 
-    try {
-      await locals.db`
+      try {
+        await locals.db`
         update account_data_requests
         set status = 'fulfilled', fulfilled_at = ${new Date().toISOString()}
         where id = ${id}
       `;
-    } catch (err) {
-      return fail(400, { message: messageFrom(err) });
-    }
-    return { ok: true };
-  },
-  saveSettings: async ({ request, locals }) => {
-    if (!(await staffState(locals)))
-      return fail(403, { message: "Staff only." });
-    const form = await request.formData();
-    try {
-      await locals.db`
+      } catch (err) {
+        return fail(400, { message: messageFrom(err) });
+      }
+      return { ok: true };
+    },
+    saveSettings: async ({ request, locals }) => {
+      if (!(await staffState(locals)))
+        return fail(403, { message: "Staff only." });
+      const form = await request.formData();
+      try {
+        await locals.db`
         insert into site_settings ${locals.db({
           id: 1,
           company_name: String(form.get("company_name") ?? "Moto Track"),
@@ -325,24 +329,24 @@ export const actions = {
           dpo_email = excluded.dpo_email,
           updated_at = now()
       `;
-    } catch (err) {
-      return fail(400, { message: messageFrom(err) });
-    }
-    return { ok: true };
-  },
-  createArticle: async ({ request, locals }) => {
-    if (!(await staffState(locals)))
-      return fail(403, { message: "Staff only." });
-    const form = await request.formData();
-    const title = String(form.get("title") ?? "");
-    const slug =
-      String(form.get("slug") ?? "") ||
-      title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-    try {
-      await locals.db`
+      } catch (err) {
+        return fail(400, { message: messageFrom(err) });
+      }
+      return { ok: true };
+    },
+    createArticle: async ({ request, locals }) => {
+      if (!(await staffState(locals)))
+        return fail(403, { message: "Staff only." });
+      const form = await request.formData();
+      const title = String(form.get("title") ?? "");
+      const slug =
+        String(form.get("slug") ?? "") ||
+        title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+      try {
+        await locals.db`
         insert into forum_articles ${locals.db({
           title,
           slug,
@@ -351,39 +355,39 @@ export const actions = {
           is_published: form.get("is_published") === "true",
         })}
       `;
-    } catch (err) {
-      return fail(400, { message: messageFrom(err) });
-    }
-    return { ok: true };
-  },
-  createTemplate: async ({ request, locals }) => {
-    if (!(await staffState(locals)))
-      return fail(403, { message: "Staff only." });
-    const form = await request.formData();
-    const brand = String(form.get("brand") ?? "").trim();
-    const modelName = String(form.get("model") ?? "").trim();
-    const variant = String(form.get("variant") ?? "").trim() || "Linha";
-    if (!brand || !modelName)
-      return fail(400, { message: "Informe marca e modelo." });
-    const yearFrom = Number(form.get("year_from"));
-    if (!Number.isInteger(yearFrom) || yearFrom <= 1900) {
-      return fail(400, { message: "Ano inicial inválido." });
-    }
-    const yearToValue = String(form.get("year_to") ?? "").trim();
-    let yearTo: number | null = null;
-    if (yearToValue) {
-      const parsedYearTo = Number(yearToValue);
-      if (!Number.isInteger(parsedYearTo) || parsedYearTo < yearFrom) {
-        return fail(400, { message: "Ano final inválido." });
+      } catch (err) {
+        return fail(400, { message: messageFrom(err) });
       }
-      yearTo = parsedYearTo;
-    }
-    try {
-      // The picker resolves (model, year) → template, so every new template
-      // must hang off a motorcycle_models row; without one the catalog
-      // selection trigger and the visibility constraint both reject it.
-      // Upsert keeps repeated saves idempotent without touching is_visible.
-      const [model] = await locals.db<Array<{ id: string }>>`
+      return { ok: true };
+    },
+    createTemplate: async ({ request, locals }) => {
+      if (!(await staffState(locals)))
+        return fail(403, { message: "Staff only." });
+      const form = await request.formData();
+      const brand = String(form.get("brand") ?? "").trim();
+      const modelName = String(form.get("model") ?? "").trim();
+      const variant = String(form.get("variant") ?? "").trim() || "Linha";
+      if (!brand || !modelName)
+        return fail(400, { message: "Informe marca e modelo." });
+      const yearFrom = Number(form.get("year_from"));
+      if (!Number.isInteger(yearFrom) || yearFrom <= 1900) {
+        return fail(400, { message: "Ano inicial inválido." });
+      }
+      const yearToValue = String(form.get("year_to") ?? "").trim();
+      let yearTo: number | null = null;
+      if (yearToValue) {
+        const parsedYearTo = Number(yearToValue);
+        if (!Number.isInteger(parsedYearTo) || parsedYearTo < yearFrom) {
+          return fail(400, { message: "Ano final inválido." });
+        }
+        yearTo = parsedYearTo;
+      }
+      try {
+        // The picker resolves (model, year) → template, so every new template
+        // must hang off a motorcycle_models row; without one the catalog
+        // selection trigger and the visibility constraint both reject it.
+        // Upsert keeps repeated saves idempotent without touching is_visible.
+        const [model] = await locals.db<Array<{ id: string }>>`
         insert into motorcycle_models ${locals.db({
           brand,
           model_name: modelName,
@@ -398,9 +402,9 @@ export const actions = {
           updated_at = now()
         returning id
       `;
-      // New templates stay invisible until a manual source exists — the same
-      // rule the seeded catalogue follows (no source, no picker entry).
-      await locals.db`
+        // New templates stay invisible until a manual source exists — the same
+        // rule the seeded catalogue follows (no source, no picker entry).
+        await locals.db`
         insert into motorcycle_templates ${locals.db({
           brand,
           model: modelName,
@@ -412,9 +416,11 @@ export const actions = {
           model_id: model.id,
           is_catalog_visible: false,
         })}`;
-    } catch (err) {
-      return fail(400, { message: messageFrom(err) });
-    }
-    return { ok: true };
+      } catch (err) {
+        return fail(400, { message: messageFrom(err) });
+      }
+      return { ok: true };
+    },
   },
-};
+  adminActionMessage,
+);

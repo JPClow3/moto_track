@@ -19,7 +19,7 @@
     <del><svelte:self tokens={token.tokens ?? []} /></del>
   {:else if token.type === "codespan"}
     <code
-      class="rounded-sm bg-[var(--accent-soft)] px-1.5 py-0.5 text-[0.85em] text-[var(--accent)]"
+      class="rounded-sm bg-[var(--panel-sunken)] px-1.5 py-0.5 text-[0.85em] text-[var(--fg)]"
       >{token.text}</code
     >
   {:else if token.type === "link"}
@@ -28,7 +28,7 @@
          An unsafe scheme degrades to plain text rather than a dead link. -->
     {#if safeHref(token.href)}
       <a
-        class="font-medium text-[var(--accent)] underline underline-offset-2 hover:text-[var(--accent-hover)]"
+        class="font-medium text-[var(--fg)] underline underline-offset-2 hover:decoration-2"
         href={safeHref(token.href)}
         rel="nofollow noopener"
         target={isExternalHref(safeHref(token.href) ?? "") ? "_blank" : null}

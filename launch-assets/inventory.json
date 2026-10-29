@@ -1,0 +1,98 @@
+[
+  {
+    "file": "apple/01-overview-1320x2868.png",
+    "width": 1320,
+    "height": 2868,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "google/01-overview-1080x1920.png",
+    "width": 1080,
+    "height": 1920,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "apple/02-fuel-1320x2868.png",
+    "width": 1320,
+    "height": 2868,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "google/02-fuel-1080x1920.png",
+    "width": 1080,
+    "height": 1920,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "apple/03-maintenance-1320x2868.png",
+    "width": 1320,
+    "height": 2868,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "google/03-maintenance-1080x1920.png",
+    "width": 1080,
+    "height": 1920,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "apple/04-reminders-1320x2868.png",
+    "width": 1320,
+    "height": 2868,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "google/04-reminders-1080x1920.png",
+    "width": 1080,
+    "height": 1920,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "microsoft/hero-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "google/feature-1024x500.png",
+    "width": 1024,
+    "height": 500,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "social/launch-1080x1080.png",
+    "width": 1080,
+    "height": 1080,
+    "kind": "promotional-artwork"
+  },
+  {
+    "file": "microsoft/demo-desktop-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "kind": "web-demo-capture-not-native"
+  },
+  {
+    "file": "motion/cost-1080x1920.mp4",
+    "width": 1080,
+    "height": 1920,
+    "fps": 24,
+    "seconds": 6,
+    "audio": false
+  },
+  {
+    "file": "motion/service-1080x1920.mp4",
+    "width": 1080,
+    "height": 1920,
+    "fps": 24,
+    "seconds": 6,
+    "audio": false
+  },
+  {
+    "file": "motion/reminder-1080x1920.mp4",
+    "width": 1080,
+    "height": 1920,
+    "fps": 24,
+    "seconds": 6,
+    "audio": false
+  }
+]

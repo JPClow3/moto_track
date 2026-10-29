@@ -1,19 +1,78 @@
-type ServiceRecord = { date: string; odometer_km: number };
-type OdometerSample = { date: string; odometer_km: number };
+import { isoDateValue } from "./date-value";
 
-function dayDifference(start: string, end: string) {
-  return Math.max(
-    0,
-    (new Date(`${end}T00:00:00Z`).getTime() -
-      new Date(`${start}T00:00:00Z`).getTime()) /
-      86_400_000,
-  );
+export type OdometerSample = { date: unknown; odometer_km: number };
+const DAY_MS = 86_400_000;
+
+export function validDate(value: unknown): string | null {
+  const date = isoDateValue(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === date
+    ? date
+    : null;
 }
 
-function addDays(date: string, days: number) {
-  const result = new Date(`${date}T00:00:00Z`);
-  result.setUTCDate(result.getUTCDate() + Math.ceil(days));
-  return result.toISOString().slice(0, 10);
+export function addCalendarDays(date: string, days: number): string | null {
+  if (!validDate(date) || !Number.isFinite(days)) return null;
+  const time =
+    new Date(`${date}T00:00:00Z`).getTime() + Math.ceil(days) * DAY_MS;
+  const result = new Date(time);
+  return Number.isFinite(time) && result.getUTCFullYear() <= 9999
+    ? result.toISOString().slice(0, 10)
+    : null;
+}
+
+/** Recent, observed pace. Rollbacks and stale readings cannot support a forecast. */
+export function estimateDailyDistance(
+  samples: OdometerSample[],
+  today: string,
+): number | null {
+  if (!validDate(today)) return null;
+  const cutoff = addCalendarDays(today, -90)!;
+  const byDay = new Map<string, number>();
+  for (const sample of samples) {
+    const date = validDate(sample.date);
+    const km = sample.odometer_km;
+    if (
+      !date ||
+      date > today ||
+      date < cutoff ||
+      !Number.isFinite(km) ||
+      km < 0
+    )
+      continue;
+    byDay.set(date, Math.max(byDay.get(date) ?? 0, km));
+  }
+  const readings = [...byDay].sort(([a], [b]) => a.localeCompare(b));
+  if (readings.length < 2) return null;
+  const first = readings[0];
+  const latest = readings[readings.length - 1];
+  if (latest[0] < addCalendarDays(today, -30)!) return null;
+  if (readings.some((reading, i) => i > 0 && reading[1] < readings[i - 1][1]))
+    return null;
+  const days = (Date.parse(latest[0]) - Date.parse(first[0])) / DAY_MS;
+  const pace = (latest[1] - first[1]) / days;
+  return Number.isFinite(pace) && pace > 0 ? pace : null;
+}
+
+export function forecastDateAtKm(
+  dueKm: number,
+  currentKm: number,
+  kmPerDay: number | null,
+  today: string,
+) {
+  if (
+    !Number.isFinite(dueKm) ||
+    !Number.isFinite(currentKm) ||
+    currentKm < 0 ||
+    !validDate(today)
+  )
+    return null;
+  if (dueKm <= currentKm) return today;
+  return kmPerDay !== null && Number.isFinite(kmPerDay) && kmPerDay > 0
+    ? addCalendarDays(today, (dueKm - currentKm) / kmPerDay)
+    : null;
 }
 
 export function forecastMaintenance({
@@ -24,45 +83,44 @@ export function forecastMaintenance({
   odometerSamples,
   today,
 }: {
-  lastService: ServiceRecord | null;
+  lastService: { date: unknown; odometer_km: number | null } | null;
   intervalKm: number | null;
   intervalDays: number | null;
   currentKm: number;
   odometerSamples: OdometerSample[];
   today: string;
 }) {
-  if (!lastService) return null;
-  const dates = [...odometerSamples, lastService].sort(
-    (a, b) =>
-      isoDateValue(a.date).localeCompare(isoDateValue(b.date)) ||
-      a.odometer_km - b.odometer_km,
-  );
-  const first = dates[0];
-  const latest = dates[dates.length - 1];
-  const days = first
-    ? dayDifference(isoDateValue(first.date), isoDateValue(latest.date))
-    : 0;
-  const kmPerDay =
-    days > 0
-      ? Math.max(0, (latest.odometer_km - first.odometer_km) / days)
+  if (!lastService || !validDate(today)) return null;
+  const serviceDate = validDate(lastService.date);
+  const serviceKm = lastService.odometer_km;
+  if (serviceDate && serviceDate > today) return null;
+  const kmPerDay = estimateDailyDistance(odometerSamples, today);
+  const dueKm =
+    intervalKm !== null &&
+    Number.isFinite(intervalKm) &&
+    intervalKm > 0 &&
+    serviceKm !== null &&
+    Number.isFinite(serviceKm) &&
+    serviceKm >= 0
+      ? serviceKm + intervalKm
       : null;
-  const dueByKm =
-    intervalKm === null ? null : lastService.odometer_km + intervalKm;
   const dueByDate =
-    intervalDays === null
-      ? null
-      : addDays(isoDateValue(lastService.date), intervalDays);
-  const predictedDateByKm =
-    dueByKm !== null && kmPerDay && kmPerDay > 0
-      ? addDays(today, Math.max(0, (dueByKm - currentKm) / kmPerDay))
+    serviceDate &&
+    intervalDays !== null &&
+    Number.isInteger(intervalDays) &&
+    intervalDays > 0
+      ? addCalendarDays(serviceDate, intervalDays)
       : null;
-  const datesToCompare = [dueByDate, predictedDateByKm].filter(
-    (date): date is string => Boolean(date),
+  const predictedDateByKm =
+    dueKm === null ? null : forecastDateAtKm(dueKm, currentKm, kmPerDay, today);
+  const dates = [dueByDate, predictedDateByKm].filter(
+    (date): date is string => date !== null,
   );
   return {
-    dueKm: dueByKm,
-    dueDate: datesToCompare.sort()[0] ?? null,
+    dueKm,
+    dueDate: dates.sort()[0] ?? null,
     kmPerDay,
+    dueByDate,
+    predictedDateByKm,
   };
 }
-import { isoDateValue } from "./date-value";

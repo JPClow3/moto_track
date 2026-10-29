@@ -2,11 +2,16 @@ import { redirect, type Handle } from "@sveltejs/kit";
 import { getDb } from "$server/db/client";
 import { resolveSession } from "$server/auth/session";
 import { ensureAccount } from "$server/auth/bootstrap";
+import {
+  nativePurchasesRestricted,
+  nativeRestrictedPath,
+} from "$lib/domain/distribution";
 import { LOCALE_COOKIE, resolveLocale } from "$lib/i18n";
 import { preserveAppScripts } from "$server/domain/page-html";
 
 const protectedPrefixes = [
   "/dashboard",
+  "/history",
   "/garage",
   "/fuel",
   "/maintenance",
@@ -42,9 +47,22 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.request.headers.get("accept-language"),
   );
 
-  event.locals.db = getDb(event.platform);
+  // Native mobile builds ship without hosted purchase CTAs. This header only
+  // removes purchase surfaces; ownership and entitlement checks remain unchanged.
+  if (nativePurchasesRestricted(event.request.headers.get("user-agent"))) {
+    if (nativeRestrictedPath(event.url.pathname))
+      throw redirect(303, "/app-info");
+    if (event.url.pathname === "/") throw redirect(303, "/dashboard");
+  }
 
-  const { session, user } = await resolveSession(event);
+  // Platform probes must not resolve Neon Auth or construct a database
+  // client. `/healthz` itself also avoids `select 1`, which was keeping the
+  // Neon compute awake on the Free plan.
+  const isHealthCheck = event.url.pathname === "/healthz";
+  if (!isHealthCheck) event.locals.db = getDb(event.platform);
+  const { session, user } = isHealthCheck
+    ? { session: null, user: null }
+    : await resolveSession(event);
   event.locals.session = session;
   event.locals.user = user;
   event.locals.safeGetSession = async () => ({ session, user });
@@ -52,7 +70,12 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Provision the app-side profile/subscription rows that Supabase used to
   // seed from an auth.users trigger.
   if (user) {
-    await ensureAccount(event.locals.db, user.id, user.email);
+    await ensureAccount(
+      event.locals.db,
+      user.id,
+      user.email,
+      event.locals.locale,
+    );
   }
 
   const isPublic = publicPrefixes.some((prefix) =>

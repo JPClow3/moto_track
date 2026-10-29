@@ -3,6 +3,7 @@ import { page } from "$app/stores";
 import {
   createTranslator,
   DEFAULT_LOCALE,
+  normalizeReleasedLocale,
   formatDate,
   formatDistance,
   formatMoney,
@@ -20,7 +21,8 @@ import {
 export const locale = derived(
   page,
   ($page) =>
-    (($page.data as { locale?: Locale }).locale ?? DEFAULT_LOCALE) as Locale,
+    normalizeReleasedLocale(($page.data as { locale?: Locale }).locale) ??
+    DEFAULT_LOCALE,
 );
 
 /** Usage: `{$t('nav.dashboard')}` */
