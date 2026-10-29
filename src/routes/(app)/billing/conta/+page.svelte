@@ -308,7 +308,7 @@
     </p>{/if}
   {#if data.portal === "error"}
     <p
-      class="border-danger/30 bg-danger/10 rounded border p-4 text-sm text-danger"
+      class="rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)]"
       role="alert"
     >
       {$t("conta.portalError")}

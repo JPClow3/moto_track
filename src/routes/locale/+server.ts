@@ -6,7 +6,7 @@ import { LOCALE_COOKIE, normalizeReleasedLocale } from "$lib/i18n";
  * JavaScript disabled. Unauthenticated on purpose: visitors read the marketing
  * pages before they ever have an account.
  */
-export async function POST({ request, cookies, url }) {
+export async function POST({ request, cookies, url, locals }) {
   const form = await request.formData();
   const locale = normalizeReleasedLocale(form.get("locale"));
   if (!locale) throw error(400, "Unsupported locale.");
@@ -17,6 +17,15 @@ export async function POST({ request, cookies, url }) {
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 365,
   });
+
+  // Email and push read profiles.preferred_locale. The account bootstrap only
+  // seeds that column, so an explicit switch has to write it itself.
+  if (locals.user) {
+    await locals.db`
+      update profiles set preferred_locale = ${locale}
+      where id = ${locals.user.id} and preferred_locale is distinct from ${locale}
+    `;
+  }
 
   // Only ever bounce back to a path on this origin — `redirectTo` comes from
   // the request, so honouring an absolute URL here would be an open redirect.
