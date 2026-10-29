@@ -52,6 +52,9 @@ test.describe("exact catalog item occurrence acceptance", () => {
         template.model_id,
       );
       await create.locator('select[name="year"]').selectOption("2026");
+      await expect(
+        create.locator('input[type="radio"][value="unknown"]').first(),
+      ).toBeAttached();
       await create.locator('[name="current_odometer_km"]').fill("12000");
       const submit = create.locator('button[type="submit"]');
       await expect(
@@ -59,8 +62,8 @@ test.describe("exact catalog item occurrence acceptance", () => {
         `Free slot should be open; motorcycles: ${await motorcycleSlots(sql, ownerId)}`,
       ).toBeEnabled();
       // Fail immediately on browser validation instead of waiting for a POST
-      // that cannot happen. Keyboard activation keeps the submit target stable
-      // while the catalog/history panel changes the sheet's layout.
+      // that cannot happen. Wait for the selected year's history fields above
+      // so validation observes the final form, including its catalog payload.
       const validity = await create.evaluate((form: HTMLFormElement) => ({
         valid: form.checkValidity(),
         invalid: Array.from(form.elements)
@@ -90,7 +93,11 @@ test.describe("exact catalog item occurrence acceptance", () => {
             candidate.url().includes("?/create"),
           { timeout: 45_000 },
         ),
-        submit.press("Enter"),
+        create.evaluate((form: HTMLFormElement) =>
+          form.requestSubmit(
+            form.querySelector('button[type="submit"]') as HTMLButtonElement,
+          ),
+        ),
       ]);
       const createdBody = await created.text();
       expect(createdBody, createdBody).toContain('"type":"success"');
