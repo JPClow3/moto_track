@@ -16,11 +16,13 @@ export async function ensureAccount(
   locale?: Locale,
 ) {
   if (provisionedAccounts.has(userId)) return;
+  // preferred_locale is a rider preference used by email/push. Seed it on first
+  // insert only — never overwrite from Accept-Language on later cold starts.
   await db`
     insert into profiles (id, email, preferred_locale)
     values (${userId}, ${email ?? ""}, ${locale ?? "pt-BR"})
-    on conflict (id) do update set preferred_locale = excluded.preferred_locale
-      where ${locale !== undefined} and profiles.preferred_locale is distinct from excluded.preferred_locale
+    on conflict (id) do update set email = excluded.email
+      where excluded.email <> '' and profiles.email is distinct from excluded.email
   `;
   await db`
     insert into subscription_profiles (owner_id, plan)

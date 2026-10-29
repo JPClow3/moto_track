@@ -493,6 +493,12 @@ describe("authenticated UX primitives contract", () => {
     expect(body).toContain("<dialog");
   }, 15000);
 
+  it("loads reminder snooze fields for dashboard health scoring", () => {
+    const dashboardSrc = source("src/routes/(app)/dashboard/+page.server.ts");
+    expect(dashboardSrc).toContain("snoozed_until_date");
+    expect(dashboardSrc).toContain("snoozed_until_km");
+  });
+
   it("rebuilds Reports with PageHeader, generate report action, and no PageAction import", async () => {
     const reportsSrc = source("src/routes/(app)/reports/+page.svelte");
     expect(reportsSrc).toContain("PageHeader");
