@@ -13,6 +13,6 @@ Updated on 2026-10-29 after reviewing Actions runtime:
 - Each newer update cancels the older CI run for the same PR. Converting a PR back to draft also cancels its previous full run. Manually dispatched runs have their own concurrency groups.
 - PR E2E stops at the first failure and has a 30-minute step limit inside a 40-minute job. Browser actions have a 15-second limit and navigations a 60-second limit; multi-step acceptance tests retain their overall journey budgets.
 - To collect all failures, dispatch CI with **full_diagnostics** enabled. This still runs the entire validation pipeline, disables E2E fail-fast, and allows 40 minutes for E2E inside a 50-minute job. Locally, use `npm run test:e2e -- --max-failures=0` to override CI fail-fast.
-- Each disposable Neon branch expires two hours after creation and suspends compute after five idle minutes. Cleanup still runs on success, failure and cancellation, using the exact run-specific branch name if creation outputs were lost. Expiry is the fallback if cleanup cannot finish.
+- Each disposable Neon branch expires two hours after creation. The action retains its default suspend setting for compatibility with Neon Free. Cleanup still runs on success, failure and cancellation, using the exact run-specific branch name if creation outputs were lost. Expiry is the fallback if cleanup cannot finish.
 
 Automatic web and reminder deployments remain owned by Cloudflare. These controls do not change CodeQL, IndexNow or the manual production-provider smoke workflow.

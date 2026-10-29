@@ -115,7 +115,7 @@ jobs:
           get_auth_url: true
           # Expiry also covers cancellation while creation outputs are pending.
           expires_at: ${{ steps.e2e-expiry.outputs.expires_at }}
-          suspend_timeout: 300
+          # Keep the action default: a custom timeout is rejected on Neon Free.
 
       - name: Apply pending migrations to isolated Neon E2E branch
         if: github.event_name == 'workflow_dispatch' || !github.event.pull_request.draft
