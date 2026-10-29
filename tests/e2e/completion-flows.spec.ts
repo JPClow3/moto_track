@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import { openDisposableDb } from "./helpers/disposable-db";
-import { reserveFreeMotorcycleSlot } from "./helpers/free-slot";
+import {
+  openDisposableDb,
+  restoreActiveMotorcycles,
+} from "./helpers/disposable-db";
 
 test.describe("completed core flows", () => {
   // Multi-step journeys against a real Neon/Auth branch, like the other
@@ -41,8 +43,6 @@ test.describe("completed core flows", () => {
     const reminder = (await response.json()).result;
     try {
       await page.reload();
-      // Calendar subscription actions are always visible under the calendar
-      // secondary section (not buried in the overflow menu).
       await page
         .getByRole("button", { name: "Gerar link de assinatura", exact: true })
         .click();
@@ -93,13 +93,8 @@ test.describe("completed core flows", () => {
       })
       .last();
     const card = section.locator("article").first();
-    const purchaseDate = card.getByLabel("Data da compra", { exact: true });
-    // Setup form lives in <details>; open it when the bike already has a basis.
-    if (!(await purchaseDate.isVisible())) {
-      await card.getByText("Dados da aquisição", { exact: true }).click();
-    }
-    await expect(purchaseDate).toBeVisible();
-    await purchaseDate.fill("2026-01-01");
+    await card.locator("summary").click();
+    await card.getByLabel("Data da compra", { exact: true }).fill("2026-01-01");
     await card.getByLabel("Odômetro na compra (km)", { exact: true }).fill("0");
     await card
       .getByLabel("Valor de compra (R$)", { exact: true })
@@ -123,15 +118,20 @@ test.describe("completed core flows", () => {
     const fixture = await openDisposableDb();
     const { sql, ownerId } = fixture;
     const names = [0, 1].map(() => `Concurrent bike ${randomUUID()}`);
-    const [subscription] = await sql<
-      Array<{ plan: string }>
-    >`select plan from subscription_profiles where owner_id = ${ownerId}`;
-    test.skip(
-      subscription?.plan !== "free",
-      "This cap applies to the dedicated Free acceptance account.",
-    );
-    const slot = await reserveFreeMotorcycleSlot(sql, ownerId);
+    const active = await sql<
+      Array<{ id: string }>
+    >`select id from motorcycles where owner_id = ${ownerId} and is_active = true and deleted_at is null`;
+    let reserved = false;
     try {
+      const [subscription] = await sql<
+        Array<{ plan: string }>
+      >`select plan from subscription_profiles where owner_id = ${ownerId}`;
+      test.skip(
+        subscription?.plan !== "free",
+        "This cap applies to the dedicated Free acceptance account.",
+      );
+      await sql`update motorcycles set is_active = false where owner_id = ${ownerId} and is_active = true and deleted_at is null`;
+      reserved = true;
       await page.goto("/garage");
       const responses = await Promise.allSettled(
         names.map((name) =>
@@ -182,16 +182,16 @@ test.describe("completed core flows", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].odometer_override_km).toBe(1200);
     } finally {
-      try {
-        const created = await sql<Array<{ id: string }>>`
-          select id from motorcycles where owner_id = ${ownerId} and name in ${sql(names)}
-        `;
-        await slot.restore({
-          deleteMotorcycleIds: created.map((row) => row.id),
-        });
-      } finally {
-        await fixture.close();
-      }
+      await sql.begin(async (db) => {
+        await db`delete from motorcycles where owner_id = ${ownerId} and name in ${db(names)}`;
+        if (reserved)
+          await restoreActiveMotorcycles(
+            db,
+            ownerId,
+            active.map((bike) => bike.id),
+          );
+      });
+      await fixture.close();
     }
   });
 });

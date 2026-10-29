@@ -1,8 +1,5 @@
-<svelte:options runes={false} />
-
 <script lang="ts">
   import { enhance } from "$app/forms";
-  import { resolve } from "$app/paths";
   import type { SubmitFunction } from "@sveltejs/kit";
   import Download from "lucide-svelte/icons/download";
   import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -11,15 +8,26 @@
   import PageAction from "$lib/components/app/PageAction.svelte";
   import RecordSheet from "$lib/components/app/RecordSheet.svelte";
   import PageOverflowMenu from "$lib/components/app/PageOverflowMenu.svelte";
-  import ActivityTimeline from "$lib/components/app/ActivityTimeline.svelte";
   import ActionMenu, {
     type ActionChoice,
   } from "$lib/components/app/ActionMenu.svelte";
-  import type { FeatureConfig } from "$server/domain/features";
-  import { t, locale } from "$lib/i18n/store";
-  import { formatDate, formatMoney, formatPreciseMoney } from "$lib/i18n";
+  import EmptyState from "$components/ui/EmptyState.svelte";
+  import StatusBadge, {
+    type StatusTone,
+  } from "$components/ui/StatusBadge.svelte";
+  import { showToast } from "$components/ui/toast";
+  import { Motorcycle } from "$components/icons";
+  import type { FeatureConfig, FeatureField } from "$server/domain/features";
+  import { t, locale, format } from "$lib/i18n/store";
+  import {
+    formatDate,
+    formatMoney,
+    formatPreciseMoney,
+    type MessageKey,
+  } from "$lib/i18n";
   import { featureCopy } from "$lib/i18n/feature-copy";
   import { privateFileUrl } from "$lib/utils/private-file-url";
+  import { dateOnlyValue, editFieldValue } from "$lib/utils/feature-values";
 
   export let routeSlug: string;
   export let addLabel = "";
@@ -34,20 +42,41 @@
   }> = [];
   export let errorMessage = "";
   export let reminderTrigger = "by_km";
+  /** Domain icon and one sentence for the page's empty state. */
+  // Lucide icons are still Svelte 4 class components, so accept any component.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export let emptyIcon: any = null;
+  export let emptyTitle = "";
+  /** Optional status pill per row (reminder urgency, document validity). */
+  export let rowStatus:
+    | ((row: Record<string, unknown>) => {
+        tone: StatusTone;
+        label: string;
+      } | null)
+    | null = null;
 
   const dispatch = createEventDispatcher<{
     actionSelect: string;
   }>();
 
   let formBusy = false;
-  let statusMessage = "";
-  let statusRole: "status" | "alert" = "status";
+  // Only failures stay inline; successes go to a toast, because the sheet
+  // closes on success and an inline message was easy to miss.
+  let errorStatus = "";
 
   let createSheet: RecordSheet;
   let editSheet: RecordSheet;
   let actionMenu: ActionMenu;
   let selectedRow: Record<string, unknown> | null = null;
   let editReminderTrigger = "by_km";
+
+  // Every generic record needs a bike when its motorcycle field is required;
+  // without one the form cannot be submitted, so point to the garage instead.
+  $: needsBike =
+    motorcycles.length === 0 &&
+    feature.fields.some(
+      (field) => field.source === "motorcycles" && field.required,
+    );
 
   export function openCreate() {
     createSheet?.open();
@@ -71,6 +100,7 @@
 
   function openEdit(row: Record<string, unknown>) {
     selectedRow = row;
+    errorStatus = "";
     if (routeSlug === "reminders") {
       editReminderTrigger = String(row.trigger_type ?? "by_km");
     }
@@ -132,8 +162,10 @@
     if (typeof value === "boolean")
       return value ? $t("common.yes") : $t("common.no");
     const field = feature.fields.find((candidate) => candidate.key === key);
+    const day = field?.kind === "date" ? dateOnlyValue(value) : null;
+    if (day) return formatDate($locale, day);
     if (
-      (field?.kind === "date" || field?.kind === "datetime") &&
+      field?.kind === "datetime" &&
       (typeof value === "string" || value instanceof Date) &&
       Number.isFinite(new Date(value).getTime())
     ) {
@@ -149,117 +181,106 @@
     if (key.endsWith("_millicents") && typeof value === "number") {
       return formatPreciseMoney($locale, value);
     }
-    // Fallback when field.kind is missing/mismatched: still format real dates
-    // instead of String(Date) which dumps a long locale timestamp and overflows.
-    if (value instanceof Date && Number.isFinite(value.getTime())) {
-      return formatDate($locale, value);
-    }
-    if (
-      typeof value === "string" &&
-      (/^\d{4}-\d{2}-\d{2}$/.test(value) ||
-        /^\d{4}-\d{2}-\d{2}T/.test(value)) &&
-      Number.isFinite(new Date(value).getTime())
-    ) {
-      return formatDate($locale, value);
-    }
     return String(value);
   }
 
-  /** Coerce Date/string/number for formatting; null when missing/invalid. */
-  function coerceDateInput(value: unknown): string | number | Date | null {
-    if (value instanceof Date) {
-      return Number.isFinite(value.getTime()) ? value : null;
-    }
-    if (typeof value === "string" || typeof value === "number") {
-      if (value === "") return null;
-      return Number.isFinite(new Date(value).getTime()) ? value : null;
-    }
-    return null;
+  // Number fields that hold fractions. Everything else of kind "number" is a
+  // whole count (km, days, year) and keeps the numeric keypad.
+  const DECIMAL_NUMBER_KEYS = new Set(["liters", "wear_percent"]);
+
+  function isDecimalField(field: FeatureField) {
+    return (
+      field.kind === "money" ||
+      (field.kind === "number" && DECIMAL_NUMBER_KEYS.has(field.key))
+    );
   }
 
-  function formatUpdatedAt(value: unknown): string {
-    const coerced = coerceDateInput(value);
-    if (!coerced) return $t("common.empty");
-    return formatDate($locale, coerced, {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+  function isIntegerField(field: FeatureField) {
+    return field.kind === "number" && !DECIMAL_NUMBER_KEYS.has(field.key);
+  }
+
+  // Decimals are free text so "149,90" can be typed on any keyboard; the
+  // server parses it with parseLocalizedNumber.
+  const inputType = (field: FeatureField) =>
+    field.kind === "date" ? "date" : isIntegerField(field) ? "number" : "text";
+
+  const inputMode = (field: FeatureField): "decimal" | "numeric" | undefined =>
+    isDecimalField(field)
+      ? "decimal"
+      : isIntegerField(field)
+        ? "numeric"
+        : undefined;
+
+  const decimalPlaceholder = (field: FeatureField) =>
+    field.kind === "money" ? ($locale === "en" ? "0.00" : "0,00") : undefined;
+
+  /** Edit prefill in the rider's own decimal separator. */
+  function editValue(field: FeatureField, value: unknown) {
+    const raw = editFieldValue(field.kind, field.key, value);
+    return isDecimalField(field) && $locale !== "en"
+      ? raw.replace(".", ",")
+      : raw;
   }
 
   // One dialog for the whole table rather than one per row.
   let confirmDialog: ConfirmDialog;
 
-  const enhanceWithStatus: SubmitFunction = () => {
-    formBusy = true;
-    statusMessage = "";
-    return async ({ result, update }) => {
-      formBusy = false;
-      if (result.type === "success") {
-        statusRole = "status";
-        statusMessage = $t("feature.operationComplete");
-      } else if (result.type === "failure") {
-        statusRole = "alert";
-        statusMessage = String(
-          result.data?.message ?? $t("feature.operationFailed"),
-        );
-      } else if (result.type === "error") {
-        statusRole = "alert";
-        statusMessage = $t("feature.operationFailed");
-      }
-      await update();
-    };
-  };
+  function failureMessage(
+    result: { type: string; data?: Record<string, unknown> },
+    fallback: string,
+  ) {
+    return result.type === "failure"
+      ? String(result.data?.message ?? fallback)
+      : fallback;
+  }
 
-  const enhanceCreate: SubmitFunction = () => {
-    formBusy = true;
-    statusMessage = "";
-    return async ({ result, update }) => {
-      formBusy = false;
-      if (result.type === "success") {
-        statusRole = "status";
-        statusMessage = $t("feature.operationComplete");
-        await update();
-        createSheet?.close();
-      } else {
-        if (result.type === "failure") {
-          statusRole = "alert";
-          statusMessage = String(
-            result.data?.message ?? $t("feature.operationFailed"),
-          );
-        } else if (result.type === "error") {
-          statusRole = "alert";
-          statusMessage = $t("feature.operationFailed");
+  const enhanceWithToast =
+    (successKey: MessageKey): SubmitFunction =>
+    () => {
+      formBusy = true;
+      errorStatus = "";
+      return async ({ result, update }) => {
+        formBusy = false;
+        if (result.type === "success") {
+          showToast($t(successKey));
+        } else if (result.type === "failure" || result.type === "error") {
+          errorStatus = failureMessage(result, $t("feature.operationFailed"));
         }
         await update();
-      }
+      };
     };
-  };
 
-  const enhanceUpdate: SubmitFunction = () => {
-    formBusy = true;
-    statusMessage = "";
-    return async ({ result, update }) => {
-      formBusy = false;
-      if (result.type === "success") {
-        statusRole = "status";
-        statusMessage = $t("feature.operationComplete");
-        await update();
-        editSheet?.close();
-      } else {
-        if (result.type === "failure") {
-          statusRole = "alert";
-          statusMessage = String(
-            result.data?.message ?? $t("feature.operationFailed"),
-          );
-        } else if (result.type === "error") {
-          statusRole = "alert";
-          statusMessage = $t("feature.operationFailed");
+  const enhanceSheet =
+    (
+      sheet: () => RecordSheet | undefined,
+      successKey: MessageKey,
+    ): SubmitFunction =>
+    () => {
+      formBusy = true;
+      errorStatus = "";
+      return async ({ result, update }) => {
+        formBusy = false;
+        if (result.type === "success") {
+          await update();
+          sheet()?.close();
+          showToast($t(successKey));
+          return;
+        }
+        if (result.type === "failure" || result.type === "error") {
+          errorStatus = failureMessage(result, $t("feature.operationFailed"));
         }
         await update();
-      }
+      };
     };
-  };
+
+  const enhanceCreate: SubmitFunction = enhanceSheet(
+    () => createSheet,
+    "recordsUx.saved",
+  );
+  const enhanceUpdate: SubmitFunction = enhanceSheet(
+    () => editSheet,
+    "recordsUx.changesSaved",
+  );
 
   const enhanceDelete: SubmitFunction = async ({ cancel }) => {
     const ok = await confirmDialog.ask($t("feature.confirmDelete"));
@@ -268,66 +289,47 @@
       return;
     }
     formBusy = true;
-    statusMessage = "";
+    errorStatus = "";
     return async ({ result, update }) => {
       formBusy = false;
       if (result.type === "success") {
-        statusRole = "status";
-        statusMessage = $t("feature.deleteComplete");
-      } else if (result.type === "failure") {
-        statusRole = "alert";
-        statusMessage = String(
-          result.data?.message ?? $t("feature.deleteFailed"),
-        );
+        showToast($t("feature.deleteComplete"));
       } else {
-        statusRole = "alert";
-        statusMessage = $t("feature.deleteFailed");
+        errorStatus = failureMessage(result, $t("feature.deleteFailed"));
       }
       await update();
     };
   };
 
-  const inputType = (kind: string) =>
-    kind === "date"
-      ? "date"
-      : kind === "number" || kind === "money"
-        ? "number"
-        : "text";
-
-  $: primaryColumn = feature.listColumns[0];
-  $: metaColumns = feature.listColumns.slice(1);
+  const alertClass =
+    "rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]";
 </script>
 
 <section class="grid gap-6" aria-busy={formBusy}>
-  <PageHeader
-    eyebrow={feature.slug}
-    title={feature.title}
-    description={feature.subtitle}
-  >
+  <PageHeader title={feature.title} description={feature.subtitle}>
     <svelte:fragment slot="actions">
-      <PageAction
-        label={addLabel || $t("feature.newRecord")}
-        ariaLabel={addLabel || $t("feature.newRecord")}
-        on:click={handleActionClick}
-      />
+      {#if !needsBike}
+        <PageAction
+          label={addLabel || $t("feature.newRecord")}
+          ariaLabel={addLabel || $t("feature.newRecord")}
+          on:click={handleActionClick}
+        />
+      {/if}
     </svelte:fragment>
     <svelte:fragment slot="overflow">
-      <PageOverflowMenu label={$t("authenticatedUx.moreActions")}>
-        <a
-          class="focus-ring flex items-center gap-2 rounded px-3 py-2 text-sm text-[var(--fg)] hover:bg-[var(--line)]"
-          href={resolve("/(app)/[feature]/export.csv", {
-            feature: routeSlug,
-          })}
-        >
-          <Download size={14} aria-hidden="true" />
-          {$t("common.exportCsv")}
-        </a>
-        <slot name="overflow" />
-      </PageOverflowMenu>
+      {#if rows.length > 0}
+        <PageOverflowMenu label={$t("authenticatedUx.moreActions")}>
+          <a
+            class="focus-ring flex items-center gap-2 rounded px-3 py-2 text-sm text-[var(--fg)] hover:bg-[var(--line)]"
+            href={`/${routeSlug}/export.csv`}
+          >
+            <Download size={16} aria-hidden="true" />
+            {$t("common.exportCsv")}
+          </a>
+        </PageOverflowMenu>
+      {/if}
     </svelte:fragment>
   </PageHeader>
-
-  <slot name="afterHeader" />
 
   {#if actionChoices && actionChoices.length > 0}
     <ActionMenu
@@ -346,205 +348,244 @@
 
   {#if errorMessage}
     <!-- role="alert" so a screen reader announces the failure instead of it
-         only being a red box someone has to notice. -->
-    <div
-      class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-      role="alert"
-    >
+         only being a coloured box someone has to notice. -->
+    <div class={alertClass} role="alert">
       {errorMessage}
     </div>
   {/if}
 
-  {#if statusMessage}
-    <p
-      class={statusRole === "alert"
-        ? "rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-        : "rounded border border-[var(--line)] bg-[var(--panel)] p-3 text-sm"}
-      role={statusRole}
-      aria-live={statusRole === "alert" ? "assertive" : "polite"}
-    >
-      {statusMessage}
+  {#if errorStatus && errorStatus !== errorMessage}
+    <p class={alertClass} role="alert" aria-live="assertive">
+      {errorStatus}
     </p>
   {/if}
 
-  <ActivityTimeline
-    title={$t(
-      rows.length === 1 ? "feature.recordCountOne" : "feature.recordCountOther",
-      { count: rows.length },
-    )}
-    emptyMessage={$t("feature.noRecords")}
-    items={rows}
-  >
-    <svelte:fragment slot="empty">
-      <div
-        class="mx-auto max-w-sm rounded border border-dashed border-[var(--line)] p-8"
+  {#if rows.length === 0}
+    <!-- One designed block instead of an empty table with a header row. -->
+    {#if needsBike}
+      <EmptyState icon={Motorcycle} title={$t("recordsUx.needsBike")}>
+        {#snippet action()}
+          <a class="button-primary" href="/garage">{$t("recordsUx.addBike")}</a>
+        {/snippet}
+      </EmptyState>
+    {:else}
+      <EmptyState
+        icon={emptyIcon}
+        title={emptyTitle || $t("recordsUx.recordsEmpty")}
       >
-        <p class="display text-2xl">{$t("feature.noRecords")}</p>
-        <p class="mt-2 text-sm text-[var(--muted)]">
-          {$t("feature.noRecordsHint")}
-        </p>
-        <button
-          type="button"
-          class="button-primary mt-4 min-h-11"
-          on:click={handleActionClick}
-        >
-          {$t("feature.addFirst")}
-        </button>
-      </div>
-    </svelte:fragment>
-
-    <svelte:fragment slot="item" let:item>
-      {@const row = item as Record<string, unknown>}
-      <div
-        class="flex flex-col gap-3 px-1 py-1 sm:flex-row sm:items-start sm:justify-between"
-      >
-        <div class="min-w-0 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            {#if primaryColumn}
-              {@const primaryHref = fileHref(row, primaryColumn)}
-              {#if primaryHref}
-                <a
-                  class="text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
-                  href={resolve(primaryHref as `/files/${string}`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {$t("common.openFile")}
-                </a>
-              {:else}
-                <span class="text-sm font-semibold text-[var(--fg)]">
-                  {valueFor(row, primaryColumn)}
-                </span>
-              {/if}
-            {/if}
-          </div>
-
-          {#if metaColumns.length > 0}
-            <div
-              class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--muted)]"
-            >
-              {#each metaColumns as column (column)}
-                {@const href = fileHref(row, column)}
-                <span class="inline-flex min-w-0 items-center gap-1">
-                  <span class="label-tech text-[10px] opacity-80"
-                    >{labelForColumn(column)}</span
-                  >
-                  {#if href}
-                    <a
-                      class="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                      href={resolve(href as `/files/${string}`)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {$t("common.openFile")}
-                    </a>
-                  {:else}
-                    <span class="truncate">{valueFor(row, column)}</span>
-                  {/if}
-                </span>
-              {/each}
-            </div>
-          {/if}
-
-          <p class="mt-1 text-xs text-[var(--muted)]">
-            {$t("feature.updatedAt")}:
-            {formatUpdatedAt(row.updated_at)}
-          </p>
-        </div>
-
-        <div class="flex shrink-0 flex-wrap gap-2 sm:justify-end">
-          {#if feature.slug === "reminders" || routeSlug === "reminders"}
-            <form
-              method="POST"
-              action="?/snoozeDays"
-              use:enhance={enhanceWithStatus}
-            >
-              <input type="hidden" name="id" value={String(row.id ?? "")} />
-              <input type="hidden" name="days" value="7" />
-              <button
-                class="button-secondary min-h-11 px-3 py-1 text-xs"
-                type="submit"
-                disabled={formBusy}
-              >
-                {$t("reminders.snoozeDays")}
-              </button>
-            </form>
-            <form
-              method="POST"
-              action="?/snoozeKm"
-              use:enhance={enhanceWithStatus}
-            >
-              <input type="hidden" name="id" value={String(row.id ?? "")} />
-              <input type="hidden" name="km" value="500" />
-              <button
-                class="button-secondary min-h-11 px-3 py-1 text-xs"
-                type="submit"
-                disabled={formBusy}
-              >
-                {$t("reminders.snoozeKm")}
-              </button>
-            </form>
-            <form
-              method="POST"
-              action="?/complete"
-              use:enhance={enhanceWithStatus}
-            >
-              <input
-                type="hidden"
-                name="completion_version"
-                value={String(row.completion_version ?? 0)}
-              />
-              <input type="hidden" name="id" value={String(row.id ?? "")} />
-              <button
-                class="button-primary min-h-11 px-3 py-1 text-xs"
-                type="submit"
-                disabled={formBusy}
-              >
-                {$t("reminders.complete")}
-              </button>
-            </form>
-          {/if}
-          {#if feature.slug === "documents" || routeSlug === "documents"}
-            <form
-              method="POST"
-              action="?/createReminder"
-              use:enhance={enhanceWithStatus}
-            >
-              <input type="hidden" name="id" value={String(row.id ?? "")} />
-              <button
-                class="button-secondary min-h-11 px-3 py-1 text-xs"
-                type="submit"
-                disabled={formBusy}
-              >
-                {$t("documents.createReminder")}
-              </button>
-            </form>
-          {/if}
+        {#snippet action()}
           <button
             type="button"
-            class="button-secondary min-h-11 px-3 py-1 text-xs"
-            on:click={() => openEdit(row)}
+            class="button-primary"
+            on:click={handleActionClick}
           >
-            {$t("common.edit")}
+            {addLabel || $t("feature.addFirst")}
           </button>
-          <!-- Deleting was a single unguarded click with no undo.
-               enhance awaits this callback before it fires the
-               request, so the dialog can gate the submit. -->
-          <form method="POST" action="?/record" use:enhance={enhanceDelete}>
-            <input type="hidden" name="_intent" value="delete" />
-            <input type="hidden" name="id" value={String(row.id ?? "")} />
-            <button
-              class="button-danger min-h-11 px-3 py-1 text-xs"
-              type="submit"
-              disabled={formBusy}
-            >
-              {$t("common.delete")}
-            </button>
-          </form>
-        </div>
+        {/snippet}
+      </EmptyState>
+    {/if}
+  {:else}
+    <div class="panel overflow-hidden">
+      <div
+        class="flex items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--accent-wash)] px-4 py-2.5"
+      >
+        <span class="label-tech text-[var(--muted)]"
+          >{$t(
+            rows.length === 1
+              ? "feature.recordCountOne"
+              : "feature.recordCountOther",
+            { count: rows.length },
+          )}</span
+        >
       </div>
-    </svelte:fragment>
-  </ActivityTimeline>
+      <div class="feature-table-scroll data-table overflow-x-auto">
+        <table class="feature-table w-full text-left text-sm">
+          <caption class="sr-only"
+            >{$t("feature.recordsCaption", { feature: feature.title })}</caption
+          >
+          <thead
+            class="border-b border-[var(--line)] bg-[var(--accent-wash)] text-[var(--muted)]"
+          >
+            <tr>
+              {#each feature.listColumns as column, index (column)}
+                <th class="label-tech px-4 py-3 text-left" scope="col"
+                  >{labelForColumn(column)}</th
+                >
+                {#if index === 0 && rowStatus}
+                  <th class="label-tech px-4 py-3 text-left" scope="col"
+                    >{$t("recordsUx.statusColumn")}</th
+                  >
+                {/if}
+              {/each}
+              <th class="label-tech px-4 py-3 text-left" scope="col"
+                >{$t("feature.updatedAt")}</th
+              >
+              <th class="label-tech px-4 py-3 text-left" scope="col"
+                >{$t("common.actions")}</th
+              >
+            </tr>
+          </thead>
+          <tbody>
+            {#each rows as row (row.id ?? JSON.stringify(row))}
+              {@const status = rowStatus ? rowStatus(row) : null}
+              <tr class="row-hover border-b border-[var(--line)]">
+                {#each feature.listColumns as column, index (column)}
+                  {@const href = fileHref(row, column)}
+                  <td class="px-4 py-3" data-label={labelForColumn(column)}>
+                    {#if href}
+                      <a
+                        class="font-medium text-[var(--fg)] underline underline-offset-2 hover:decoration-2"
+                        {href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {$t("common.openFile")}
+                      </a>
+                    {:else}
+                      {valueFor(row, column)}
+                    {/if}
+                  </td>
+                  {#if index === 0 && rowStatus}
+                    <td
+                      class="px-4 py-3"
+                      data-label={$t("recordsUx.statusColumn")}
+                    >
+                      {#if status}
+                        <StatusBadge tone={status.tone}
+                          >{status.label}</StatusBadge
+                        >
+                      {:else}
+                        {$t("common.empty")}
+                      {/if}
+                    </td>
+                  {/if}
+                {/each}
+                <td
+                  class="numeric px-4 py-3 text-xs text-[var(--muted)]"
+                  data-label={$t("feature.updatedAt")}
+                >
+                  {#if row.updated_at && typeof row.updated_at === "string"}
+                    {$format.date(row.updated_at, {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  {:else}
+                    {valueFor(row, "updated_at")}
+                  {/if}
+                </td>
+                <td
+                  class="feature-actions px-4 py-3"
+                  data-label={$t("common.actions")}
+                >
+                  <div class="flex flex-wrap gap-2">
+                    {#if (feature.slug === "reminders" || routeSlug === "reminders") && row.is_active !== false}
+                      <form
+                        method="POST"
+                        action="?/snoozeDays"
+                        use:enhance={enhanceWithToast(
+                          "recordsUx.reminderSnoozed",
+                        )}
+                      >
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={String(row.id ?? "")}
+                        />
+                        <input type="hidden" name="days" value="7" />
+                        <button
+                          class="button-secondary min-h-11 px-3 py-1 text-xs"
+                          type="submit"
+                          disabled={formBusy}
+                        >
+                          {$t("reminders.snoozeDays")}
+                        </button>
+                      </form>
+                      <form
+                        method="POST"
+                        action="?/snoozeKm"
+                        use:enhance={enhanceWithToast(
+                          "recordsUx.reminderSnoozed",
+                        )}
+                      >
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={String(row.id ?? "")}
+                        />
+                        <input type="hidden" name="km" value="500" />
+                        <button
+                          class="button-secondary min-h-11 px-3 py-1 text-xs"
+                          type="submit"
+                          disabled={formBusy}
+                        >
+                          {$t("reminders.snoozeKm")}
+                        </button>
+                      </form>
+                      <form
+                        method="POST"
+                        action="?/complete"
+                        use:enhance={enhanceWithToast(
+                          "recordsUx.reminderCompleted",
+                        )}
+                      >
+                        <input
+                          type="hidden"
+                          name="completion_version"
+                          value={String(row.completion_version ?? 0)}
+                        />
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={String(row.id ?? "")}
+                        />
+                        <button
+                          class="button-primary min-h-11 px-3 py-1 text-xs"
+                          type="submit"
+                          disabled={formBusy}
+                        >
+                          {$t("reminders.complete")}
+                        </button>
+                      </form>
+                    {/if}
+                    <button
+                      type="button"
+                      class="button-secondary min-h-11 px-3 py-1 text-xs"
+                      on:click={() => openEdit(row)}
+                    >
+                      {$t("common.edit")}
+                    </button>
+                    <!-- Deleting was a single unguarded click with no undo.
+                         enhance awaits this callback before it fires the
+                         request, so the dialog can gate the submit. -->
+                    <form
+                      method="POST"
+                      action="?/record"
+                      use:enhance={enhanceDelete}
+                    >
+                      <input type="hidden" name="_intent" value="delete" />
+                      <input
+                        type="hidden"
+                        name="id"
+                        value={String(row.id ?? "")}
+                      />
+                      <button
+                        class="button-danger min-h-11 px-3 py-1 text-xs"
+                        type="submit"
+                        disabled={formBusy}
+                      >
+                        {$t("common.delete")}
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {/if}
 
   <RecordSheet
     bind:this={createSheet}
@@ -561,12 +602,9 @@
     >
       <input type="hidden" name="_intent" value="create" />
 
-      {#if statusMessage && statusRole === "alert"}
-        <p
-          class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-          role="alert"
-        >
-          {statusMessage}
+      {#if errorStatus}
+        <p class={alertClass} role="alert">
+          {errorStatus}
         </p>
       {/if}
 
@@ -576,7 +614,7 @@
             <label class="field-label" for={`new-${field.key}`}>
               {featureCopy($locale, field.label)}
               {#if field.required}<span
-                  class="text-[var(--accent)]"
+                  class="text-[var(--muted)]"
                   aria-hidden="true">*</span
                 >{/if}
             </label>
@@ -660,8 +698,11 @@
                 class="field"
                 id={`new-${field.key}`}
                 name={field.key}
-                type={inputType(field.kind)}
-                step={field.kind === "money" ? "0.01" : "any"}
+                type={inputType(field)}
+                inputmode={inputMode(field)}
+                autocomplete={isDecimalField(field) ? "off" : undefined}
+                placeholder={decimalPlaceholder(field)}
+                min={isIntegerField(field) ? 0 : undefined}
                 required={field.required}
                 aria-describedby={field.help
                   ? `new-${field.key}-help`
@@ -686,7 +727,7 @@
         >
           {$t("authenticatedUx.close") || "Fechar"}
         </button>
-        <button class="button-accent" type="submit" disabled={formBusy}>
+        <button class="button-primary" type="submit" disabled={formBusy}>
           {$t("common.save")}
         </button>
       </div>
@@ -710,12 +751,9 @@
           <input type="hidden" name="_intent" value="update" />
           <input type="hidden" name="id" value={String(selectedRow.id ?? "")} />
 
-          {#if statusMessage && statusRole === "alert"}
-            <p
-              class="rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-              role="alert"
-            >
-              {statusMessage}
+          {#if errorStatus}
+            <p class={alertClass} role="alert">
+              {errorStatus}
             </p>
           {/if}
 
@@ -725,7 +763,7 @@
                 <label class="field-label" for={`edit-${field.key}`}>
                   {featureCopy($locale, field.label)}
                   {#if field.required}<span
-                      class="text-[var(--accent)]"
+                      class="text-[var(--muted)]"
                       aria-hidden="true">*</span
                     >{/if}
                 </label>
@@ -806,9 +844,12 @@
                     class="field"
                     id={`edit-${field.key}`}
                     name={field.key}
-                    value={String(selectedRow[field.key] ?? "")}
-                    type={inputType(field.kind)}
-                    step={field.kind === "money" ? "0.01" : "any"}
+                    value={editValue(field, selectedRow[field.key])}
+                    type={inputType(field)}
+                    inputmode={inputMode(field)}
+                    autocomplete={isDecimalField(field) ? "off" : undefined}
+                    placeholder={decimalPlaceholder(field)}
+                    min={isIntegerField(field) ? 0 : undefined}
                     required={field.required}
                     aria-describedby={field.help
                       ? `edit-${field.key}-help`
@@ -832,7 +873,7 @@
             >
               {$t("authenticatedUx.close") || "Fechar"}
             </button>
-            <button class="button-accent" type="submit" disabled={formBusy}>
+            <button class="button-primary" type="submit" disabled={formBusy}>
               {$t("common.saveChanges")}
             </button>
           </div>
@@ -841,3 +882,107 @@
     {/if}
   </RecordSheet>
 </section>
+
+<style>
+  .row-hover {
+    transition: background 0.15s ease;
+  }
+
+  .row-hover:hover {
+    background: var(--accent-wash);
+  }
+
+  /* At phone/tablet widths, a 760px table hides the action column behind an
+     invisible horizontal canvas. Keep the semantic table, but let each row
+     become a labelled card until the wide desktop layout has room for every
+     column. Below 640px the global .data-table rules take the same shape. */
+  @media (max-width: 1279px) {
+    .feature-table-scroll {
+      overflow-x: visible;
+    }
+
+    .feature-table {
+      min-width: 0;
+      border-collapse: separate;
+      border-spacing: 0 0.75rem;
+    }
+
+    .feature-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .feature-table tbody {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .feature-table tbody tr {
+      display: block;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+    }
+
+    .feature-table tbody tr td {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      min-width: 0;
+      border-bottom: 1px solid var(--line);
+      padding: 0.75rem 1rem;
+      text-align: left;
+    }
+
+    .feature-table tbody tr td::before {
+      flex: 0 0 36%;
+      min-width: 0;
+      color: var(--muted);
+      content: attr(data-label);
+      font-family: var(--font-sans);
+      font-stretch: 100%;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      line-height: 1.3;
+    }
+
+    .feature-table tbody tr td > * {
+      min-width: 0;
+      max-width: 64%;
+      overflow-wrap: anywhere;
+    }
+
+    .feature-table tbody tr td:last-child {
+      border-bottom: 0;
+    }
+
+    .feature-table tbody tr td.feature-actions {
+      display: block;
+    }
+
+    .feature-table tbody tr td.feature-actions::before {
+      display: block;
+      margin-bottom: 0.65rem;
+    }
+
+    .feature-table tbody tr td.feature-actions > div {
+      max-width: none;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .feature-table {
+      min-width: 760px;
+    }
+  }
+</style>

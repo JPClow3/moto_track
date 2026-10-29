@@ -468,6 +468,45 @@ describe("Dodo checkout identity and provider lifecycle", () => {
       expect(mocks.checkoutCreate).not.toHaveBeenCalled();
     },
   );
+  it.each(["product", "history"])(
+    "allows retry after a %s lookup fails before creating a payable session",
+    async (failure) => {
+      const db = database();
+      if (failure === "product")
+        mocks.productRetrieve.mockRejectedValueOnce(
+          new Error("provider unavailable"),
+        );
+      else
+        mocks.subscriptionList
+          .mockImplementationOnce(() => iterate([]))
+          .mockImplementationOnce(() =>
+            (async function* () {
+              yield* iterate([]);
+              throw new Error("history unavailable");
+            })(),
+          );
+      await expect(GET(request(db.db))).rejects.toMatchObject({
+        location: "/precos?checkout=error",
+      });
+      expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+      expect(db.state.profile?.billing_checkout_session_id).toBe("");
+      await expect(GET(request(db.db))).rejects.toMatchObject({
+        location: "https://checkout.dodopayments.com/session/cks_owner",
+      });
+      expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("releases an unused intent if an open subscription appears during preflight", async () => {
+    const db = database();
+    mocks.subscriptionList
+      .mockImplementationOnce(() => iterate([]))
+      .mockImplementationOnce(() => iterate([ownSubscription("sub_existing")]));
+    await expect(GET(request(db.db))).rejects.toMatchObject({
+      location: "/billing/portal",
+    });
+    expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+    expect(db.state.profile?.billing_checkout_session_id).toBe("");
+  });
   it("retains an ambiguous session creation intent and never blindly retries CREATE", async () => {
     const db = database();
     mocks.checkoutCreate.mockRejectedValue(new Error("response lost"));

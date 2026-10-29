@@ -3,6 +3,10 @@ import type { RequestHandler } from "./$types";
 const PUBLIC_PATHS = [
   "/",
   "/precos",
+  "/demo",
+  "/instalar",
+  "/suporte",
+  "/midia",
   "/blog",
   "/roadmap",
   "/termos",

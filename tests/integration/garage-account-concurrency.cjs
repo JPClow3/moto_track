@@ -269,18 +269,13 @@ async function verifyProfileOperation(db, ids, membershipId, kind) {
 async function main() {
   assert.equal(
     process.env.CORE_TEST_BRANCH,
-    "br-twilight-hat-ac2ujtl1",
+    "br-dawn-glitter-ac0vy5bm",
     "Explicit disposable branch opt-in required",
-  );
-  assert.notEqual(
-    process.env.CORE_TEST_BRANCH,
-    "br-lingering-darkness-acnan3z2",
-    "Refusing production branch",
   );
   const connection = process.env.DATABASE_URL_UNPOOLED;
   assert.equal(
     new URL(connection).hostname,
-    "ep-cold-paper-acyays6k.sa-east-1.aws.neon.tech",
+    "ep-aged-haze-achz0xp9.sa-east-1.aws.neon.tech",
     "Unexpected database endpoint",
   );
   const db = postgres(connection, { ssl: "require", prepare: false, max: 4 });

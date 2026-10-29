@@ -2,11 +2,12 @@
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { t } from "$lib/i18n/store";
-  let { motorcycleId, currentKm }: { motorcycleId: string; currentKm: number } =
-    $props();
-  let busy = $state(false);
-  let reading = $state<number | null>(null);
-  let message = $state("");
+  import { showToast } from "$components/ui/toast";
+  export let motorcycleId: string;
+  export let currentKm: number;
+  let busy = false;
+  let reading: number | null = null;
+  let message = "";
   const scan: SubmitFunction = () => {
     busy = true;
     reading = null;
@@ -30,7 +31,7 @@
       busy = false;
       if (result.type === "success") {
         reading = null;
-        message = $t("common.actionSuccess");
+        showToast($t("common.actionSuccess"));
       } else
         message =
           result.type === "failure"
@@ -41,16 +42,13 @@
   };
 </script>
 
-<section
-  class="mt-3 grid gap-3 rounded border border-[var(--line)] p-3"
-  aria-labelledby={`odometer-scan-${motorcycleId}`}
->
-  <h3 class="text-sm font-semibold" id={`odometer-scan-${motorcycleId}`}>
-    {$t("odometerScan.heading")}
-  </h3>
-  <p class="text-xs text-[var(--muted)]">{$t("odometerScan.help")}</p>
+<details class="mt-3 rounded border border-[var(--line)] p-3">
+  <summary class="cursor-pointer text-sm font-semibold"
+    >{$t("odometerScan.heading")}</summary
+  >
+  <p class="mt-3 text-xs text-[var(--muted)]">{$t("odometerScan.help")}</p>
   <form
-    class="grid gap-3"
+    class="mt-3 grid gap-3"
     method="POST"
     action="?/scanOdometer"
     enctype="multipart/form-data"
@@ -75,7 +73,7 @@
   </form>
   {#if reading !== null}
     <form
-      class="grid gap-3"
+      class="mt-3 grid gap-3"
       method="POST"
       action="?/updateOdometer"
       use:enhance={save}
@@ -87,6 +85,7 @@
           class="field"
           id={`odometer-reading-${motorcycleId}`}
           type="number"
+          inputmode="numeric"
           name="odometer_override_km"
           min="0"
           max="2147483647"
@@ -95,7 +94,10 @@
           required
         />
       </label>
-      {#if reading < currentKm}<p class="text-xs text-danger">
+      {#if reading < currentKm}<p
+          class="text-xs text-[var(--warning)]"
+          role="status"
+        >
           {$t("odometerScan.lower")}
         </p>{/if}
       <button class="button-primary min-h-11" type="submit" disabled={busy}
@@ -103,7 +105,7 @@
       >
     </form>
   {/if}
-  {#if message}<p class="text-sm" role="status" aria-live="polite">
+  {#if message}<p class="mt-3 text-sm text-[var(--danger)]" role="alert">
       {message}
     </p>{/if}
-</section>
+</details>

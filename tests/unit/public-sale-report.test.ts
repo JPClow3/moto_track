@@ -183,6 +183,28 @@ describe("public sale report loader", () => {
       c.sql.includes("update sale_report_shares"),
     );
     expect(update).toBeDefined();
-    expect(update?.values).toContain(5);
+    // Incremented in SQL so concurrent views cannot overwrite each other.
+    expect(update?.sql).toContain("access_count = access_count + 1");
+    expect(update?.values).not.toContain(5);
+  });
+
+  it("sends service dates as calendar days, not midnight-UTC Date strings", async () => {
+    resolveCall = (call) =>
+      call.sql.includes("order by date desc")
+        ? [
+            {
+              date: new Date("2025-03-02T00:00:00.000Z"),
+              maintenance_type: "Troca de óleo",
+              odometer_km: 30000,
+              description: "",
+              cost_cents: 0,
+            },
+          ]
+        : call.sql.includes("from sale_report_shares")
+          ? [{ ...shareRow, expires_at: new Date("2030-01-01T00:00:00Z") }]
+          : defaultResolver(call);
+    const { report } = await loadReport();
+    expect(report.timeline[0].date).toBe("2025-03-02");
+    expect(report.expiresAt).toBe("2030-01-01T00:00:00.000Z");
   });
 });

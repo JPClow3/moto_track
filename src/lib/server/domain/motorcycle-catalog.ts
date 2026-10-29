@@ -6,6 +6,7 @@ import {
 } from "$server/domain/maintenance-forecast";
 import { nextScheduleMilestone } from "$server/domain/maintenance-schedule";
 
+import { appToday } from "../../utils/calendar-day";
 export type MotorcycleTemplate = {
   id: string;
   brand: string;
@@ -207,7 +208,7 @@ export function dueStateForPlan({
   currentKm,
   lastDoneDate,
   intervalDays,
-  today = new Date().toISOString().slice(0, 10),
+  today = appToday(),
   scheduleMilestones,
   recurrenceKm,
   recurrenceMonths,

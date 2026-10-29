@@ -1,39 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { seedLocalFuelDrafts } from "./helpers/offline-queue";
-
-/** First visit can finish install/activate after load; claim may need a reload. */
-async function ensureServiceWorkerControls(page: Page) {
-  await expect
-    .poll(
-      () =>
-        page.evaluate(async () => {
-          if (!("serviceWorker" in navigator)) return false;
-          await navigator.serviceWorker.ready;
-          return Boolean(
-            navigator.serviceWorker.controller ||
-            (await navigator.serviceWorker.getRegistration("/"))?.active,
-          );
-        }),
-      { timeout: 20_000 },
-    )
-    .toBe(true);
-
-  const controlled = await page.evaluate(() =>
-    Boolean(navigator.serviceWorker.controller),
-  );
-  if (!controlled) {
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
-  }
-
-  await expect
-    .poll(
-      () => page.evaluate(() => Boolean(navigator.serviceWorker.controller)),
-      { timeout: 20_000 },
-    )
-    .toBe(true);
-}
 
 test("registers the Moto Track service worker", async ({ page }) => {
   await page.goto("/");
@@ -74,7 +41,6 @@ test("cold offline recovery exports and discards local drafts without account da
 }) => {
   await page.goto("/precos");
   await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
-  await ensureServiceWorkerControls(page);
   await page.locator("#locale-select").selectOption("en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
@@ -82,18 +48,24 @@ test("cold offline recovery exports and discards local drafts without account da
     .poll(
       () =>
         page.evaluate(async () => {
-          const cache = await caches.open("moto-track-offline-v2");
+          const cache = await caches.open("moto-track-offline-v3");
           const locale = await cache.match("/__moto-track-offline-locale__");
           // An object, so a failure names the condition that never held.
+          // The offline navigation below needs an activated worker, not a
+          // controlled page: a first-visit locale POST can land between the
+          // worker's clients.claim() and the new document, leaving it
+          // uncontrolled until the next navigation.
+          const registration =
+            await navigator.serviceWorker.getRegistration("/");
           return {
-            controlled: Boolean(navigator.serviceWorker.controller),
+            activated: registration?.active?.state === "activated",
             locale: locale ? await locale.text() : null,
             drafts: Boolean(await cache.match("/offline-drafts.js")),
           };
         }),
       { timeout: 20_000 },
     )
-    .toEqual({ controlled: true, locale: "en", drafts: true });
+    .toEqual({ activated: true, locale: "en", drafts: true });
   const id = "f03ec98b-6c67-45f9-8fbb-e95857c3d01c";
   const note = '<img src=x onerror="window.unsafeDraft=true">';
   await seedLocalFuelDrafts(page, [
@@ -153,6 +125,12 @@ test("serves a standalone Moto Track manifest", async ({ request }) => {
         sizes: "512x512",
         type: "image/png",
       },
+      {
+        src: "/brand/web/maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
     ],
   });
 });
@@ -167,12 +145,12 @@ test("pre-caches an offline fallback for a previously unavailable connection", a
       () =>
         page.evaluate(async () => {
           const keys = await caches.keys();
-          const cache = await caches.open("moto-track-offline-v2");
+          const cache = await caches.open("moto-track-offline-v3");
           const pt = await cache.match("/offline-pt-BR.html");
           const en = await cache.match("/offline-en.html");
           const ssr = await cache.match("/offline");
           return (
-            keys.includes("moto-track-offline-v2") && Boolean(pt && en) && !ssr
+            keys.includes("moto-track-offline-v3") && Boolean(pt && en) && !ssr
           );
         }),
       { timeout: 20_000 },
@@ -186,23 +164,24 @@ test("uses the explicit English preference for a standalone offline fallback wit
 }) => {
   await page.goto("/precos");
   await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
-  await ensureServiceWorkerControls(page);
   await page.locator("#locale-select").selectOption("en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect
     .poll(
       () =>
         page.evaluate(async () => {
-          const cache = await caches.open("moto-track-offline-v2");
+          const cache = await caches.open("moto-track-offline-v3");
           const saved = await cache.match("/__moto-track-offline-locale__");
+          const registration =
+            await navigator.serviceWorker.getRegistration("/");
           return {
-            controlled: Boolean(navigator.serviceWorker.controller),
+            activated: registration?.active?.state === "activated",
             locale: saved ? await saved.text() : null,
           };
         }),
       { timeout: 20_000 },
     )
-    .toEqual({ controlled: true, locale: "en" });
+    .toEqual({ activated: true, locale: "en" });
   await context.setOffline(true);
   try {
     await page.goto("/dashboard?offline-acceptance=1");

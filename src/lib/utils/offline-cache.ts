@@ -1,5 +1,5 @@
 /** Shared by the service worker script and pages that write to its cache. */
-export const OFFLINE_CACHE = "moto-track-offline-v2";
+export const OFFLINE_CACHE = "moto-track-offline-v3";
 export const OFFLINE_LOCALE_KEY = "/__moto-track-offline-locale__";
 
 /**

@@ -22,6 +22,7 @@ import { validDate } from "$server/domain/maintenance-forecast";
 import { isoDateValue } from "$server/domain/date-value";
 import { lockObjectOwner } from "$server/db/owner-lock";
 
+import { latestCalendarDay } from "$lib/utils/calendar-day";
 type Row = Record<string, unknown>;
 type TemplateDocument = {
   template_id: string;
@@ -108,6 +109,9 @@ export async function load({ locals, platform }) {
     loadError = true;
   };
   const [motorcycles, profileRows, models] = await Promise.all([
+    // Deliberately no `deleted_at is null`: archiving soft-deletes the row
+    // (see `archiveMotorcycle`), and this list is the only place an archived
+    // motorcycle can be restored from.
     rowsOrEmpty(
       locals.db<Row[]>`
         select * from motorcycles
@@ -398,7 +402,7 @@ export const actions = localizedActions({
       !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
         motorcycleId,
       ) ||
-      (raw && (!date || date > new Date().toISOString().slice(0, 10)))
+      (raw && (!date || date > latestCalendarDay()))
     ) {
       return fail(400, {
         message: createTranslator(locals.locale)("garage.invalidServiceStart"),

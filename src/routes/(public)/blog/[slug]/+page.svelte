@@ -2,7 +2,10 @@
   import { publicCopy } from "$lib/i18n/public-copy";
   import { enhance } from "$app/forms";
   import { page } from "$app/stores";
-  import { ArrowLeft, ArrowRight, Clock, MessageSquare } from "lucide-svelte";
+  import ArrowLeft from "lucide-svelte/icons/arrow-left";
+  import ArrowRight from "lucide-svelte/icons/arrow-right";
+  import Clock from "lucide-svelte/icons/clock";
+  import MessageSquare from "lucide-svelte/icons/message-square";
   import Markdown from "$components/Markdown.svelte";
   import { locale } from "$lib/i18n/store";
   import { formatDate } from "$lib/i18n";
@@ -45,12 +48,12 @@
   <div class="grid-backdrop" aria-hidden="true"></div>
   <div class="accent-glow header-glow" aria-hidden="true"></div>
 
-  <div class="relative mx-auto max-w-3xl px-6 py-14 sm:py-16">
+  <div class="relative mx-auto max-w-3xl px-4 py-14 sm:px-6 sm:py-16">
     <a
-      class="focus-ring label-tech inline-flex min-h-11 items-center gap-2 rounded text-[var(--muted)] transition-colors hover:text-[var(--accent)]"
+      class="focus-ring label-tech inline-flex min-h-11 items-center gap-2 rounded text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
       href="/blog"
     >
-      <ArrowLeft class="h-3.5 w-3.5" />
+      <ArrowLeft size={16} aria-hidden="true" />
       {publicCopy($locale, "Todos os guias")}
     </a>
 
@@ -70,14 +73,14 @@
       <span
         class="label-tech inline-flex items-center gap-1.5 text-[var(--muted)]"
       >
-        <Clock class="h-3 w-3" />
+        <Clock size={16} aria-hidden="true" />
         {article.reading_minutes}
         {publicCopy($locale, "min de leitura")}
       </span>
       <span
         class="label-tech inline-flex items-center gap-1.5 text-[var(--muted)]"
       >
-        <MessageSquare class="h-3 w-3" />
+        <MessageSquare size={16} aria-hidden="true" />
         {data.comments.length}
         {data.comments.length === 1
           ? publicCopy($locale, "comentário")
@@ -88,7 +91,7 @@
 </section>
 
 <!-- ── BODY ────────────────────────────────────────────────── -->
-<article class="mx-auto max-w-3xl px-6 py-12">
+<article class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
   {#if $locale === "en"}<p class="mb-6 text-sm text-[var(--muted)]">
       {publicCopy(
         $locale,
@@ -99,7 +102,7 @@
 </article>
 
 <!-- ── REACTIONS ───────────────────────────────────────────── -->
-<section class="mx-auto max-w-3xl px-6">
+<section class="mx-auto max-w-3xl px-4 sm:px-6">
   <div
     class="flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-8"
   >
@@ -121,9 +124,9 @@
 </section>
 
 <!-- ── CTA ─────────────────────────────────────────────────── -->
-<section class="mx-auto max-w-3xl px-6 pt-12">
+<section class="mx-auto max-w-3xl px-4 pt-12 sm:px-6">
   <div
-    class="relative overflow-hidden rounded-panel bg-[var(--panel-invert)] p-8 text-paper"
+    class="relative overflow-hidden rounded-panel bg-[var(--panel-invert)] p-6 text-paper sm:p-8"
   >
     <div class="corner-slashes" aria-hidden="true"></div>
     <div class="relative sm:flex sm:items-center sm:justify-between sm:gap-8">
@@ -131,7 +134,7 @@
         <h2 class="display text-3xl">
           {publicCopy($locale, "Registre essa manutenção")}
         </h2>
-        <p class="mt-2.5 max-w-md text-sm text-paper/60">
+        <p class="mt-2.5 max-w-md text-sm text-paper/70">
           {publicCopy(
             $locale,
             "Anote a troca no Moto Track e receba o lembrete do próximo intervalo automaticamente — por km rodado ou por data.",
@@ -140,14 +143,14 @@
       </div>
       <a class="button-accent mt-6 shrink-0 px-6 py-3 sm:mt-0" href="/auth">
         {publicCopy($locale, "Começar de graça")}
-        <ArrowRight class="h-4 w-4" />
+        <ArrowRight size={20} aria-hidden="true" />
       </a>
     </div>
   </div>
 </section>
 
 <!-- ── COMMENTS ────────────────────────────────────────────── -->
-<section class="mx-auto max-w-3xl px-6 py-12">
+<section class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
   <p class="eyebrow">
     <span class="slash-rule" aria-hidden="true"></span>
     {publicCopy($locale, "Comentários")}
@@ -158,7 +161,8 @@
 
   {#if form?.message}
     <p
-      class="mt-5 rounded border border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--accent)]"
+      class="mt-5 rounded border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
+      role="alert"
     >
       {form.message}
     </p>
@@ -170,7 +174,7 @@
     use:enhance
     class="panel mt-6 grid gap-3 p-5"
   >
-    <label class="label-tech text-[var(--muted)]" for="comment-body"
+    <label class="field-label" for="comment-body"
       >{publicCopy($locale, "Seu comentário")}</label
     >
     <textarea
@@ -192,7 +196,7 @@
       <article class="panel p-5">
         <div class="flex items-center gap-3">
           <span
-            class="display grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--accent-soft)] text-sm text-[var(--accent)]"
+            class="display grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--line)] text-sm text-[var(--fg)]"
             aria-hidden="true"
           >
             {comment.author.slice(0, 1).toUpperCase()}
@@ -223,7 +227,7 @@
 
 <!-- ── RELATED ─────────────────────────────────────────────── -->
 {#if data.related.length}
-  <section class="border-t border-[var(--line)] px-6 py-14">
+  <section class="border-t border-[var(--line)] px-4 py-14 sm:px-6">
     <div class="mx-auto max-w-6xl">
       <p class="eyebrow">
         <span class="slash-rule" aria-hidden="true"></span>
@@ -237,11 +241,11 @@
       >
         {#each data.related as item (item.slug)}
           <a
-            class="card group flex flex-col bg-[var(--bg)] p-6"
+            class="card focus-ring group flex flex-col bg-[var(--bg)] p-6"
             href={`/blog/${item.slug}`}
           >
             <h3
-              class="display text-xl transition-colors group-hover:text-[var(--accent)]"
+              class="display text-xl decoration-2 underline-offset-4 group-hover:underline"
             >
               {publicCopy($locale, item.title)}
             </h3>
@@ -251,11 +255,12 @@
               {item.summary}
             </p>
             <span
-              class="label-tech mt-5 inline-flex items-center gap-2 text-[var(--accent)]"
+              class="label-tech mt-5 inline-flex items-center gap-2 text-[var(--fg)]"
             >
               {publicCopy($locale, "Ler")}
               <ArrowRight
-                class="h-3.5 w-3.5 transition-transform group-hover:translate-x-1"
+                size={16}
+                class="transition-transform group-hover:translate-x-1"
               />
             </span>
           </a>

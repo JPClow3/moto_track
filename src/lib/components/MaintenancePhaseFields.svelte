@@ -15,8 +15,8 @@
 </script>
 
 {#if showPlanSelector}
-  <label class="grid gap-1 text-sm">
-    {$t("maintenance.optionalPlan")}
+  <label class="field-group">
+    <span class="field-label">{$t("maintenance.optionalPlan")}</span>
     <select
       class="field"
       name="maintenance_plan_item_id"
@@ -36,14 +36,16 @@
 {/if}
 {#if selectedPlan?.is_relative_replacement}
   <input type="hidden" name={fieldName} value={completedMilestone ?? ""} />
-  <p class="text-xs text-[var(--muted)]">
+  <p class="text-sm text-[var(--muted)]">
     {$t("maintenance.relativeReplacementDate")}
   </p>
 {:else if selectedPlan?.is_phased_schedule}
-  <label class="grid gap-1 text-sm">
-    {allowZero
-      ? $t("maintenance.baselineServiceOccurrence")
-      : $t("maintenance.completedReviewNumber")}
+  <label class="field-group">
+    <span class="field-label"
+      >{allowZero
+        ? $t("maintenance.baselineServiceOccurrence")
+        : $t("maintenance.completedReviewNumber")}</span
+    >
     <select
       class="field"
       name={fieldName}
@@ -74,7 +76,7 @@
         </option>
       {/each}
     </select>
-    <span class="text-xs text-[var(--muted)]">
+    <span class="field-help">
       {$t("maintenance.completedReviewHelp")}
     </span>
   </label>

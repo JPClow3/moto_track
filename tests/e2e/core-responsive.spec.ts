@@ -55,14 +55,14 @@ test.describe("app shell responsive foundation", () => {
     }
   });
 
-  test("mobile drawer traps focus and restores it on Escape", async ({
+  test("mobile Mais sheet traps focus and restores it on Escape", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 320, height: 900 });
     await gotoAppRoute(page, "/garage");
     expect(page.url()).not.toContain("/onboarding");
 
-    const menuButton = page.getByRole("button", { name: "Abrir menu" });
+    const menuButton = page.getByRole("button", { name: "Mais", exact: true });
     await menuButton.click();
     const drawer = page.locator("#app-mobile-nav");
     await expect(drawer).toBeVisible();

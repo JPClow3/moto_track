@@ -62,6 +62,37 @@ export async function openDisposableDb() {
   }
 }
 
+/**
+ * Put back bikes a spec deactivated to free the one active slot.
+ * A single UPDATE of several rows trips the Free-plan trigger (it counts
+ * other active rows per row and aborts the whole statement). Stray actives
+ * left by a late create are cleared first, then only the first reserved bike
+ * is reactivated while the account is still under the cap.
+ */
+export async function restoreActiveMotorcycles(
+  sql: postgres.Sql | postgres.TransactionSql,
+  ownerId: string,
+  ids: string[],
+) {
+  if (!ids.length) return;
+  await sql`
+    update motorcycles set is_active = false
+    where owner_id = ${ownerId} and is_active = true and deleted_at is null
+      and id not in ${sql(ids)}
+  `;
+  for (const id of ids) {
+    const [count] = await sql<Array<{ n: number }>>`
+      select count(*)::int as n from motorcycles
+      where owner_id = ${ownerId} and is_active = true and deleted_at is null
+    `;
+    if (Number(count.n) >= 1) return;
+    await sql`
+      update motorcycles set is_active = true
+      where owner_id = ${ownerId} and id = ${id} and deleted_at is null
+    `;
+  }
+}
+
 /** Counts only, so CI logs can explain Free-cap failures without account data. */
 export async function motorcycleSlots(
   sql: ReturnType<typeof postgres>,

@@ -18,6 +18,7 @@ import {
   summarizeWorkerTasks,
 } from "./run-history";
 
+import { appToday } from "../../src/lib/utils/calendar-day";
 export interface Env {
   HYPERDRIVE: Hyperdrive;
   R2_BUCKET: R2Bucket;
@@ -176,7 +177,7 @@ export async function processReminders(env: Env) {
   });
 
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = appToday();
     // Single owner-scoped join replaces the old two-step Supabase reads
     // (reminders + profiles embed); is_active already scopes to live reminders.
     const rows = await sql<ReminderRow[]>`

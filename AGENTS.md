@@ -2,6 +2,8 @@
 
 Use this file for agent-specific repo workflows. Keep broader product and frontend conventions in [`README.md`](README.md).
 
+UI work follows [`docs/design-system.md`](docs/design-system.md): colour roles (red only for overdue/critical and marketing CTAs), Archivo type rules, domain icons and the shared `$components/ui` primitives.
+
 ## Validation Commands
 
 - **Type Checking**:

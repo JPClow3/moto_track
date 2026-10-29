@@ -31,8 +31,15 @@ export default ts.config(
   },
   {
     ignores: [
+      ".env.*",
+      "native/**/bin/",
+      "native/**/obj/",
+      "native/**/build/",
+      "native/packages/",
       "build/",
       ".svelte-kit/",
+      // Agent worktrees are full checkouts with their own generated types.
+      ".claude/",
       ".wrangler/",
       "coverage/",
       "dist/",

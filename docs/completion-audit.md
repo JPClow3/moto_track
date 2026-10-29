@@ -22,30 +22,9 @@ acceptance are separate evidence layers. This audit does not mark the goal done.
 | English                            | Public/app/auth/admin/legal/export copy, locale negotiation, saved notification language                                                 | Final translation tests and browser journeys; branch QA only                                                |
 | Offline fuel queue                 | Fixing authentication redirects, explicit server acknowledgement, stable retry IDs and account binding                                   | Regression and browser acceptance pending                                                                   |
 
-## Browser acceptance status (2026-10-27, America/Sao_Paulo)
-
-Disposable Neon Auth e2e on `release-verify-20261027` / PR #47 proved:
-
-| Capability                 | Browser evidence                                                       |
-| -------------------------- | ---------------------------------------------------------------------- |
-| Ownership cost per km      | completion-flows acquisition save + reload                             |
-| Calendar reminders         | create private feed, anonymous GET, revoke, `.ics` download            |
-| Nearby fuel                | feature-acceptance same-grade/premium/stale filtering                  |
-| Odometer OCR confirm       | preview does not write until confirm (provider mocked at boundary)     |
-| Manual-source transparency | staff source versions / item counts                                    |
-| Shared garages             | invite/revoke/accept/workshop role enforcement                         |
-| Workshop labor comparison  | five-account unlock, equal weight, withdrawal                          |
-| Phased maintenance         | exact model-year occurrence persistence                                |
-| Tire wear observations     | remaining distance + confirmed reset                                   |
-| Offline fuel queue         | durable ACK, no resurrection, expired-auth drafts                      |
-| English / locale           | public locale suite 5/5                                                |
-| Responsive shell           | core + data routes within viewport at 320–1280px after date-format fix |
-
-Still not browser-proven against **production providers**: live Mistral OCR, Dodo paid renewal, R2 ownership with real bucket, VAPID push delivery.
-
 ## Remaining roadmap scope
 
-- Keep disposable browser acceptance green as the app changes.
+- Finish integrated browser acceptance of the implementations listed above.
 - Expand exact, year-specific schedules only where primary manufacturer evidence
   supports applicability. Four new Dafra model-years are automatic; contradictory
   or incompletely mapped official documents remain visibly advisory.
@@ -82,19 +61,6 @@ partner credentials and a supported purchasing/quoting contract remain pending.
   subscription/revocation, acquisition-basis persistence and the core responsive
   matrix. Mobile and desktop screenshots of shared-garage and tire pages were
   inspected. These checks predate the final atomic-write source snapshot.
-- On 2026-10-27 (America/Sao_Paulo), disposable-auth e2e against
-  `release-verify-20261027` on `cursor/release-finish-gaps-5937` (PR #47):
-  - completion-flows + feature-acceptance **7/7** (calendar create/revoke/ICS,
-    ownership cost, Free-slot concurrency, nearby fuel, OCR confirm-before-write,
-    staff sources)
-  - tire life, shared garage, maintenance phase, offline fuel, workshop **8/8**
-  - public project **15/15** (locale, responsive, PWA, smoke)
-    Calendar create/download now live in an always-visible reminders secondary
-    section; PageOverflowMenu stays mounted and stops trigger-click close races.
-- 320px overflow on `/dashboard` and `/fuel` fixed by formatting activity/list
-  Date values (no raw GMT dumps) plus AppShell `min-w-0` / `overflow-x-hidden`.
-  core-responsive + data-responsive viewport suites passed after the fix.
-
 - Frozen product snapshot on Node 22.23.4: lint and format checks passed,
   all 701 unit tests passed in 90 files, and the Cloudflare build passed.
   One E2E-only TypeScript narrowing fix and the final browser suites remain
@@ -126,46 +92,13 @@ partner credentials and a supported purchasing/quoting contract remain pending.
   operational recovery and the deployment runbook remain release requirements;
   local mocks or a zero-value trial do not prove provider acceptance.
 
-## Production migrate lag (read-only, 2026-10-27 America/Sao_Paulo)
-
-Neon project `misty-meadow-08424188`:
-
-- **production** (`br-lingering-darkness-acnan3z2`): 21 migrations applied; last is
-  `20260929123000_enforce_billing_environment.sql`.
-- **release-verify-20261027** (`br-twilight-hat-ac2ujtl1`): 36 migrations applied
-  through `20261023220000_maintenance_first_replacement_deadline.sql`.
-
-**15 migrations are pending on production** (all `20261023*` files). They were
-verified on the disposable branch only. This work does **not** apply them to
-production without an explicit operator decision.
-
-Cloudflare Pages project `moto-track` still shares production Hyperdrive
-`173c6f16dc3445cdb982cd84dbcb9b23` and R2 bucket `moto-track-media` with
-preview. Preview env var names omit several production secrets (Mistral, Dodo
-API key, VAPID private, push encryption), but shared Hyperdrive/R2 alone means
-unisolated previews remain unsafe for acceptance — keep `[CF-Pages-Skip]`.
-
-## Release blockers (explicit)
-
-These remain open and prevent declaring the product release-ready:
-
-1. **Production Neon migrate + Pages/Workers deploy** — disposable branch only; production schema/deploy unverified.
-2. **Provider acceptance** — local env has no `MISTRAL_*`, `DODO_*`, `R2_*`, or `VAPID_*` values; `PRODUCTION_PROVIDER_SMOKE` cannot run here. Shared Pages previews still point at production bindings, so tip commits keep `[CF-Pages-Skip]`.
-3. **Mercado Livre / insurer partner credentials** — owner confirmed unavailable (2026-10-23); OAuth transport alone is not purchase/quoting proof.
-4. **Legal counsel sign-off** on terms/privacy/commercial copy.
-
-This audit does not mark the release goal done while any blocker above is unmet.
-
 ## Working environment
 
-- Git branch: `cursor/release-finish-gaps-5937` (continues `work/complete-product-flows`).
-- Isolated Neon branch: `release-verify-20261027` (`br-twilight-hat-ac2ujtl1`),
+- Git branch: `work/complete-product-flows`.
+- Isolated Neon branch: `finish-app-20261023` (`br-dawn-glitter-ac0vy5bm`),
   project `misty-meadow-08424188`. Production has not been migrated by this work.
-- On 2026-10-27 the 15 pending migrations through
-  `20261023220000_maintenance_first_replacement_deadline.sql` applied cleanly to
-  that disposable branch; a second `npm run db:push` applied none. Integration
-  probes passed with fixtures rolled back: `tests/integration/core-flows.cjs`,
-  `garage-account-concurrency.cjs`, `workshop-benchmark.cjs`, and
-  `offline-fuel-receipts.cjs`.
 - Local disposable configuration and credentials are kept in ignored
   `.env.finish-app`; do not commit or publish that file.
+- This Windows host exhibited stalled asynchronous tool startup. The ignored
+  `.env.finish-tools.cjs` preloads Vite/Wrangler for local diagnostics; it is not
+  an application dependency or release artifact.

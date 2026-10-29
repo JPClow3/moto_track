@@ -84,6 +84,8 @@ const pt = {
   dataRequests: "Solicitações de dados",
   markFulfilled: "Marcar cumprida",
   noRequests: "Sem solicitações abertas.",
+  requestType: "Tipo",
+  requestedAt: "Criada em",
   sourcesTitle: "Fontes do catálogo por verificação",
   sourceMethod:
     "Verificação mais antiga primeiro. Um modelo exato com 0 itens não gera agenda; um modelo Linha nunca gera — transcreva a tabela antes de torná-lo visível.",
@@ -203,6 +205,8 @@ const en: Record<keyof typeof pt, string> = {
   dataRequests: "Data requests",
   markFulfilled: "Mark fulfilled",
   noRequests: "No open requests.",
+  requestType: "Type",
+  requestedAt: "Created",
   sourcesTitle: "Catalog sources by verification date",
   sourceMethod:
     "Oldest verification first. An exact model with no items creates no schedule; a sales-line model never creates one. Transcribe the table before making it visible.",

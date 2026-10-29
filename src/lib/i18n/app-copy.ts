@@ -30,7 +30,6 @@ export const APP_ENGLISH_COPY: Record<string, string> = {
   "Valor (R$)": "Amount (BRL)",
   Aberto: "Open",
   Resolvido: "Settled",
-  Status: "Status",
   "Limpar filtros": "Clear filters",
   "Reserva de manutenção por km": "Maintenance reserve per km",
   "Depreciação por km": "Depreciation per km",
@@ -92,6 +91,7 @@ export const APP_ENGLISH_COPY: Record<string, string> = {
   ". O proprietário pode revogá-lo a qualquer momento.":
     ". The owner can revoke it at any time.",
   "Criar meu histórico no Moto Track": "Start my history in Moto Track",
+  "Imprimir relatório": "Print report",
 };
 
 export function appCopy(locale: Locale, source: string) {

@@ -6,6 +6,10 @@
   /** Decimal places for the axis + marker readouts. */
   export let precision = 1;
 
+  // Fuel economy is a fuel-category series, so it wears --cat-fuel. Red is
+  // reserved for "needs attention" and never encodes a plain series.
+  const TONE = "var(--cat-fuel)";
+
   const W = 640;
   const H = 220;
   const PAD = { top: 18, right: 18, bottom: 30, left: 46 };
@@ -76,8 +80,8 @@
   >
     <defs>
       <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.22" />
-        <stop offset="100%" stop-color="var(--accent)" stop-opacity="0" />
+        <stop offset="0%" stop-color={TONE} stop-opacity="0.2" />
+        <stop offset="100%" stop-color={TONE} stop-opacity="0" />
       </linearGradient>
     </defs>
 
@@ -111,7 +115,7 @@
         class="line"
         d={linePath}
         fill="none"
-        stroke="var(--accent)"
+        stroke={TONE}
         stroke-width="2.5"
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -123,14 +127,14 @@
         cx={lastCoord.x}
         cy={lastCoord.y}
         r="4.5"
-        fill="var(--accent)"
+        fill={TONE}
       />
       <circle
         class="pulse"
         cx={lastCoord.x}
         cy={lastCoord.y}
         r="4.5"
-        fill="var(--accent)"
+        fill={TONE}
       />
 
       {#each axisDates as entry, i (i)}
@@ -177,10 +181,11 @@
   }
 
   .axis {
-    font-family: "Barlow Condensed", Barlow, sans-serif;
+    font-family: var(--font-sans);
+    font-stretch: 76%;
     font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.02em;
   }
 
   .line {

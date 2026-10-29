@@ -1,5 +1,6 @@
 import { dueStateForPlan, initialHistoryStatus } from "./motorcycle-catalog";
 
+import { appToday } from "../../utils/calendar-day";
 type Row = Record<string, unknown>;
 
 export type DueNowConfidence = "confirmed" | "reported_not_done" | "unknown";
@@ -42,11 +43,14 @@ function confidenceFor(status: string): DueNowConfidence {
  * slot and hide that a second bike needs attention too. Each bike surfaces its
  * most urgent item before any bike surfaces its second.
  */
+/** Garage-wide "due now" list length. */
+export const DUE_NOW_LIMIT = 5;
+
 export function buildDueNow({
   rows,
   odometerByMotorcycle,
-  limit = 5,
-  today = new Date().toISOString().slice(0, 10),
+  limit = DUE_NOW_LIMIT,
+  today = appToday(),
 }: {
   rows: Row[];
   odometerByMotorcycle: Map<string, number>;
@@ -127,4 +131,125 @@ export function buildDueNow({
     }
   }
   return picked;
+}
+
+export type AttentionReminder = {
+  id: string;
+  title: string;
+  /** Null for a reminder that is not tied to one motorcycle (e.g. a licence). */
+  motorcycleId: string | null;
+  motorcycleName: string;
+  status: "overdue" | "due_soon" | "ok" | "unknown";
+  remainingKm: number | null;
+  remainingDays: number | null;
+};
+
+/** overdue → red, due → amber. Nothing else earns a place on the list. */
+export type AttentionTone = "overdue" | "due";
+
+export type AttentionItem = {
+  kind: "maintenance" | "reminder";
+  id: string;
+  title: string;
+  motorcycleId: string | null;
+  motorcycleName: string;
+  tone: AttentionTone;
+  dueKm: number | null;
+  remainingKm: number | null;
+  remainingDays: number | null;
+  confidence: DueNowConfidence | null;
+  estimatedCostCents: number;
+  officialUrl: string;
+  documentVersion: string;
+  pageReference: string;
+  href: string;
+};
+
+const TONE_RANK = { overdue: 0, due: 1 } as const;
+const KIND_RANK = { maintenance: 0, reminder: 1 } as const;
+
+const nullLast = (value: number | null) =>
+  value === null ? Number.POSITIVE_INFINITY : value;
+
+/**
+ * Merges plan items and reminders into one list, most urgent first.
+ *
+ * Only a measured or reported overdue is "overdue"; a plan item that merely
+ * reached its milestone, or a reminder inside its warning window, is "due".
+ * Within a tone, plan items lead (they carry the manual reference), then the
+ * closest by km, then by days.
+ */
+export function rankAttention({
+  dueNow,
+  reminders,
+}: {
+  dueNow: DueNowItem[];
+  reminders: AttentionReminder[];
+}): AttentionItem[] {
+  const items: AttentionItem[] = [
+    ...dueNow.map((item): AttentionItem => ({
+      kind: "maintenance",
+      id: item.id,
+      title: item.maintenanceType,
+      motorcycleId: item.motorcycleId,
+      motorcycleName: item.motorcycleName,
+      tone: item.urgency === "overdue" ? "overdue" : "due",
+      dueKm: item.dueKm,
+      remainingKm: null,
+      remainingDays: null,
+      confidence: item.confidence,
+      estimatedCostCents: item.estimatedCostCents,
+      officialUrl: item.officialUrl,
+      documentVersion: item.documentVersion,
+      pageReference: item.pageReference,
+      href: "/maintenance",
+    })),
+    ...reminders
+      .filter(
+        (reminder) =>
+          reminder.status === "overdue" || reminder.status === "due_soon",
+      )
+      .map((reminder): AttentionItem => ({
+        kind: "reminder",
+        id: reminder.id,
+        title: reminder.title,
+        motorcycleId: reminder.motorcycleId,
+        motorcycleName: reminder.motorcycleName,
+        tone: reminder.status === "overdue" ? "overdue" : "due",
+        dueKm: null,
+        remainingKm: reminder.remainingKm,
+        remainingDays: reminder.remainingDays,
+        confidence: null,
+        estimatedCostCents: 0,
+        officialUrl: "",
+        documentVersion: "",
+        pageReference: "",
+        href: "/reminders",
+      })),
+  ];
+
+  return items.sort(
+    (a, b) =>
+      TONE_RANK[a.tone] - TONE_RANK[b.tone] ||
+      KIND_RANK[a.kind] - KIND_RANK[b.kind] ||
+      nullLast(a.remainingKm) - nullLast(b.remainingKm) ||
+      nullLast(a.remainingDays) - nullLast(b.remainingDays) ||
+      a.title.localeCompare(b.title),
+  );
+}
+
+/**
+ * The one item the bike home leads with: the most urgent item for that
+ * motorcycle, or for no motorcycle in particular. Null means all is well.
+ */
+export function mostUrgentFor(
+  items: AttentionItem[],
+  motorcycleId: string,
+): AttentionItem | null {
+  return (
+    items.find(
+      (item) =>
+        item.motorcycleId === motorcycleId || item.motorcycleId === null,
+    ) ?? null
+  );
 }

@@ -64,6 +64,11 @@ const pt = {
   laborExceedsTotal:
     "A mão de obra não pode ultrapassar o custo total do registro.",
   invalidRegion: "Informe a cidade da oficina e uma UF brasileira válida.",
+  noComparisonTitle: "Ainda sem comparação",
+  noRecordsTitle: "Nenhum registro elegível",
+  logService: "Registrar serviço",
+  withdrawConfirm:
+    "Retirar esta contribuição do comparativo? Você pode compartilhá-la de novo depois.",
 };
 
 const en: Record<keyof typeof pt, string> = {
@@ -125,6 +130,11 @@ const en: Record<keyof typeof pt, string> = {
     "Enter labor above zero, with up to two decimal places and no more than R$ 10,000.00.",
   laborExceedsTotal: "Labor cannot exceed the record's total cost.",
   invalidRegion: "Enter the workshop city and a valid Brazilian state.",
+  noComparisonTitle: "No comparison yet",
+  noRecordsTitle: "No eligible records",
+  logService: "Log service",
+  withdrawConfirm:
+    "Withdraw this contribution from the comparison? You can share it again later.",
 };
 
 export function workshopMessages(locale: Locale) {

@@ -59,3 +59,7 @@ and production cutover checks.
 The previous Django implementation has been fully replaced. See [`docs/parity-checklist.md`](docs/parity-checklist.md)
 for the feature-parity record and [`docs/api-migration.md`](docs/api-migration.md) for API field/endpoint changes.
 Legacy data import is available via `npm run import:legacy` (see [`scripts/import-legacy-data.ts`](scripts/import-legacy-data.ts)).
+
+## Launch preparation
+
+See [launch readiness](docs/launch-readiness.md), the [campaign gallery](launch-assets/index.html), and [native build instructions](native/README.md).

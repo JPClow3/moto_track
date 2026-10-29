@@ -3,6 +3,7 @@ import {
   activityCalendar,
   consumptionTrend,
   costBreakdown,
+  costPerKmWindow,
   spendByMonth,
 } from "../../src/lib/server/domain/dashboard";
 
@@ -99,6 +100,21 @@ describe("spendByMonth", () => {
 
     expect(months).toEqual([{ month: "2026-07", cents: 0 }]);
   });
+
+  it("buckets Date values the way postgres.js returns `date` columns", () => {
+    const date = new Date("2026-07-20T00:00:00.000Z");
+    expect(
+      spendByMonth([{ date, amountCents: 5000 }], {
+        today: "2026-07-28",
+        months: 1,
+      }),
+    ).toEqual([{ month: "2026-07", cents: 5000 }]);
+    expect(
+      activityCalendar([date], { today: "2026-07-28", weeks: 2 }).find(
+        (cell) => cell.date === "2026-07-20",
+      )?.count,
+    ).toBe(1);
+  });
 });
 
 describe("costBreakdown", () => {
@@ -148,5 +164,92 @@ describe("activityCalendar", () => {
     });
 
     expect(cells.find((cell) => cell.date === "2026-07-14")?.count).toBe(1);
+  });
+});
+
+describe("costPerKmWindow", () => {
+  const today = "2026-10-28";
+
+  it("divides the window's spend by the distance ridden in it", () => {
+    expect(
+      costPerKmWindow({
+        spend: [
+          { date: "2026-10-10", amountCents: 6000 },
+          { date: "2026-10-20", amountCents: 4000 },
+          // Outside the window: neither counted as spend.
+          { date: "2026-09-01", amountCents: 99_000 },
+        ],
+        readings: [
+          { date: "2026-09-25", odometerKm: 10_000 },
+          { date: "2026-10-10", odometerKm: 10_300 },
+          { date: "2026-10-20", odometerKm: 10_500 },
+        ],
+        today,
+      }),
+    ).toEqual({ cents: 10_000, distanceKm: 500, centsPerKm: 20 });
+  });
+
+  it("starts from the first reading inside the window without a recent baseline", () => {
+    expect(
+      costPerKmWindow({
+        spend: [{ date: "2026-10-20", amountCents: 3000 }],
+        readings: [
+          // Too old to bound this window: months of riding would be counted.
+          { date: "2026-05-01", odometerKm: 5_000 },
+          { date: "2026-10-05", odometerKm: 10_000 },
+          { date: "2026-10-20", odometerKm: 10_200 },
+        ],
+        today,
+      }),
+    ).toEqual({ cents: 3000, distanceKm: 200, centsPerKm: 15 });
+  });
+
+  it("keeps a new bike's 0 km reading as the distance baseline", () => {
+    expect(
+      costPerKmWindow({
+        spend: [{ date: "2026-10-20", amountCents: 5000 }],
+        readings: [
+          { date: "2026-10-05", odometerKm: 0 },
+          { date: "2026-10-20", odometerKm: 100 },
+        ],
+        today,
+      }),
+    ).toEqual({ cents: 5000, distanceKm: 100, centsPerKm: 50 });
+    expect(
+      costPerKmWindow({
+        spend: [{ date: "2026-10-20", amountCents: 5000 }],
+        readings: [
+          { date: "2026-10-05", odometerKm: 0 },
+          { date: "2026-10-12", odometerKm: 50 },
+          { date: "2026-10-20", odometerKm: 100 },
+        ],
+        today,
+      }),
+    ).toMatchObject({ distanceKm: 100 });
+  });
+
+  it("ignores a missing reading instead of treating it as 0 km", () => {
+    expect(
+      costPerKmWindow({
+        spend: [{ date: "2026-10-20", amountCents: 5000 }],
+        readings: [
+          { date: "2026-10-05", odometerKm: Number.NaN },
+          { date: "2026-10-12", odometerKm: 10_000 },
+          { date: "2026-10-20", odometerKm: 10_100 },
+        ],
+        today,
+      }),
+    ).toMatchObject({ distanceKm: 100 });
+  });
+
+  it("returns null when the window has no measurable distance", () => {
+    expect(
+      costPerKmWindow({
+        spend: [{ date: "2026-10-20", amountCents: 3000 }],
+        readings: [{ date: "2026-10-20", odometerKm: 10_200 }],
+        today,
+      }),
+    ).toBeNull();
+    expect(costPerKmWindow({ spend: [], readings: [], today })).toBeNull();
   });
 });

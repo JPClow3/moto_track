@@ -3,6 +3,8 @@ import { fail } from "@sveltejs/kit";
 import { featureActions, loadFeature } from "$server/domain/crud";
 import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
 import { subtractDays } from "$server/domain/record-sync";
+import { documentExpiryStatus, sortByUrgency } from "$server/domain/reminders";
+import { appToday } from "$lib/utils/calendar-day";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -71,5 +73,22 @@ export const actions = localizedActions({
 });
 
 export async function load({ locals }) {
-  return loadFeature(locals.db, "documents", locals.user!);
+  const feature = await loadFeature(locals.db, "documents", locals.user!);
+  const today = appToday();
+  // Expired paperwork leads the list; the rest keeps its alphabetical order.
+  const rows = sortByUrgency(
+    // Object.assign keeps the row's index-signature type; a spread narrowed
+    // it so the page lost every column except `urgency`.
+    feature.rows.map((row) =>
+      Object.assign(row, {
+        urgency: documentExpiryStatus(
+          row.valid_until,
+          row.notify_before_days,
+          today,
+        ),
+      }),
+    ),
+    (row) => row.urgency,
+  );
+  return { ...feature, rows };
 }

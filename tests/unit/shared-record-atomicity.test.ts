@@ -140,6 +140,26 @@ describe("shared-garage record and derived-state atomicity", () => {
     });
   });
 
+  it("drops owner-only interval fields from a collaborator's maintenance record", async () => {
+    const fixture = database();
+    const result = await actions.record(
+      event(fixture.db, {
+        feature: "maintenance",
+        motorcycle_id: "motorcycle",
+        date: "2026-10-01",
+        odometer_km: "1500",
+        maintenance_type: "Oil change",
+        cost_cents: "30",
+        interval_km: "1",
+        interval_days: "1",
+      }) as never,
+    );
+    expect(result).toEqual({ ok: true });
+    expect(fixture.state.records).toHaveLength(1);
+    expect(fixture.state.records[0]).not.toHaveProperty("interval_km");
+    expect(fixture.state.records[0]).not.toHaveProperty("interval_days");
+  });
+
   it("never stores another account's station or grade on a shared fuel record", async () => {
     const fixture = database(undefined, "contributor");
     const result = await actions.record(

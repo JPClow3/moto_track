@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildDueNow } from "$server/domain/due-now";
+import {
+  buildDueNow,
+  DUE_NOW_LIMIT,
+  mostUrgentFor,
+  rankAttention,
+  type AttentionReminder,
+  type DueNowItem,
+} from "$server/domain/due-now";
 
 type PlanRow = Record<string, unknown>;
 
@@ -153,6 +160,30 @@ describe("due-now attention list", () => {
     );
   });
 
+  it("keeps a sixth bike's item when uncapped, and caps to the same five", () => {
+    // The dashboard picks the selected bike's lead item from the uncapped list,
+    // then shows the first DUE_NOW_LIMIT of it garage-wide.
+    const rows = Array.from({ length: 6 }, (_, index) =>
+      plan({
+        id: `p${index}`,
+        motorcycle_id: `bike-${index}`,
+        motorcycle_name: `Moto ${index}`,
+        initial_history_status: "not_done",
+      }),
+    );
+    const capped = buildDueNow({ rows, odometerByMotorcycle: new Map() });
+    const all = buildDueNow({
+      rows,
+      odometerByMotorcycle: new Map(),
+      limit: Number.POSITIVE_INFINITY,
+    });
+    expect(capped.some((item) => item.motorcycleId === "bike-5")).toBe(false);
+    expect(
+      mostUrgentFor(rankAttention({ dueNow: all, reminders: [] }), "bike-5"),
+    ).toMatchObject({ id: "p5", motorcycleId: "bike-5" });
+    expect(all.slice(0, DUE_NOW_LIMIT)).toEqual(capped);
+  });
+
   it("carries the manual reference through when the plan has one", () => {
     const [item] = buildDueNow({
       rows: [
@@ -166,5 +197,91 @@ describe("due-now attention list", () => {
     });
     expect(item.officialUrl).toBe("https://example.invalid/manual.pdf");
     expect(item.pageReference).toBe("p. 32–34");
+  });
+});
+
+describe("bike home attention ranking", () => {
+  const dueItem = (overrides: Partial<DueNowItem> = {}): DueNowItem => ({
+    id: "plan-1",
+    motorcycleId: "bike-1",
+    motorcycleName: "Moto 1",
+    maintenanceType: "Óleo do motor",
+    urgency: "due_now",
+    confidence: "unknown",
+    dueKm: 6000,
+    estimatedCostCents: 11000,
+    officialUrl: "",
+    documentVersion: "",
+    pageReference: "",
+    ...overrides,
+  });
+  const reminder = (
+    overrides: Partial<AttentionReminder> = {},
+  ): AttentionReminder => ({
+    id: "rem-1",
+    title: "Corrente",
+    motorcycleId: "bike-1",
+    motorcycleName: "Moto 1",
+    status: "due_soon",
+    remainingKm: 150,
+    remainingDays: null,
+    ...overrides,
+  });
+
+  it("puts an overdue reminder ahead of a plan item that is only due", () => {
+    const ranked = rankAttention({
+      dueNow: [dueItem()],
+      reminders: [
+        reminder({ id: "late", status: "overdue", remainingKm: -50 }),
+      ],
+    });
+    expect(ranked.map((item) => [item.id, item.tone])).toEqual([
+      ["late", "overdue"],
+      ["plan-1", "due"],
+    ]);
+  });
+
+  it("leaves reminders that are still fine off the list", () => {
+    expect(
+      rankAttention({
+        dueNow: [],
+        reminders: [
+          reminder({ status: "ok" }),
+          reminder({ status: "unknown" }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it("orders reminders of the same tone by the closest due point", () => {
+    const ranked = rankAttention({
+      dueNow: [],
+      reminders: [
+        reminder({ id: "far", remainingKm: 190 }),
+        reminder({ id: "near", remainingKm: 20 }),
+        reminder({ id: "dated", remainingKm: null, remainingDays: 3 }),
+      ],
+    });
+    expect(ranked.map((item) => item.id)).toEqual(["near", "far", "dated"]);
+  });
+
+  it("leads the bike home with that bike's item, or a garage-wide one", () => {
+    const ranked = rankAttention({
+      dueNow: [
+        dueItem({
+          id: "other-bike",
+          motorcycleId: "bike-2",
+          urgency: "overdue",
+        }),
+      ],
+      reminders: [
+        reminder({ id: "licence", motorcycleId: null, motorcycleName: "" }),
+      ],
+    });
+    expect(mostUrgentFor(ranked, "bike-1")?.id).toBe("licence");
+    expect(mostUrgentFor(ranked, "bike-2")?.id).toBe("other-bike");
+    expect(
+      mostUrgentFor(rankAttention({ dueNow: [], reminders: [] }), "bike-1"),
+    ).toBeNull();
   });
 });

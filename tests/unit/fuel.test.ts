@@ -5,6 +5,9 @@ import {
   averageConsumption,
   costPerKm,
   parseFuelImportRows,
+  parseDecimalInput,
+  parseIntegerInput,
+  parseLocalizedNumber,
 } from "../../src/lib/server/domain/fuel";
 
 describe("fuel parsing", () => {
@@ -67,6 +70,52 @@ describe("fuel parsing", () => {
         ]),
       ),
     ).toEqual({ ok: false, message: "Import data is invalid." });
+  });
+
+  it("reads pt-BR decimal commas in quoted CSV amounts and grouped odometers", () => {
+    const rows = parseFuelCsv(
+      'date,odometer_km,liters,total_price,price_per_liter\n2026-07-10,"12.345","10,5","1.234,56","5,99"\n2026-07-11,abc,x,1,',
+    );
+    expect(rows[0].errors).toEqual([]);
+    expect(rows[0].data.odometer_km).toBe(12345);
+    expect(rows[0].data.liters).toBe(10.5);
+    expect(rows[0].data.total_price_cents).toBe(123456);
+    expect(rows[0].data.price_per_liter_millicents).toBe(599000);
+    expect(rows[1].errors).toEqual(
+      expect.arrayContaining(["Odômetro inválido.", "Litros inválidos."]),
+    );
+  });
+});
+
+describe("localized form numbers", () => {
+  it("accepts a comma or a dot as the decimal mark, with optional grouping", () => {
+    expect(parseLocalizedNumber("4,59")).toBe(4.59);
+    expect(parseLocalizedNumber("4.59")).toBe(4.59);
+    expect(parseLocalizedNumber("1.234,56")).toBe(1234.56);
+    expect(parseLocalizedNumber("1,234.56")).toBe(1234.56);
+    expect(parseLocalizedNumber("1 234,56")).toBe(1234.56);
+    expect(parseLocalizedNumber("1,234,567")).toBe(1234567);
+    expect(parseLocalizedNumber("-23,550520")).toBe(-23.55052);
+    expect(parseLocalizedNumber("")).toBeNull();
+    expect(parseLocalizedNumber("abc")).toBeNull();
+  });
+
+  it("falls back for empty or unreadable decimal fields", () => {
+    expect(parseDecimalInput("6,099")).toBe(6.099);
+    expect(parseDecimalInput(" 78,50 ")).toBe(78.5);
+    expect(parseDecimalInput("")).toBe(0);
+    expect(parseDecimalInput(null)).toBe(0);
+    expect(parseDecimalInput("x", 7)).toBe(7);
+  });
+
+  it("reads grouped thousands in whole-number fields instead of rounding them away", () => {
+    expect(parseIntegerInput("12345")).toBe(12345);
+    expect(parseIntegerInput("12.345")).toBe(12345);
+    expect(parseIntegerInput("12,345")).toBe(12345);
+    expect(parseIntegerInput("1.234.567")).toBe(1234567);
+    expect(parseIntegerInput("12,5")).toBe(13);
+    expect(parseIntegerInput("")).toBe(0);
+    expect(parseIntegerInput("x", 10)).toBe(10);
   });
 });
 

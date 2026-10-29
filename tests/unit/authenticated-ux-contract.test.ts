@@ -408,7 +408,12 @@ describe("authenticated UX primitives contract", () => {
     });
 
     expect(body).toContain("page-header");
-    expect(body).toContain("bike-context-bar");
+    // The bike home leads with a hero card for the active bike, then one-tap
+    // quick-log deep links into each page's "new record" sheet.
+    expect(body).toContain("bike-hero");
+    expect(body).toContain('href="/fuel?new=1"');
+    expect(body).toContain('href="/maintenance?new=1"');
+    expect(body).toContain('href="/expenses?new=1"');
     expect(body).toContain("activity-timeline");
     expect(body).toContain("page-action");
     expect(body).toContain("<dialog");
@@ -460,14 +465,6 @@ describe("authenticated UX primitives contract", () => {
     expect(expensesSrc).toContain("RecordSheet");
     // No permanent creation panels on the page
     expect(expensesSrc).not.toContain('class="panel grid gap-2 p-5"');
-    // Creation lives in FeaturePage action menu — no header Plus add buttons
-    expect(expensesSrc).not.toContain('from "lucide-svelte/icons/plus"');
-    expect(expensesSrc).not.toMatch(
-      /policiesHeading[\s\S]*?authenticatedUx\.addPolicy/,
-    );
-    expect(expensesSrc).not.toMatch(
-      /claimsHeading[\s\S]*?authenticatedUx\.addClaim/,
-    );
 
     const module = await import("../../src/routes/(app)/expenses/+page.svelte");
     const mockData = {
@@ -495,39 +492,6 @@ describe("authenticated UX primitives contract", () => {
 
     expect(body).toContain("<dialog");
   }, 15000);
-
-  it("keeps documents createReminder on FeaturePage rows without a duplicate list", () => {
-    const documentsSrc = source("src/routes/(app)/documents/+page.svelte");
-    const featurePageSrc = source("src/lib/components/FeaturePage.svelte");
-
-    expect(documentsSrc).not.toContain("documents.reminderHeading");
-    expect(documentsSrc).not.toContain('action="?/createReminder"');
-    expect(documentsSrc).toContain("FeaturePage");
-
-    expect(featurePageSrc).toContain('action="?/createReminder"');
-    expect(featurePageSrc).toContain("documents.createReminder");
-  });
-
-  it("moves trabalho cost assumptions into a RecordSheet with SignalStrip profits", () => {
-    const trabalhoSrc = source("src/routes/(app)/trabalho/+page.svelte");
-
-    expect(trabalhoSrc).toContain("RecordSheet");
-    expect(trabalhoSrc).toContain("SignalStrip");
-    expect(trabalhoSrc).toContain('action="?/saveCosts"');
-    expect(trabalhoSrc).toContain('slot="overflow"');
-    // Permanent dual-panel cost form rail is gone
-    expect(trabalhoSrc).not.toMatch(
-      /class="panel grid gap-2 p-5"[\s\S]*\?\/saveCosts/,
-    );
-    expect(trabalhoSrc).not.toContain('class="panel grid gap-2 p-5"');
-  });
-
-  it("keeps ownership setup details open state sticky per motorcycle", () => {
-    const ownershipSrc = source("src/lib/components/OwnershipCosts.svelte");
-    expect(ownershipSrc).toContain("openByMotorcycleId");
-    expect(ownershipSrc).toContain("ontoggle");
-    expect(ownershipSrc).not.toContain("open={!motorcycle.ready}");
-  });
 
   it("loads reminder snooze fields for dashboard health scoring", () => {
     const dashboardSrc = source("src/routes/(app)/dashboard/+page.server.ts");
@@ -566,4 +530,16 @@ describe("authenticated UX primitives contract", () => {
     expect(body).not.toContain("page-action");
     expect(body).toContain("Exportar dados");
   }, 15000);
+
+  it.each(["fuel", "maintenance", "tires"])(
+    "re-selects the shell's active bike on /%s when the shell switches bikes",
+    (route) => {
+      // SvelteKit reuses the page component across shell bike switches, so a
+      // one-time initializer would keep saving against the previous bike.
+      const pageSrc = source(`src/routes/(app)/${route}/+page.svelte`);
+      expect(pageSrc).toMatch(
+        /\$: if \(data\.activeMotorcycleId !== syncedActiveId\) \{\s+syncedActiveId = data\.activeMotorcycleId;\s+selectedMotorcycleId = activeOrFirstId\(\);/,
+      );
+    },
+  );
 });

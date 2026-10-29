@@ -1,9 +1,12 @@
 <script lang="ts">
   import { page } from "$app/stores";
-  import { LayoutDashboard, Menu, X } from "lucide-svelte";
+  import LayoutDashboard from "lucide-svelte/icons/layout-dashboard";
+  import Menu from "lucide-svelte/icons/menu";
+  import X from "lucide-svelte/icons/x";
   import { t } from "$lib/i18n/store";
   import type { MessageKey } from "$lib/i18n";
   import LocaleSwitcher from "./LocaleSwitcher.svelte";
+  import BrandLogo from "./ui/BrandLogo.svelte";
 
   const links: Array<{ href: string; key: MessageKey }> = [
     { href: "/precos", key: "nav.plans" },
@@ -11,7 +14,7 @@
     { href: "/blog", key: "nav.blog" },
   ];
 
-  // Below `sm` these links were display:none with nothing replacing them, so a
+  // Below `md` these links were display:none with nothing replacing them, so a
   // phone could only ever reach /auth from the header.
   let open = $state(false);
 
@@ -73,26 +76,13 @@
       href={user ? "/dashboard" : "/"}
       class="focus-ring inline-flex min-h-11 items-center rounded transition hover:opacity-70"
     >
-      <img
-        src="/brand/svg/moto-track-logo-horizontal-light.svg"
-        alt="Moto Track"
-        class="h-7 w-auto dark:hidden"
-        width="845"
-        height="160"
-      />
-      <img
-        src="/brand/svg/moto-track-logo-horizontal-dark.svg"
-        alt="Moto Track"
-        class="hidden h-7 w-auto dark:block"
-        width="845"
-        height="160"
-      />
+      <BrandLogo size={24} />
     </a>
 
-    <div class="flex items-center gap-2 sm:gap-6">
-      {#each links as link (link.href)}
+    <div class="flex items-center gap-2 md:gap-5">
+      {#each links.filter((link) => !$page.data.nativeStore || link.href !== "/precos") as link (link.href)}
         <a
-          class="focus-ring nav-link label-tech hidden min-h-11 items-center sm:inline-flex"
+          class="focus-ring nav-link label-tech hidden min-h-11 items-center md:inline-flex"
           class:is-active={isActive(link.href, $page.url.pathname)}
           href={link.href}
           aria-current={isActive(link.href, $page.url.pathname)
@@ -103,21 +93,30 @@
         </a>
       {/each}
 
-      <div class="hidden sm:block"><LocaleSwitcher /></div>
+      <div class="hidden md:block"><LocaleSwitcher /></div>
       <!-- id defaults to "locale-select" above; the drawer copy below needs its own. -->
 
       {#if user}
         <a class="button-primary" href="/dashboard">
-          <LayoutDashboard size={14} aria-hidden="true" />
+          <LayoutDashboard size={16} aria-hidden="true" />
           {$t("nav.dashboard")}
         </a>
       {:else}
-        <a class="button-primary" href="/auth">{$t("common.signIn")}</a>
+        <div class="flex items-center gap-2">
+          <a class="button-secondary" href="/auth">{$t("common.signIn")}</a>
+          <!-- Ink, not red: each page's hero owns its one red CTA, so a red
+               header button would make two on the first screen. Narrower
+               screens get it in the menu. -->
+          <a
+            class="button-primary hidden lg:inline-flex"
+            href="/auth?mode=signUp">{$t("auth.signUp")}</a
+          >
+        </div>
       {/if}
 
       <button
         bind:this={menuButton}
-        class="focus-ring -mr-2 grid h-11 w-11 place-items-center rounded sm:hidden"
+        class="focus-ring -mr-2 grid h-11 w-11 place-items-center rounded md:hidden"
         type="button"
         aria-expanded={open}
         aria-controls="mobile-nav"
@@ -138,18 +137,18 @@
          toggle + Escape, so it stays out of the accessibility tree. -->
     <button
       type="button"
-      class="fixed inset-0 top-[65px] z-40 cursor-default border-0 bg-black/40 backdrop-blur-sm sm:hidden"
+      class="fixed inset-0 top-[65px] z-40 cursor-default border-0 bg-black/40 backdrop-blur-sm md:hidden"
       onclick={closeMenu}
       aria-hidden="true"
       tabindex="-1"
     ></button>
     <div
       id="mobile-nav"
-      class="relative z-50 border-t border-[var(--line)] bg-[var(--bg)] px-6 py-1 shadow-lift sm:hidden"
+      class="relative z-50 border-t border-[var(--line)] bg-[var(--bg)] px-6 py-1 shadow-lift md:hidden"
     >
-      {#each links as link (link.href)}
+      {#each links.filter((link) => !$page.data.nativeStore || link.href !== "/precos") as link (link.href)}
         <a
-          class="label-tech block border-b border-[var(--line)] py-4 transition-colors hover:text-[var(--accent)]"
+          class="label-tech block border-b border-[var(--line)] py-4 text-sm transition-colors hover:text-[var(--fg)]"
           class:is-current={isActive(link.href, $page.url.pathname)}
           href={link.href}
           aria-current={isActive(link.href, $page.url.pathname)
@@ -161,6 +160,15 @@
         </a>
       {/each}
       <div class="py-3"><LocaleSwitcher id="locale-select-mobile" /></div>
+      {#if !user}
+        <div class="pb-4">
+          <a
+            class="button-primary w-full"
+            href="/auth?mode=signUp"
+            onclick={closeMenu}>{$t("auth.signUp")}</a
+          >
+        </div>
+      {/if}
     </div>
   {/if}
 </header>
@@ -168,13 +176,14 @@
 <style>
   /* .nav-link's underline wipes in on hover; on the current page it stays put. */
   .is-active {
-    color: var(--accent);
+    color: var(--fg);
   }
   .is-active::after {
     transform: scaleX(1);
   }
 
   .is-current {
-    color: var(--accent);
+    color: var(--fg);
+    font-weight: 700;
   }
 </style>

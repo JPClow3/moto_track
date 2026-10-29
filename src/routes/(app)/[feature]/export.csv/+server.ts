@@ -1,10 +1,26 @@
 import { error } from "@sveltejs/kit";
 import { getFeature } from "$server/domain/features";
 import { exportMessages } from "$lib/i18n/exports";
+import { isoDateValue, isoTimestampValue } from "$server/domain/date-value";
 
-function csvEscape(value: unknown) {
-  const text = value == null ? "" : String(value);
-  return `"${text.replaceAll('"', '""')}"`;
+// A spreadsheet runs a cell that starts with one of these as a formula. Text
+// can come from shared-garage contributors, so it is not only the owner's own.
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
+function csvValue(value: unknown, dateOnly: boolean) {
+  if (value == null) return "";
+  // postgres.js returns date/timestamptz columns as Date; String() of one is
+  // "Wed Oct 28 2026 00:00:00 GMT+0000 (…)", which no importer reads back.
+  if (value instanceof Date)
+    return dateOnly ? isoDateValue(value) : (isoTimestampValue(value) ?? "");
+  if (typeof value === "string" && FORMULA_PREFIX.test(value))
+    return `'${value}`;
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function csvEscape(value: unknown, dateOnly = false) {
+  return `"${csvValue(value, dateOnly).replaceAll('"', '""')}"`;
 }
 
 export async function GET({ params, locals }) {
@@ -30,11 +46,18 @@ export async function GET({ params, locals }) {
     throw error(400, err instanceof Error ? err.message : String(err));
   }
   const columns = rows[0] ? Object.keys(rows[0]) : feature.listColumns;
+  const dateColumns = new Set(
+    (feature.fields ?? [])
+      .filter((field) => field.kind === "date")
+      .map((field) => field.key),
+  );
   // Keep schema keys and recorded values stable for spreadsheet/import round trips.
   const csv = [
     columns.join(","),
     ...rows.map((row) =>
-      columns.map((column) => csvEscape(row[column])).join(","),
+      columns
+        .map((column) => csvEscape(row[column], dateColumns.has(column)))
+        .join(","),
     ),
   ].join("\n");
   return new Response(csv, {

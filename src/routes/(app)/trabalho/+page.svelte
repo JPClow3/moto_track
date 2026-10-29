@@ -1,11 +1,8 @@
-<svelte:options runes={false} />
-
 <script lang="ts">
+  import { appCopy } from "$lib/i18n/app-copy";
   import FeaturePage from "$components/FeaturePage.svelte";
-  import RecordSheet from "$lib/components/app/RecordSheet.svelte";
-  import SignalStrip, {
-    type Signal,
-  } from "$lib/components/app/SignalStrip.svelte";
+  import { showToast } from "$components/ui/toast";
+  import BriefcaseBusiness from "lucide-svelte/icons/briefcase-business";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
   import { locale, t } from "$lib/i18n/store";
@@ -16,6 +13,7 @@
   const brl = (cents: number) => formatMoney($locale, cents);
 
   $: hasMotorcycles = data.motorcycles.length > 0;
+  $: hasSessions = data.rows.length > 0;
   // Nav says "Trabalho", the route is /trabalho — the generic config used to
   // render the English "Work" title on top of all that.
   $: localizedFeature = {
@@ -25,40 +23,24 @@
     subtitle: $t("trabalho.pageSubtitle"),
   };
 
-  $: recentSummaries = (data.summaries ?? []).slice(0, 3);
-  $: profitSignals = recentSummaries.map(
-    (s: {
-      work_date: string;
-      profitability: { profitCents: number };
-    }): Signal => ({
-      label: formatDate($locale, s.work_date),
-      value: brl(s.profitability.profitCents),
-    }),
-  );
-
   let formBusy = false;
-  let statusMessage = "";
-  let statusRole: "status" | "alert" = "status";
-  let costsSheet: RecordSheet;
+  let errorStatus = "";
 
-  const enhanceWithStatus: SubmitFunction = () => {
+  const enhanceCosts: SubmitFunction = () => {
     formBusy = true;
-    statusMessage = "";
+    errorStatus = "";
     return async ({ result, update }) => {
       formBusy = false;
-      statusRole = result.type === "success" ? "status" : "alert";
-      statusMessage =
-        result.type === "success"
-          ? $t("common.actionSuccess")
-          : String(
-              "data" in result && result.data?.message
-                ? result.data.message
-                : $t("error.serverBody"),
-            );
       if (result.type === "success") {
-        costsSheet?.close();
+        showToast($t("recordsUx.costsSaved"));
+      } else {
+        errorStatus = String(
+          "data" in result && result.data?.message
+            ? result.data.message
+            : $t("error.serverBody"),
+        );
       }
-      await update();
+      await update({ reset: false });
     };
   };
 </script>
@@ -66,136 +48,135 @@
 <svelte:head><title>{$t("trabalho.pageTitle")} · Moto Track</title></svelte:head
 >
 
-<section aria-busy={formBusy}>
-  <FeaturePage
-    routeSlug="trabalho"
-    feature={localizedFeature}
-    rows={data.rows}
-    motorcycles={data.motorcycles}
-    errorMessage={!form?.ok
-      ? form?.message || data.errorMessage
-      : data.errorMessage}
-  >
-    <svelte:fragment slot="overflow">
-      <button
-        type="button"
-        class="focus-ring flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--line)]"
-        on:click={() => costsSheet?.open()}
+<FeaturePage
+  routeSlug="trabalho"
+  feature={localizedFeature}
+  rows={data.rows}
+  motorcycles={data.motorcycles}
+  errorMessage={!form?.ok
+    ? form?.message || data.errorMessage
+    : data.errorMessage}
+  emptyIcon={BriefcaseBusiness}
+  emptyTitle={$t("recordsUx.workEmpty")}
+/>
+{#if hasMotorcycles}
+  <section class="mt-6 grid gap-4 lg:grid-cols-2" aria-busy={formBusy}>
+    {#if errorStatus}
+      <p
+        class="rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)] lg:col-span-2"
+        role="alert"
+        aria-live="assertive"
       >
-        {$t("trabalho.costsTitle")}
-      </button>
-    </svelte:fragment>
-
-    <svelte:fragment slot="afterHeader">
-      {#if statusMessage}
-        <p
-          class={statusRole === "alert"
-            ? "rounded border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-            : "rounded border border-[var(--line)] bg-[var(--panel)] p-3 text-sm"}
-          role={statusRole}
-          aria-live={statusRole === "alert" ? "assertive" : "polite"}
-        >
-          {statusMessage}
-        </p>
-      {/if}
-      <SignalStrip
-        title={$t("trabalho.profitabilityTitle")}
-        signals={profitSignals}
-      />
-      {#if recentSummaries.length > 0}
-        <ul class="mt-2 grid gap-1 text-sm text-[var(--muted)]">
-          {#each recentSummaries as s, index (index)}
-            <li>
-              {formatDate($locale, s.work_date)} · {$t("trabalho.profitLabel", {
-                value: brl(s.profitability.profitCents),
-              })}
-            </li>
-          {/each}
-        </ul>
-      {:else}
-        <p class="mt-2 text-sm text-[var(--muted)]">
-          {$t("trabalho.noSessions")}
-        </p>
-      {/if}
-    </svelte:fragment>
-  </FeaturePage>
-
-  <RecordSheet
-    bind:this={costsSheet}
-    title={$t("trabalho.costsTitle")}
-    closeLabel={$t("authenticatedUx.close") || "Fechar"}
-  >
+        {errorStatus}
+      </p>
+    {/if}
     <form
-      class="grid gap-3"
+      class="panel grid content-start gap-2 p-5"
       method="POST"
       action="?/saveCosts"
-      use:enhance={enhanceWithStatus}
+      use:enhance={enhanceCosts}
     >
+      <h2 class="display text-xl">{$t("trabalho.costsTitle")}</h2>
       <label class="field-label" for="work-cost-motorcycle">
         {$t("maintenance.bikeFallback")}
       </label>
-      <select
-        class="field"
-        id="work-cost-motorcycle"
-        name="motorcycle_id"
-        disabled={!hasMotorcycles}
-      >
+      <select class="field" id="work-cost-motorcycle" name="motorcycle_id">
         {#each data.motorcycles as m (m.id)}
           <option value={m.id}>{m.name}</option>
         {/each}
       </select>
       <label class="field-label" for="work-maintenance-reserve">
-        {$t("trabalho.maintenanceReserveLabel")}
+        {appCopy($locale, "Reserva de manutenção por km")}
       </label>
       <input
         class="field"
         id="work-maintenance-reserve"
         name="maintenance_reserve"
-        type="number"
-        step=".01"
-        min="0"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        placeholder={$locale === "en" ? "0.00" : "0,00"}
+        aria-describedby="work-maintenance-reserve-help"
       />
-      <p class="field-help">{$t("trabalho.reserveHelp")}</p>
+      <p class="field-help" id="work-maintenance-reserve-help">
+        {$t("trabalho.reserveHelp")}
+      </p>
       <label class="field-label" for="work-depreciation">
-        {$t("trabalho.depreciationLabel")}
+        {appCopy($locale, "Depreciação por km")}
       </label>
       <input
         class="field"
         id="work-depreciation"
         name="depreciation"
-        type="number"
-        step=".01"
-        min="0"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        placeholder={$locale === "en" ? "0.00" : "0,00"}
+        aria-describedby="work-depreciation-help"
       />
-      <p class="field-help">{$t("trabalho.depreciationHelp")}</p>
+      <p class="field-help" id="work-depreciation-help">
+        {$t("trabalho.depreciationHelp")}
+      </p>
       <label class="field-label" for="work-fixed-cost">
-        {$t("trabalho.fixedCostLabel")}
+        {appCopy($locale, "Custo fixo diário")}
       </label>
       <input
         class="field"
         id="work-fixed-cost"
         name="fixed_daily_cost"
-        type="number"
-        step=".01"
-        min="0"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        placeholder={$locale === "en" ? "0.00" : "0,00"}
+        aria-describedby="work-fixed-cost-help"
       />
-      <p class="field-help">{$t("trabalho.fixedCostHelp")}</p>
-      <div class="mt-2 flex items-center justify-end gap-2">
-        <button
-          type="button"
-          class="button-secondary"
-          on:click={() => costsSheet?.close()}
-        >
-          {$t("authenticatedUx.close") || "Fechar"}
-        </button>
-        <button
-          class="button-accent min-h-11"
-          type="submit"
-          disabled={formBusy}
-        >
-          {$t("trabalho.saveCosts")}
-        </button>
-      </div>
+      <p class="field-help" id="work-fixed-cost-help">
+        {$t("trabalho.fixedCostHelp")}
+      </p>
+      <button
+        class="button-primary justify-self-start"
+        type="submit"
+        disabled={formBusy}
+      >
+        {appCopy($locale, "Salvar custos")}
+      </button>
     </form>
-  </RecordSheet>
-</section>
+    {#if hasSessions}
+      <div class="panel overflow-hidden">
+        <h2 class="display p-5 pb-3 text-xl">
+          {$t("trabalho.profitabilityTitle")}
+        </h2>
+        <div class="data-table">
+          <table class="w-full text-left text-sm">
+            <thead
+              class="border-y border-[var(--line)] bg-[var(--accent-wash)] text-[var(--muted)]"
+            >
+              <tr>
+                <th class="label-tech px-5 py-2" scope="col"
+                  >{$t("recordsUx.sessionDate")}</th
+                >
+                <th class="label-tech px-5 py-2 text-right" scope="col"
+                  >{$t("recordsUx.sessionProfit")}</th
+                >
+              </tr>
+            </thead>
+            <tbody>
+              {#each data.summaries as s, index (index)}
+                <tr class="border-b border-[var(--line)] last:border-b-0">
+                  <td class="px-5 py-2" data-label={$t("recordsUx.sessionDate")}
+                    >{formatDate($locale, s.work_date)}</td
+                  >
+                  <td
+                    class="numeric px-5 py-2 text-right font-semibold"
+                    data-label={$t("recordsUx.sessionProfit")}
+                    >{brl(s.profitability.profitCents)}</td
+                  >
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {/if}
+  </section>
+{/if}

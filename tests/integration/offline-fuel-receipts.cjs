@@ -8,7 +8,7 @@ const postgres = require("postgres");
 const ts = require("typescript");
 
 async function verify() {
-  if (process.env.FUEL_SUBMISSION_TEST_BRANCH !== "br-twilight-hat-ac2ujtl1")
+  if (process.env.FUEL_SUBMISSION_TEST_BRANCH !== "br-dawn-glitter-ac0vy5bm")
     throw new Error("Explicit isolated fuel-receipt branch opt-in required");
   const config = Object.fromEntries(
     readFileSync(resolve(__dirname, "../../.env.finish-app"), "utf8")

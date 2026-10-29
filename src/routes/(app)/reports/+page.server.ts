@@ -11,6 +11,7 @@ import { isoDateValue } from "$server/domain/date-value";
 import { lockObjectOwner } from "$server/db/owner-lock";
 import type { Sql } from "postgres";
 
+import { latestCalendarDay } from "$lib/utils/calendar-day";
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
 }
@@ -47,7 +48,7 @@ export const actions = localizedActions({
     );
     if (
       !date ||
-      date > new Date().toISOString().slice(0, 10) ||
+      date > latestCalendarDay() ||
       mileage === null ||
       !Number.isInteger(mileage) ||
       mileage < 0 ||
@@ -86,10 +87,13 @@ export const actions = localizedActions({
   createShare: async ({ request, locals, platform }) => {
     const form = await request.formData();
     const motorcycleId = String(form.get("motorcycle_id") ?? "");
-    const days = Math.max(Number(form.get("days") ?? 14), 1);
+    const requestedDays = Math.round(Number(form.get("days") ?? 14));
+    const days = Number.isFinite(requestedDays)
+      ? Math.min(Math.max(requestedDays, 1), 90)
+      : 14;
     const [motorcycle] = await locals.db<Row[]>`
       select id from motorcycles
-      where id = ${motorcycleId} and owner_id = ${locals.user!.id} and is_active = true
+      where id = ${motorcycleId} and owner_id = ${locals.user!.id} and is_active = true and deleted_at is null
     `;
     if (!motorcycle) return fail(404, { message: "Moto não encontrada." });
     const token = `${crypto.randomUUID().replaceAll("-", "")}${crypto.randomUUID().replaceAll("-", "")}`;
@@ -162,7 +166,7 @@ export async function load({ locals, url }) {
       `.catch(() => [] as Row[]),
     locals.db<MotorcycleOption[]>`
         select id, name, brand, model, year from motorcycles
-        where owner_id = ${ownerId} and is_active = true
+        where owner_id = ${ownerId} and is_active = true and deleted_at is null
         order by name
       `.catch(() => [] as MotorcycleOption[]),
     locals.db<ShareRow[]>`

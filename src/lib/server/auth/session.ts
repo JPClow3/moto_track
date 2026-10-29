@@ -1,11 +1,11 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { runtimeEnv } from "$server/runtime";
+import { createTranslator, DEFAULT_LOCALE, type MessageKey } from "$lib/i18n";
 import {
   forgetCachedSession,
   readCachedSession,
   rememberSession,
 } from "$server/auth/session-cache";
-import { createTranslator, DEFAULT_LOCALE, type MessageKey } from "$lib/i18n";
 
 // Neon Auth (Managed Better Auth) is hosted on a *different* domain than this
 // app, so we can't let its `__Secure-` session cookie ride back to the browser

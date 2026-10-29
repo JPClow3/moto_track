@@ -200,6 +200,18 @@ describe("canonical offline fuel identity", () => {
     expect(
       await submit(db, form({ total_price: "60,00", liters: "10.0" })),
     ).toEqual(expected);
+    // A pt-BR draft with grouped odometer and comma decimals is the same intent.
+    expect(
+      await submit(
+        db,
+        form({
+          odometer_km: "1.000",
+          liters: "10,000",
+          total_price: "60,00",
+          price_per_liter: "6,000",
+        }),
+      ),
+    ).toEqual(expected);
     expect(db.rows.size).toBe(1);
     expect(db.counts()).toEqual({ inserts: 1, preferences: 1 });
     expect(effects.odometer).toHaveBeenCalledTimes(1);

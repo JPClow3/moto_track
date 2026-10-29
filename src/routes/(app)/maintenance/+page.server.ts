@@ -46,6 +46,7 @@ import {
   uploadObjectFile,
 } from "$server/r2/files";
 
+import { appToday, latestCalendarDay } from "$lib/utils/calendar-day";
 type Row = Record<string, unknown>;
 
 function messageFrom(err: unknown) {
@@ -342,7 +343,7 @@ export const actions = localizedActions({
     if (
       confirmed &&
       rawDate &&
-      (!lastDoneDate || lastDoneDate > new Date().toISOString().slice(0, 10))
+      (!lastDoneDate || lastDoneDate > latestCalendarDay())
     ) {
       return fail(400, {
         message: "Informe uma data válida para o último serviço.",
@@ -568,8 +569,14 @@ export const actions = localizedActions({
   },
 });
 
-export async function load({ locals }) {
+export async function load({ locals, parent }) {
   const ownerId = locals.user!.id;
+  // The shell's bike switcher resolves the active bike; default the page view
+  // and its quick-log sheets to it rather than to the first bike by name.
+  const requestedMotorcycleId =
+    typeof parent === "function"
+      ? ((await parent()).activeMotorcycleId ?? null)
+      : null;
   const [
     motorcycleRows,
     recordResult,
@@ -703,17 +710,12 @@ export async function load({ locals }) {
       });
       const kmPerDay = estimateDailyDistance(
         odometerHistory.get(motorcycleId) ?? [],
-        new Date().toISOString().slice(0, 10),
+        appToday(),
       );
       const phasePredictedDate =
         phase?.dueKm == null
           ? null
-          : forecastDateAtKm(
-              phase.dueKm,
-              currentKm,
-              kmPerDay,
-              new Date().toISOString().slice(0, 10),
-            );
+          : forecastDateAtKm(phase.dueKm, currentKm, kmPerDay, appToday());
       const forecast = phase
         ? {
             dueKm: phase.dueKm,
@@ -735,7 +737,7 @@ export async function load({ locals }) {
               plan.interval_days == null ? null : Number(plan.interval_days),
             currentKm,
             odometerSamples: odometerHistory.get(motorcycleId) ?? [],
-            today: new Date().toISOString().slice(0, 10),
+            today: appToday(),
           });
       const progressPercent =
         !phase &&
@@ -812,6 +814,11 @@ export async function load({ locals }) {
       date: isoDateValue(row.date),
     })),
     motorcycles: motorcycleRows,
+    activeMotorcycleId:
+      motorcycleRows.find((row) => String(row.id) === requestedMotorcycleId)
+        ?.id ??
+      motorcycleRows[0]?.id ??
+      null,
     parts,
     plans,
     photos: photos.map(

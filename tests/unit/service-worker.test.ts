@@ -255,7 +255,7 @@ describe("offline fuel acknowledgement", () => {
 describe("public offline locale boundary", () => {
   it("uses explicit language preference before browser language and never caches SSR account pages", async () => {
     const sw = await worker([]);
-    const cache = await sw.caches.open("moto-track-offline-v2");
+    const cache = await sw.caches.open("moto-track-offline-v3");
     await cache.put(
       "/offline-en.html",
       new Response("English public fallback"),

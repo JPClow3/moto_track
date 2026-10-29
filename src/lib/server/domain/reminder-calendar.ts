@@ -9,6 +9,7 @@ import {
 } from "./maintenance-forecast";
 import { loadOdometerHistory } from "./odometer-history";
 
+import { appToday } from "../../utils/calendar-day";
 export type CalendarReminder = {
   id: string;
   title: string;
@@ -55,7 +56,7 @@ export function buildReminderCalendar(
   locale: Locale = "pt-BR",
 ) {
   const copy = exportMessages(locale);
-  const today = now.toISOString().slice(0, 10);
+  const today = appToday(now);
   const stamp = now
     .toISOString()
     .replace(/[-:]/g, "")
@@ -166,7 +167,7 @@ export async function loadReminderCalendar(
     `,
     loadOdometerHistory(db, ownerId),
   ]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = appToday();
   return buildReminderCalendar(
     reminders.map((r) => ({
       ...r,

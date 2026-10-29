@@ -2,6 +2,10 @@ import type { Sql } from "postgres";
 import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
 import { isoDateValue } from "$server/domain/date-value";
 import { nextScheduleMilestone } from "$server/domain/maintenance-schedule";
+import {
+  REMINDER_NOTIFICATION_RESET,
+  reminderScheduleChanged,
+} from "$server/domain/reminders";
 
 export type LinkedReminder = {
   title: string;
@@ -102,15 +106,22 @@ async function upsertMarkedReminder(
   values: Record<string, unknown>,
   { failOnCap = false }: { failOnCap?: boolean } = {},
 ) {
-  const [existing] = await db<{ id: string }[]>`
-    select id from reminders
+  const [existing] = await db<Array<Record<string, unknown> & { id: string }>>`
+    select id, motorcycle_id, trigger_type, trigger_value_km, trigger_value_days,
+      reference_km, reference_date, is_active
+    from reminders
     where owner_id = ${ownerId} and notes = ${marker}
   `;
 
   if (existing) {
+    // A renewed document or a corrected service moves the due point; the
+    // previous notification belonged to the old one.
+    const update = reminderScheduleChanged(existing, values)
+      ? { ...values, ...REMINDER_NOTIFICATION_RESET }
+      : values;
     await db`
       update reminders
-      set ${db(values)}
+      set ${db(update)}
       where id = ${existing.id} and owner_id = ${ownerId}
     `;
     return { ok: true as const, created: false };
@@ -267,8 +278,12 @@ export async function syncPlanReminder(
     calendarAnchorMode: history.calendar_anchor_mode,
     lastServiceDate: history.last_done_date,
   });
-  const [existing] = await db<{ id: string; is_active: boolean }[]>`
-    select id, is_active from reminders
+  const [existing] = await db<
+    Array<Record<string, unknown> & { id: string; is_active: boolean }>
+  >`
+    select id, is_active, motorcycle_id, trigger_type, trigger_value_km,
+      trigger_value_days, reference_km, reference_date
+    from reminders
     where owner_id = ${ownerId} and linked_plan_item_id = ${plan.id}
   `;
 
@@ -300,9 +315,17 @@ export async function syncPlanReminder(
   };
 
   if (existing) {
+    const update = {
+      ...values,
+      is_active: history.is_active && existing.is_active,
+    };
     await db`
       update reminders
-      set ${db({ ...values, is_active: history.is_active && existing.is_active })}
+      set ${db(
+        reminderScheduleChanged(existing, update)
+          ? { ...update, ...REMINDER_NOTIFICATION_RESET }
+          : update,
+      )}
       where id = ${existing.id} and owner_id = ${ownerId}
     `;
     await clearSupersededRecordReminders(db, ownerId, plan);

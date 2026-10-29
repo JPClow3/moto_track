@@ -6,14 +6,14 @@
   const R = 54;
   const C = 2 * Math.PI * R;
 
-  // A graduated ramp of the one brand red rather than four competing hues —
-  // mixed toward --panel so it re-tunes itself in dark mode.
-  const TONES = [
-    "var(--accent)",
-    "color-mix(in srgb, var(--accent) 60%, var(--panel))",
-    "color-mix(in srgb, var(--accent) 32%, var(--panel))",
-    "color-mix(in srgb, var(--accent) 15%, var(--panel))",
-  ];
+  // Each category keeps its own token wherever it appears, so fuel is the same
+  // colour here as in any other chart. Never red: red means "needs you".
+  const CATEGORY_TONE: Record<string, string> = {
+    fuel: "var(--cat-fuel)",
+    maintenance: "var(--cat-maintenance)",
+    tires: "var(--cat-tires)",
+    fees: "var(--cat-fees)",
+  };
 
   $: total = slices.reduce((sum, slice) => sum + slice.cents, 0);
   $: segments = slices.map((slice, i) => {
@@ -22,7 +22,7 @@
       .reduce((sum, previous) => sum + previous.cents, 0);
     return {
       ...slice,
-      tone: TONES[i] ?? TONES[TONES.length - 1],
+      tone: CATEGORY_TONE[slice.key] ?? "var(--muted)",
       length: total ? (slice.cents / total) * C : 0,
       offset: total ? (offset / total) * C : 0,
       percent: total ? Math.round((slice.cents / total) * 100) : 0,
@@ -65,7 +65,7 @@
       class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"
     >
       <p class="display numeric text-2xl">{$format.money(total)}</p>
-      <p class="label-tech mt-0.5 text-[10px] text-[var(--muted)]">
+      <p class="label-tech mt-0.5 text-xs text-[var(--muted)]">
         {$t("dashboard.total")}
       </p>
     </div>

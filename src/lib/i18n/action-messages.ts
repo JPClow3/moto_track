@@ -146,7 +146,28 @@ const PORTUGUESE_MESSAGES: Record<string, string> = {
   "Staff only.": "Acesso restrito à equipe.",
 };
 
-export function actionMessage(locale: Locale, message: string) {
+/**
+ * The Free-plan triggers raise raw English text. They only surface when two
+ * writes race past the app-layer guard, so give them the guard's wording.
+ */
+export function planCapMessage(message: string) {
+  const cap =
+    /^Free plan allows at most (\d+) (active reminders|work sessions per month|uploads|active motorcycle)$/.exec(
+      message,
+    );
+  if (!cap) return message;
+  if (cap[2] === "active motorcycle")
+    return "O plano Free permite uma moto ativa.";
+  const units: Record<string, string> = {
+    "active reminders": "lembretes ativos",
+    "work sessions per month": "turnos por mês",
+    uploads: "uploads",
+  };
+  return `O plano Free permite até ${cap[1]} ${units[cap[2]]}. Assine o Pro para liberar mais.`;
+}
+
+export function actionMessage(locale: Locale, rawMessage: string) {
+  const message = planCapMessage(rawMessage);
   if (locale !== "en" && locale !== "pt-BR") return message;
   if (locale !== "en")
     return Object.hasOwn(PORTUGUESE_MESSAGES, message)

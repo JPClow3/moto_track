@@ -49,8 +49,15 @@ function supportedReceiptType(file: File) {
   );
 }
 
+/**
+ * Parse a number typed by a pt-BR or en rider: "4,59", "4.59", "1.234,56",
+ * "1,234.56" and "1 234,56" all work. A lone separator is the decimal mark.
+ */
 export function parseLocalizedNumber(text: string): number | null {
-  const trimmed = text.trim().replace(/[.,]+$/, "");
+  const trimmed = text
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/[.,]+$/, "");
   if (!trimmed) return null;
   if (trimmed.includes(".") && trimmed.includes(",")) {
     const lastDot = trimmed.lastIndexOf(".");
@@ -66,7 +73,10 @@ export function parseLocalizedNumber(text: string): number | null {
     }
   }
   if (trimmed.includes(",")) {
-    const normalized = trimmed.replace(/,/g, ".");
+    const commaCount = (trimmed.match(/,/g) || []).length;
+    // "1,234,567" groups thousands; a single comma is the pt-BR decimal mark.
+    const normalized =
+      commaCount > 1 ? trimmed.replace(/,/g, "") : trimmed.replace(",", ".");
     const val = Number(normalized);
     return Number.isFinite(val) ? val : null;
   }
@@ -78,6 +88,37 @@ export function parseLocalizedNumber(text: string): number | null {
   }
   const val = Number(trimmed);
   return Number.isFinite(val) ? val : null;
+}
+
+/** A decimal form field ("4,59" or "4.59"). Empty or unreadable → fallback. */
+export function parseDecimalInput(value: unknown, fallback = 0): number {
+  if (typeof value === "number")
+    return Number.isFinite(value) ? value : fallback;
+  if (typeof value !== "string") return fallback;
+  return parseLocalizedNumber(value) ?? fallback;
+}
+
+/**
+ * A whole-number form field such as kilometres. Grouped thousands
+ * ("12.345" or "12,345") read as 12345, never as 12.345 rounded to 12.
+ */
+export function parseIntegerInput(value: unknown, fallback = 0): number {
+  if (typeof value === "number")
+    return Number.isFinite(value) ? Math.round(value) : fallback;
+  if (typeof value !== "string") return fallback;
+  const compact = value.trim().replace(/\s+/g, "");
+  if (/^-?\d{1,3}(?:([.,])\d{3})(?:\1\d{3})*$/.test(compact)) {
+    const grouped = Number(compact.replace(/[.,]/g, ""));
+    return Number.isSafeInteger(grouped) ? grouped : fallback;
+  }
+  const parsed = parseLocalizedNumber(compact);
+  return parsed === null ? fallback : Math.round(parsed);
+}
+
+function csvNumber(value: unknown) {
+  const text = String(value ?? "").trim();
+  if (!text) return 0;
+  return parseLocalizedNumber(text) ?? Number.NaN;
 }
 
 function numberFromMatch(text: string, patterns: RegExp[]) {
@@ -280,16 +321,15 @@ export function parseFuelCsv(text: string): FuelCsvPreviewRow[] {
     const raw = Object.fromEntries(
       header.map((key, col) => [key, values[col] ?? ""]),
     );
-    const liters = Number(String(raw.liters ?? "").replace(",", "."));
-    const total = Number(
-      String(raw.total_price ?? raw.total ?? "").replace(",", "."),
-    );
+    const liters = csvNumber(raw.liters);
+    const total = csvNumber(raw.total_price ?? raw.total);
     const price =
-      Number(String(raw.price_per_liter ?? "").replace(",", ".")) ||
+      csvNumber(raw.price_per_liter) ||
       (liters > 0 && total > 0 ? total / liters : 0);
+    const odometer = String(raw.odometer_km ?? raw.odometer ?? "").trim();
     const data = {
       date: String(raw.date ?? ""),
-      odometer_km: Number(raw.odometer_km ?? raw.odometer ?? 0),
+      odometer_km: odometer ? parseIntegerInput(odometer, Number.NaN) : 0,
       liters,
       total_price_cents: Math.round(total * 100),
       price_per_liter_millicents: Math.round(price * 100000),

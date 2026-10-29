@@ -41,18 +41,13 @@ const {
 async function main() {
   assert.equal(
     process.env.CORE_TEST_BRANCH,
-    "br-twilight-hat-ac2ujtl1",
+    "br-dawn-glitter-ac0vy5bm",
     "Explicit disposable branch opt-in required",
-  );
-  assert.notEqual(
-    process.env.CORE_TEST_BRANCH,
-    "br-lingering-darkness-acnan3z2",
-    "Refusing production branch",
   );
   const connection = process.env.DATABASE_URL_UNPOOLED;
   assert.ok(
     connection &&
-      new URL(connection).hostname.startsWith("ep-cold-paper-acyays6k."),
+      new URL(connection).hostname.startsWith("ep-aged-haze-achz0xp9."),
     "Unexpected database endpoint",
   );
   const db = postgres(connection, { ssl: "require", prepare: false, max: 3 });

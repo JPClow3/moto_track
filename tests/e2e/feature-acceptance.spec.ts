@@ -2,7 +2,10 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { stringify } from "devalue";
 import type { Sql } from "postgres";
-import { openDisposableDb } from "./helpers/disposable-db";
+import {
+  openDisposableDb,
+  restoreActiveMotorcycles,
+} from "./helpers/disposable-db";
 
 type OdometerSnapshot = {
   id: string;
@@ -87,10 +90,10 @@ test.describe("nearby prices, OCR confirmation and staff manual sources", () => 
       await context.setGeolocation({ latitude: -4, longitude: -20 });
       await page.goto("/fuel");
       await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
-      // Nearby stations are an always-visible panel (not a collapsed details).
-      const nearby = page.locator("section, .panel").filter({
+      const nearby = page.locator("details").filter({
         has: page.locator("#nearby-fuel"),
       });
+      await nearby.locator("summary").click();
       await nearby
         .getByRole("button", {
           name: /Usar localização atual|Use current location/i,
@@ -213,13 +216,10 @@ test.describe("nearby prices, OCR confirmation and staff manual sources", () => 
       const card = page.locator("article").filter({
         has: page.getByRole("heading", { name: snapshot.name, exact: true }),
       });
-      // Scan lives under the odometer/specs <details> on the bike card.
-      await card
-        .getByText("Odômetro e especificações", { exact: true })
-        .click();
+      await card.locator("details").first().locator("summary").first().click();
       const scanForm = card.locator('form[action="?/scanOdometer"]');
       const scanner = scanForm.locator("..");
-      await expect(scanForm.locator('[name="photo"]')).toBeVisible();
+      await scanner.locator(":scope > summary").click();
       await scanForm.locator('[name="photo"]').setInputFiles({
         name: "synthetic-odometer.png",
         mimeType: "image/png",
@@ -279,8 +279,11 @@ test.describe("nearby prices, OCR confirmation and staff manual sources", () => 
           }
           if (createdBikeId)
             await db`delete from motorcycles where id = ${createdBikeId} and owner_id = ${ownerId}`;
-          if (reserved.length)
-            await db`update motorcycles set is_active = true where owner_id = ${ownerId} and id in ${db(reserved.map((row) => row.id))}`;
+          await restoreActiveMotorcycles(
+            db,
+            ownerId,
+            reserved.map((row) => row.id),
+          );
         });
         // Preserve all four odometer values exactly; general updated_at keeps its normal trigger.
         if (before && !createdBikeId)
@@ -337,10 +340,8 @@ test.describe("nearby prices, OCR confirmation and staff manual sources", () => 
       await sql`update profiles set is_staff = true where id = ${ownerId}`;
       await page.goto("/admin");
       await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
-      const panel = page.locator("div.panel").filter({
-        has: page.getByRole("heading", {
-          name: /Fontes do catálogo por verificação|Catalog sources by verification/i,
-        }),
+      const panel = page.getByRole("region", {
+        name: /Fontes do catálogo por verificação|Catalog sources by verification/i,
       });
       const table = panel.getByRole("table");
       await expect(table).toBeVisible();

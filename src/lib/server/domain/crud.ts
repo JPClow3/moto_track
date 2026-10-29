@@ -16,6 +16,10 @@ import { syncMotorcycleOdometer } from "$server/domain/odometer";
 import { syncLinkedReminder } from "$server/domain/record-sync";
 import { relativeReplacementMonths } from "$server/domain/maintenance-schedule";
 import {
+  REMINDER_NOTIFICATION_RESET,
+  reminderScheduleChanged,
+} from "$server/domain/reminders";
+import {
   assertCanCreateReminder,
   assertCanCreateUpload,
   assertCanCreateWorkSession,
@@ -166,10 +170,15 @@ export async function deleteOwnedRow(
   ownerId: string,
 ): Promise<string | null> {
   try {
-    await db`
-      delete from ${db(table)}
-      where id = ${id} and owner_id = ${ownerId}
-    `;
+    // Deletes can cascade or fire triggers into linked plans and reminders;
+    // take the owner lock first, as reminder completion and account deletion do.
+    await db.begin(async (tx) => {
+      await lockObjectOwner(tx as unknown as Sql, ownerId);
+      await tx`
+        delete from ${tx(table)}
+        where id = ${id} and owner_id = ${ownerId}
+      `;
+    });
     return null;
   } catch (err) {
     return messageFrom(err);
@@ -484,6 +493,8 @@ export function featureActions(slug: string): Actions {
             if (feature.table === "reminders") {
               payload.completion_version =
                 Number(row.completion_version ?? 0) + 1;
+              if (reminderScheduleChanged(row, payload))
+                Object.assign(payload, REMINDER_NOTIFICATION_RESET);
             }
           }
           if (

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Bike from "lucide-svelte/icons/bike";
+  import { Motorcycle } from "$components/icons";
   import { t } from "$lib/i18n/store";
 
   export let name: string;
@@ -22,10 +22,10 @@
       />
     {:else}
       <div
-        class="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-[var(--line)] bg-[var(--accent-soft)] text-[var(--accent)]"
+        class="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-[var(--line)] bg-[var(--panel-sunken)] text-[var(--muted)]"
         aria-hidden="true"
       >
-        <Bike size={20} />
+        <Motorcycle size={20} />
       </div>
     {/if}
 
@@ -43,8 +43,8 @@
         {/if}
       </div>
       {#if odometerKm !== null && odometerKm !== undefined}
-        <p class="label-tech text-[11px] text-[var(--muted)]">
-          <span class="numeric font-medium text-[var(--fg)]">{odometerKm}</span> km
+        <p class="numeric text-xs text-[var(--muted)]">
+          <span class="font-semibold text-[var(--fg)]">{odometerKm}</span> km
         </p>
       {/if}
     </div>

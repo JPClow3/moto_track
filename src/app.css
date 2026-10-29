@@ -1,27 +1,41 @@
-/* Brand typography — Barlow: a grotesk drawn from roadway signage and vehicle
-   design. The condensed cut echoes the angular speed-mark in the logo. */
-@import "@fontsource/barlow/400.css";
-@import "@fontsource/barlow/500.css";
-@import "@fontsource/barlow/600.css";
-@import "@fontsource/barlow/700.css";
-@import "@fontsource/barlow-condensed/600.css";
-@import "@fontsource/barlow-condensed/700.css";
-@import "@fontsource/barlow-condensed/800.css";
+/* Brand typography — Archivo, one variable family with a width axis. Display
+   text runs condensed (font-stretch ~76%) for the instrument-cluster feel the
+   logo's speed-mark sets up; running text, labels and forms stay at normal
+   width, where condensed caps were hard to read at small sizes. */
+@import "@fontsource-variable/archivo/wdth.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* The palette is taken directly from the logo, which uses exactly three
-   colours: #DC2626 (red-600), #18181B (zinc-900) and #FAFAFA (zinc-50).
-   Neutrals are cool zinc — warm creams turn the red terracotta. */
+/* The palette is taken from the logo: #DC2626 (red-600) on cool zinc.
+
+   Colour roles. Red means "your bike needs you":
+   - Brand red appears in the logo, on one marketing CTA per screen, and on
+     overdue / critical states. Nothing else in the app body is red.
+   - Actions are ink. Hover lifts the ink; it never changes hue.
+   - Destructive uses its own --danger, outlined everywhere except the final
+     confirm in a dialog, so "delete" never looks like "add".
+   - Focus is an ink outline, so "I'm typing here" never looks like "this is
+     wrong".
+   - Charts use the categorical --cat-* set, never red or a status tone. */
 :root {
   color-scheme: light;
-  --bg: #fafafa;
+  /* One step darker than the panels, so cards separate from the page without
+     relying on a hairline alone. */
+  --bg: #f4f4f5;
   --fg: #18181b;
-  --muted: #71717a;
+  --fg-hover: #3f3f46;
+  --fg-soft: #3f3f46;
+  /* zinc-500 drops to 4.36:1 on the darker --bg; this clears 4.5:1 on --bg,
+     --panel-sunken and --panel. */
+  --muted: #63636b;
   --line: #e4e4e7;
   --panel: #ffffff;
+  /* Form controls need a 3:1 boundary against the card (WCAG 1.4.11). */
+  --field-border: #85858e;
+  --focus: #18181b;
+  --focus-ring: rgba(24, 24, 27, 0.16);
   /* --accent is red as TEXT/marks, drawn on --bg.
      --accent-solid is red as a FILL, with white text on top. The two cannot be
      the same value: a red light enough to read on near-black is too light to
@@ -32,39 +46,63 @@
   --accent-solid: #dc2626;
   --accent-solid-hover: #b91c1c;
   --accent-contrast: #ffffff;
-  /* Red at low alpha, for tints that sit on any surface. */
+  /* Red at low alpha, for tints behind overdue / critical states only. */
   --accent-soft: rgba(220, 38, 38, 0.08);
   --accent-ring: rgba(220, 38, 38, 0.25);
-  /* Status tones, mirrored from the Tailwind palette so charts and gauges can
-     read them at runtime. Deliberately low-chroma next to the brand red. */
+  /* Destructive actions. Darker than the brand red so a delete control never
+     reads as the same thing as a brand mark or an "add" button. */
+  --danger: #b91c1c;
+  --danger-hover: #991b1b;
+  --danger-soft: #fef2f2;
+  --danger-solid: #b91c1c;
+  --danger-solid-hover: #991b1b;
+  --danger-contrast: #ffffff;
+  /* Status tones. Green carries "ok", amber "due soon", the accent red
+     "overdue", and steel blue neutral information. */
   --success: #15803d;
+  --success-soft: #ecfdf3;
   --warning: #b45309;
+  --warning-soft: #fff7ed;
+  --info: #2f5aa8;
+  --info-soft: #eef3fb;
+  /* Categorical chart colours: fuel, maintenance, tires, fees. Never red and
+     never a status tone, so a cost chart never reads as an alert. */
+  --cat-fuel: #0e7490;
+  --cat-maintenance: #4f46e5;
+  --cat-tires: #52525b;
+  --cat-fees: #a21caf;
   --shadow-color: 24 24 27;
   /* A surface that contrasts against --panel in BOTH themes, for the one card
      that needs to out-weigh its neighbour. Dark-on-light here. */
   --panel-invert: #18181b;
 
-  /* A recessed surface, one step *back* from --panel. The UI was --panel on
-     --bg and almost nothing else, which is what made it read as a sea of white:
-     with only two near-white values there was no way to group anything
-     visually. Inputs and table headers sit on this. */
-  --panel-sunken: #f4f4f5;
-  /* A warm-neutral hairline used where --line would be too heavy. */
+  /* A recessed surface, one step *back* from --panel, for table headers and
+     inset groups inside a card. */
+  --panel-sunken: #f7f7f8;
+  /* A neutral hairline used where --line would be too heavy. */
   --line-soft: #efeff1;
-  /* Accent wash for section headers and active surfaces — carries a hint of
-     brand without spending a full red fill. */
-  --accent-wash: rgba(220, 38, 38, 0.04);
+  /* Neutral wash for section headers and active surfaces. It used to be a red
+     tint, which made empty table headers look like errors. */
+  --accent-wash: rgba(24, 24, 27, 0.035);
   --skeleton-base: #e9e9ec;
   --skeleton-sheen: #f4f4f5;
+  --font-sans:
+    "Archivo Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
   --bg: #09090b;
   --fg: #fafafa;
+  --fg-hover: #d4d4d8;
+  --fg-soft: #d4d4d8;
   --muted: #a1a1aa;
   --line: #27272a;
   --panel: #18181b;
+  --field-border: #71717a;
+  --focus: #fafafa;
+  --focus-ring: rgba(250, 250, 250, 0.2);
   /* red-500 rather than red-600: red-600 loses contrast against near-black.
      The fill stays at red-600 — see the note in :root. */
   --accent: #ef4444;
@@ -74,20 +112,35 @@
   --accent-contrast: #ffffff;
   --accent-soft: rgba(239, 68, 68, 0.12);
   --accent-ring: rgba(239, 68, 68, 0.35);
+  --danger: #f87171;
+  --danger-hover: #fca5a5;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  /* The solid fill keeps white text, so it stays at red-700 in both themes. */
+  --danger-solid: #b91c1c;
+  --danger-solid-hover: #991b1b;
+  --danger-contrast: #ffffff;
   /* One step lighter than the light-theme values, for the same reason --accent
      lifts to red-500: the -700s go muddy against near-black. */
   --success: #22c55e;
+  --success-soft: rgba(34, 197, 94, 0.12);
   --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.12);
+  --info: #86a8f0;
+  --info-soft: rgba(134, 168, 240, 0.12);
+  --cat-fuel: #22b3cf;
+  --cat-maintenance: #8b85ff;
+  --cat-tires: #a1a1aa;
+  --cat-fees: #e061ef;
   --shadow-color: 0 0 0;
   /* --panel is already #18181b in dark, so the inverted card lifts *up* to
      zinc-800 instead — otherwise it is indistinguishable from a normal panel. */
   --panel-invert: #27272a;
 
-  /* Sunken goes *below* --bg in dark mode. Lightening it here would make it
+  /* Sunken goes *below* --panel in dark mode. Lightening it here would make it
      read as raised, which is the opposite of what the token means. */
   --panel-sunken: #101012;
   --line-soft: #202023;
-  --accent-wash: rgba(239, 68, 68, 0.06);
+  --accent-wash: rgba(250, 250, 250, 0.04);
   --skeleton-base: #1f1f23;
   --skeleton-sheen: #2a2a2f;
 }
@@ -95,19 +148,13 @@
 html {
   background: var(--bg);
   color: var(--fg);
-  font-family:
-    Barlow,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--fg);
+  color: var(--bg);
 }
 
 * {
@@ -147,26 +194,31 @@ a {
    the same element (equal specificity, later wins) and `.button { @apply py-2 }`
    silently overrode every `py-3` / `min-h-8` in the markup. */
 @layer components {
-  /* Display face for headings — condensed, tight, uppercase-friendly. */
+  /* Display face for titles and large numerals only: condensed width, never
+     running text or labels. 1.05 line-height leaves room for pt-BR diacritics
+     (Ó, Ç, Ã) on multi-line headings; 0.95 made them collide. */
   .display {
-    font-family:
-      "Barlow Condensed", Barlow, ui-sans-serif, system-ui, sans-serif;
-    font-weight: 700;
+    font-family: var(--font-sans);
+    font-stretch: 76%;
+    font-weight: 750;
     letter-spacing: -0.01em;
-    line-height: 0.95;
+    line-height: 1.05;
+    text-wrap: balance;
   }
 
-  /* Small technical label — the "instrument cluster" voice. */
+  /* Small label for metrics, captions and table headers. Sentence case at
+     normal width: condensed caps at 10–12px were the hardest text to read. */
   .label-tech {
-    font-family: "Barlow Condensed", Barlow, ui-sans-serif, sans-serif;
-    @apply text-xs font-semibold uppercase;
-    letter-spacing: 0.14em;
+    font-family: var(--font-sans);
+    @apply text-xs font-semibold;
+    letter-spacing: 0.01em;
   }
 
-  /* Tabular figures so metrics don't jitter as values change. */
+  /* Tabular figures so metrics don't jitter as values change; the slashed zero
+     reads like an odometer. */
   .numeric {
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums slashed-zero;
+    letter-spacing: -0.01em;
   }
 
   /* ── Brand motifs ─────────────────────────────────────────────────────────
@@ -174,7 +226,7 @@ a {
    shared motif has to live here to be reusable. */
 
   /* The angled bars from the logo's speed-mark, rebuilt as a rule. Pair with a
-   .label-tech eyebrow to open a section. */
+   marketing .eyebrow to open a section. */
   .slash-rule {
     display: inline-block;
     width: 26px;
@@ -191,12 +243,12 @@ a {
     height: 8px;
   }
 
-  /* Section eyebrow: red slashes + technical label. Spelled out rather than
-   @apply-ing .label-tech, which Tailwind cannot apply (it is not a utility). */
+  /* Marketing section eyebrow: red slashes + small caps. App page headers
+   don't use it — the title already says where you are. */
   .eyebrow {
-    font-family: "Barlow Condensed", Barlow, ui-sans-serif, sans-serif;
+    font-family: var(--font-sans);
     @apply flex items-center gap-3 text-xs font-semibold uppercase;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.08em;
     color: var(--accent);
   }
 
@@ -213,22 +265,19 @@ a {
     bottom: -4px;
     width: 100%;
     height: 2px;
-    background: var(--accent);
+    background: var(--fg);
     transform: scaleX(0);
     transform-origin: left;
     transition: transform 0.25s ease;
   }
 
-  .nav-link:hover {
-    color: var(--accent);
-  }
-
-  .nav-link:hover::after {
+  .nav-link:hover::after,
+  .nav-link.is-active::after {
     transform: scaleX(1);
   }
 
   .nav-link:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--focus);
     outline-offset: 4px;
   }
 
@@ -254,15 +303,15 @@ a {
     pointer-events: none;
   }
 
-  /* A single red bloom, like a tail light. */
+  /* A single red bloom, like a tail light. Marketing only. */
   .accent-glow {
     position: absolute;
     background: radial-gradient(circle, var(--accent-soft) 0%, transparent 65%);
     pointer-events: none;
   }
 
-  /* Skewed tick, echoing the speed-mark. Neutral by default — green next to
-   brand red reads as Christmas. */
+  /* Skewed tick, echoing the speed-mark. Neutral by default; tint it with a
+   status modifier when it marks a state. */
   .tick {
     margin-top: 0.4rem;
     width: 7px;
@@ -276,33 +325,39 @@ a {
     background: var(--accent);
   }
 
+  .tick--warning {
+    background: var(--warning);
+  }
+
+  .tick--success {
+    background: var(--success);
+  }
+
+  /* Neutral ink outline: a red ring read as a validation error. */
   .focus-ring {
     @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
-    outline-color: var(--accent);
+    outline-color: var(--focus);
   }
 
   .panel {
     background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: 4px;
+    border-radius: 6px;
     box-shadow: 0 1px 2px rgb(var(--shadow-color) / 0.04);
   }
 
   /* ── Forms ────────────────────────────────────────────────────────────────
-   The old field was a 1px box on --panel sitting inside a --panel card: the
-   input and its container were the same colour, so every form read as a grid
-   of empty rectangles. Now the field is *sunken* against its card and carries
-   its weight on the bottom edge, so a row of inputs reads as a line of things
-   you can type into rather than a stack of boxes. */
+   Fields carry a full border at 3:1 against the card (WCAG 1.4.11). The old
+   sunken fill and bottom hairline measured 1.10:1 and 1.27:1, so an empty
+   input was effectively invisible. 16px text also stops iOS zooming on focus. */
   .field-group {
     @apply grid gap-1.5;
   }
 
   .field-label {
-    font-family: "Barlow Condensed", Barlow, ui-sans-serif, sans-serif;
-    @apply flex items-center gap-1 text-xs font-semibold uppercase;
-    letter-spacing: 0.1em;
-    color: var(--muted);
+    font-family: var(--font-sans);
+    @apply flex items-center gap-1 text-sm font-semibold;
+    color: var(--fg-soft);
   }
 
   .field-help {
@@ -311,39 +366,37 @@ a {
   }
 
   .field {
-    @apply w-full text-sm outline-none;
+    @apply w-full text-base outline-none;
     /* min-height rather than padding alone: a 44px target is the WCAG 2.1 AA
        floor and the old py-2 landed at ~34px. */
-    @apply min-h-11 rounded-sm px-3 py-2;
-    background: var(--panel-sunken);
-    border: 1px solid transparent;
-    border-bottom-color: var(--line);
+    @apply min-h-11 rounded px-3 py-2;
+    background: var(--panel);
+    border: 1px solid var(--field-border);
     color: var(--fg);
     transition:
       border-color 0.18s ease,
-      background 0.18s ease,
       box-shadow 0.18s ease;
   }
 
   .field::placeholder {
-    color: color-mix(in srgb, var(--muted) 70%, transparent);
+    color: var(--muted);
   }
 
   .field:hover:not(:focus) {
-    border-bottom-color: var(--muted);
+    border-color: var(--fg-soft);
   }
 
   .field:focus,
   .field:focus-visible {
-    background: var(--panel);
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-ring);
+    border-color: var(--focus);
+    box-shadow: 0 0 0 3px var(--focus-ring);
   }
 
   /* :user-invalid, not :invalid — :invalid paints every required field red on
-     first paint, before anyone has typed a thing. */
+     first paint, before anyone has typed a thing. Red is reserved for this. */
   .field:user-invalid {
-    border-color: var(--danger, #dc2626);
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px var(--danger-soft);
   }
 
   select.field {
@@ -362,7 +415,7 @@ a {
   }
 
   input[type="file"].field {
-    @apply cursor-pointer py-2.5 text-xs;
+    @apply cursor-pointer py-2.5 text-sm;
   }
 
   /* A real switch, replacing the bare 16px checkbox + "Ativado" label. */
@@ -378,7 +431,7 @@ a {
     @apply relative inline-block shrink-0 rounded-full;
     width: 38px;
     height: 22px;
-    background: var(--line);
+    background: var(--field-border);
     transition: background 0.18s ease;
   }
 
@@ -395,7 +448,7 @@ a {
   }
 
   .switch input:checked + .switch-track {
-    background: var(--accent-solid);
+    background: var(--fg);
   }
 
   .switch input:checked + .switch-track::after {
@@ -403,15 +456,15 @@ a {
   }
 
   .switch input:focus-visible + .switch-track {
-    box-shadow: 0 0 0 3px var(--accent-ring);
+    box-shadow: 0 0 0 3px var(--focus-ring);
   }
 
   .button {
     @apply focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 py-2 text-sm font-semibold transition active:scale-[0.98] active:opacity-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50;
   }
 
-  /* Primary stays graphite. Red is reserved as an accent, which is what keeps
-   a filled red button legible as "destructive" further down.
+  /* Primary is ink in both themes, including "add". Hover lifts the ink; it
+   used to turn red, flashing the destructive colour right before every save.
    Colour must invert with the surface: --fg is near-white in dark mode, so a
    hardcoded white label would vanish. */
   .button-primary {
@@ -421,22 +474,22 @@ a {
   }
 
   .button-primary:hover {
-    background: var(--accent-solid);
-    color: var(--accent-contrast);
+    background: var(--fg-hover);
   }
 
   .button-secondary {
     @apply button;
     border: 1px solid var(--line);
     background: var(--panel);
+    color: var(--fg);
   }
 
   .button-secondary:hover {
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: var(--fg-soft);
   }
 
-  /* The one place red is a filled surface on the marketing side. */
+  /* Brand-red fill: marketing CTAs only, one per screen. Never inside the
+   signed-in app, where red means "overdue". */
   .button-accent {
     @apply button;
     background: var(--accent-solid);
@@ -447,14 +500,27 @@ a {
     background: var(--accent-solid-hover);
   }
 
+  /* Destructive, outlined. Every delete / remove / cancel-plan trigger. */
   .button-danger {
     @apply button;
-    background: var(--accent-solid);
-    color: var(--accent-contrast);
+    border: 1px solid var(--danger);
+    background: transparent;
+    color: var(--danger);
   }
 
   .button-danger:hover {
-    background: var(--accent-solid-hover);
+    background: var(--danger-soft);
+  }
+
+  /* Destructive, filled. Only the final confirm inside a dialog. */
+  .button-danger-solid {
+    @apply button;
+    background: var(--danger-solid);
+    color: var(--danger-contrast);
+  }
+
+  .button-danger-solid:hover {
+    background: var(--danger-solid-hover);
   }
 
   /* ── Accessibility helpers ────────────────────────────────────────────────*/
@@ -476,8 +542,8 @@ a {
   .skip-link {
     @apply absolute left-4 z-50 inline-flex min-h-11 items-center rounded px-4 py-2 text-sm font-semibold;
     top: -100px;
-    background: var(--accent-solid);
-    color: var(--accent-contrast);
+    background: var(--fg);
+    color: var(--bg);
     transition: top 0.15s ease;
   }
 
@@ -511,23 +577,70 @@ a {
   }
 
   /* ── Entrance motion ──────────────────────────────────────────────────────
-   The UI was entirely static: content simply existed on paint. A short rise on
-   first render gives the page a sense of assembling itself. Deliberately
-   subtle and one-shot — this is not an attention-grabber. */
+   A short rise on first render. Starts from a visible resting state (opacity
+   is never 0), so the first painted frame is complete. */
   .rise {
     animation: rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   @keyframes rise {
     from {
-      opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(6px);
     }
     to {
-      opacity: 1;
       transform: none;
     }
   }
+
+  /* ── Responsive data lists ────────────────────────────────────────────────
+   Tables collapse to stacked rows below 640px: wrap the table in .data-table
+   and give each <td> a data-label. Each row becomes a card-like block with the
+   label beside its value, instead of a table clipped off the right edge. */
+  @media (max-width: 639px) {
+    .data-table table,
+    .data-table tbody,
+    .data-table tr,
+    .data-table td {
+      display: block;
+      width: 100%;
+    }
+
+    .data-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+
+    .data-table tr {
+      border-bottom: 1px solid var(--line);
+      padding: 0.75rem 1rem;
+    }
+
+    .data-table td {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.25rem 0;
+      border: 0;
+      text-align: right;
+    }
+
+    .data-table td[data-label]::before {
+      content: attr(data-label);
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .data-table td[colspan] {
+      display: block;
+      text-align: center;
+    }
+  }
+
   /* ── Authenticated UX Primitives ──────────────────────────────────────────*/
 
   /* Record Sheet: native <dialog> shell with desktop drawer & mobile bottom sheet */
@@ -675,18 +788,22 @@ a {
     animation: confirm-in 0.16s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  /* PageAction: fixed above mobile nav on phone, static on desktop */
+  /* PageAction: inline in the page header at every size (the phone bar's
+     quick-log + replaced the floating FAB). Icon-only square below 640px,
+     where the accessible name comes from aria-label. */
   .page-action {
-    position: fixed;
-    right: 1rem;
-    bottom: calc(4.5rem + env(safe-area-inset-bottom));
-    z-index: 30;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
-  @media (min-width: 1024px) {
+  @media (max-width: 639px) {
     .page-action {
-      position: static;
-      z-index: auto;
+      width: 2.75rem;
+      padding-inline: 0;
+    }
+
+    .page-action .page-action-label {
+      display: none;
     }
   }
 

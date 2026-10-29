@@ -14,9 +14,10 @@ import {
   forecastDateAtKm,
 } from "$server/domain/maintenance-forecast";
 import { loadOdometerHistory } from "$server/domain/odometer-history";
-import { isoTimestampValue } from "$server/domain/date-value";
+import { isoDateValue, isoTimestampValue } from "$server/domain/date-value";
 import { lockObjectOwner } from "$server/r2/files";
 
+import { appToday } from "$lib/utils/calendar-day";
 type Row = Record<string, unknown>;
 
 function messageFrom(err: unknown) {
@@ -147,8 +148,14 @@ export const actions = localizedActions({
   },
 });
 
-export async function load({ locals }) {
+export async function load({ locals, parent }) {
   const ownerId = locals.user!.id;
+  // The shell's bike switcher resolves the active bike; default the page view
+  // and its quick-log sheets to it rather than to the first bike by name.
+  const requestedMotorcycleId =
+    typeof parent === "function"
+      ? ((await parent()).activeMotorcycleId ?? null)
+      : null;
   const [motorcycleRows, recordResult, products, pressures, odometerHistory] =
     await Promise.all([
       locals.db<
@@ -228,13 +235,14 @@ export async function load({ locals }) {
             observedKm: Number(row.wear_odometer_km),
           })
         : null;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = appToday();
     const pace = estimateDailyDistance(
       odometerHistory.get(motorcycleId) ?? [],
       today,
     );
     return {
       ...row,
+      installed_at: isoDateValue(row.installed_at),
       wear_observed_at: isoTimestampValue(row.wear_observed_at),
       current_km: currentKm,
       life_estimate: estimate,
@@ -250,10 +258,16 @@ export async function load({ locals }) {
     rows,
     activeTires: rows.filter((row) => row.is_active === true),
     motorcycles: motorcycleRows,
+    activeMotorcycleId:
+      motorcycleRows.find((row) => String(row.id) === requestedMotorcycleId)
+        ?.id ??
+      motorcycleRows[0]?.id ??
+      null,
     products,
     pressures: pressures.map(
       (pressure): Row & { motorcycles: { name: unknown } | null } => ({
         ...pressure,
+        date: isoDateValue(pressure.date),
         motorcycles: pressure.motorcycle_name
           ? { name: pressure.motorcycle_name }
           : null,

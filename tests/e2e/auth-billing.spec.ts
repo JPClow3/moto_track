@@ -137,7 +137,7 @@ test.describe("authenticated garage and billing", () => {
     }));
     expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
 
-    await page.getByRole("button", { name: "Abrir menu", exact: true }).click();
+    await page.getByRole("button", { name: "Mais", exact: true }).click();
     const accountLink = page
       .locator("#app-mobile-nav")
       .getByRole("link", { name: "Conta e assinatura", exact: true });

@@ -1,10 +1,14 @@
+import {
+  nativePlatform,
+  nativePurchasesRestricted,
+} from "$lib/domain/distribution";
 /**
  * Root-level so *every* page — marketing, app, and the error boundary — can
  * read the locale and the session. Without `user` here the public header had no
  * way to know someone was signed in, which stranded logged-in visitors on the
  * marketing pages with only an "Entrar" button.
  */
-export async function load({ locals }) {
+export async function load({ locals, request }) {
   let theme = "system";
   if (locals.user) {
     const [profile] = await locals.db<Array<{ theme: string }>>`
@@ -14,6 +18,10 @@ export async function load({ locals }) {
   }
   return {
     locale: locals.locale,
+    nativeStore: nativePurchasesRestricted(
+      request?.headers.get("user-agent") ?? null,
+    ),
+    nativePlatform: nativePlatform(request?.headers.get("user-agent") ?? null),
     theme,
     user: locals.user
       ? // Deliberately not the whole session user: this is serialised into

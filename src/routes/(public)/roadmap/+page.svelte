@@ -1,8 +1,12 @@
 <script lang="ts">
-  import { resolve } from "$app/paths";
   import { locale } from "$lib/i18n/store";
   import { publicCopy } from "$lib/i18n/public-copy";
-  import { ArrowRight, Check, Compass, Wrench } from "lucide-svelte";
+  import { onMount } from "svelte";
+  import ArrowRight from "lucide-svelte/icons/arrow-right";
+  import Check from "lucide-svelte/icons/check";
+  import CircleDashed from "lucide-svelte/icons/circle-dashed";
+  import Compass from "lucide-svelte/icons/compass";
+  import Wrench from "lucide-svelte/icons/wrench";
 
   type Status = "done" | "next" | "planned" | "exploring";
 
@@ -107,6 +111,15 @@
           title: "Busca de peças no Mercado Livre",
           body: "Use uma peça ou um plano de manutenção para preparar uma busca segura e abrir ofertas, preços e disponibilidade atuais diretamente no Mercado Livre.",
         },
+      ],
+    },
+    {
+      status: "next",
+      label: "Próximo",
+      heading: "O que vem agora",
+      blurb: "Definido e priorizado — é para onde vai o próximo esforço.",
+      icon: Wrench,
+      items: [
         {
           title: "Previsão da próxima troca",
           body: "Estimativa de data baseada no seu ritmo real de km rodado por dia, não só no intervalo padrão do fabricante.",
@@ -120,12 +133,29 @@
           body: "Compra, combustível, manutenção, pneus e taxas somados num único número: quanto a moto custa por km.",
         },
         {
-          title: "Transparência das fontes do catálogo",
-          body: "A fonte e a data de verificação de cada manual aparecem na ficha da moto e no admin do catálogo — não há painel público geral para o motociclista.",
+          title: "Compra de peças dentro do app",
+          body: "Checkout direto no Mercado Livre a partir de uma peça ou plano de manutenção, sem sair para comparar links.",
         },
         {
+          title: "Mais motos com agenda exata",
+          body: "Hoje só duas entradas do catálogo têm cronograma oficial transcrito; a fila é ampliar Dafra, Shineray, KTM e as demais famílias.",
+        },
+        {
+          title: "Transparência das fontes do catálogo",
+          body: "Painel mostrando a data de verificação de cada manual usado no catálogo, para saber o que está desatualizado.",
+        },
+      ],
+    },
+    {
+      status: "planned",
+      label: "Planejado",
+      heading: "Na fila",
+      blurb: "Aceito no backlog, ainda sem posição definida.",
+      icon: CircleDashed,
+      items: [
+        {
           title: "Moto Track em inglês",
-          body: "Seletor de idioma e páginas públicas em inglês disponíveis; o app acompanha o idioma do navegador ou a escolha na Conta.",
+          body: "A tradução já existe no sistema de i18n; falta o seletor de idioma e as páginas públicas revisadas.",
         },
         {
           title: "Garagem compartilhada",
@@ -133,7 +163,7 @@
         },
         {
           title: "Lembretes no seu calendário",
-          body: "Baixe um arquivo .ics ou gere um link de assinatura para Google Agenda ou Apple Calendar, além do e-mail e push.",
+          body: "Sincronize vencimentos por km ou data com Google Agenda ou Apple Calendar, além do e-mail e push.",
         },
         {
           title: "Comparativo de oficinas",
@@ -141,32 +171,7 @@
         },
         {
           title: "Posto mais barato perto de você",
-          body: "Compare postos próximos com os preços que você mesmo registrou nos últimos abastecimentos.",
-        },
-        {
-          title: "Leitura de odômetro por foto",
-          body: "A mesma tecnologia do OCR de cupom, aplicada ao painel — menos digitação para registrar o km atual.",
-        },
-        {
-          title: "Acesso para oficinas parceiras",
-          body: "Na garagem compartilhada, o papel de oficina permite lançar serviços no histórico do cliente com permissão limitada.",
-        },
-      ],
-    },
-    {
-      status: "next",
-      label: "Próximo",
-      heading: "O que vem agora",
-      blurb: "Definido e priorizado — é para onde vai o próximo esforço.",
-      icon: Wrench,
-      items: [
-        {
-          title: "Compra de peças dentro do app",
-          body: "Checkout direto no Mercado Livre a partir de uma peça ou plano de manutenção, sem sair para comparar links.",
-        },
-        {
-          title: "Mais motos com agenda exata",
-          body: "Já há agenda oficial para CG 160 Start e quatro anos Dafra (NH 190 e NH 300). A fila continua: ampliar Shineray, KTM e as demais famílias.",
+          body: "O app já registra onde você abastece; a ideia é usar isso para indicar o posto mais em conta nas proximidades.",
         },
       ],
     },
@@ -178,8 +183,16 @@
       icon: Compass,
       items: [
         {
+          title: "Leitura de odômetro por foto",
+          body: "A mesma tecnologia do OCR de cupom, aplicada ao painel — menos digitação para registrar o km atual.",
+        },
+        {
           title: "Cotação de seguro",
           body: "Usar o histórico de apólices e sinistros já registrado para comparar cotações de seguradoras parceiras.",
+        },
+        {
+          title: "Acesso para oficinas parceiras",
+          body: "Deixar uma oficina de confiança lançar serviços direto no histórico do cliente, com permissão limitada.",
         },
       ],
     },
@@ -187,7 +200,7 @@
 
   const dotClass: Record<Status, string> = {
     done: "bg-success",
-    next: "bg-[var(--accent)]",
+    next: "bg-[var(--info)]",
     planned: "bg-[var(--muted)]",
     exploring: "bg-[var(--line)] ring-1 ring-[var(--muted)]",
   };
@@ -206,10 +219,10 @@
   // then snapped backwards. The honest figure is still in the static HTML —
   // the caption spells it out and aria-valuetext carries it — so a reader
   // without JS is told the truth in words even while the dial reads empty.
-  let shownPct = $state(0);
+  let shownPct = 0;
+  let gaugeEl: HTMLDivElement;
 
-  // Attachment: observe the gauge node and sweep when visible.
-  function gaugeSweep(node: HTMLDivElement) {
+  onMount(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       shownPct = targetPct;
       return;
@@ -249,14 +262,14 @@
             { threshold: 0.6 },
           )
         : null;
-    observer?.observe(node);
+    observer?.observe(gaugeEl);
 
     // Never let a missing or misbehaving observer strand the gauge at 0% —
     // being stuck there misreports the roadmap. If it has not fired by now and
     // the gauge is on screen anyway, sweep regardless.
     const fallback = setTimeout(() => {
       if (started) return;
-      const box = node.getBoundingClientRect();
+      const box = gaugeEl.getBoundingClientRect();
       if (box.top < window.innerHeight && box.bottom > 0) {
         observer?.disconnect();
         run();
@@ -268,7 +281,7 @@
       clearTimeout(fallback);
       cancelAnimationFrame(frame);
     };
-  }
+  });
 </script>
 
 <svelte:head>
@@ -288,7 +301,7 @@
   <div class="grid-backdrop" aria-hidden="true"></div>
   <div class="accent-glow header-glow" aria-hidden="true"></div>
 
-  <div class="relative mx-auto max-w-6xl px-6 py-16 sm:py-20">
+  <div class="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
       {publicCopy($locale, "Transparência")}
@@ -325,7 +338,7 @@
     </dl>
 
     <!-- Overall completion, read as a fuel/service gauge rather than a web bar. -->
-    <div class="gauge mt-10 max-w-2xl" {@attach gaugeSweep}>
+    <div class="gauge mt-10 max-w-2xl" bind:this={gaugeEl}>
       <div class="flex items-baseline justify-between gap-4">
         <p class="label-tech text-[var(--muted)]">
           {publicCopy($locale, "Entregue")}
@@ -361,84 +374,79 @@
 
 <!-- ── GROUPS ──────────────────────────────────────────────── -->
 {#each groups as group (group.status)}
-  {#if group.items.length > 0}
-    <section class="border-b border-[var(--line)] px-6 py-16">
-      <div
-        class="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[18rem_1fr] lg:gap-16"
-      >
-        <!-- Sticky section identity, so the status stays visible while the list scrolls. -->
-        <div class="lg:sticky lg:top-24 lg:self-start">
-          <p class="eyebrow">
-            <span class="slash-rule" aria-hidden="true"></span>
-            {publicCopy($locale, group.label)}
-          </p>
-          <h2 class="display mt-4 text-4xl">
-            {publicCopy($locale, group.heading)}
-          </h2>
-          <p class="mt-3 text-sm leading-relaxed text-[var(--muted)]">
-            {publicCopy($locale, group.blurb)}
-          </p>
-          <p class="label-tech numeric mt-5 text-[var(--muted)]">
-            {group.items.length}
-            {group.items.length === 1 ? "item" : publicCopy($locale, "itens")}
-          </p>
-        </div>
-
-        <!-- Items hang off a single rail, like a service schedule. -->
-        <ul class="rail relative space-y-px">
-          {#each group.items as item (item.title)}
-            <li class="item group relative bg-[var(--bg)] py-5 pl-10 pr-4">
-              <span
-                class="marker absolute left-0 top-6 grid h-6 w-6 place-items-center rounded-full border border-[var(--line)] bg-[var(--bg)]"
-                aria-hidden="true"
-              >
-                {#if group.status === "done"}
-                  <Check class="h-3.5 w-3.5 text-success" />
-                {:else}
-                  <span class="h-2 w-2 rounded-full {dotClass[group.status]}"
-                  ></span>
-                {/if}
-              </span>
-              <h3
-                class="display text-xl transition-colors group-hover:text-[var(--accent)]"
-              >
-                {publicCopy($locale, item.title)}
-              </h3>
-              <p class="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
-                {publicCopy($locale, item.body)}
-              </p>
-            </li>
-          {/each}
-        </ul>
+  <section class="border-b border-[var(--line)] px-4 py-16 sm:px-6">
+    <div
+      class="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[18rem_1fr] lg:gap-16"
+    >
+      <!-- Sticky section identity, so the status stays visible while the list scrolls. -->
+      <div class="lg:sticky lg:top-24 lg:self-start">
+        <p class="eyebrow">
+          <span class="slash-rule" aria-hidden="true"></span>
+          {publicCopy($locale, group.label)}
+        </p>
+        <h2 class="display mt-4 text-4xl">
+          {publicCopy($locale, group.heading)}
+        </h2>
+        <p class="mt-3 text-sm leading-relaxed text-[var(--muted)]">
+          {publicCopy($locale, group.blurb)}
+        </p>
+        <p class="label-tech numeric mt-5 text-[var(--muted)]">
+          {group.items.length}
+          {group.items.length === 1 ? "item" : publicCopy($locale, "itens")}
+        </p>
       </div>
-    </section>
-  {/if}
+
+      <!-- Items hang off a single rail, like a service schedule. -->
+      <ul class="rail relative space-y-px">
+        {#each group.items as item (item.title)}
+          <li class="item group relative bg-[var(--bg)] py-5 pl-10 pr-4">
+            <span
+              class="marker absolute left-0 top-6 grid h-6 w-6 place-items-center rounded-full border border-[var(--line)] bg-[var(--bg)]"
+              aria-hidden="true"
+            >
+              {#if group.status === "done"}
+                <Check size={16} class="text-success" />
+              {:else}
+                <span class="h-2 w-2 rounded-full {dotClass[group.status]}"
+                ></span>
+              {/if}
+            </span>
+            <h3 class="display text-xl">
+              {publicCopy($locale, item.title)}
+            </h3>
+            <p class="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
+              {publicCopy($locale, item.body)}
+            </p>
+          </li>
+        {/each}
+      </ul>
+    </div>
+  </section>
 {/each}
 
 <!-- ── CTA ─────────────────────────────────────────────────── -->
-<section class="relative overflow-hidden bg-ink px-6 py-24 text-paper">
+<section
+  class="relative overflow-hidden bg-ink px-4 py-20 text-paper sm:px-6 sm:py-24"
+>
   <div class="cta-slashes" aria-hidden="true"></div>
   <div class="relative mx-auto max-w-3xl text-center">
     <h2 class="display text-5xl sm:text-6xl">
       {publicCopy($locale, "Faltou alguma coisa?")}
     </h2>
-    <p class="mx-auto mt-5 max-w-xl text-lg text-paper/60">
+    <p class="mx-auto mt-5 max-w-xl text-lg text-paper/70">
       {publicCopy(
         $locale,
         "O que entra nessa lista sai do que os motociclistas pedem. Crie sua conta e diga o que a sua moto precisa.",
       )}
     </p>
     <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
-      <a
-        class="button-accent px-7 py-3.5 text-base shadow-brand"
-        href={resolve("/auth")}
-      >
+      <a class="button-accent px-7 py-3.5 text-base shadow-brand" href="/auth">
         {publicCopy($locale, "Criar conta")}
-        <ArrowRight class="h-4 w-4" />
+        <ArrowRight size={20} />
       </a>
       <a
-        class="button-secondary border-paper/20 bg-transparent px-7 py-3.5 text-base text-paper hover:border-[var(--accent)]"
-        href={resolve("/blog")}
+        class="button-secondary border-paper/20 bg-transparent px-7 py-3.5 text-base text-paper hover:border-paper/60"
+        href="/blog"
       >
         {publicCopy($locale, "Ler os guias")}
       </a>
@@ -488,8 +496,8 @@
   }
   .gauge .fill {
     height: 100%;
-    background: var(--accent);
-    box-shadow: 0 0 20px -2px var(--accent-ring);
+    /* Delivered work is "done", so the gauge is green, not brand red. */
+    background: var(--success);
   }
   .gauge .ticks {
     position: absolute;
@@ -535,6 +543,6 @@
     background: var(--panel);
   }
   .item:hover .marker {
-    border-color: var(--accent);
+    border-color: var(--fg-soft);
   }
 </style>

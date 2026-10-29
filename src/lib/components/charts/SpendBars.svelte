@@ -14,8 +14,8 @@
   $: peak = months.reduce((high, entry) => Math.max(high, entry.cents), 0);
   $: total = months.reduce((sum, entry) => sum + entry.cents, 0);
   $: average = months.length ? total / months.length : 0;
-  // The most recent month is the one the rider can still act on, so it carries
-  // the accent and the rest stay graphite.
+  // The most recent month is the one the rider can still act on, so it is drawn
+  // in ink and the rest stay neutral. Spend is not an alarm, so never red.
   $: latest = months.length - 1;
 </script>
 
@@ -29,7 +29,7 @@
     </div>
     <div class="pb-1">
       <p class="numeric text-sm font-semibold">{$format.money(average)}</p>
-      <p class="label-tech text-[10px] text-[var(--muted)]">
+      <p class="label-tech text-xs text-[var(--muted)]">
         {$t("dashboard.perMonthAverage")}
       </p>
     </div>
@@ -39,10 +39,10 @@
     {#each labelled as entry, i (entry.month)}
       <div class="group flex h-full flex-1 flex-col justify-end gap-2">
         <p
-          class="numeric text-center text-[11px] font-semibold opacity-0 transition-opacity group-hover:opacity-100 {i ===
+          class="numeric text-center text-xs font-semibold opacity-0 transition-opacity group-hover:opacity-100 {i ===
           latest
-            ? 'text-[var(--accent)]'
-            : ''}"
+            ? 'text-[var(--fg)]'
+            : 'text-[var(--muted)]'}"
         >
           {$format.money(entry.cents)}
         </p>
@@ -54,7 +54,11 @@
           style={`--height:${peak ? Math.max((entry.cents / peak) * 100, entry.cents ? 2 : 0.8) : 0.8}%; --delay:${i * 70}ms`}
           title={`${entry.label} — ${$format.money(entry.cents)}`}
         ></div>
-        <p class="label-tech text-center text-[10px] text-[var(--muted)]">
+        <p
+          class="label-tech text-center text-xs {i === latest
+            ? 'text-[var(--fg)]'
+            : 'text-[var(--muted)]'}"
+        >
           {entry.label}
         </p>
       </div>
@@ -78,7 +82,7 @@
     height: var(--height);
     min-height: 2px;
     border-radius: 2px 2px 0 0;
-    background: color-mix(in srgb, var(--fg) 18%, transparent);
+    background: color-mix(in srgb, var(--muted) 35%, var(--panel));
     transform-origin: bottom;
     animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
     animation-delay: var(--delay);
@@ -86,15 +90,15 @@
   }
 
   .bar.is-latest {
-    background: var(--accent);
+    background: var(--fg);
   }
 
   .group:hover .bar {
-    background: color-mix(in srgb, var(--fg) 38%, transparent);
+    background: var(--muted);
   }
 
   .group:hover .bar.is-latest {
-    background: var(--accent-hover);
+    background: var(--fg-hover);
   }
 
   .group:focus-within p {

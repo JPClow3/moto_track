@@ -118,7 +118,7 @@ function validFuelRecords(records: FuelRecord[]) {
 function consumptionSummary(records: FuelRecord[]) {
   const ordered = [...records].sort(
     (a, b) =>
-      String(a.date).localeCompare(String(b.date)) ||
+      isoDateValue(a.date).localeCompare(isoDateValue(b.date)) ||
       Number(a.odometer_km) - Number(b.odometer_km),
   );
   let previousFull = -1;
@@ -194,11 +194,11 @@ export function comparableBenchmarkMetrics(
   // timeline, reject any rollback, and use only the represented distance.
   const anchors = [
     ...validFuel.map((record) => ({
-      date: String(record.date),
+      date: isoDateValue(record.date),
       odometer: Number(record.odometer_km),
     })),
     ...validMaintenance.map((record) => ({
-      date: String(record.date),
+      date: isoDateValue(record.date),
       odometer: Number(record.odometer_km),
     })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.odometer - b.odometer);

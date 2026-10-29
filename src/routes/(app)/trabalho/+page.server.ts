@@ -9,6 +9,7 @@ import {
 } from "$server/domain/crud";
 import { calculateWorkProfitability } from "$server/domain/parity";
 import { lockObjectOwner } from "$server/db/owner-lock";
+import { isoDateValue } from "$server/domain/date-value";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -69,7 +70,7 @@ export async function load({ locals }) {
   const summaries = baseData.rows.map((row) => {
     const s = byMoto.get(String(row.motorcycle_id));
     return {
-      work_date: String(row.work_date ?? ""),
+      work_date: isoDateValue(row.work_date),
       profitability: calculateWorkProfitability({
         distanceKm:
           Number(row.odometer_end_km ?? 0) - Number(row.odometer_start_km ?? 0),

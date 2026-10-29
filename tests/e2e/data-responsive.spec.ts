@@ -163,7 +163,9 @@ async function expectOdometer(page: Page, expected: number) {
 
 async function isFreePlan(page: Page) {
   await gotoAppRoute(page, "/billing/conta");
-  return (await page.getByText(/^free$/i).count()) > 0;
+  const plan = page.getByText(/^Moto Track (Free|Pro)$/);
+  await expect(plan).toBeVisible();
+  return (await plan.textContent())?.trim() === "Moto Track Free";
 }
 
 test.describe("data surfaces responsive behavior", () => {
@@ -341,8 +343,7 @@ test.describe("data surfaces responsive behavior", () => {
         notes: marker,
       });
       await gotoAppRoute(page, "/trabalho");
-      // FeaturePage lists sessions in ActivityTimeline, not a table.
-      const workRow = page.locator(".timeline-item", { hasText: marker });
+      const workRow = page.locator("tbody tr", { hasText: marker });
       if (!(await workRow.count())) {
         expect(workResult.body).toContain(
           "O plano Free permite até 3 turnos por mês",
@@ -500,7 +501,7 @@ test.describe("data surfaces responsive behavior", () => {
     }
   });
 
-  test("Free reminder cap accepts the last slot and rejects the next create", async ({
+  test("Free reminder cap fills available slots and rejects another create", async ({
     page,
   }) => {
     const isFree = await isFreePlan(page);

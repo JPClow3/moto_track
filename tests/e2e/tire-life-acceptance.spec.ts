@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
-import { motorcycleSlots, openDisposableDb } from "./helpers/disposable-db";
-import { reserveFreeMotorcycleSlot } from "./helpers/free-slot";
+import {
+  motorcycleSlots,
+  openDisposableDb,
+  restoreActiveMotorcycles,
+} from "./helpers/disposable-db";
 
 const hasAuth = Boolean(
   process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD,
@@ -30,18 +33,25 @@ test.describe("confirmed tire wear observations", () => {
     const { sql, ownerId } = fixture;
     const motorcycleId = randomUUID();
     const currentKm = 5000;
+    const active = await sql<Array<{ id: string }>>`
+      select id from motorcycles where owner_id = ${ownerId} and is_active = true and deleted_at is null
+    `;
+    console.log(
+      `tire-life start: ${active.length} active; motorcycles: ${await motorcycleSlots(sql, ownerId)}`,
+    );
     const marker = `tire-observation-${Date.now()}`;
     let tireId = "";
     let fuelId = "";
     const card = page.locator("article").filter({
       has: page.getByRole("heading", { name: marker, exact: true }),
     });
-    const slot = await reserveFreeMotorcycleSlot(sql, ownerId);
     try {
-      await sql`
-        insert into motorcycles (id, owner_id, name, brand, model, year, current_odometer_km, odometer_override_km, is_active)
-        values (${motorcycleId}, ${ownerId}, ${`Tire fixture ${motorcycleId}`}, 'Fixture', 'Tire', 2026, ${currentKm}, ${currentKm}, true)
-      `;
+      await sql.begin(async (db) => {
+        // Reserve the Free account's one active slot; restored below.
+        await db`update motorcycles set is_active = false where owner_id = ${ownerId} and is_active = true and deleted_at is null`;
+        await db`insert into motorcycles (id, owner_id, name, brand, model, year, current_odometer_km, odometer_override_km, is_active)
+          values (${motorcycleId}, ${ownerId}, ${`Tire fixture ${motorcycleId}`}, 'Fixture', 'Tire', 2026, ${currentKm}, ${currentKm}, true)`;
+      });
       const created = await page.request.post("/api/v1/tire-records", {
         data: {
           motorcycle_id: motorcycleId,
@@ -147,9 +157,23 @@ test.describe("confirmed tire wear observations", () => {
         }
       } finally {
         try {
-          await sql`delete from fuel_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
-          await sql`delete from tire_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
-          await slot.restore({ deleteMotorcycleIds: [motorcycleId] });
+          await sql
+            .begin(async (db) => {
+              await db`delete from fuel_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
+              await db`delete from tire_records where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}`;
+              await db`delete from motorcycles where owner_id = ${ownerId} and id = ${motorcycleId}`;
+              await restoreActiveMotorcycles(
+                db,
+                ownerId,
+                active.map((row) => row.id),
+              );
+            })
+            .catch(async (cause: unknown) => {
+              throw new Error(
+                `Restoring ${active.length} active bike(s) failed; motorcycles: ${await motorcycleSlots(sql, ownerId)}`,
+                { cause },
+              );
+            });
         } finally {
           await fixture.close();
         }

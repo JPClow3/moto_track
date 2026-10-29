@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { calendarDay } from "$lib/utils/calendar-day";
   import { onMount } from "svelte";
   import { locale, t } from "$lib/i18n/store";
   import type { MessageKey } from "$lib/i18n";
+  import StatusBadge from "$components/ui/StatusBadge.svelte";
   import {
     discardOfflineFuelSubmission,
     offlineDraftHasMissingAttachment,
@@ -21,6 +23,7 @@
   let feedback = "";
   let failed = false;
   let busy = false;
+  const DECIMAL_PATTERN = "[0-9]+([.,][0-9]{3})*([.,][0-9]+)?";
   const statusKeys: Record<OfflineFuelStatus, MessageKey> = {
     authentication: "offline.statusAuthentication",
     conflict: "offline.statusConflict",
@@ -46,7 +49,7 @@
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = `moto-track-local-drafts-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `moto-track-local-drafts-${calendarDay()}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -177,7 +180,12 @@
             })}>{$t("offline.sync")}</button
         >{/if}
     </div>
-    {#if feedback}<p role={failed ? "alert" : "status"} class="text-sm">
+    {#if feedback}<p
+        role={failed ? "alert" : "status"}
+        class={failed
+          ? "rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]"
+          : "rounded border border-[var(--line)] bg-[var(--panel-sunken)] p-3 text-sm"}
+      >
         {feedback}
       </p>{/if}
     {#if !drafts.length}<p class="text-sm text-[var(--muted)]">
@@ -189,15 +197,26 @@
         class="rounded border border-[var(--line)] p-4"
         data-draft-id={draft.id}
       >
-        <h3 class="font-semibold">
-          {draft.values?.date || $t("common.empty")} · {$t(
-            scope === "current"
-              ? "offline.currentDraft"
+        <div class="flex flex-wrap items-center gap-2">
+          <h3 class="font-semibold">
+            {draft.values?.date || $t("common.empty")}
+          </h3>
+          <StatusBadge
+            tone={scope === "current"
+              ? "info"
               : scope === "unknown"
-                ? "offline.unknownDraft"
-                : "offline.otherDraft",
-          )}
-        </h3>
+                ? "due"
+                : "neutral"}
+          >
+            {$t(
+              scope === "current"
+                ? "offline.currentDraft"
+                : scope === "unknown"
+                  ? "offline.unknownDraft"
+                  : "offline.otherDraft",
+            )}
+          </StatusBadge>
+        </div>
         <p class="mt-2 text-sm text-[var(--muted)]">
           {$t(
             offlineDraftHasMissingAttachment(draft)
@@ -213,13 +232,13 @@
         </p>
         {#if scope !== "other"}
           <dl class="mt-3 grid grid-cols-2 gap-2 text-sm">
-            <dt>{$t("fuel.odometerLabel")}</dt>
-            <dd>{draft.values?.odometer_km || "–"} km</dd>
-            <dt>{$t("fuel.litersLabel")}</dt>
-            <dd>{draft.values?.liters || "–"} L</dd>
-            <dt>{$t("fuel.totalPriceLabel")}</dt>
-            <dd>{draft.values?.total_price || "–"} BRL</dd>
-            <dt>{$t("fuel.stationNameLabel")}</dt>
+            <dt class="text-[var(--muted)]">{$t("fuel.odometerLabel")}</dt>
+            <dd class="numeric">{draft.values?.odometer_km || "–"} km</dd>
+            <dt class="text-[var(--muted)]">{$t("fuel.litersLabel")}</dt>
+            <dd class="numeric">{draft.values?.liters || "–"} L</dd>
+            <dt class="text-[var(--muted)]">{$t("fuel.totalPriceLabel")}</dt>
+            <dd class="numeric">{draft.values?.total_price || "–"} BRL</dd>
+            <dt class="text-[var(--muted)]">{$t("fuel.stationNameLabel")}</dt>
             <dd class="break-words">{draft.values?.station_name || "–"}</dd>
           </dl>
         {/if}
@@ -232,7 +251,7 @@
           >
           <button
             type="button"
-            class="button-secondary"
+            class="button-danger"
             onclick={() => void discard(draft.id)}
             >{$t("offline.discard")}</button
           >
@@ -278,6 +297,7 @@
                   >{$t("fuel.odometerLabel")} (km)<input
                     name="odometer_km"
                     type="number"
+                    inputmode="numeric"
                     min="0"
                     step="1"
                     class="field"
@@ -285,12 +305,17 @@
                     required
                   /></label
                 >
+                <!-- Decimal drafts keep the rider's own notation ("4,59");
+                     the server parses a comma or a dot. -->
                 <label class="field-group text-sm"
                   >{$t("fuel.litersLabel")}<input
                     name="liters"
-                    type="number"
-                    min="0.001"
-                    step="0.001"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    pattern={DECIMAL_PATTERN}
+                    title={$t("fuelUx.decimalHint")}
+                    placeholder={$t("fuelUx.litersPlaceholder")}
                     class="field"
                     value={draft.values?.liters || ""}
                     required
@@ -299,9 +324,12 @@
                 <label class="field-group text-sm"
                   >{$t("fuel.totalPriceLabel")} (BRL)<input
                     name="total_price"
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    pattern={DECIMAL_PATTERN}
+                    title={$t("fuelUx.decimalHint")}
+                    placeholder={$t("fuelUx.moneyPlaceholder")}
                     class="field"
                     value={draft.values?.total_price || ""}
                     required
@@ -310,9 +338,12 @@
                 <label class="field-group text-sm"
                   >{$t("fuel.pricePerLiterLabel")}<input
                     name="price_per_liter"
-                    type="number"
-                    min="0"
-                    step="0.001"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    pattern={DECIMAL_PATTERN}
+                    title={$t("fuelUx.decimalHint")}
+                    placeholder={$t("fuelUx.pricePerLiterPlaceholder")}
                     class="field"
                     value={draft.values?.price_per_liter || ""}
                   /></label
