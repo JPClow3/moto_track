@@ -53,25 +53,34 @@ test.describe("exact catalog item occurrence acceptance", () => {
       );
       await create.locator('select[name="year"]').selectOption("2026");
       await create.locator('[name="current_odometer_km"]').fill("12000");
+      const submit = create.locator('button[type="submit"]');
       await expect(
-        create.locator('button[type="submit"]'),
+        submit,
         `Free slot should be open; motorcycles: ${await motorcycleSlots(sql, ownerId)}`,
       ).toBeEnabled();
       // Settle the action before asserting: a create that commits after the
       // cleanup below would leave a second active bike for later suites.
-      const response = page.waitForResponse(
-        (candidate) =>
-          candidate.request().method() === "POST" &&
-          candidate.url().includes("?/create"),
-        { timeout: 60_000 },
-      );
-      response.catch(() => undefined); // Reported below with form state.
-      // A bounded click surfaces an element covering the button directly.
-      await create.locator('button[type="submit"]').click({ timeout: 15_000 });
-      let created: Awaited<typeof response>;
-      try {
-        created = await response;
-      } catch (cause) {
+      // The first click can land while the form action is still binding and
+      // send nothing, even when every field is valid. One more click covers that.
+      let created: Awaited<ReturnType<typeof page.waitForResponse>> | undefined;
+      let lastCause: unknown;
+      for (let attempt = 0; attempt < 2 && !created; attempt += 1) {
+        const response = page.waitForResponse(
+          (candidate) =>
+            candidate.request().method() === "POST" &&
+            candidate.url().includes("?/create"),
+          { timeout: 45_000 },
+        );
+        const settled = response.then(
+          (value) => ({ ok: true as const, value }),
+          (cause: unknown) => ({ ok: false as const, cause }),
+        );
+        await submit.click({ timeout: 15_000 });
+        const result = await settled;
+        if (result.ok) created = result.value;
+        else lastCause = result.cause;
+      }
+      if (!created) {
         // Name the fields the browser refused, e.g. one hidden in a closed
         // <details>, which blocks submission without any visible error.
         const validity = await create.evaluate((form: HTMLFormElement) => ({
@@ -89,7 +98,7 @@ test.describe("exact catalog item occurrence acceptance", () => {
         }));
         throw new Error(
           `Create request was never sent; form: ${JSON.stringify(validity)}`,
-          { cause },
+          { cause: lastCause },
         );
       }
       const createdBody = await created.text();
