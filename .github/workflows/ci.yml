@@ -22,7 +22,8 @@ concurrency:
 
 jobs:
   validate:
-    name: Lint, Check, and Test
+    # A draft's green fast checks cannot satisfy the required full-suite gate.
+    name: ${{ github.event.pull_request.draft && 'Draft checks' || 'Lint, Check, and Test' }}
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.full_diagnostics && 50 || 40 }}
     services:

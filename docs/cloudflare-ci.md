@@ -8,7 +8,7 @@ Configured on 2026-10-22. Cloudflare settings live outside Git. Rollback: restor
 
 Updated on 2026-10-29 after reviewing Actions runtime:
 
-- Draft PRs run format, lint, Svelte checks, unit tests, migration verification and the production build. Keep a PR in draft while iterating to avoid starting the authenticated browser suite for every push.
+- Draft PRs run format, lint, Svelte checks, unit tests, migration verification and the production build under a separate `Draft checks` name. Their green result cannot satisfy the required full-suite check. Keep a PR in draft while iterating to avoid starting the authenticated browser suite for every push.
 - Marking a PR ready for review triggers the full authenticated E2E suite. Subsequent pushes and reopened ready PRs also run it. The required `Lint, Check, and Test` check keeps its existing name; there are no workflow-level path filters or E2E opt-outs for ready PRs. GitHub prevents merging draft PRs.
 - Each newer update cancels the older CI run for the same PR. Converting a PR back to draft also cancels its previous full run. Manually dispatched runs have their own concurrency groups.
 - PR E2E stops at the first failure and has a 30-minute step limit inside a 40-minute job. Browser actions have a 15-second limit and navigations a 60-second limit; multi-step acceptance tests retain their overall journey budgets.
