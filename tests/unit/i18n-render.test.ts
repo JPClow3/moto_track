@@ -1,6 +1,6 @@
 import { render } from "svelte/server";
 import { readable } from "svelte/store";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   createTranslator,
   formatDate,
@@ -52,6 +52,51 @@ beforeAll(async () => {
       import("../../src/lib/components/app/ActivityTimeline.svelte"),
     ]);
 }, 60_000);
+
+afterEach(() => vi.unstubAllEnvs());
+
+describe("feature updated-at dates", () => {
+  it.each(["UTC", "America/Sao_Paulo", "Asia/Tokyo"])(
+    "uses the product calendar day in a %s runtime for strings and Date objects",
+    (timeZone) => {
+      vi.stubEnv("TZ", timeZone);
+      const timestamp = "2026-10-29T01:30:00.000Z";
+      for (const updatedAt of [timestamp, new Date(timestamp)]) {
+        const { body } = render(featurePage.default, {
+          props: {
+            routeSlug: "reminders",
+            feature: getFeature("reminders"),
+            rows: [
+              { id: "reminder", title: "Oil change", updated_at: updatedAt },
+            ],
+          },
+        });
+        const cell = body.match(
+          /data-label="Updated"[^>]*>([\s\S]*?)<\/td>/,
+        )?.[1];
+        expect(cell).toContain("Oct 28, 2026");
+        expect(cell).not.toContain("Oct 29");
+      }
+    },
+  );
+
+  it.each([null, "invalid", new Date("invalid")])(
+    "renders an empty value for an invalid updated-at timestamp (%s)",
+    (updatedAt) => {
+      const { body } = render(featurePage.default, {
+        props: {
+          routeSlug: "reminders",
+          feature: getFeature("reminders"),
+          rows: [{ id: "reminder", updated_at: updatedAt }],
+        },
+      });
+      const cell = body.match(
+        /data-label="Updated"[^>]*>([\s\S]*?)<\/td>/,
+      )?.[1];
+      expect(cell).toContain("—");
+    },
+  );
+});
 
 describe("English rendered journeys for branch acceptance", () => {
   it("localizes default loading and empty-state accessibility labels", () => {

@@ -18,7 +18,7 @@
   import { showToast } from "$components/ui/toast";
   import { Motorcycle } from "$components/icons";
   import type { FeatureConfig, FeatureField } from "$server/domain/features";
-  import { t, locale, format } from "$lib/i18n/store";
+  import { t, locale } from "$lib/i18n/store";
   import {
     formatDate,
     formatMoney,
@@ -28,6 +28,7 @@
   import { featureCopy } from "$lib/i18n/feature-copy";
   import { privateFileUrl } from "$lib/utils/private-file-url";
   import { dateOnlyValue, editFieldValue } from "$lib/utils/feature-values";
+  import { APP_TIME_ZONE } from "$lib/utils/calendar-day";
 
   export let routeSlug: string;
   export let addLabel = "";
@@ -169,7 +170,7 @@
       (typeof value === "string" || value instanceof Date) &&
       Number.isFinite(new Date(value).getTime())
     ) {
-      return formatDate($locale, value);
+      return formatTimestamp(value);
     }
     const option = field?.options?.find(
       (candidate) => candidate.value === value,
@@ -182,6 +183,21 @@
       return formatPreciseMoney($locale, value);
     }
     return String(value);
+  }
+
+  // SSR and the browser must use the same calendar day for each instant.
+  function formatTimestamp(value: unknown) {
+    if (
+      (typeof value !== "string" && !(value instanceof Date)) ||
+      !Number.isFinite(new Date(value).getTime())
+    )
+      return $t("common.empty");
+    return formatDate($locale, value, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: APP_TIME_ZONE,
+    });
   }
 
   // Number fields that hold fractions. Everything else of kind "number" is a
@@ -464,15 +480,7 @@
                   class="numeric px-4 py-3 text-xs text-[var(--muted)]"
                   data-label={$t("feature.updatedAt")}
                 >
-                  {#if row.updated_at && typeof row.updated_at === "string"}
-                    {$format.date(row.updated_at, {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  {:else}
-                    {valueFor(row, "updated_at")}
-                  {/if}
+                  {formatTimestamp(row.updated_at)}
                 </td>
                 <td
                   class="feature-actions px-4 py-3"

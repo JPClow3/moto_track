@@ -40,7 +40,7 @@ export function snoozeKmTarget(currentKm: number, km: number) {
   return currentKm + km;
 }
 
-/** A version from the rendered row makes a resubmitted recurring completion a no-op. */
+/** Only the rendered version can record a completion; retries cannot duplicate it. */
 export async function completeReminder(
   db: Sql,
   ownerId: string,
@@ -68,7 +68,7 @@ export async function completeReminder(
     `;
     if (!reminder) throw new Error("Lembrete não encontrado.");
     if (!reminder.is_active || reminder.completion_version !== expectedVersion)
-      return { ok: true as const, alreadyCompleted: true };
+      throw new Error("Atualize a página antes de concluir o lembrete.");
 
     let currentKm: number | null = null;
     if (reminder.motorcycle_id) {
