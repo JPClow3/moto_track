@@ -18,6 +18,35 @@ test.describe("exact catalog item occurrence acceptance", () => {
   test("resolves the exact model year and persists per-item occurrences without skipping booklet reviews", async ({
     page,
   }) => {
+    const actionRequests: Array<{
+      url: string;
+      status?: number;
+      error?: string;
+    }> = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (request.method() === "POST" && url.pathname === "/garage")
+        actionRequests.push({ url: url.pathname + url.search });
+    });
+    page.on("response", (response) => {
+      const url = new URL(response.url());
+      if (
+        response.request().method() === "POST" &&
+        url.pathname === "/garage"
+      ) {
+        const record = actionRequests.findLast(
+          (entry) => entry.url === url.pathname + url.search,
+        );
+        if (record) record.status = response.status();
+      }
+    });
+    page.on("requestfailed", (request) => {
+      const url = new URL(request.url());
+      const record = actionRequests.findLast(
+        (entry) => entry.url === url.pathname + url.search,
+      );
+      if (record) record.error = request.failure()?.errorText;
+    });
     const fixture = await openDisposableDb();
     const { sql, ownerId } = fixture;
     const name = `Dafra occurrence ${randomUUID()}`;
@@ -52,55 +81,98 @@ test.describe("exact catalog item occurrence acceptance", () => {
         template.model_id,
       );
       await create.locator('select[name="year"]').selectOption("2026");
+      await expect(
+        create.locator('input[type="radio"][value="unknown"]').first(),
+      ).toBeAttached();
       await create.locator('[name="current_odometer_km"]').fill("12000");
       const submit = create.locator('button[type="submit"]');
       await expect(
         submit,
         `Free slot should be open; motorcycles: ${await motorcycleSlots(sql, ownerId)}`,
       ).toBeEnabled();
-      // Settle the action before asserting: a create that commits after the
-      // cleanup below would leave a second active bike for later suites.
-      // The first click can land while the form action is still binding and
-      // send nothing, even when every field is valid. One more click covers that.
-      let created: Awaited<ReturnType<typeof page.waitForResponse>> | undefined;
-      let lastCause: unknown;
-      for (let attempt = 0; attempt < 2 && !created; attempt += 1) {
-        const response = page.waitForResponse(
-          (candidate) =>
-            candidate.request().method() === "POST" &&
-            candidate.url().includes("?/create"),
-          { timeout: 45_000 },
-        );
-        const settled = response.then(
-          (value) => ({ ok: true as const, value }),
-          (cause: unknown) => ({ ok: false as const, cause }),
-        );
-        await submit.click({ timeout: 15_000 });
-        const result = await settled;
-        if (result.ok) created = result.value;
-        else lastCause = result.cause;
-      }
-      if (!created) {
-        // Name the fields the browser refused, e.g. one hidden in a closed
-        // <details>, which blocks submission without any visible error.
-        const validity = await create.evaluate((form: HTMLFormElement) => ({
-          valid: form.checkValidity(),
-          invalid: Array.from(form.elements)
-            .filter(
-              (element) =>
-                "checkValidity" in element &&
-                !(element as HTMLInputElement).checkValidity(),
-            )
-            .map(
-              (element) =>
-                (element as HTMLInputElement).name || element.id || "?",
+      // Fail immediately on browser validation instead of waiting for a POST
+      // that cannot happen. Wait for the selected year's history fields above
+      // so validation observes the final form, including its catalog payload.
+      const validity = await create.evaluate((form: HTMLFormElement) => ({
+        valid: form.checkValidity(),
+        invalid: Array.from(form.elements)
+          .filter(
+            (element) =>
+              "checkValidity" in element &&
+              !(element as HTMLInputElement).checkValidity(),
+          )
+          .map(
+            (element) =>
+              (element as HTMLInputElement).name || element.id || "?",
+          ),
+      }));
+      expect(
+        validity,
+        "Catalog create form must be valid before submission",
+      ).toEqual({
+        valid: true,
+        invalid: [],
+      });
+      // Submit once and settle the response before cleanup. Retrying a create
+      // after a response timeout can leave a second bike in later suites.
+      // Applying the complete catalog performs many sequential Neon round trips.
+      // Give that one request its own budget instead of submitting it again.
+      const createStarted = Date.now();
+      let slowRequestDiagnostics: Promise<unknown> | undefined;
+      const slowRequestProbe = setTimeout(() => {
+        slowRequestDiagnostics = sql`
+          select state, wait_event_type, wait_event,
+            cardinality(pg_blocking_pids(pid)) as blockers,
+            extract(epoch from (clock_timestamp() - query_start))::int as query_age_seconds
+          from pg_stat_activity
+          where datname = current_database() and pid <> pg_backend_pid()
+            and state in ('active', 'idle in transaction')
+        `
+          .then((waits) =>
+            console.info("Slow catalog create database waits", waits),
+          )
+          .catch(() =>
+            console.info(
+              "Catalog create database wait diagnostics unavailable",
             ),
-        }));
-        throw new Error(
-          `Create request was never sent; form: ${JSON.stringify(validity)}`,
-          { cause: lastCause },
-        );
-      }
+          );
+      }, 45_000);
+      const [created] = await Promise.all([
+        page.waitForResponse(
+          (candidate) => {
+            const url = new URL(candidate.url());
+            return (
+              candidate.request().method() === "POST" &&
+              url.pathname === "/garage" &&
+              url.searchParams.has("/create")
+            );
+          },
+          { timeout: 120_000 },
+        ),
+        create.evaluate((form: HTMLFormElement) =>
+          form.requestSubmit(
+            form.querySelector('button[type="submit"]') as HTMLButtonElement,
+          ),
+        ),
+      ])
+        .catch(async (cause: unknown) => {
+          const browser = await create.evaluate((form: HTMLFormElement) => ({
+            action: form.action,
+            valid: form.checkValidity(),
+            connected: form.isConnected,
+          }));
+          throw new Error(
+            `Catalog create did not settle: ${JSON.stringify({ browser, actionRequests })}`,
+            { cause },
+          );
+        })
+        .finally(async () => {
+          clearTimeout(slowRequestProbe);
+          await slowRequestDiagnostics;
+        });
+      console.info(
+        `Catalog create response received in ${Date.now() - createStarted}ms`,
+      );
       const createdBody = await created.text();
       expect(createdBody, createdBody).toContain('"type":"success"');
       await expect(
