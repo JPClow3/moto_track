@@ -1,14 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveSession, signOut } from "../../src/lib/server/auth/session";
 
-function sessionEvent(token: string) {
+function sessionEvent(token: string, cacheCookie?: string) {
   return {
     url: new URL("https://moto-track.net/dashboard"),
     platform: {
       env: { PUBLIC_NEON_AUTH_URL: "https://auth.example/neondb/auth" },
     },
     cookies: {
-      get: (name: string) => (name === "mt_session" ? token : undefined),
+      get: (name: string) =>
+        name === "mt_session"
+          ? token
+          : name === "mt_session_cache"
+            ? cacheCookie
+            : undefined,
       set: vi.fn(),
       delete: vi.fn(),
     },
@@ -62,13 +67,15 @@ describe("Neon Auth session cache", () => {
     vi.setSystemTime(new Date("2026-10-27T12:00:00.000Z"));
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(sessionResponse("2026-10-27T12:02:00.000Z"));
+      .mockResolvedValueOnce(sessionResponse("2026-10-27T12:02:00.000Z"))
+      .mockResolvedValue({ ok: false });
     vi.stubGlobal("fetch", fetchMock);
 
     await resolveSession(sessionEvent("session-expiry-token"));
-    vi.setSystemTime(new Date("2026-10-27T12:02:01.000Z"));
-    await resolveSession(sessionEvent("session-expiry-token"));
+    vi.setSystemTime(new Date("2026-10-27T12:02:00.000Z"));
+    const resolved = await resolveSession(sessionEvent("session-expiry-token"));
 
+    expect(resolved).toEqual({ session: null, user: null });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -80,8 +87,27 @@ describe("Neon Auth session cache", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
+    const token = "attacker-chosen-token";
+    const payload = Buffer.from(
+      JSON.stringify({
+        userId: "victim",
+        email: "victim@example.com",
+        cachedAt: Date.now(),
+        expiresAt: "2099-01-01T00:00:00.000Z",
+      }),
+    ).toString("base64url");
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(token),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const signature = Buffer.from(
+      await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload)),
+    ).toString("base64url");
     const resolved = await resolveSession(
-      sessionEvent("attacker-chosen-token"),
+      sessionEvent(token, `${payload}.${signature}`),
     );
 
     expect(resolved).toEqual({ session: null, user: null });
