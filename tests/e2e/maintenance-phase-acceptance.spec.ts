@@ -18,6 +18,35 @@ test.describe("exact catalog item occurrence acceptance", () => {
   test("resolves the exact model year and persists per-item occurrences without skipping booklet reviews", async ({
     page,
   }) => {
+    const actionRequests: Array<{
+      url: string;
+      status?: number;
+      error?: string;
+    }> = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (request.method() === "POST" && url.pathname === "/garage")
+        actionRequests.push({ url: url.pathname + url.search });
+    });
+    page.on("response", (response) => {
+      const url = new URL(response.url());
+      if (
+        response.request().method() === "POST" &&
+        url.pathname === "/garage"
+      ) {
+        const record = actionRequests.findLast(
+          (entry) => entry.url === url.pathname + url.search,
+        );
+        if (record) record.status = response.status();
+      }
+    });
+    page.on("requestfailed", (request) => {
+      const url = new URL(request.url());
+      const record = actionRequests.findLast(
+        (entry) => entry.url === url.pathname + url.search,
+      );
+      if (record) record.error = request.failure()?.errorText;
+    });
     const fixture = await openDisposableDb();
     const { sql, ownerId } = fixture;
     const name = `Dafra occurrence ${randomUUID()}`;
@@ -88,9 +117,14 @@ test.describe("exact catalog item occurrence acceptance", () => {
       // after a response timeout can leave a second bike in later suites.
       const [created] = await Promise.all([
         page.waitForResponse(
-          (candidate) =>
-            candidate.request().method() === "POST" &&
-            candidate.url().includes("?/create"),
+          (candidate) => {
+            const url = new URL(candidate.url());
+            return (
+              candidate.request().method() === "POST" &&
+              url.pathname === "/garage" &&
+              url.searchParams.has("/create")
+            );
+          },
           { timeout: 45_000 },
         ),
         create.evaluate((form: HTMLFormElement) =>
@@ -98,7 +132,17 @@ test.describe("exact catalog item occurrence acceptance", () => {
             form.querySelector('button[type="submit"]') as HTMLButtonElement,
           ),
         ),
-      ]);
+      ]).catch(async (cause: unknown) => {
+        const browser = await create.evaluate((form: HTMLFormElement) => ({
+          action: form.action,
+          valid: form.checkValidity(),
+          connected: form.isConnected,
+        }));
+        throw new Error(
+          `Catalog create did not settle: ${JSON.stringify({ browser, actionRequests })}`,
+          { cause },
+        );
+      });
       const createdBody = await created.text();
       expect(createdBody, createdBody).toContain('"type":"success"');
       await expect(

@@ -7,6 +7,10 @@ on:
         description: Collect all E2E failures instead of stopping at the first
         type: boolean
         default: false
+      maintenance_only:
+        description: Diagnose only the maintenance catalog journey (cannot satisfy the merge gate)
+        type: boolean
+        default: false
   pull_request:
     branches:
       - main
@@ -23,7 +27,7 @@ concurrency:
 jobs:
   validate:
     # A draft's green fast checks cannot satisfy the required full-suite gate.
-    name: ${{ github.event.pull_request.draft && 'Draft checks' || 'Lint, Check, and Test' }}
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.maintenance_only && 'Maintenance E2E diagnostics' || (github.event.pull_request.draft && 'Draft checks' || 'Lint, Check, and Test') }}
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.full_diagnostics && 50 || 40 }}
     services:
@@ -128,10 +132,16 @@ jobs:
       - name: E2E Tests
         if: github.event_name == 'workflow_dispatch' || !github.event.pull_request.draft
         timeout-minutes: ${{ inputs.full_diagnostics && 40 || 30 }}
-        run: npm run test:e2e -- --max-failures="$E2E_MAX_FAILURES"
+        run: |
+          if [ "$E2E_MAINTENANCE_ONLY" = 'true' ]; then
+            npm run test:e2e -- tests/e2e/maintenance-phase-acceptance.spec.ts --max-failures="$E2E_MAX_FAILURES"
+          else
+            npm run test:e2e -- --max-failures="$E2E_MAX_FAILURES"
+          fi
         env:
           CI: true
           E2E_MAX_FAILURES: ${{ inputs.full_diagnostics && '0' || '1' }}
+          E2E_MAINTENANCE_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.maintenance_only }}
           DATABASE_URL: ${{ steps.e2e-neon.outputs.db_url }}
           E2E_DISPOSABLE_BRANCH: ${{ steps.e2e-neon.outputs.branch_id }}
           E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
