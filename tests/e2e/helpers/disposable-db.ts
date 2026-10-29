@@ -40,6 +40,8 @@ export async function openDisposableDb() {
     prepare: false,
     max: 1,
     connect_timeout: 5,
+    // A blocked fixture query must not consume a five-minute browser journey.
+    connection: { statement_timeout: 30_000, lock_timeout: 10_000 },
   });
   try {
     const [owner] = await sql<Array<{ id: string; email_verified: boolean }>>`

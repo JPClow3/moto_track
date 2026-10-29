@@ -8,10 +8,16 @@ const authStatePath = "test-results/.auth/user.json";
 
 export default defineConfig({
   testDir: "tests/e2e",
+  // CI's manual diagnostic run can override this with --max-failures=0.
+  maxFailures: process.env.CI ? 1 : 0,
   // Authenticated specs intentionally share one dedicated CI account. Keep
   // them serial so onboarding and mutable garage data cannot race each other.
   workers: hasAuthEnv ? 1 : undefined,
   use: {
+    // Bound individual stalled controls and navigations, while multi-step
+    // authenticated journeys retain their larger overall test budgets.
+    actionTimeout: 15_000,
+    navigationTimeout: 60_000,
     // Neon Auth allows localhost origins for development. Keep the browser
     // origin on localhost (rather than 127.0.0.1) so authenticated CI uses the
     // same trusted-origin contract without weakening production settings.

@@ -58,49 +58,40 @@ test.describe("exact catalog item occurrence acceptance", () => {
         submit,
         `Free slot should be open; motorcycles: ${await motorcycleSlots(sql, ownerId)}`,
       ).toBeEnabled();
-      // Settle the action before asserting: a create that commits after the
-      // cleanup below would leave a second active bike for later suites.
-      // The first click can land while the form action is still binding and
-      // send nothing, even when every field is valid. One more click covers that.
-      let created: Awaited<ReturnType<typeof page.waitForResponse>> | undefined;
-      let lastCause: unknown;
-      for (let attempt = 0; attempt < 2 && !created; attempt += 1) {
-        const response = page.waitForResponse(
+      // Fail immediately on browser validation instead of waiting for a POST
+      // that cannot happen. Keyboard activation keeps the submit target stable
+      // while the catalog/history panel changes the sheet's layout.
+      const validity = await create.evaluate((form: HTMLFormElement) => ({
+        valid: form.checkValidity(),
+        invalid: Array.from(form.elements)
+          .filter(
+            (element) =>
+              "checkValidity" in element &&
+              !(element as HTMLInputElement).checkValidity(),
+          )
+          .map(
+            (element) =>
+              (element as HTMLInputElement).name || element.id || "?",
+          ),
+      }));
+      expect(
+        validity,
+        "Catalog create form must be valid before submission",
+      ).toEqual({
+        valid: true,
+        invalid: [],
+      });
+      // Submit once and settle the response before cleanup. Retrying a create
+      // after a response timeout can leave a second bike in later suites.
+      const [created] = await Promise.all([
+        page.waitForResponse(
           (candidate) =>
             candidate.request().method() === "POST" &&
             candidate.url().includes("?/create"),
           { timeout: 45_000 },
-        );
-        const settled = response.then(
-          (value) => ({ ok: true as const, value }),
-          (cause: unknown) => ({ ok: false as const, cause }),
-        );
-        await submit.click({ timeout: 15_000 });
-        const result = await settled;
-        if (result.ok) created = result.value;
-        else lastCause = result.cause;
-      }
-      if (!created) {
-        // Name the fields the browser refused, e.g. one hidden in a closed
-        // <details>, which blocks submission without any visible error.
-        const validity = await create.evaluate((form: HTMLFormElement) => ({
-          valid: form.checkValidity(),
-          invalid: Array.from(form.elements)
-            .filter(
-              (element) =>
-                "checkValidity" in element &&
-                !(element as HTMLInputElement).checkValidity(),
-            )
-            .map(
-              (element) =>
-                (element as HTMLInputElement).name || element.id || "?",
-            ),
-        }));
-        throw new Error(
-          `Create request was never sent; form: ${JSON.stringify(validity)}`,
-          { cause: lastCause },
-        );
-      }
+        ),
+        submit.press("Enter"),
+      ]);
       const createdBody = await created.text();
       expect(createdBody, createdBody).toContain('"type":"success"');
       await expect(
