@@ -3,12 +3,20 @@
   import "../app.css";
   import { onMount } from "svelte";
   import type { Snippet } from "svelte";
+  import { requestOfflineFuelSync } from "$lib/utils/offline-fuel";
+  import { saveOfflineLocale } from "$lib/utils/offline-cache";
+  import ToastRegion from "$lib/components/ui/ToastRegion.svelte";
+  import {
+    DEFAULT_LOCALE,
+    normalizeReleasedLocale,
+    type Locale,
+  } from "$lib/i18n";
 
   let {
     data,
     children,
   }: {
-    data: { theme?: string };
+    data: { theme?: string; locale?: Locale };
     children: Snippet;
   } = $props();
 
@@ -56,6 +64,36 @@
     applyTheme(data.theme ?? "system");
   });
 
+  $effect(() => {
+    const locale = normalizeReleasedLocale(data.locale) ?? DEFAULT_LOCALE;
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
+      return;
+    void saveOfflineLocale(locale).catch(() => {});
+    let cancelled = false;
+    const updateController = () =>
+      navigator.serviceWorker.controller?.postMessage({
+        type: "SET_LOCALE",
+        locale,
+      });
+    navigator.serviceWorker.addEventListener(
+      "controllerchange",
+      updateController,
+    );
+    void navigator.serviceWorker.ready
+      .then((registration) => {
+        if (!cancelled)
+          registration.active?.postMessage({ type: "SET_LOCALE", locale });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      navigator.serviceWorker.removeEventListener(
+        "controllerchange",
+        updateController,
+      );
+    };
+  });
+
   onMount(() => {
     // The browser tests and any client-only integrations can wait for this
     // marker instead of guessing when Svelte hydration has completed.
@@ -75,14 +113,28 @@
 
     if (!("serviceWorker" in navigator)) return;
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+    const syncFuel = () => {
+      void requestOfflineFuelSync().catch(() => undefined);
+    };
+    window.addEventListener("online", syncFuel);
+    void navigator.serviceWorker.ready
+      .then(() => {
+        if (navigator.onLine) syncFuel();
+      })
+      .catch(() => undefined);
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
       if ((data.theme ?? "system") === "system") applyTheme("system");
     };
     media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
+    return () => {
+      media.removeEventListener("change", onChange);
+      window.removeEventListener("online", syncFuel);
+    };
   });
 </script>
 
 {@render children()}
+
+<ToastRegion />

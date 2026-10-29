@@ -3,6 +3,8 @@
 
   export let score: number;
   export let status: string;
+  /** Smaller readout for the bike hero card. */
+  export let compact = false;
 
   const R = 78;
   const CX = 100;
@@ -13,20 +15,20 @@
 
   $: clamped = Math.max(0, Math.min(100, score));
   $: offset = LENGTH * (1 - clamped / 100);
-  // Red is the "needs action" signal everywhere else in the product, so the dial
-  // only earns it once the score actually drops.
+  // Same thresholds as the status tones: healthy is green, slipping is amber,
+  // and red (the "needs you" signal) only once the score actually drops.
   $: tone =
     clamped < 50
       ? "var(--accent)"
       : clamped < 80
         ? "var(--warning)"
-        : "var(--fg)";
+        : "var(--success)";
 </script>
 
 <div class="flex flex-col items-center">
   <svg
     viewBox="0 0 200 118"
-    class="w-full max-w-[240px]"
+    class="w-full {compact ? 'max-w-[168px]' : 'max-w-[240px]'}"
     role="img"
     aria-label={$t("dashboard.healthAria", { score: clamped, status })}
   >
@@ -66,8 +68,11 @@
       style={`--dial-offset:${offset}; --dial-length:${LENGTH}`}
     />
   </svg>
-  <div class="-mt-10 text-center">
-    <p class="display numeric text-6xl leading-none" style={`color:${tone}`}>
+  <div class="text-center {compact ? '-mt-8' : '-mt-10'}">
+    <p
+      class="display numeric leading-none {compact ? 'text-4xl' : 'text-6xl'}"
+      style={`color:${tone}`}
+    >
       {clamped}
     </p>
     <p class="label-tech mt-2 text-[var(--muted)]">{status}</p>

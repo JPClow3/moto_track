@@ -253,7 +253,8 @@ export function subscriptionProfileUpdate(
   } as const;
 }
 
-export class ExistingSubscriptionError extends Error {}
+export class CheckoutPreflightError extends Error {}
+export class ExistingSubscriptionError extends CheckoutPreflightError {}
 export const TERMINAL_SUBSCRIPTION_STATUSES = [
   "cancelled",
   "failed",
@@ -369,6 +370,49 @@ export function buildCheckoutSessionParams({
   };
 }
 
+async function checkoutPreflight(
+  customerId: string,
+  interval: BillingInterval,
+  platform?: App.Platform,
+) {
+  try {
+    const productId = productIdForInterval(interval, platform);
+    if (!configured(productId))
+      throw new Error("Dodo product ID is not configured.");
+    const client = dodoClient(platform);
+    const product = await client.products.retrieve(productId);
+    if (
+      !productPrice(product, interval) ||
+      product.price.type !== "recurring_price" ||
+      product.price.trial_payment_method_optional ||
+      product.price.zero_amount_payment_method_optional ||
+      (product.price.trial_amount ?? 0) !== 0
+    )
+      throw new Error(
+        "Dodo product must be a fixed recurring plan with a free, card-required trial.",
+      );
+    const history = await customerSubscriptionHistory(customerId, platform);
+    if (
+      history.some(
+        (subscription) =>
+          !TERMINAL_SUBSCRIPTION_STATUSES.includes(subscription.status),
+      )
+    )
+      throw new ExistingSubscriptionError(
+        "Customer already has an open subscription.",
+      );
+    return { client, productId, history };
+  } catch (error) {
+    if (error instanceof CheckoutPreflightError) throw error;
+    throw new CheckoutPreflightError(
+      error instanceof Error
+        ? error.message
+        : "Dodo checkout validation failed before session creation.",
+      { cause: error },
+    );
+  }
+}
+
 export async function createCheckoutSession({
   email,
   userId,
@@ -387,31 +431,11 @@ export async function createCheckoutSession({
   platform?: App.Platform;
 }) {
   const runtime = runtimeEnv(platform);
-  const productId = productIdForInterval(interval, platform);
-  if (!configured(productId))
-    throw new Error("Dodo product ID is not configured.");
-  const client = dodoClient(platform);
-  const product = await client.products.retrieve(productId);
-  if (
-    !productPrice(product, interval) ||
-    product.price.type !== "recurring_price" ||
-    product.price.trial_payment_method_optional ||
-    product.price.zero_amount_payment_method_optional ||
-    (product.price.trial_amount ?? 0) !== 0
-  )
-    throw new Error(
-      "Dodo product must be a fixed recurring plan with a free, card-required trial.",
-    );
-  const history = await customerSubscriptionHistory(customerId, platform);
-  if (
-    history.some(
-      (subscription) =>
-        !TERMINAL_SUBSCRIPTION_STATUSES.includes(subscription.status),
-    )
-  )
-    throw new ExistingSubscriptionError(
-      "Customer already has an open subscription.",
-    );
+  const { client, productId, history } = await checkoutPreflight(
+    customerId,
+    interval,
+    platform,
+  );
   return client.checkoutSessions.create(
     {
       ...buildCheckoutSessionParams({

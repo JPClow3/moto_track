@@ -8,7 +8,14 @@ const hasAuthEnv = Boolean(
   process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD,
 );
 
-const appRoutes = ["/garage", "/maintenance", "/reminders", "/dashboard"];
+const appRoutes = [
+  "/garage",
+  "/garage/access",
+  "/maintenance",
+  "/maintenance/workshops",
+  "/reminders",
+  "/dashboard",
+];
 const widths = [320, 375, 768, 1024, 1440];
 
 async function gotoAppRoute(page: Page, route: string) {
@@ -20,10 +27,10 @@ async function gotoAppRoute(page: Page, route: string) {
 }
 
 test.describe("app shell responsive foundation", () => {
-  // Twenty authenticated navigations across five viewport sizes can exceed
+  // Thirty authenticated navigations across five viewport sizes can exceed
   // two minutes while a newly created Neon branch is cold. Assertions retain
   // their normal per-operation limits; only the aggregate matrix budget grows.
-  test.setTimeout(240_000);
+  test.setTimeout(300_000);
   test.skip(!hasAuthEnv, "Set E2E_USER_EMAIL and E2E_USER_PASSWORD to run.");
 
   test("core routes stay within the viewport", async ({ page }) => {
@@ -48,14 +55,14 @@ test.describe("app shell responsive foundation", () => {
     }
   });
 
-  test("mobile drawer traps focus and restores it on Escape", async ({
+  test("mobile Mais sheet traps focus and restores it on Escape", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 320, height: 900 });
     await gotoAppRoute(page, "/garage");
     expect(page.url()).not.toContain("/onboarding");
 
-    const menuButton = page.getByRole("button", { name: "Abrir menu" });
+    const menuButton = page.getByRole("button", { name: "Mais", exact: true });
     await menuButton.click();
     const drawer = page.locator("#app-mobile-nav");
     await expect(drawer).toBeVisible();

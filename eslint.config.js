@@ -25,9 +25,21 @@ export default ts.config(
     },
   },
   {
+    // Manual database verifiers intentionally use Node's CommonJS loader.
+    files: ["tests/integration/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  {
     ignores: [
+      ".env.*",
+      "native/**/bin/",
+      "native/**/obj/",
+      "native/**/build/",
+      "native/packages/",
       "build/",
       ".svelte-kit/",
+      // Agent worktrees are full checkouts with their own generated types.
+      ".claude/",
       ".wrangler/",
       "coverage/",
       "dist/",

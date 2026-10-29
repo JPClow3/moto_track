@@ -168,4 +168,42 @@ describe("seeded motorcycle catalogue", () => {
       }),
     ).toEqual({ urgency: "scheduled", dueKm: 56_000 });
   });
+
+  it("marks the calendar interval overdue even before the mileage interval", () => {
+    expect(
+      dueStateForPlan({
+        historyStatus: "confirmed_done",
+        lastDoneKm: 1000,
+        intervalKm: 6000,
+        currentKm: 1100,
+        lastDoneDate: new Date("2026-01-01T00:00:00Z"),
+        intervalDays: 180,
+        today: "2026-10-23",
+      }),
+    ).toEqual({ urgency: "overdue", dueKm: 7000 });
+  });
+
+  it("requires date history for a time interval without inventing today's service", () => {
+    expect(
+      dueStateForPlan({
+        historyStatus: "confirmed_done",
+        lastDoneKm: 1000,
+        intervalKm: 6000,
+        currentKm: 1100,
+        intervalDays: 180,
+        today: "2026-10-23",
+      }),
+    ).toEqual({ urgency: "due_now", dueKm: 7000 });
+    expect(
+      dueStateForPlan({
+        historyStatus: "confirmed_done",
+        lastDoneKm: null,
+        intervalKm: null,
+        currentKm: 1100,
+        intervalDays: 180,
+        lastDoneDate: "2026-10-01",
+        today: "2026-10-23",
+      }),
+    ).toEqual({ urgency: "scheduled", dueKm: null });
+  });
 });

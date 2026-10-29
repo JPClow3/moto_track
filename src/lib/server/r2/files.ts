@@ -1,5 +1,6 @@
 import { error } from "@sveltejs/kit";
 import type { Sql } from "postgres";
+export { lockObjectOwner } from "$server/db/owner-lock";
 
 export const MAX_DOCUMENT_UPLOAD_BYTES = 20 * 1024 * 1024;
 export const MAX_RECEIPT_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -73,15 +74,6 @@ export async function validateObjectUpload(
   return { ok: true as const };
 }
 
-export async function lockObjectOwner(db: Sql, ownerId: string) {
-  const [owner] = await db<Array<{ id: string }>>`
-    select id from neon_auth."user"
-    where id = ${ownerId}
-    for update
-  `;
-  if (!owner) throw new Error("Account no longer exists.");
-}
-
 export async function requireR2Bucket(platform: App.Platform | undefined) {
   const bucket = platform?.env?.R2_BUCKET;
   if (!bucket) throw error(500, "R2_BUCKET binding is not configured.");
@@ -100,11 +92,37 @@ export function objectKeyForUpload(
   return `${ownerId}/${module}/${crypto.randomUUID()}-${safeName || "upload.bin"}`;
 }
 
+/**
+ * Header values must be Latin-1, so a filename such as a macOS screenshot
+ * (U+202F) or one with an emoji threw while building the response. Send an
+ * ASCII fallback plus the RFC 6266 UTF-8 form that browsers prefer.
+ */
+export function contentDisposition(
+  disposition: "attachment" | "inline",
+  filename: string,
+  fallback: string,
+) {
+  const name = filename.replace(/[\r\n"\\]/g, "_").trim() || fallback;
+  const ascii =
+    name
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\x20-\x7e]/g, "_") || fallback;
+  const encoded = encodeURIComponent(name).replace(
+    /['()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `${disposition}; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
+
 export function privateDownloadHeaders(filename: string, contentType: string) {
-  const safeFilename = filename.replace(/[\r\n"]/g, "_") || "download";
   return new Headers({
     "content-type": contentType,
-    "content-disposition": `attachment; filename="${safeFilename}"`,
+    "content-disposition": contentDisposition(
+      "attachment",
+      filename,
+      "download",
+    ),
     "x-content-type-options": "nosniff",
     "cache-control": "private, no-store",
   });
@@ -114,10 +132,9 @@ export function privateImagePreviewHeaders(
   filename: string,
   contentType: string,
 ) {
-  const safeFilename = filename.replace(/[\r\n"]/g, "_") || "photo";
   return new Headers({
     "content-type": contentType,
-    "content-disposition": `inline; filename="${safeFilename}"`,
+    "content-disposition": contentDisposition("inline", filename, "photo"),
     "x-content-type-options": "nosniff",
     "cache-control": "private, no-store",
   });

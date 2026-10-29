@@ -1,4 +1,5 @@
 import type { Sql } from "postgres";
+import type { Locale } from "$lib/i18n";
 
 // Supabase seeded `profiles` + `subscription_profiles` via a trigger on
 // `auth.users`. Neon Auth (Better Auth) does not fire such a trigger, so the
@@ -12,12 +13,14 @@ export async function ensureAccount(
   db: Sql,
   userId: string,
   email: string | null,
+  locale?: Locale,
 ) {
   if (provisionedAccounts.has(userId)) return;
   await db`
-    insert into profiles (id, email)
-    values (${userId}, ${email ?? ""})
-    on conflict (id) do nothing
+    insert into profiles (id, email, preferred_locale)
+    values (${userId}, ${email ?? ""}, ${locale ?? "pt-BR"})
+    on conflict (id) do update set preferred_locale = excluded.preferred_locale
+      where ${locale !== undefined} and profiles.preferred_locale is distinct from excluded.preferred_locale
   `;
   await db`
     insert into subscription_profiles (owner_id, plan)

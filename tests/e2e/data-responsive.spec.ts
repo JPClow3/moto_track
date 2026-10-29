@@ -163,7 +163,9 @@ async function expectOdometer(page: Page, expected: number) {
 
 async function isFreePlan(page: Page) {
   await gotoAppRoute(page, "/billing/conta");
-  return (await page.getByText(/^free$/i).count()) > 0;
+  const plan = page.getByText(/^Moto Track (Free|Pro)$/);
+  await expect(plan).toBeVisible();
+  return (await plan.textContent())?.trim() === "Moto Track Free";
 }
 
 test.describe("data surfaces responsive behavior", () => {
@@ -499,7 +501,7 @@ test.describe("data surfaces responsive behavior", () => {
     }
   });
 
-  test("Free reminder cap accepts the last slot and rejects the next create", async ({
+  test("Free reminder cap fills available slots and rejects another create", async ({
     page,
   }) => {
     const isFree = await isFreePlan(page);

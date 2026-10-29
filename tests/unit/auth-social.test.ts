@@ -3,6 +3,9 @@ import { socialSignInUrl } from "../../src/lib/server/auth/session";
 import { load as loadAuthPage } from "../../src/routes/auth/+page.server";
 import { GET as oauthCallback } from "../../src/routes/auth/callback/+server";
 
+vi.mock("$env/dynamic/private", () => ({ env: {} }));
+vi.mock("$env/dynamic/public", () => ({ env: {} }));
+
 describe("social sign-in", () => {
   afterEach(() => {
     vi.unstubAllGlobals();

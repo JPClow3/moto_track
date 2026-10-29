@@ -77,14 +77,14 @@
             <!-- Checklist posts render as a real checklist, not "[ ] item". -->
             <span
               class="mt-1 grid h-4 w-4 shrink-0 place-items-center rounded-sm border {item.checked
-                ? 'border-transparent bg-[var(--accent-solid)]'
+                ? 'border-transparent bg-[var(--fg)]'
                 : 'border-[var(--line)]'}"
               aria-hidden="true"
             >
               {#if item.checked}
                 <svg
                   viewBox="0 0 12 12"
-                  class="h-2.5 w-2.5 text-white"
+                  class="h-2.5 w-2.5 text-[var(--bg)]"
                   fill="none"
                 >
                   <path
@@ -98,9 +98,7 @@
               {/if}
             </span>
           {:else if token.ordered}
-            <span
-              class="display numeric mt-px w-5 shrink-0 text-[var(--accent)]"
-            >
+            <span class="display numeric mt-px w-5 shrink-0 text-[var(--fg)]">
               {(token.start ?? 1) + i}.
             </span>
           {:else}
@@ -116,7 +114,7 @@
     <!-- Every recovered guide closes on a "Dica do Moto Track" callout, so this
          is a real component, not a decoration. -->
     <blockquote
-      class="markdown-tight mt-7 rounded border-l-2 border-[var(--accent)] bg-[var(--accent-soft)] px-5 py-4 text-[var(--muted)]"
+      class="markdown-tight mt-7 rounded border-l-2 border-[var(--fg-soft)] bg-[var(--accent-wash)] px-5 py-4 text-[var(--muted)]"
     >
       <svelte:self tokens={token.tokens ?? []} />
     </blockquote>

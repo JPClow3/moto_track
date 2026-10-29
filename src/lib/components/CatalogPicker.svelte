@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/store";
+  import StatusBadge from "$components/ui/StatusBadge.svelte";
   import type {
     CatalogModel,
     MotorcycleCatalogPreview,
@@ -33,8 +34,8 @@
 </script>
 
 <div class="grid gap-3 sm:grid-cols-2">
-  <label class="text-sm">
-    {$t("catalog.brandLabel")}<select
+  <label class="field-group">
+    <span class="field-label">{$t("catalog.brandLabel")}</span><select
       class="field"
       bind:value={selectedBrand}
       on:change={resetModel}
@@ -46,8 +47,8 @@
       {/each}
     </select>
   </label>
-  <label class="text-sm">
-    {$t("catalog.modelLabel")}<select
+  <label class="field-group">
+    <span class="field-label">{$t("catalog.modelLabel")}</span><select
       class="field"
       bind:value={selectedModelId}
       on:change={resetYear}
@@ -67,8 +68,8 @@
 </div>
 
 {#if selectedModel}
-  <label class="mt-3 block text-sm">
-    {$t("catalog.yearLabel")}<select
+  <label class="field-group mt-3">
+    <span class="field-label">{$t("catalog.yearLabel")}</span><select
       class="field"
       name="year"
       bind:value={selectedYear}
@@ -81,7 +82,7 @@
     </select>
   </label>
   {#if !years.length}
-    <p class="mt-1 text-xs text-[var(--accent)]">
+    <p class="mt-1 text-sm text-[var(--warning)]">
       {$t("catalog.noYearsAvailable")}
     </p>
   {/if}
@@ -91,13 +92,10 @@
 
 {#if selectedModel}
   <p class="mt-3">
-    <span
-      class="label-tech rounded px-2 py-1 text-xs {selectedModel.hasExactSchedule
-        ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-        : 'bg-[var(--panel-sunken)] text-[var(--muted)]'}"
+    <StatusBadge tone={selectedModel.hasExactSchedule ? "ok" : "neutral"}
       >{selectedModel.hasExactSchedule
         ? $t("catalog.exactBadge")
-        : $t("catalog.lineBadge")}</span
+        : $t("catalog.lineBadge")}</StatusBadge
     >
   </p>
 {/if}
@@ -115,12 +113,15 @@
   {#if !resolvedTemplate.is_exact_schedule || !resolvedTemplate.maintenance_count}
     <!-- applyMotorcycleTemplate only creates plan items from exact schedules,
          so say so here instead of letting the rider discover an empty
-         maintenance plan after saving. -->
-    <p class="mt-1 text-xs font-semibold text-[var(--accent)]" role="status">
+         maintenance plan after saving. A heads-up, not an error: amber. -->
+    <p
+      class="mt-2 rounded-md bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]"
+      role="status"
+    >
       {$t("catalog.noScheduleItems")}
     </p>
   {/if}
-  <p class="mt-1 text-xs text-[var(--muted)]">
+  <p class="mt-2 text-xs text-[var(--muted)]">
     {$t("catalog.source")}: {resolvedTemplate.document_version} · {resolvedTemplate.page_reference}
     · {$t("catalog.verifiedOn")}
     {resolvedTemplate.last_verified_date}
@@ -132,14 +133,14 @@
   {/if}
   {#if resolvedTemplate.manual_url}
     <a
-      class="mt-2 inline-block text-xs font-semibold text-brand underline-offset-4 hover:underline"
+      class="focus-ring mt-2 inline-flex min-h-11 items-center rounded text-sm font-semibold text-[var(--fg)] underline underline-offset-4 hover:text-[var(--fg-hover)]"
       href={resolvedTemplate.manual_url}
       target="_blank"
       rel="noreferrer">{$t("catalog.openDocument")} ↗</a
     >
   {/if}
 {:else if selectedModel && selectedYear}
-  <p class="mt-2 text-xs text-[var(--accent)]">
+  <p class="mt-2 text-sm text-[var(--warning)]">
     {$t("catalog.noTemplateForYear")}
   </p>
 {/if}

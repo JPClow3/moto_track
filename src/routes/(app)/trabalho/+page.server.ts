@@ -1,11 +1,15 @@
+import { localizedActions } from "$server/domain/localized-actions";
 import { fail } from "@sveltejs/kit";
 import {
   featureActions,
   loadFeature,
   parseMoneyCents,
   parseMoneyMillicents,
+  assertOwnedMotorcycleReference,
 } from "$server/domain/crud";
 import { calculateWorkProfitability } from "$server/domain/parity";
+import { lockObjectOwner } from "$server/db/owner-lock";
+import { isoDateValue } from "$server/domain/date-value";
 
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -14,7 +18,7 @@ function messageFrom(err: unknown) {
 type Row = Record<string, unknown>;
 
 const base = featureActions("trabalho");
-export const actions = {
+export const actions = localizedActions({
   record: base.default,
   saveCosts: async ({ request, locals }) => {
     const f = await request.formData();
@@ -24,8 +28,14 @@ export const actions = {
       // `professional_cost_settings` is unique on `motorcycle_id` alone, so the
       // `where` on the update guards against overwriting another owner's row
       // (there's no RLS backstop to fall back on anymore).
-      await locals.db`
-        insert into professional_cost_settings ${locals.db({
+      await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as typeof locals.db;
+        await lockObjectOwner(db, ownerId);
+        await assertOwnedMotorcycleReference(db, ownerId, motorcycleId, {
+          required: true,
+        });
+        await db`
+        insert into professional_cost_settings ${db({
           owner_id: ownerId,
           motorcycle_id: motorcycleId,
           maintenance_reserve_per_km_millicents: parseMoneyMillicents(
@@ -42,12 +52,13 @@ export const actions = {
           fixed_daily_cost_cents = excluded.fixed_daily_cost_cents
         where professional_cost_settings.owner_id = ${ownerId}
       `;
+      });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
     return { ok: true };
   },
-};
+});
 
 export async function load({ locals }) {
   const baseData = await loadFeature(locals.db, "trabalho", locals.user!);
@@ -59,7 +70,7 @@ export async function load({ locals }) {
   const summaries = baseData.rows.map((row) => {
     const s = byMoto.get(String(row.motorcycle_id));
     return {
-      work_date: String(row.work_date ?? ""),
+      work_date: isoDateValue(row.work_date),
       profitability: calculateWorkProfitability({
         distanceKm:
           Number(row.odometer_end_km ?? 0) - Number(row.odometer_start_km ?? 0),

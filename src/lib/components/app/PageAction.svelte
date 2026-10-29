@@ -14,17 +14,20 @@
   }
 </script>
 
+<!-- The page's "add" action, inline in the page header at every size. Ink,
+     never red: the global quick-log + in the phone bar replaced the old
+     floating FAB, so this no longer floats over content. -->
 <button
   {type}
   {disabled}
   aria-label={ariaLabel || label}
   on:click={handleClick}
-  class="page-action button-accent flex h-12 w-12 items-center justify-center rounded-full p-0 shadow-lg lg:h-auto lg:w-auto lg:rounded lg:px-4 lg:py-2.5 lg:shadow-none"
+  class="page-action button-primary"
 >
   <slot name="icon">
     <Plus size={20} aria-hidden="true" class="shrink-0" />
   </slot>
   {#if label}
-    <span class="hidden font-semibold lg:inline">{label}</span>
+    <span class="page-action-label">{label}</span>
   {/if}
 </button>

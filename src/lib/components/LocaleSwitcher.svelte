@@ -1,8 +1,8 @@
 <script lang="ts">
   import { page } from "$app/stores";
-  import { locale } from "$lib/i18n/store";
+  import { locale, t } from "$lib/i18n/store";
   import { LOCALE_LABELS, RELEASED_LOCALES } from "$lib/i18n";
-  import { Languages } from "lucide-svelte";
+  import Languages from "lucide-svelte/icons/languages";
 
   // A form POST, so this still works with JS off. `use:enhance` is deliberately
   // not used: the server sets a cookie and the page must re-render server-side
@@ -25,14 +25,15 @@
       value={$page.url.pathname + $page.url.search}
     />
     <Languages
-      class="pointer-events-none absolute left-2 h-3.5 w-3.5 text-[var(--muted)]"
+      size={16}
+      class="pointer-events-none absolute left-2 text-[var(--muted)]"
       aria-hidden="true"
     />
-    <label class="sr-only" for={id}>{LOCALE_LABELS[$locale]}</label>
+    <label class="sr-only" for={id}>{$t("common.language")}</label>
     <select
       {id}
       name="locale"
-      class="focus-ring min-h-11 appearance-none bg-transparent py-1.5 pl-7 pr-6 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--fg)]"
+      class="focus-ring min-h-11 appearance-none bg-transparent py-1.5 pl-8 pr-6 text-sm font-medium text-[var(--muted)] transition hover:text-[var(--fg)]"
       value={$locale}
       on:change={(event) => event.currentTarget.form?.requestSubmit()}
     >

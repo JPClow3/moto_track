@@ -46,6 +46,31 @@ required provider and database cutover checks.
 5. Confirm the Neon Auth project trusts the Pages preview hostname and the production hostname, and enables localhost origins for development (`http://localhost:5173`) and Playwright (`http://localhost:5187`). Email/password, OAuth, and password-reset flows funnel through `/auth/callback`.
 6. CI creates and deletes a disposable Neon branch, including branch-specific Auth, for every authenticated E2E run. Never point E2E at the primary production database.
 
+The app and reminder Worker keep Postgres.js clients inside each request or run.
+Hyperdrive connections use prepared statements, as required by the current
+[Cloudflare Postgres.js guide](https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/postgres-drivers-and-libraries/postgres-js/).
+Direct Neon development connections retain their separate driver settings and
+close after five idle seconds; Vite does not provide Workers' automatic request
+cleanup. Local Neon tests do not validate the deployed Hyperdrive boundary.
+
+### Preview isolation audit (2026-10-23)
+
+A read-only Pages API audit found that `moto-track` deploys previews for all Git
+branches. Preview and Production currently share Hyperdrive config
+`173c6f16dc3445cdb982cd84dbcb9b23`, R2 bucket `moto-track-media`, and the production
+Neon Auth hostname. Preview also declares Dodo `live_mode`. These previews are
+not disposable test environments. Configure isolated database/auth/storage
+bindings and matching test-mode billing before using them for acceptance.
+
+For a review-only branch, the documented
+[`[CF-Pages-Skip]` commit prefix](https://developers.cloudflare.com/pages/configuration/git-integration/github-integration/#skipping-a-build-via-a-commit-message)
+omits the Pages deployment. Keep GitHub validation enabled. Do not migrate the
+production database solely to make an unisolated preview work.
+
+Production secret metadata includes OCR, billing and push key names. Their
+values were withheld by the API and were not retrieved or tested. Local missing
+credentials do not establish that the corresponding production secret is absent.
+
 ## Dodo Payments and reminders
 
 1. Create monthly and yearly recurring Pro products in BRL, with the intended R$14.90 monthly and R$99.00 yearly base prices. Confirm price, taxes, cadence, term, and free trial in hosted checkout before setting their product IDs as server-only variables in `wrangler.toml`.

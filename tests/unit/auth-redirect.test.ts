@@ -13,4 +13,19 @@ describe("safeInternalRedirect", () => {
     expect(safeInternalRedirect("//attacker.example")).toBe("/dashboard");
     expect(safeInternalRedirect("/\\attacker.example")).toBe("/dashboard");
   });
+
+  it("rejects targets a browser normalizes onto another origin", () => {
+    for (const target of [
+      "/\t/attacker.example",
+      "/\n/attacker.example",
+      "/\r/attacker.example",
+      "/\t\\attacker.example",
+    ])
+      expect(safeInternalRedirect(target)).toBe("/dashboard");
+    // A browser resolves the accepted value against the page; it must stay put.
+    const accepted = safeInternalRedirect("/garage?tab=docs#top");
+    expect(new URL(accepted, "https://moto-track.net").origin).toBe(
+      "https://moto-track.net",
+    );
+  });
 });

@@ -1,4 +1,4 @@
-import { json, error } from "@sveltejs/kit";
+import { json, error, isHttpError } from "@sveltejs/kit";
 import type { PublicTableName } from "$lib/types/database";
 import { getFeature } from "$server/domain/features";
 import { normalizeApiFeaturePayload } from "$server/domain/api-write";
@@ -7,7 +7,21 @@ import { assertCanCreateReminder } from "$server/domain/entitlement-guards";
 import {
   syncRecordDeleteEffects,
   syncRecordEffects,
+  assertFeatureReferences,
+  recordTracksOdometer,
+  syncChangedRecordOdometers,
 } from "$server/domain/crud";
+import { lockObjectOwner } from "$server/db/owner-lock";
+import { planCapMessage } from "$lib/i18n/action-messages";
+import {
+  REMINDER_NOTIFICATION_RESET,
+  reminderScheduleChanged,
+} from "$server/domain/reminders";
+import type { Sql } from "postgres";
+import {
+  enqueueObjectDeletions,
+  deleteQueuedObjectsBestEffort,
+} from "$server/r2/files";
 
 // Values are literal table names (not user input), so `locals.db(table)` below
 // is a safe dynamic identifier — the only untrusted part is the map lookup key.
@@ -32,10 +46,37 @@ function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
 }
 
+// A Free-plan trigger firing means a concurrent write beat the guard above;
+// answer as the guard would have.
+function apiFailure(err: unknown) {
+  const raw = messageFrom(err);
+  const message = planCapMessage(raw);
+  return error(message === raw ? 400 : 403, message);
+}
+
 function resourceOrThrow(resource: string) {
-  const config = apiResources[resource];
+  const config = Object.hasOwn(apiResources, resource)
+    ? apiResources[resource]
+    : undefined;
   if (!config) throw error(404, "Unknown API resource");
   return config;
+}
+
+function assertSupportedPhaseInput(
+  featureSlug: string,
+  body: Record<string, unknown>,
+) {
+  if (
+    featureSlug === "maintenance" &&
+    [body.maintenance_plan_item_id, body.completed_milestone].some(
+      (value) => value != null && String(value).trim() !== "",
+    )
+  ) {
+    throw error(
+      400,
+      "Use maintenance history to identify a completed service milestone.",
+    );
+  }
 }
 
 export async function GET(event) {
@@ -49,7 +90,7 @@ export async function GET(event) {
     `;
     return json({ results });
   } catch (err) {
-    throw error(400, messageFrom(err));
+    throw apiFailure(err);
   }
 }
 
@@ -72,6 +113,7 @@ export async function POST(event) {
   if (!body || typeof body !== "object") {
     throw error(400, "JSON body required.");
   }
+  assertSupportedPhaseInput(config.featureSlug, body);
   const normalized = normalizeApiFeaturePayload(feature, body, user.id);
   if (!normalized.ok) {
     throw error(400, "Invalid payload.");
@@ -82,21 +124,29 @@ export async function POST(event) {
   };
   let result: Record<string, unknown> | undefined;
   try {
-    [result] = await event.locals.db<Array<Record<string, unknown>>>`
-      insert into ${event.locals.db(config.table)} ${event.locals.db(payload)}
+    await event.locals.db.begin(async (transaction) => {
+      const db = transaction as unknown as Sql;
+      await lockObjectOwner(db, user.id);
+      await assertFeatureReferences(db, user.id, feature, payload);
+      [result] = await db<Array<Record<string, unknown>>>`
+      insert into ${db(config.table)} ${db(payload)}
       returning *
     `;
+      if (recordTracksOdometer(config.table))
+        await syncChangedRecordOdometers(db, user.id, result ?? payload);
+      const record = result ?? payload;
+      await syncRecordEffects({
+        db,
+        ownerId: user.id,
+        feature,
+        recordId: String(record.id ?? payload.id),
+        payload: record,
+        syncOdometer: false,
+      });
+    });
   } catch (err) {
-    throw error(400, messageFrom(err));
+    throw apiFailure(err);
   }
-  const record = result ?? payload;
-  await syncRecordEffects({
-    db: event.locals.db,
-    ownerId: user.id,
-    feature,
-    recordId: String(record.id ?? payload.id),
-    payload: record,
-  });
   return json({ result }, { status: 201 });
 }
 
@@ -111,6 +161,7 @@ export async function PATCH(event) {
   if (!body || typeof body !== "object" || typeof body.id !== "string") {
     throw error(400, "JSON body with id is required.");
   }
+  assertSupportedPhaseInput(config.featureSlug, body);
   const id = body.id;
   const normalized = normalizeApiFeaturePayload(feature, body, user.id);
   if (!normalized.ok) {
@@ -118,23 +169,46 @@ export async function PATCH(event) {
   }
   let result: Record<string, unknown> | undefined;
   try {
-    [result] = await event.locals.db<Array<Record<string, unknown>>>`
-      update ${event.locals.db(config.table)}
-      set ${event.locals.db(normalized.payload)}
+    await event.locals.db.begin(async (transaction) => {
+      const db = transaction as unknown as Sql;
+      await lockObjectOwner(db, user.id);
+      const [existing] = await db<Array<Record<string, unknown>>>`
+        select * from ${db(config.table)} where id = ${id} and owner_id = ${user.id} for update
+      `;
+      if (!existing) throw error(404, "Record not found.");
+      await assertFeatureReferences(db, user.id, feature, {
+        ...existing,
+        ...normalized.payload,
+      });
+      if (config.table === "reminders") {
+        normalized.payload.completion_version =
+          Number(existing.completion_version ?? 0) + 1;
+        if (reminderScheduleChanged(existing, normalized.payload))
+          Object.assign(normalized.payload, REMINDER_NOTIFICATION_RESET);
+      }
+      [result] = await db<Array<Record<string, unknown>>>`
+      update ${db(config.table)}
+      set ${db(normalized.payload)}
       where id = ${id} and owner_id = ${user.id}
       returning *
     `;
+      if (!result) throw error(404, "Record not found.");
+      if (recordTracksOdometer(config.table))
+        await syncChangedRecordOdometers(db, user.id, result, existing);
+      await syncRecordEffects({
+        db,
+        ownerId: user.id,
+        feature,
+        recordId: id,
+        payload: result,
+        syncOdometer: false,
+      });
+    });
   } catch (err) {
-    throw error(400, messageFrom(err));
+    if (isHttpError(err)) throw err;
+    throw apiFailure(err);
   }
   if (!result) throw error(404, "Record not found.");
-  await syncRecordEffects({
-    db: event.locals.db,
-    ownerId: user.id,
-    feature,
-    recordId: id,
-    payload: result,
-  });
   return json({ result });
 }
 
@@ -145,30 +219,55 @@ export async function DELETE(event) {
   const url = new URL(event.request.url);
   const id = url.searchParams.get("id");
   if (!id) throw error(400, "Query parameter id is required.");
-  let existing: Record<string, unknown> | undefined;
+  let objectKeys: string[] = [];
   try {
-    [existing] = await event.locals.db<Array<Record<string, unknown>>>`
-      select motorcycle_id from ${event.locals.db(config.table)}
+    objectKeys = await event.locals.db.begin(async (transaction) => {
+      const db = transaction as unknown as Sql;
+      await lockObjectOwner(db, user.id);
+      const [existing] = await db<Array<Record<string, unknown>>>`
+        select motorcycle_id from ${db(config.table)} where id = ${id} and owner_id = ${user.id} for update
+      `;
+      if (!existing) throw error(404, "Record not found.");
+      const files = await db<Array<{ object_key: string }>>`
+        select object_key from object_files where owner_id = ${user.id}
+          and ((source_table = ${config.table} and source_id = ${id})
+            or (${config.table} = 'maintenance_records' and source_table = 'maintenance_photos'
+              and source_id in (select id from maintenance_photos where owner_id = ${user.id} and maintenance_record_id = ${id})))
+      `;
+      await enqueueObjectDeletions(
+        db,
+        user.id,
+        files.map((file) => file.object_key),
+      );
+      await db`
+        delete from object_files where owner_id = ${user.id}
+          and ((source_table = ${config.table} and source_id = ${id})
+            or (${config.table} = 'maintenance_records' and source_table = 'maintenance_photos'
+              and source_id in (select id from maintenance_photos where owner_id = ${user.id} and maintenance_record_id = ${id})))
+      `;
+      await db`
+      delete from ${db(config.table)}
       where id = ${id} and owner_id = ${user.id}
     `;
+      await syncRecordDeleteEffects({
+        db,
+        ownerId: user.id,
+        feature,
+        recordId: id,
+        existing,
+        strictOdometer: true,
+      });
+      return files.map((file) => file.object_key);
+    });
   } catch (err) {
-    throw error(400, messageFrom(err));
+    if (isHttpError(err)) throw err;
+    throw apiFailure(err);
   }
-  if (!existing) throw error(404, "Record not found.");
-  try {
-    await event.locals.db`
-      delete from ${event.locals.db(config.table)}
-      where id = ${id} and owner_id = ${user.id}
-    `;
-  } catch (err) {
-    throw error(400, messageFrom(err));
-  }
-  await syncRecordDeleteEffects({
+  await deleteQueuedObjectsBestEffort({
     db: event.locals.db,
+    objectKeys,
     ownerId: user.id,
-    feature,
-    recordId: id,
-    existing,
+    platform: event.platform,
   });
   return json({ ok: true });
 }

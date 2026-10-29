@@ -1,12 +1,12 @@
 <script lang="ts">
+  import { locale } from "$lib/i18n/store";
+  import { publicCopy } from "$lib/i18n/public-copy";
   import { onMount } from "svelte";
-  import {
-    ArrowRight,
-    Check,
-    CircleDashed,
-    Compass,
-    Wrench,
-  } from "lucide-svelte";
+  import ArrowRight from "lucide-svelte/icons/arrow-right";
+  import Check from "lucide-svelte/icons/check";
+  import CircleDashed from "lucide-svelte/icons/circle-dashed";
+  import Compass from "lucide-svelte/icons/compass";
+  import Wrench from "lucide-svelte/icons/wrench";
 
   type Status = "done" | "next" | "planned" | "exploring";
 
@@ -200,7 +200,7 @@
 
   const dotClass: Record<Status, string> = {
     done: "bg-success",
-    next: "bg-[var(--accent)]",
+    next: "bg-[var(--info)]",
     planned: "bg-[var(--muted)]",
     exploring: "bg-[var(--line)] ring-1 ring-[var(--muted)]",
   };
@@ -289,7 +289,10 @@
   <link rel="canonical" href="https://moto-track.net/roadmap" />
   <meta
     name="description"
-    content="O que já funciona no Moto Track, o que vem a seguir e o que ainda está em estudo. Roadmap público e atualizado pela equipe."
+    content={publicCopy(
+      $locale,
+      "O que já funciona no Moto Track, o que vem a seguir e o que ainda está em estudo. Roadmap público e atualizado pela equipe.",
+    )}
   />
 </svelte:head>
 
@@ -298,19 +301,22 @@
   <div class="grid-backdrop" aria-hidden="true"></div>
   <div class="accent-glow header-glow" aria-hidden="true"></div>
 
-  <div class="relative mx-auto max-w-6xl px-6 py-16 sm:py-20">
+  <div class="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
-      Transparência
+      {publicCopy($locale, "Transparência")}
     </p>
     <h1 class="display mt-5 max-w-3xl text-5xl sm:text-6xl lg:text-7xl">
-      O que está pronto,<br /><span class="text-[var(--accent)]"
-        >e o que vem depois.</span
+      {publicCopy($locale, "O que está pronto,")}<br /><span
+        class="text-[var(--accent)]"
+        >{publicCopy($locale, "e o que vem depois.")}</span
       >
     </h1>
     <p class="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted)]">
-      Sem data prometida e sem funcionalidade fantasma. Esta página é o estado
-      real do produto, atualizada à mão pela equipe.
+      {publicCopy(
+        $locale,
+        "Sem data prometida e sem funcionalidade fantasma. Esta página é o estado real do produto, atualizada à mão pela equipe.",
+      )}
     </p>
 
     <!-- Count strip — same idiom as the landing hero's spec strip. -->
@@ -324,7 +330,7 @@
               class="h-1.5 w-1.5 rounded-full {dotClass[group.status]}"
               aria-hidden="true"
             ></span>
-            {group.label}
+            {publicCopy($locale, group.label)}
           </dt>
           <dd class="display numeric mt-1 text-4xl">{group.items.length}</dd>
         </div>
@@ -334,7 +340,9 @@
     <!-- Overall completion, read as a fuel/service gauge rather than a web bar. -->
     <div class="gauge mt-10 max-w-2xl" bind:this={gaugeEl}>
       <div class="flex items-baseline justify-between gap-4">
-        <p class="label-tech text-[var(--muted)]">Entregue</p>
+        <p class="label-tech text-[var(--muted)]">
+          {publicCopy($locale, "Entregue")}
+        </p>
         <p class="display numeric text-4xl tabular-nums" aria-hidden="true">
           {shownPct}%
         </p>
@@ -345,14 +353,20 @@
         aria-valuenow={targetPct}
         aria-valuemin="0"
         aria-valuemax="100"
-        aria-valuetext="{targetPct}% do roadmap entregue"
-        aria-label="Progresso geral do roadmap"
+        aria-valuetext="{targetPct}{publicCopy(
+          $locale,
+          '% do roadmap entregue',
+        )}"
+        aria-label={publicCopy($locale, "Progresso geral do roadmap")}
       >
         <div class="fill" style="width: {shownPct}%"></div>
         <div class="ticks" aria-hidden="true"></div>
       </div>
       <p class="mt-2.5 text-sm text-[var(--muted)]">
-        {doneCount} dos {totalCount} itens deste roadmap já estão no ar.
+        {doneCount}
+        {publicCopy($locale, "dos")}
+        {totalCount}
+        {publicCopy($locale, "itens deste roadmap já estão no ar.")}
       </p>
     </div>
   </div>
@@ -360,7 +374,7 @@
 
 <!-- ── GROUPS ──────────────────────────────────────────────── -->
 {#each groups as group (group.status)}
-  <section class="border-b border-[var(--line)] px-6 py-16">
+  <section class="border-b border-[var(--line)] px-4 py-16 sm:px-6">
     <div
       class="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[18rem_1fr] lg:gap-16"
     >
@@ -368,15 +382,17 @@
       <div class="lg:sticky lg:top-24 lg:self-start">
         <p class="eyebrow">
           <span class="slash-rule" aria-hidden="true"></span>
-          {group.label}
+          {publicCopy($locale, group.label)}
         </p>
-        <h2 class="display mt-4 text-4xl">{group.heading}</h2>
+        <h2 class="display mt-4 text-4xl">
+          {publicCopy($locale, group.heading)}
+        </h2>
         <p class="mt-3 text-sm leading-relaxed text-[var(--muted)]">
-          {group.blurb}
+          {publicCopy($locale, group.blurb)}
         </p>
         <p class="label-tech numeric mt-5 text-[var(--muted)]">
           {group.items.length}
-          {group.items.length === 1 ? "item" : "itens"}
+          {group.items.length === 1 ? "item" : publicCopy($locale, "itens")}
         </p>
       </div>
 
@@ -389,19 +405,17 @@
               aria-hidden="true"
             >
               {#if group.status === "done"}
-                <Check class="h-3.5 w-3.5 text-success" />
+                <Check size={16} class="text-success" />
               {:else}
                 <span class="h-2 w-2 rounded-full {dotClass[group.status]}"
                 ></span>
               {/if}
             </span>
-            <h3
-              class="display text-xl transition-colors group-hover:text-[var(--accent)]"
-            >
-              {item.title}
+            <h3 class="display text-xl">
+              {publicCopy($locale, item.title)}
             </h3>
             <p class="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
-              {item.body}
+              {publicCopy($locale, item.body)}
             </p>
           </li>
         {/each}
@@ -411,24 +425,30 @@
 {/each}
 
 <!-- ── CTA ─────────────────────────────────────────────────── -->
-<section class="relative overflow-hidden bg-ink px-6 py-24 text-paper">
+<section
+  class="relative overflow-hidden bg-ink px-4 py-20 text-paper sm:px-6 sm:py-24"
+>
   <div class="cta-slashes" aria-hidden="true"></div>
   <div class="relative mx-auto max-w-3xl text-center">
-    <h2 class="display text-5xl sm:text-6xl">Faltou alguma coisa?</h2>
-    <p class="mx-auto mt-5 max-w-xl text-lg text-paper/60">
-      O que entra nessa lista sai do que os motociclistas pedem. Crie sua conta
-      e diga o que a sua moto precisa.
+    <h2 class="display text-5xl sm:text-6xl">
+      {publicCopy($locale, "Faltou alguma coisa?")}
+    </h2>
+    <p class="mx-auto mt-5 max-w-xl text-lg text-paper/70">
+      {publicCopy(
+        $locale,
+        "O que entra nessa lista sai do que os motociclistas pedem. Crie sua conta e diga o que a sua moto precisa.",
+      )}
     </p>
     <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
       <a class="button-accent px-7 py-3.5 text-base shadow-brand" href="/auth">
-        Criar conta
-        <ArrowRight class="h-4 w-4" />
+        {publicCopy($locale, "Criar conta")}
+        <ArrowRight size={20} />
       </a>
       <a
-        class="button-secondary border-paper/20 bg-transparent px-7 py-3.5 text-base text-paper hover:border-[var(--accent)]"
+        class="button-secondary border-paper/20 bg-transparent px-7 py-3.5 text-base text-paper hover:border-paper/60"
         href="/blog"
       >
-        Ler os guias
+        {publicCopy($locale, "Ler os guias")}
       </a>
     </div>
   </div>
@@ -476,8 +496,8 @@
   }
   .gauge .fill {
     height: 100%;
-    background: var(--accent);
-    box-shadow: 0 0 20px -2px var(--accent-ring);
+    /* Delivered work is "done", so the gauge is green, not brand red. */
+    background: var(--success);
   }
   .gauge .ticks {
     position: absolute;
@@ -523,6 +543,6 @@
     background: var(--panel);
   }
   .item:hover .marker {
-    border-color: var(--accent);
+    border-color: var(--fg-soft);
   }
 </style>

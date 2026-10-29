@@ -67,7 +67,7 @@
         >{$t("common.cancel")}</button
       >
       <button
-        class={`${destructive ? "button-danger" : "button-primary"} min-h-11`}
+        class={`${destructive ? "button-danger-solid" : "button-primary"} min-h-11`}
         value="confirm"
       >
         {confirmLabel || $t("common.confirm")}
