@@ -115,6 +115,28 @@ test.describe("exact catalog item occurrence acceptance", () => {
       });
       // Submit once and settle the response before cleanup. Retrying a create
       // after a response timeout can leave a second bike in later suites.
+      // Applying the complete catalog performs many sequential Neon round trips.
+      // Give that one request its own budget instead of submitting it again.
+      const createStarted = Date.now();
+      let slowRequestDiagnostics: Promise<unknown> | undefined;
+      const slowRequestProbe = setTimeout(() => {
+        slowRequestDiagnostics = sql`
+          select state, wait_event_type, wait_event,
+            cardinality(pg_blocking_pids(pid)) as blockers,
+            extract(epoch from (clock_timestamp() - query_start))::int as query_age_seconds
+          from pg_stat_activity
+          where datname = current_database() and pid <> pg_backend_pid()
+            and state in ('active', 'idle in transaction')
+        `
+          .then((waits) =>
+            console.info("Slow catalog create database waits", waits),
+          )
+          .catch(() =>
+            console.info(
+              "Catalog create database wait diagnostics unavailable",
+            ),
+          );
+      }, 45_000);
       const [created] = await Promise.all([
         page.waitForResponse(
           (candidate) => {
@@ -125,24 +147,32 @@ test.describe("exact catalog item occurrence acceptance", () => {
               url.searchParams.has("/create")
             );
           },
-          { timeout: 45_000 },
+          { timeout: 120_000 },
         ),
         create.evaluate((form: HTMLFormElement) =>
           form.requestSubmit(
             form.querySelector('button[type="submit"]') as HTMLButtonElement,
           ),
         ),
-      ]).catch(async (cause: unknown) => {
-        const browser = await create.evaluate((form: HTMLFormElement) => ({
-          action: form.action,
-          valid: form.checkValidity(),
-          connected: form.isConnected,
-        }));
-        throw new Error(
-          `Catalog create did not settle: ${JSON.stringify({ browser, actionRequests })}`,
-          { cause },
-        );
-      });
+      ])
+        .catch(async (cause: unknown) => {
+          const browser = await create.evaluate((form: HTMLFormElement) => ({
+            action: form.action,
+            valid: form.checkValidity(),
+            connected: form.isConnected,
+          }));
+          throw new Error(
+            `Catalog create did not settle: ${JSON.stringify({ browser, actionRequests })}`,
+            { cause },
+          );
+        })
+        .finally(async () => {
+          clearTimeout(slowRequestProbe);
+          await slowRequestDiagnostics;
+        });
+      console.info(
+        `Catalog create response received in ${Date.now() - createStarted}ms`,
+      );
       const createdBody = await created.text();
       expect(createdBody, createdBody).toContain('"type":"success"');
       await expect(
