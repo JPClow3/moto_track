@@ -95,7 +95,7 @@ test.describe("public responsive foundation", () => {
       "/auth?redirectTo=%2Fbilling%2Fcheckout&error=oauth_callback_failed",
     );
     await expect(page.getByRole("alert")).toContainText(
-      "Não foi possível concluir o acesso com o Google",
+      "Não foi possível concluir o acesso.",
     );
     await expect(page.getByRole("alert")).toContainText("Tente novamente");
     await expect(
