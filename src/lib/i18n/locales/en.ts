@@ -30,6 +30,12 @@ export const en: Messages = {
     resetSent: "Recovery email sent.",
     googleFailed:
       "Could not complete Google sign-in. Try again or use your email and password.",
+    appleFailed:
+      "Could not complete Apple sign-in. Try again or use your email and password.",
+    socialFailed:
+      "Could not complete sign-in. Try again or use your email and password.",
+    socialUnavailable:
+      "This sign-in option is not available yet. Use your email and password.",
     passwordUpdated: "Password updated. Sign in again to access your garage.",
     invalidReset: "Recovery link is invalid or expired.",
     passwordTooShort: "The password must have at least 6 characters.",

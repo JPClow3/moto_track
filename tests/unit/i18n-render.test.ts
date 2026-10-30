@@ -110,12 +110,20 @@ describe("English rendered journeys for branch acceptance", () => {
   });
   it("renders sign-in, account creation and recovery controls in English", () => {
     const { body, head } = render(authPage.default, {
-      props: { data: { redirectTo: "/dashboard" }, form: undefined },
+      props: {
+        data: {
+          redirectTo: "/dashboard",
+          socialProviders: ["google", "apple"],
+        },
+        form: undefined,
+      },
     });
     expect(head).toContain("Sign in");
     expect(body).toContain("Access your garage.");
     expect(body).toContain("Create account");
     expect(body).toContain("Forgot my password");
+    expect(body).toContain('action="?/google"');
+    expect(body).toContain('action="?/apple"');
     expect(body).toContain("password (at least 6 characters)");
     expect(body).not.toMatch(
       /Acesse sua garagem|Criar conta|Esqueci minha senha|>Senha</,

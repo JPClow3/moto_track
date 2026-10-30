@@ -46,6 +46,9 @@ required provider and database cutover checks.
 5. Confirm the Neon Auth project trusts the Pages preview hostname and the production hostname, and enables localhost origins for development (`http://localhost:5173`) and Playwright (`http://localhost:5187`). Email/password, OAuth, and password-reset flows funnel through `/auth/callback`.
 6. CI creates and deletes a disposable Neon branch, including branch-specific Auth, for every authenticated E2E run. Never point E2E at the primary production database.
 
+See [social login](social-login.md) for Google/Apple provider credentials,
+production callbacks and the `NEON_AUTH_SOCIAL_PROVIDERS` runtime allowlist.
+
 The app and reminder Worker keep Postgres.js clients inside each request or run.
 Hyperdrive connections use prepared statements, as required by the current
 [Cloudflare Postgres.js guide](https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/postgres-drivers-and-libraries/postgres-js/).

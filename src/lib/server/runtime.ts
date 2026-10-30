@@ -5,6 +5,7 @@ import { dev } from "$app/environment";
 export type RuntimeEnv = {
   DATABASE_URL?: string;
   PUBLIC_NEON_AUTH_URL?: string;
+  NEON_AUTH_SOCIAL_PROVIDERS?: string;
   NEON_AUTH_JWKS_URL?: string;
   DODO_PAYMENTS_API_KEY?: string;
   DODO_PAYMENTS_ENVIRONMENT?: "test_mode" | "live_mode";
@@ -32,6 +33,7 @@ export function resolveRuntimeEnv(
   const keys: Array<keyof RuntimeEnv> = [
     "DATABASE_URL",
     "PUBLIC_NEON_AUTH_URL",
+    "NEON_AUTH_SOCIAL_PROVIDERS",
     "NEON_AUTH_JWKS_URL",
     "DODO_PAYMENTS_API_KEY",
     "DODO_PAYMENTS_ENVIRONMENT",

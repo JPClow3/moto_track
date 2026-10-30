@@ -9,6 +9,7 @@ declare global {
         HYPERDRIVE?: Hyperdrive;
         DATABASE_URL?: string;
         PUBLIC_NEON_AUTH_URL?: string;
+        NEON_AUTH_SOCIAL_PROVIDERS?: string;
         NEON_AUTH_JWKS_URL?: string;
         DODO_PAYMENTS_API_KEY?: string;
         DODO_PAYMENTS_ENVIRONMENT?: "test_mode" | "live_mode";

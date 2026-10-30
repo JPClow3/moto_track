@@ -33,6 +33,12 @@ export const ptBR = {
     resetSent: "Email de recuperação enviado.",
     googleFailed:
       "Não foi possível concluir o acesso com o Google. Tente novamente ou entre com email e senha.",
+    appleFailed:
+      "Não foi possível concluir o acesso com a Apple. Tente novamente ou entre com email e senha.",
+    socialFailed:
+      "Não foi possível concluir o acesso. Tente novamente ou entre com email e senha.",
+    socialUnavailable:
+      "Esta opção de acesso ainda não está disponível. Use email e senha.",
     passwordUpdated:
       "Senha atualizada. Entre novamente para acessar sua garagem.",
     invalidReset: "Link de recuperação inválido ou expirado.",

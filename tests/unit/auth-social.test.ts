@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { socialSignInUrl } from "../../src/lib/server/auth/session";
-import { load as loadAuthPage } from "../../src/routes/auth/+page.server";
+import {
+  actions,
+  load as loadAuthPage,
+} from "../../src/routes/auth/+page.server";
 import { GET as oauthCallback } from "../../src/routes/auth/callback/+server";
 
 vi.mock("$env/dynamic/private", () => ({ env: {} }));
@@ -11,48 +14,141 @@ describe("social sign-in", () => {
     vi.unstubAllGlobals();
   });
 
-  it("stores Neon’s OAuth challenge on the app domain before redirecting", async () => {
-    const set = vi.fn();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          url: "https://accounts.google.com/o/oauth2/auth",
+  it.each(["google", "apple"] as const)(
+    "stores Neon’s OAuth challenge before redirecting to %s",
+    async (provider) => {
+      const set = vi.fn();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            url: "https://accounts.google.com/o/oauth2/auth",
+          }),
+          headers: {
+            getSetCookie: () => [
+              "__Secure-neon-auth.session_challange=challenge-value; Path=/; HttpOnly; Secure",
+            ],
+          },
         }),
-        headers: {
-          getSetCookie: () => [
-            "__Secure-neon-auth.session_challange=challenge-value; Path=/; HttpOnly; Secure",
-          ],
-        },
-      }),
-    );
+      );
 
+      const result = await socialSignInUrl(
+        {
+          url: new URL("https://moto-track.net/auth"),
+          platform: {
+            env: {
+              PUBLIC_NEON_AUTH_URL: "https://auth.example/neondb/auth",
+            },
+          },
+          cookies: { set },
+        } as never,
+        provider,
+        "https://moto-track.net/auth/callback",
+      );
+
+      expect(result.url).toBe("https://accounts.google.com/o/oauth2/auth");
+      expect(set).toHaveBeenCalledWith(
+        "mt_oauth_challenge",
+        "challenge-value",
+        expect.objectContaining({
+          path: "/",
+          httpOnly: true,
+          sameSite: "lax",
+          secure: true,
+        }),
+      );
+    },
+  );
+
+  it("does not start Apple sign-in before its credentials are configured", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const result = await actions.apple({
+      url: new URL("https://moto-track.net/auth"),
+      request: new Request("https://moto-track.net/auth", { method: "POST" }),
+      locals: { locale: "pt-BR" },
+    } as never);
+    expect(result).toMatchObject({ status: 403 });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it.each(["google", "apple"] as const)(
+    "keeps %s out of the native webview flow",
+    async (provider) => {
+      const fetch = vi.fn();
+      vi.stubGlobal("fetch", fetch);
+      const result = await actions[provider]({
+        request: new Request("https://moto-track.net/auth", {
+          method: "POST",
+          headers: { "user-agent": "MotoTrackNative/iOS" },
+        }),
+        locals: { locale: "pt-BR" },
+        platform: { env: { NEON_AUTH_SOCIAL_PROVIDERS: "google,apple" } },
+      } as never);
+      expect(result).toMatchObject({ status: 403 });
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("starts Apple OAuth with safe success and error destinations", async () => {
+    const set = vi.fn();
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ url: "https://appleid.apple.com/auth/authorize" }),
+      headers: {
+        getSetCookie: () => [
+          "__Secure-neon-auth.session_challange=challenge; Path=/; HttpOnly; Secure",
+        ],
+      },
+    });
+    vi.stubGlobal("fetch", fetch);
+    await expect(
+      actions.apple({
+        url: new URL("https://moto-track.net/auth"),
+        request: new Request("https://moto-track.net/auth", {
+          method: "POST",
+          body: new URLSearchParams({ redirectTo: "https://evil.example" }),
+        }),
+        locals: { locale: "pt-BR" },
+        platform: {
+          env: {
+            PUBLIC_NEON_AUTH_URL: "https://auth.example/neondb/auth",
+            NEON_AUTH_SOCIAL_PROVIDERS: "google,apple",
+          },
+        },
+        cookies: { set },
+      } as never),
+    ).rejects.toMatchObject({
+      status: 303,
+      location: "https://appleid.apple.com/auth/authorize",
+    });
+    const body = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(body).toMatchObject({
+      provider: "apple",
+      callbackURL: "https://moto-track.net/auth/callback?next=%2Fdashboard",
+      errorCallbackURL:
+        "https://moto-track.net/auth?redirectTo=%2Fdashboard&error=oauth_callback_failed",
+    });
+  });
+
+  it("returns Apple-specific feedback when Neon cannot be reached", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     const result = await socialSignInUrl(
       {
         url: new URL("https://moto-track.net/auth"),
         platform: {
-          env: {
-            PUBLIC_NEON_AUTH_URL: "https://auth.example/neondb/auth",
-          },
+          env: { PUBLIC_NEON_AUTH_URL: "https://auth.example/neondb/auth" },
         },
-        cookies: { set },
+        locals: { locale: "pt-BR" },
       } as never,
-      "google",
+      "apple",
       "https://moto-track.net/auth/callback",
     );
-
-    expect(result.url).toBe("https://accounts.google.com/o/oauth2/auth");
-    expect(set).toHaveBeenCalledWith(
-      "mt_oauth_challenge",
-      "challenge-value",
-      expect.objectContaining({
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-        secure: true,
-      }),
-    );
+    expect(result).toMatchObject({
+      url: null,
+      message: expect.stringContaining("Apple"),
+    });
   });
 
   it("exchanges the verifier for an app session at the OAuth callback", async () => {
