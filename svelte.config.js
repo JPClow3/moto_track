@@ -1,6 +1,11 @@
 import adapter from "@sveltejs/adapter-cloudflare";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
+const neonAuthOrigin = new URL(
+  process.env.PUBLIC_NEON_AUTH_URL ??
+    "https://ep-damp-bar-acu29m6g.neonauth.sa-east-1.aws.neon.tech/neondb/auth",
+).origin;
+
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   preprocess: vitePreprocess(),
@@ -16,7 +21,14 @@ const config = {
           "https://*.ingest.us.sentry.io",
         ],
         "font-src": ["self", "data:"],
-        "form-action": ["self"],
+        // Chromium also checks every redirect after a form POST. Social login
+        // goes through this branch's Neon host before reaching the provider.
+        "form-action": [
+          "self",
+          neonAuthOrigin,
+          "https://accounts.google.com",
+          "https://appleid.apple.com",
+        ],
         "frame-ancestors": ["none"],
         // Staff-authored Markdown supports remote HTTPS article images.
         "img-src": ["self", "data:", "blob:", "https:"],

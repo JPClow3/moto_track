@@ -2,6 +2,10 @@ import type { RequestEvent } from "@sveltejs/kit";
 import { runtimeEnv } from "$server/runtime";
 import { createTranslator, DEFAULT_LOCALE, type MessageKey } from "$lib/i18n";
 import {
+  SOCIAL_AUTH_PROVIDERS,
+  type SocialAuthProvider,
+} from "$lib/domain/social-auth";
+import {
   forgetCachedSession,
   readCachedSession,
   rememberSession,
@@ -191,6 +195,16 @@ export async function resolveSession(
 
 type Result = { ok: boolean; message?: string };
 
+/** Only advertise providers whose credentials have been configured in Neon. */
+export function enabledSocialProviders(platform?: App.Platform) {
+  const configured = new Set(
+    (runtimeEnv(platform).NEON_AUTH_SOCIAL_PROVIDERS ?? "google")
+      .split(",")
+      .map((provider) => provider.trim()),
+  );
+  return SOCIAL_AUTH_PROVIDERS.filter((provider) => configured.has(provider));
+}
+
 function authError(
   event: RequestEvent,
   data: Record<string, unknown>,
@@ -333,20 +347,28 @@ export async function signOut(event: RequestEvent) {
 /** Start a social (OAuth) sign-in; returns the provider URL to redirect to. */
 export async function socialSignInUrl(
   event: RequestEvent,
-  provider: string,
+  provider: SocialAuthProvider,
   callbackURL: string,
+  errorCallbackURL?: string,
 ): Promise<{ url: string | null; message?: string }> {
-  const res = await call(event, "/sign-in/social", {
-    method: "POST",
-    body: { provider, callbackURL },
-  });
+  const fallback =
+    provider === "apple" ? "auth.appleFailed" : "auth.googleFailed";
+  let res: Response;
+  try {
+    res = await call(event, "/sign-in/social", {
+      method: "POST",
+      body: { provider, callbackURL, errorCallbackURL },
+    });
+  } catch {
+    return { url: null, message: authError(event, {}, fallback) };
+  }
   if (!res.ok) {
     const data = await readJson(res);
-    return { url: null, message: authError(event, data, "auth.googleFailed") };
+    return { url: null, message: authError(event, data, fallback) };
   }
   const challenge = extractUpstreamCookie(res, UPSTREAM_OAUTH_CHALLENGE_COOKIE);
   if (!challenge) {
-    return { url: null, message: authError(event, {}, "auth.googleFailed") };
+    return { url: null, message: authError(event, {}, fallback) };
   }
   storeOAuthChallenge(event, challenge);
   const data = await readJson(res);
