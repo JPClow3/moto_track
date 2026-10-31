@@ -1221,6 +1221,7 @@ export const en: Messages = {
     editTitle: "Edit fill-up",
     preferences: "Stations and preferences",
     allStations: "All stations",
+    noBike: "No bike",
   },
   home: {
     title: "Bike",

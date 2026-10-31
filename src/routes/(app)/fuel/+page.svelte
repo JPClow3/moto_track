@@ -226,7 +226,12 @@
   }
   $: editValues = editingRow
     ? ({
-        motorcycle_id: String(editingRow.motorcycle_id ?? activeMotorcycleId),
+        // An unassigned (legacy) fill-up stays unassigned unless the rider
+        // picks a bike; it is shown on every bike, so no guess is safe.
+        motorcycle_id:
+          editingRow.motorcycle_id == null
+            ? ""
+            : String(editingRow.motorcycle_id),
         date: dateOnlyValue(editingRow.date) ?? undefined,
         odometer_km: String(editingRow.odometer_km ?? ""),
         liters: decimalInput(editingRow.liters, 3),
@@ -919,6 +924,7 @@
           grades={data.grades}
           initial={editValues}
           showReceipt={false}
+          allowUnassigned
         />
       {/key}
       {#if editingRow.receipt_file_key}

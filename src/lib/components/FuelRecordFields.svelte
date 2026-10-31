@@ -29,6 +29,8 @@
   /** Shown as the odometer placeholder: the last reading for this bike. */
   export let odometerHint: unknown = null;
   export let showReceipt = true;
+  /** Offer "no bike", for editing fill-ups that were never linked to one. */
+  export let allowUnassigned = false;
 
   // Decimal fields are text inputs (pt-BR riders type "4,59"); the server
   // parses both marks. Accepts "4,59", "4.59", "1.234,56" and "1,234.56".
@@ -96,9 +98,12 @@
         )
       : "";
 
-  $: bikeName = String(
-    motorcycles.find((moto) => String(moto.id) === motorcycleId)?.name ?? "",
-  );
+  $: bikeName = motorcycleId
+    ? String(
+        motorcycles.find((moto) => String(moto.id) === motorcycleId)?.name ??
+          "",
+      )
+    : $t("fuelUx.noBike");
   // Only a YYYY-MM-DD value is formatted; anything else would make the
   // formatter throw "Invalid time value".
   $: dateLabel =
@@ -145,6 +150,9 @@
       name="motorcycle_id"
       bind:value={motorcycleId}
     >
+      {#if allowUnassigned || !motorcycleId}
+        <option value="">{$t("fuelUx.noBike")}</option>
+      {/if}
       {#each motorcycles as moto (moto.id)}
         <option value={String(moto.id)}>{moto.name}</option>
       {/each}

@@ -1248,6 +1248,7 @@ export const ptBR = {
     editTitle: "Editar abastecimento",
     preferences: "Postos e preferências",
     allStations: "Todos os postos",
+    noBike: "Sem moto",
   },
   home: {
     title: "Moto",

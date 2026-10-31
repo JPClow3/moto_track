@@ -75,6 +75,15 @@ type BenchmarkData = {
   } | null;
 };
 
+/**
+ * Record pages follow the shell's active bike, so a garage-wide link carries
+ * its record's bike (`?bike=`, handled by the (app) layout) to land on it.
+ */
+const bikeHref = (path: string, motorcycleId: unknown) =>
+  motorcycleId
+    ? `${path}?bike=${encodeURIComponent(String(motorcycleId))}`
+    : path;
+
 const sumCents = (rows: Row[], key: string) =>
   rows.reduce((sum, row) => sum + Number(row[key] ?? 0), 0);
 
@@ -669,7 +678,7 @@ export async function _loadGarage(
           ? formatDistance(locale, Number(row.odometer_km))
           : "",
         amountCents: Number(row.total_price_cents ?? 0),
-        href: "/fuel",
+        href: bikeHref("/fuel", row.motorcycle_id),
       })),
       ...maintenanceRows.map((row) => ({
         id: `maint-${row.id ?? row.date}-${row.odometer_km}`,
@@ -680,7 +689,7 @@ export async function _loadGarage(
           ? formatDistance(locale, Number(row.odometer_km))
           : "",
         amountCents: Number(row.cost_cents ?? 0),
-        href: "/maintenance",
+        href: bikeHref("/maintenance", row.motorcycle_id),
       })),
       ...tireRows.map((row) => ({
         id: `tire-${row.id ?? row.installed_at}`,
@@ -689,7 +698,7 @@ export async function _loadGarage(
         title: tr("dashboard.costTires"),
         subtitle: row.wear_percent ? `${row.wear_percent}%` : "",
         amountCents: Number(row.cost_cents ?? 0),
-        href: "/tires",
+        href: bikeHref("/tires", row.motorcycle_id),
       })),
       ...feeRows.map((row) => ({
         id: `fee-${row.id ?? row.due_date}`,

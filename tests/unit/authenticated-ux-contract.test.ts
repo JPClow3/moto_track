@@ -250,6 +250,24 @@ describe("authenticated UX primitives contract", () => {
     expect(fuelServer).toContain("date: isoDateValue(row.date)");
   });
 
+  it("keeps an unassigned fill-up unassigned in the editor", async () => {
+    const module =
+      await import("../../src/lib/components/FuelRecordFields.svelte");
+    const { body } = render(module.default, {
+      props: {
+        idPrefix: "fuel-edit",
+        motorcycles: [{ id: "m1", name: "CB 500F" }],
+        initial: { motorcycle_id: "", date: "2026-10-01" },
+        allowUnassigned: true,
+      },
+    });
+    expect(body).toContain("Sem moto");
+    expect(body).toMatch(/<option value=""[^>]*selected/);
+    expect(source("src/routes/(app)/dashboard/+page.server.ts")).toContain(
+      'bikeHref("/fuel", row.motorcycle_id)',
+    );
+  });
+
   it("gives Maintenance one add action and a primary 'Já fiz' on each plan card", async () => {
     const module =
       await import("../../src/routes/(app)/maintenance/+page.svelte");
