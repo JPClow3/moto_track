@@ -268,6 +268,21 @@ describe("authenticated UX primitives contract", () => {
     );
   });
 
+  it("keeps an archived bike's fill-up linked to it in the editor", async () => {
+    const module =
+      await import("../../src/lib/components/FuelRecordFields.svelte");
+    const { body } = render(module.default, {
+      props: {
+        idPrefix: "fuel-edit",
+        motorcycles: [{ id: "m1", name: "CB 500F" }],
+        initial: { motorcycle_id: "archived-1", date: "2026-10-01" },
+        allowUnassigned: true,
+      },
+    });
+    expect(body).toContain("Moto arquivada");
+    expect(body).toMatch(/<option value="archived-1"[^>]*selected/);
+  });
+
   it("gives Maintenance one add action and a primary 'Já fiz' on each plan card", async () => {
     const module =
       await import("../../src/routes/(app)/maintenance/+page.svelte");

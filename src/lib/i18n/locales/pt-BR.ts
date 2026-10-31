@@ -1249,6 +1249,7 @@ export const ptBR = {
     preferences: "Postos e preferências",
     allStations: "Todos os postos",
     noBike: "Sem moto",
+    archivedBike: "Moto arquivada",
   },
   home: {
     title: "Moto",

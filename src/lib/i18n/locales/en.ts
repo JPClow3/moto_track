@@ -1222,6 +1222,7 @@ export const en: Messages = {
     preferences: "Stations and preferences",
     allStations: "All stations",
     noBike: "No bike",
+    archivedBike: "Archived bike",
   },
   home: {
     title: "Bike",

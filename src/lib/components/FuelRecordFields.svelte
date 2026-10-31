@@ -98,12 +98,21 @@
         )
       : "";
 
-  $: bikeName = motorcycleId
-    ? String(
-        motorcycles.find((moto) => String(moto.id) === motorcycleId)?.name ??
-          "",
-      )
-    : $t("fuelUx.noBike");
+  // A record of an archived bike has an id the active-bike list lacks; it
+  // keeps that bike as an option so saving an edit can't drop the link.
+  const unlistedId =
+    initial.motorcycle_id &&
+    !motorcycles.some((moto) => String(moto.id) === initial.motorcycle_id)
+      ? initial.motorcycle_id
+      : "";
+  $: bikeName = !motorcycleId
+    ? $t("fuelUx.noBike")
+    : motorcycleId === unlistedId
+      ? $t("fuelUx.archivedBike")
+      : String(
+          motorcycles.find((moto) => String(moto.id) === motorcycleId)?.name ??
+            "",
+        );
   // Only a YYYY-MM-DD value is formatted; anything else would make the
   // formatter throw "Invalid time value".
   $: dateLabel =
@@ -152,6 +161,9 @@
     >
       {#if allowUnassigned || !motorcycleId}
         <option value="">{$t("fuelUx.noBike")}</option>
+      {/if}
+      {#if unlistedId}
+        <option value={unlistedId}>{$t("fuelUx.archivedBike")}</option>
       {/if}
       {#each motorcycles as moto (moto.id)}
         <option value={String(moto.id)}>{moto.name}</option>
