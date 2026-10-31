@@ -125,7 +125,7 @@
 <!-- The bike home answers one question first: does my bike need anything?
      Adding records is the shell's + (phone bar / sidebar); analysis lives on
      Análises. -->
-<section class="grid gap-6">
+<section class="grid grid-cols-1 gap-6">
   <PageHeader title={$t("home.title")} />
 
   {#if data.errorMessage}

@@ -474,7 +474,7 @@
     }`;
 </script>
 
-<section class="grid gap-6" aria-busy={formBusy}>
+<section class="grid grid-cols-1 gap-6" aria-busy={formBusy}>
   <PageHeader
     title={$t("fuel.pageTitle")}
     description={$t("fuel.pageSubtitle")}

@@ -256,7 +256,7 @@
 
 <svelte:head><title>{$t("tires.pageTitle")} · Moto Track</title></svelte:head>
 
-<section class="grid gap-6" aria-busy={formBusy}>
+<section class="grid grid-cols-1 gap-6" aria-busy={formBusy}>
   <PageHeader
     title={$t("tires.pageTitle")}
     description={$t("tires.pageSubtitle")}

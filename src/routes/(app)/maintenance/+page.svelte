@@ -427,7 +427,7 @@
 </script>
 
 <div
-  class="maintenance-page grid gap-6"
+  class="maintenance-page grid grid-cols-1 gap-6"
   aria-busy={formBusy || Boolean(pendingAction)}
 >
   <PageHeader

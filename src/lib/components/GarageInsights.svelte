@@ -92,7 +92,7 @@
   }));
 </script>
 
-<div class="grid gap-6">
+<div class="grid grid-cols-1 gap-6">
   {#if consumption.length > 1}
     <section class="panel p-5 sm:p-6" aria-labelledby="consumption-title">
       <h2 id="consumption-title" class="display text-2xl">

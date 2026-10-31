@@ -341,7 +341,7 @@
     "rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]";
 </script>
 
-<section class="grid gap-6" aria-busy={formBusy}>
+<section class="grid grid-cols-1 gap-6" aria-busy={formBusy}>
   <PageHeader title={feature.title} description={feature.subtitle}>
     <svelte:fragment slot="actions">
       {#if !needsBike}
