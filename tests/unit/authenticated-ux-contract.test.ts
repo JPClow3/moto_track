@@ -283,6 +283,25 @@ describe("authenticated UX primitives contract", () => {
     expect(body).toMatch(/<option value="archived-1"[^>]*selected/);
   });
 
+  it("keeps a fill-up's saved station when the station was renamed since", async () => {
+    const module =
+      await import("../../src/lib/components/FuelRecordFields.svelte");
+    const { body } = render(module.default, {
+      props: {
+        idPrefix: "fuel-edit",
+        motorcycles: [{ id: "m1", name: "CB 500F" }],
+        stations: [{ id: "s1", name: "Posto Shell (novo nome)" }],
+        initial: {
+          motorcycle_id: "m1",
+          date: "2026-10-01",
+          station_name: "Posto Shell",
+          station_id: "s1",
+        },
+      },
+    });
+    expect(body).toMatch(/name="station_id" value="s1"/);
+  });
+
   it("gives Maintenance one add action and a primary 'Já fiz' on each plan card", async () => {
     const module =
       await import("../../src/routes/(app)/maintenance/+page.svelte");

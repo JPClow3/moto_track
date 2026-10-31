@@ -6,6 +6,7 @@
     liters?: string;
     total_price?: string;
     station_name?: string;
+    station_id?: string;
     fuel_grade_id?: string;
     fuel_type?: string;
     tank_full?: boolean;
@@ -66,13 +67,18 @@
     : fuelChoice.slice("type:".length);
 
   // One station field: typing a saved station's name links the record to it.
+  // A record's existing link is kept while its name is untouched, so a
+  // station renamed since the fill-up doesn't lose the association.
+  const initialStationName = stationName;
   $: stationId =
-    stations.find(
-      (station) =>
-        String(station.name ?? "")
-          .trim()
-          .toLocaleLowerCase() === stationName.trim().toLocaleLowerCase(),
-    )?.id ?? "";
+    initial.station_id && stationName === initialStationName
+      ? initial.station_id
+      : (stations.find(
+          (station) =>
+            String(station.name ?? "")
+              .trim()
+              .toLocaleLowerCase() === stationName.trim().toLocaleLowerCase(),
+        )?.id ?? "");
   $: stationChips = stations.slice(0, 6);
 
   /** Display-only parse; the server owns the real one. */
