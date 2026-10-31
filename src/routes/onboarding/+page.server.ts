@@ -3,7 +3,7 @@ import { fail, redirect } from "@sveltejs/kit";
 import { lockObjectOwner } from "$server/db/owner-lock";
 import {
   applyMotorcycleTemplate,
-  initialHistoryStatus,
+  initialHistoryAnswers,
   loadCatalogModels,
   resolveCatalogSelection,
 } from "$server/domain/motorcycle-catalog";
@@ -89,13 +89,9 @@ export const actions = localizedActions({
             from motorcycle_template_maintenance_items
             where template_id = ${templateId}
           `;
-          const history = Object.fromEntries(
-            templateItems.map((item) => [
-              item.maintenance_type,
-              initialHistoryStatus(
-                String(form.get(`history_${item.maintenance_type}`) ?? ""),
-              ),
-            ]),
+          const history = initialHistoryAnswers(
+            form,
+            templateItems.map((item) => item.maintenance_type),
           );
           await applyMotorcycleTemplate(
             // `postgres`' transaction client has the same tagged-query API

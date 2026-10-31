@@ -9,7 +9,6 @@
   import PageHeader from "$lib/components/app/PageHeader.svelte";
   import PageAction from "$lib/components/app/PageAction.svelte";
   import PageOverflowMenu from "$lib/components/app/PageOverflowMenu.svelte";
-  import BikeContextBar from "$lib/components/app/BikeContextBar.svelte";
   import SignalStrip, {
     type Signal,
   } from "$lib/components/app/SignalStrip.svelte";
@@ -33,6 +32,7 @@
   import Package from "lucide-svelte/icons/package";
   import Search from "lucide-svelte/icons/search";
   import Camera from "lucide-svelte/icons/camera";
+  import CircleCheck from "lucide-svelte/icons/circle-check";
   import Trash2 from "lucide-svelte/icons/trash-2";
   import Wrench from "lucide-svelte/icons/wrench";
   import MaintenancePhaseFields from "$lib/components/MaintenancePhaseFields.svelte";
@@ -73,43 +73,50 @@
     remaining_km?: number | null;
     progress_percent?: number | null;
     motorcycles?: { name: unknown } | null;
+    motorcycle_id?: unknown;
+    initial_history_status?: unknown;
   };
 
   $: hasMotorcycles = data.motorcycles.length > 0;
-  $: hasRecords = data.rows.length > 0;
-  $: plans = (data.plans ?? []) as PlanRow[];
+  $: hasRecords = bikeRows.length > 0;
+  $: plans = ((data.plans ?? []) as PlanRow[]).filter((plan) =>
+    onActiveBike(plan.motorcycle_id, activeMotorcycleId, scopeToActive),
+  );
   $: hasPlans = plans.length > 0;
   $: marketplaceState = form?.marketplace as MarketplaceState | undefined;
 
-  // Defaults to the shell's active bike (resolved server-side), so the page
-  // view and the ?new=1 sheet start on the bike the rider picked. SvelteKit
-  // reuses this component when the shell switches bikes, so follow that
-  // change too (as /fuel does) while keeping page-local picks in between.
-  const activeOrFirstId = () =>
-    String(data.activeMotorcycleId ?? data.motorcycles[0]?.id ?? "");
-  let selectedMotorcycleId = activeOrFirstId();
-  let syncedActiveId: unknown = data.activeMotorcycleId;
-  $: if (data.activeMotorcycleId !== syncedActiveId) {
-    syncedActiveId = data.activeMotorcycleId;
-    selectedMotorcycleId = activeOrFirstId();
-  }
-  $: currentMotorcycle =
-    data.motorcycles.find(
-      (m: Record<string, unknown>) =>
-        String(m.id) === String(selectedMotorcycleId),
-    ) ?? data.motorcycles[0];
+  // The shell's bike switcher is the page's only bike context: with more
+  // than one bike, plans and history follow the active bike.
+  $: activeMotorcycleId = String(
+    data.activeMotorcycleId ?? data.motorcycles[0]?.id ?? "",
+  );
+  $: scopeToActive = data.motorcycles.length > 1 && Boolean(activeMotorcycleId);
+  const onActiveBike = (
+    motorcycleId: unknown,
+    active: string,
+    scoped: boolean,
+  ) =>
+    // Records never linked to a bike stay visible on every bike.
+    !scoped || motorcycleId == null || String(motorcycleId) === active;
+  $: bikeRows = (data.rows ?? []).filter((row: Record<string, unknown>) =>
+    onActiveBike(row.motorcycle_id, activeMotorcycleId, scopeToActive),
+  );
 
   // Client-side type filter over the already-loaded history.
   let filterType = "all";
   $: recordTypes = [
     ...new Set(
-      data.rows.map((row: Record<string, unknown>) =>
+      bikeRows.map((row: Record<string, unknown>) =>
         String(row.maintenance_type ?? ""),
       ),
     ),
   ]
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
+  // A type picked on another bike may not exist on this one (and the picker
+  // hides with a single type), so fall back to all instead of an empty list.
+  $: if (filterType !== "all" && !recordTypes.includes(filterType))
+    filterType = "all";
 
   type MaintenanceRecord = {
     id: string;
@@ -124,7 +131,7 @@
     maintenance_plan_item_id?: string | null;
     completed_milestone?: number | null;
   };
-  $: filteredRows = ((data.rows ?? []) as MaintenanceRecord[]).filter(
+  $: filteredRows = (bikeRows as MaintenanceRecord[]).filter(
     (row: MaintenanceRecord) =>
       filterType === "all" || String(row.maintenance_type ?? "") === filterType,
   );
@@ -138,6 +145,7 @@
   let partsSheet: RecordSheet;
   let marketplaceSheet: RecordSheet;
   let photosSheet: RecordSheet;
+  let historySheet: RecordSheet;
   let confirmDialog: ConfirmDialog;
   let marketplaceQuery = "";
 
@@ -145,7 +153,7 @@
   // drops the param so a reload or back navigation does not reopen it.
   afterNavigate(({ to }) => {
     if (!to?.url || to.url.searchParams.get("new") !== "1") return;
-    if (data.motorcycles.length > 0) logSheet?.open();
+    if (data.motorcycles.length > 0) openLog();
     const url = new URL(to.url);
     url.searchParams.delete("new");
     // The router only accepts shallow routing once hydration has settled.
@@ -160,12 +168,12 @@
 
   $: overdueCount = plans.filter((p) => p.urgency === "overdue").length;
   $: dueNowCount = plans.filter((p) => p.urgency === "due_now").length;
-  $: totalSpent = data.rows.reduce(
+  $: totalSpent = bikeRows.reduce(
     (sum: number, r: Record<string, unknown>) =>
       sum + Number(r.cost_cents ?? 0),
     0,
   );
-  $: lastRecord = (data.rows as MaintenanceRecord[])[0];
+  $: lastRecord = (bikeRows as MaintenanceRecord[])[0];
 
   function planSignal(
     plans: PlanRow[],
@@ -204,7 +212,7 @@
     hasRecords
       ? {
           label: $t("maintenance.recordsHeading"),
-          value: `${data.rows.length}`,
+          value: `${bikeRows.length}`,
           hint: lastRecord?.maintenance_type
             ? $t("serviceUx.lastService", {
                 type: String(lastRecord.maintenance_type),
@@ -240,15 +248,57 @@
     planSheet?.open();
   }
 
-  function urgencyLabel(urgency: PlanRow["urgency"]) {
-    if (urgency === "overdue") return $t("dashboard.urgencyOverdue");
-    if (urgency === "due_now") return $t("dashboard.urgencyNow");
+  // "Já fiz": the log form, prefilled with the plan's service, bike, today and
+  // the bike's current odometer, linked to the plan so it closes it.
+  type LogPrefill = {
+    motorcycleId: string;
+    planId: string;
+    type: string;
+    odometerKm: string;
+  };
+  let logPrefill: LogPrefill | null = null;
+  let logFormKey = 0;
+  function openLog(prefill: LogPrefill | null = null) {
+    logPrefill = prefill;
+    logFormKey += 1;
+    logSheet?.open();
+  }
+  function openLogForPlan(plan: PlanRow) {
+    const bike = data.motorcycles.find(
+      (moto: Record<string, unknown>) =>
+        String(moto.id) === String(plan.motorcycle_id),
+    );
+    openLog({
+      motorcycleId: String(plan.motorcycle_id ?? ""),
+      planId: String(plan.id),
+      type: String(plan.maintenance_type ?? ""),
+      odometerKm: String(bike?.current_odometer_km ?? plan.current_km ?? ""),
+    });
+  }
+
+  let historyPlan: PlanRow | null = null;
+  function openHistory(plan: PlanRow) {
+    historyPlan = plan;
+    historySheet?.open();
+  }
+
+  /** A plan only "due" because its last service is unknown asks a question. */
+  const needsConfirmation = (plan: PlanRow) =>
+    plan.urgency === "due_now" &&
+    plan.due_km == null &&
+    String(plan.initial_history_status ?? "unknown") === "unknown";
+
+  function urgencyLabel(plan: PlanRow) {
+    if (plan.urgency === "overdue") return $t("dashboard.urgencyOverdue");
+    if (needsConfirmation(plan)) return $t("dashboard.statusConfirm");
+    if (plan.urgency === "due_now") return $t("dashboard.urgencyNow");
     return $t("maintenance.urgencyScheduled");
   }
 
-  function urgencyTone(urgency: PlanRow["urgency"]): StatusTone {
-    if (urgency === "overdue") return "overdue";
-    if (urgency === "due_now") return "due";
+  function urgencyTone(plan: PlanRow): StatusTone {
+    if (plan.urgency === "overdue") return "overdue";
+    if (needsConfirmation(plan)) return "neutral";
+    if (plan.urgency === "due_now") return "due";
     return "ok";
   }
 
@@ -292,6 +342,17 @@
     } else if (result.type === "error") {
       errorMessage = $t("error.serverBody");
     }
+  };
+
+  const enhanceHistorySubmit: SubmitFunction = () => {
+    formBusy = true;
+    errorMessage = "";
+    return async ({ result, update }) => {
+      formBusy = false;
+      finishStatus(result, $t("serviceUx.historySaved"));
+      if (result.type === "success") historySheet?.close("success");
+      await update();
+    };
   };
 
   const enhanceLogSubmit: SubmitFunction = () => {
@@ -366,7 +427,7 @@
 </script>
 
 <div
-  class="maintenance-page grid gap-6"
+  class="maintenance-page grid grid-cols-1 gap-6"
   aria-busy={formBusy || Boolean(pendingAction)}
 >
   <PageHeader
@@ -378,7 +439,7 @@
         <PageAction
           label={$t("serviceUx.logService")}
           ariaLabel={$t("serviceUx.logService")}
-          on:click={() => logSheet?.open()}
+          on:click={() => openLog()}
         />
       {/if}
     </svelte:fragment>
@@ -431,38 +492,6 @@
     </svelte:fragment>
   </PageHeader>
 
-  {#if hasMotorcycles}
-    <BikeContextBar
-      name={currentMotorcycle
-        ? String(currentMotorcycle.name)
-        : $t("maintenance.bikeFallback")}
-      model={currentMotorcycle
-        ? `${currentMotorcycle.brand || ""} ${currentMotorcycle.model || ""}`.trim()
-        : ""}
-      odometerKm={currentMotorcycle?.current_odometer_km ?? null}
-    >
-      <svelte:fragment slot="selection">
-        {#if data.motorcycles.length > 1}
-          <div class="flex items-center gap-2">
-            <label for="maintenance-bike-select" class="sr-only">
-              {$t("authenticatedUx.selectBike")}
-            </label>
-            <select
-              id="maintenance-bike-select"
-              class="field px-2 py-1 text-sm"
-              bind:value={selectedMotorcycleId}
-              aria-label={$t("authenticatedUx.selectBike")}
-            >
-              {#each data.motorcycles as moto (moto.id)}
-                <option value={moto.id}>{moto.name}</option>
-              {/each}
-            </select>
-          </div>
-        {/if}
-      </svelte:fragment>
-    </BikeContextBar>
-  {/if}
-
   {#if errorMessage || form?.message || data.errorMessage}
     <div
       class="rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]"
@@ -513,7 +542,7 @@
         <button
           class="button-primary min-h-11"
           type="button"
-          on:click={() => logSheet?.open()}
+          on:click={() => openLog()}
         >
           {$t("serviceUx.logService")}
         </button>
@@ -577,8 +606,8 @@
                     />
                   </span>
                   <div class="min-w-0">
-                    <StatusBadge tone={urgencyTone(urgency)}>
-                      {urgencyLabel(urgency)}
+                    <StatusBadge tone={urgencyTone(plan)}>
+                      {urgencyLabel(plan)}
                     </StatusBadge>
                     <h3 class="display mt-1 truncate text-xl">
                       {String(plan.maintenance_type ?? "")}
@@ -588,24 +617,44 @@
                     </p>
                   </div>
                 </div>
-                <form
-                  method="POST"
-                  action="?/deletePlan"
-                  use:enhance={enhanceDelete(`delete-plan:${plan.id}`)}
-                  aria-busy={pendingAction === `delete-plan:${plan.id}`}
-                  class="shrink-0"
+                <!-- Secondary plan actions; the card's own job is "Já fiz". -->
+                <PageOverflowMenu
+                  label={`${$t("authenticatedUx.moreActions")}: ${String(plan.maintenance_type ?? "")}`}
                 >
-                  <input type="hidden" name="id" value={String(plan.id)} />
                   <button
-                    class="button-danger min-h-11 px-3 py-1"
-                    disabled={pendingAction === `delete-plan:${plan.id}`}
-                    type="submit"
-                    aria-label={`${$t("common.delete")} ${String(plan.maintenance_type ?? "")}`}
-                    title={$t("common.delete")}
+                    type="button"
+                    class={overflowItemClass}
+                    on:click={() => openHistory(plan)}
                   >
-                    <Trash2 size={16} aria-hidden="true" />
+                    {$t("maintenance.editHistory")}
                   </button>
-                </form>
+                  <button
+                    type="button"
+                    class={overflowItemClass}
+                    on:click={() =>
+                      seedMarketplaceQuery(
+                        `${String(plan.motorcycles?.name ?? "")} ${String(plan.maintenance_type ?? "")}`,
+                      )}
+                  >
+                    {$t("maintenance.marketplaceSeedPlan")}
+                  </button>
+                  <form
+                    method="POST"
+                    action="?/deletePlan"
+                    use:enhance={enhanceDelete(`delete-plan:${plan.id}`)}
+                    aria-busy={pendingAction === `delete-plan:${plan.id}`}
+                  >
+                    <input type="hidden" name="id" value={String(plan.id)} />
+                    <button
+                      class="{overflowItemClass} text-[var(--danger)]"
+                      disabled={pendingAction === `delete-plan:${plan.id}`}
+                      type="submit"
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                      {$t("maintenance.deletePlan")}
+                    </button>
+                  </form>
+                </PageOverflowMenu>
               </div>
 
               {#if plan.progress_percent !== null && plan.progress_percent !== undefined}
@@ -650,11 +699,9 @@
                       })
                     : `${$t("maintenance.nextDueAt")} ${km(Number(plan.due_km))} ${$t("maintenance.distanceUnit")}`}
                 </p>
-              {:else if urgency !== "scheduled"}
-                <p class="text-sm" style={`color:${urgencyColor(urgency)}`}>
-                  {urgency === "overdue"
-                    ? $t("dashboard.confidenceNotDone")
-                    : $t("dashboard.confidenceUnknown")}
+              {:else if needsConfirmation(plan)}
+                <p class="text-sm text-[var(--muted)]">
+                  {$t("home.confirmHint")}
                 </p>
               {/if}
 
@@ -679,151 +726,45 @@
                 </p>
               {/if}
 
-              <div
-                class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[var(--line)] pt-3 text-sm text-[var(--muted)]"
-              >
-                {#if Number(plan.estimated_cost_cents ?? 0) > 0}
-                  <span>
-                    {$t("dashboard.estimate")}: {brl(
-                      Number(plan.estimated_cost_cents),
-                    )}
-                  </span>
-                {/if}
-                {#if plan.remaining_km != null && Number(plan.remaining_km) > 0}
-                  <span>
-                    {$t("maintenance.remainingKm", {
-                      count: km(Number(plan.remaining_km)),
-                    })}
-                  </span>
-                {/if}
-                {#if plan.initial_history_status === "not_done"}
-                  <span class="text-[var(--warning)]">
-                    {$t("maintenance.historyNotDone")}
-                  </span>
-                {:else if plan.initial_history_status === "unknown"}
-                  <span>{$t("maintenance.historyUnknown")}</span>
-                {/if}
-                {#if plan.official_url}
-                  <a
-                    class="font-semibold text-[var(--fg)] underline underline-offset-4"
-                    href={String(plan.official_url)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {$t("dashboard.officialManual")} ↗
-                  </a>
-                {/if}
-              </div>
-
-              <div class="flex flex-wrap gap-2">
-                <button
-                  class="button-secondary min-h-11 px-3 py-1 text-sm"
-                  type="button"
-                  on:click={() =>
-                    seedMarketplaceQuery(
-                      `${String(plan.motorcycles?.name ?? "")} ${String(plan.maintenance_type ?? "")}`,
-                    )}
+              {#if Number(plan.estimated_cost_cents ?? 0) > 0 || (plan.remaining_km != null && Number(plan.remaining_km) > 0) || plan.official_url}
+                <div
+                  class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[var(--line)] pt-3 text-sm text-[var(--muted)]"
                 >
-                  {$t("maintenance.marketplaceSeedPlan")}
-                </button>
-                <details class="min-w-0 flex-1">
-                  <summary
-                    class="focus-ring flex min-h-11 cursor-pointer items-center rounded px-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--fg)]"
-                  >
-                    {$t("maintenance.editHistory")}
-                  </summary>
-                  <form
-                    class="mt-2 grid gap-3"
-                    method="POST"
-                    action="?/updateHistory"
-                    use:enhance={enhanceAction(`history:${plan.id}`, () =>
-                      $t("serviceUx.historySaved"),
-                    )}
-                    aria-busy={pendingAction === `history:${plan.id}`}
-                  >
-                    <input type="hidden" name="plan_item_id" value={plan.id} />
-                    <div class="field-group">
-                      <label
-                        class="field-label"
-                        for={`history-${plan.id}-status`}
-                      >
-                        {$t("maintenance.historyStatusLabel")}
-                      </label>
-                      <select
-                        class="field"
-                        id={`history-${plan.id}-status`}
-                        name="initial_history_status"
-                        value={String(
-                          plan.baseline_history_status ?? "unknown",
-                        )}
-                      >
-                        <option value="confirmed_done"
-                          >{$t("history.confirmedDone")}</option
-                        >
-                        <option value="not_done">{$t("history.notDone")}</option
-                        >
-                        <option value="unknown">{$t("history.unknown")}</option>
-                      </select>
-                    </div>
-                    <div class="field-group">
-                      <label class="field-label" for={`history-${plan.id}-km`}>
-                        {$t("maintenance.lastDoneKmLabel")}
-                      </label>
-                      <input
-                        class="field"
-                        id={`history-${plan.id}-km`}
-                        name="last_done_km"
-                        type="number"
-                        inputmode="numeric"
-                        min="0"
-                        value={plan.baseline_last_done_km ?? ""}
-                      />
-                    </div>
-                    <p class="text-sm text-[var(--muted)]">
-                      {$t("maintenance.historyEditHint")}
-                    </p>
-                    {#if plan.is_phased_schedule}
-                      <MaintenancePhaseFields
-                        plans={[plan]}
-                        planId={String(plan.id)}
-                        completedMilestone={plan.baseline_completed_milestone ==
-                        null
-                          ? ""
-                          : Number(plan.baseline_completed_milestone)}
-                        fieldName="last_completed_milestone"
-                        showPlanSelector={false}
-                        allowZero={true}
-                      />
-                    {/if}
-                    <div class="field-group">
-                      <label
-                        class="field-label"
-                        for={`history-${plan.id}-date`}
-                      >
-                        {$t("forecast.lastServiceDate")}
-                      </label>
-                      <input
-                        class="field"
-                        id={`history-${plan.id}-date`}
-                        name="last_done_date"
-                        type="date"
-                        value={String(plan.baseline_last_done_date ?? "").slice(
-                          0,
-                          10,
-                        )}
-                        max={calendarDay()}
-                      />
-                    </div>
-                    <button
-                      class="button-secondary min-h-11 justify-self-start"
-                      disabled={pendingAction === `history:${plan.id}`}
-                      type="submit"
+                  {#if Number(plan.estimated_cost_cents ?? 0) > 0}
+                    <span>
+                      {$t("dashboard.estimate")}: {brl(
+                        Number(plan.estimated_cost_cents),
+                      )}
+                    </span>
+                  {/if}
+                  {#if plan.remaining_km != null && Number(plan.remaining_km) > 0}
+                    <span>
+                      {$t("maintenance.remainingKm", {
+                        count: km(Number(plan.remaining_km)),
+                      })}
+                    </span>
+                  {/if}
+                  {#if plan.official_url}
+                    <a
+                      class="font-semibold text-[var(--fg)] underline underline-offset-4"
+                      href={String(plan.official_url)}
+                      target="_blank"
+                      rel="noreferrer"
                     >
-                      {$t("maintenance.saveHistory")}
-                    </button>
-                  </form>
-                </details>
-              </div>
+                      {$t("dashboard.officialManual")} ↗
+                    </a>
+                  {/if}
+                </div>
+              {/if}
+
+              <button
+                class="button-primary min-h-11 w-full gap-2"
+                type="button"
+                on:click={() => openLogForPlan(plan)}
+              >
+                <CircleCheck size={20} aria-hidden="true" />
+                {$t("maintenance.markDone")}
+              </button>
             </article>
           {/each}
         </div>
@@ -868,7 +809,7 @@
             <button
               class="button-primary min-h-11"
               type="button"
-              on:click={() => logSheet?.open()}
+              on:click={() => openLog()}
             >
               {$t("serviceUx.logService")}
             </button>
@@ -926,24 +867,6 @@
                   <span class="display numeric text-lg text-[var(--fg)]">
                     {brl(Number(row.cost_cents ?? 0))}
                   </span>
-                  <form
-                    method="POST"
-                    action="?/deleteRecord"
-                    use:enhance={enhanceDelete(`delete-record:${row.id}`)}
-                    aria-busy={pendingAction === `delete-record:${row.id}`}
-                  >
-                    <input type="hidden" name="_intent" value="delete" />
-                    <input type="hidden" name="id" value={String(row.id)} />
-                    <button
-                      class="button-danger min-h-11 px-3 py-1"
-                      type="submit"
-                      disabled={pendingAction === `delete-record:${row.id}`}
-                      aria-label={`${$t("common.delete")} ${String(row.maintenance_type ?? "")}`}
-                      title={$t("common.delete")}
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                    </button>
-                  </form>
                 </div>
               </div>
 
@@ -1196,7 +1119,17 @@
                         >{String(row.description ?? "")}</textarea
                       >
                     </div>
-                    <div class="flex items-end md:col-span-3">
+                    <div
+                      class="flex flex-wrap items-end justify-between gap-3 md:col-span-3"
+                    >
+                      <button
+                        class="button-danger min-h-11"
+                        type="submit"
+                        form={`delete-record-${row.id}`}
+                        disabled={pendingAction === `delete-record:${row.id}`}
+                      >
+                        {$t("common.delete")}
+                      </button>
                       <button
                         class="button-primary min-h-11"
                         type="submit"
@@ -1205,6 +1138,16 @@
                         {$t("common.saveChanges")}
                       </button>
                     </div>
+                  </form>
+                  <form
+                    id={`delete-record-${row.id}`}
+                    method="POST"
+                    action="?/deleteRecord"
+                    use:enhance={enhanceDelete(`delete-record:${row.id}`)}
+                    aria-busy={pendingAction === `delete-record:${row.id}`}
+                  >
+                    <input type="hidden" name="_intent" value="delete" />
+                    <input type="hidden" name="id" value={String(row.id)} />
                   </form>
                 </div>
               </details>
@@ -1230,142 +1173,239 @@
       aria-busy={formBusy}
     >
       <input type="hidden" name="_intent" value="create" />
-      <div class="field-group">
-        <label class="field-label" for="record-motorcycle">
-          {$t("maintenance.bikeFallback")}
-        </label>
-        <select
-          class="field"
-          id="record-motorcycle"
-          name="motorcycle_id"
-          required
-          disabled={!hasMotorcycles}
+      {#key logFormKey}
+        <div class="field-group">
+          <label class="field-label" for="record-motorcycle">
+            {$t("maintenance.bikeFallback")}
+          </label>
+          <select
+            class="field"
+            id="record-motorcycle"
+            name="motorcycle_id"
+            required
+            disabled={!hasMotorcycles}
+          >
+            {#each data.motorcycles as moto (moto.id)}
+              <option
+                value={moto.id}
+                selected={String(moto.id) ===
+                  (logPrefill?.motorcycleId || activeMotorcycleId)}
+              >
+                {moto.name}
+              </option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="field-group">
+            <label class="field-label" for="record-date">
+              {$t("maintenance.recordDateLabel")}
+            </label>
+            <input
+              class="field"
+              id="record-date"
+              type="date"
+              name="date"
+              value={calendarDay()}
+              max={calendarDay()}
+              required
+            />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="record-odometer">
+              {$t("maintenance.recordOdometerLabel")}
+            </label>
+            <input
+              class="field"
+              id="record-odometer"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              name="odometer_km"
+              value={logPrefill?.odometerKm ?? ""}
+              required
+            />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="record-type">
+            {$t("maintenance.maintenanceType")}
+          </label>
+          <input
+            class="field"
+            id="record-type"
+            name="maintenance_type"
+            value={logPrefill?.type ?? ""}
+            required
+            list="maintenance-type-suggestions"
+          />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="record-description">
+            {$t("maintenance.descriptionLabel")}
+          </label>
+          <textarea
+            class="field min-h-16"
+            id="record-description"
+            name="description"
+          ></textarea>
+        </div>
+
+        <MaintenancePhaseFields {plans} planId={logPrefill?.planId ?? ""} />
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="field-group">
+            <label class="field-label" for="record-workshop">
+              {$t("maintenance.workshopLabel")}
+            </label>
+            <input class="field" id="record-workshop" name="workshop" />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="record-cost">
+              {$t("maintenance.costLabel")}
+            </label>
+            <input
+              class="field"
+              id="record-cost"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              name="cost_cents"
+            />
+          </div>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="field-group">
+            <label class="field-label" for="record-interval-km">
+              {$t("maintenance.intervalKm")}
+            </label>
+            <input
+              class="field"
+              id="record-interval-km"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              name="interval_km"
+            />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="record-interval-days">
+              {$t("maintenance.intervalDays")}
+            </label>
+            <input
+              class="field"
+              id="record-interval-days"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              name="interval_days"
+            />
+          </div>
+        </div>
+      {/key}
+
+      <div class="sheet-actions">
+        <button
+          class="button-primary min-h-11"
+          type="submit"
+          disabled={!hasMotorcycles || formBusy}
         >
-          {#each data.motorcycles as moto (moto.id)}
-            <option
-              value={moto.id}
-              selected={String(moto.id) === String(selectedMotorcycleId)}
-            >
-              {moto.name}
-            </option>
-          {/each}
-        </select>
+          {$t("common.save")}
+        </button>
       </div>
-
-      <div class="grid gap-3 sm:grid-cols-2">
-        <div class="field-group">
-          <label class="field-label" for="record-date">
-            {$t("maintenance.recordDateLabel")}
-          </label>
-          <input
-            class="field"
-            id="record-date"
-            type="date"
-            name="date"
-            required
-          />
-        </div>
-        <div class="field-group">
-          <label class="field-label" for="record-odometer">
-            {$t("maintenance.recordOdometerLabel")}
-          </label>
-          <input
-            class="field"
-            id="record-odometer"
-            type="number"
-            inputmode="numeric"
-            min="0"
-            name="odometer_km"
-            required
-          />
-        </div>
-      </div>
-
-      <div class="field-group">
-        <label class="field-label" for="record-type">
-          {$t("maintenance.maintenanceType")}
-        </label>
-        <input
-          class="field"
-          id="record-type"
-          name="maintenance_type"
-          required
-          list="maintenance-type-suggestions"
-        />
-      </div>
-
-      <div class="field-group">
-        <label class="field-label" for="record-description">
-          {$t("maintenance.descriptionLabel")}
-        </label>
-        <textarea
-          class="field min-h-16"
-          id="record-description"
-          name="description"
-        ></textarea>
-      </div>
-
-      <MaintenancePhaseFields {plans} />
-
-      <div class="grid gap-3 sm:grid-cols-2">
-        <div class="field-group">
-          <label class="field-label" for="record-workshop">
-            {$t("maintenance.workshopLabel")}
-          </label>
-          <input class="field" id="record-workshop" name="workshop" />
-        </div>
-        <div class="field-group">
-          <label class="field-label" for="record-cost">
-            {$t("maintenance.costLabel")}
-          </label>
-          <input
-            class="field"
-            id="record-cost"
-            type="text"
-            inputmode="decimal"
-            autocomplete="off"
-            name="cost_cents"
-          />
-        </div>
-      </div>
-
-      <div class="grid gap-3 sm:grid-cols-2">
-        <div class="field-group">
-          <label class="field-label" for="record-interval-km">
-            {$t("maintenance.intervalKm")}
-          </label>
-          <input
-            class="field"
-            id="record-interval-km"
-            type="number"
-            inputmode="numeric"
-            min="0"
-            name="interval_km"
-          />
-        </div>
-        <div class="field-group">
-          <label class="field-label" for="record-interval-days">
-            {$t("maintenance.intervalDays")}
-          </label>
-          <input
-            class="field"
-            id="record-interval-days"
-            type="number"
-            inputmode="numeric"
-            min="0"
-            name="interval_days"
-          />
-        </div>
-      </div>
-
-      <button
-        class="button-primary min-h-11 w-full"
-        type="submit"
-        disabled={!hasMotorcycles || formBusy}
-      >
-        {$t("common.save")}
-      </button>
     </form>
+  </RecordSheet>
+
+  <!-- ADJUST LAST SERVICE (was "corrigir histórico inicial" inside each card) -->
+  <RecordSheet
+    bind:this={historySheet}
+    title={$t("maintenance.editHistory")}
+    description={historyPlan ? String(historyPlan.maintenance_type ?? "") : ""}
+    closeLabel={$t("authenticatedUx.close")}
+  >
+    {#if historyPlan}
+      {@const plan = historyPlan}
+      <form
+        class="grid gap-3"
+        method="POST"
+        action="?/updateHistory"
+        use:enhance={enhanceHistorySubmit}
+        aria-busy={formBusy}
+      >
+        <input type="hidden" name="plan_item_id" value={String(plan.id)} />
+        <div class="field-group">
+          <label class="field-label" for="history-status">
+            {$t("maintenance.historyStatusLabel")}
+          </label>
+          <select
+            class="field"
+            id="history-status"
+            name="initial_history_status"
+            value={String(plan.baseline_history_status ?? "unknown")}
+          >
+            <option value="confirmed_done">{$t("history.confirmedDone")}</option
+            >
+            <option value="not_done">{$t("history.notDone")}</option>
+            <option value="unknown">{$t("history.unknown")}</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="history-km">
+            {$t("maintenance.lastDoneKmLabel")}
+          </label>
+          <input
+            class="field"
+            id="history-km"
+            name="last_done_km"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            value={plan.baseline_last_done_km ?? ""}
+          />
+        </div>
+        {#if plan.is_phased_schedule}
+          <MaintenancePhaseFields
+            plans={[plan]}
+            planId={String(plan.id)}
+            completedMilestone={plan.baseline_completed_milestone == null
+              ? ""
+              : Number(plan.baseline_completed_milestone)}
+            fieldName="last_completed_milestone"
+            showPlanSelector={false}
+            allowZero={true}
+          />
+        {/if}
+        <div class="field-group">
+          <label class="field-label" for="history-date">
+            {$t("forecast.lastServiceDate")}
+          </label>
+          <input
+            class="field"
+            id="history-date"
+            name="last_done_date"
+            type="date"
+            value={String(plan.baseline_last_done_date ?? "").slice(0, 10)}
+            max={calendarDay()}
+          />
+        </div>
+        <p class="text-sm text-[var(--muted)]">
+          {$t("maintenance.historyEditHint")}
+        </p>
+        <div class="sheet-actions">
+          <button
+            class="button-primary min-h-11"
+            type="submit"
+            disabled={formBusy}
+          >
+            {$t("maintenance.saveHistory")}
+          </button>
+        </div>
+      </form>
+    {/if}
   </RecordSheet>
 
   <!-- SCHEDULE PLAN RECORD SHEET -->
@@ -1399,10 +1439,7 @@
               : $t("maintenance.noMotorcyclesSelect")}
           </option>
           {#each data.motorcycles as m (m.id)}
-            <option
-              value={m.id}
-              selected={String(m.id) === String(selectedMotorcycleId)}
-            >
+            <option value={m.id} selected={String(m.id) === activeMotorcycleId}>
               {m.name}
             </option>
           {/each}
@@ -1466,13 +1503,15 @@
         </span>
       </label>
 
-      <button
-        class="button-primary min-h-11 w-full"
-        disabled={!hasMotorcycles || formBusy}
-        type="submit"
-      >
-        {$t("maintenance.savePlan")}
-      </button>
+      <div class="sheet-actions">
+        <button
+          class="button-primary min-h-11 w-full"
+          disabled={!hasMotorcycles || formBusy}
+          type="submit"
+        >
+          {$t("maintenance.savePlan")}
+        </button>
+      </div>
     </form>
   </RecordSheet>
 
@@ -1537,13 +1576,15 @@
           <input name="track_stock" type="checkbox" value="true" />
           {$t("maintenance.trackStock")}
         </label>
-        <button
-          class="button-primary min-h-11 w-full"
-          disabled={pendingAction === "part"}
-          type="submit"
-        >
-          {$t("maintenance.savePart")}
-        </button>
+        <div class="sheet-actions">
+          <button
+            class="button-primary min-h-11 w-full"
+            disabled={pendingAction === "part"}
+            type="submit"
+          >
+            {$t("maintenance.savePart")}
+          </button>
+        </div>
       </form>
 
       <div class="grid gap-2 border-t border-[var(--line)] pt-4">

@@ -471,6 +471,23 @@
             {pushMessage}
           </p>{/if}
       </div>
+      <!-- Set-once settings that used to share menus with everyday actions. -->
+      <ul class="mt-5 grid gap-1 border-t border-[var(--line)] pt-4">
+        <li>
+          <a
+            class="focus-ring flex min-h-11 items-center justify-between gap-3 rounded text-sm font-medium hover:underline"
+            href="/fuel?settings=defaults"
+            >{$t("conta.fuelPreferences")}<span aria-hidden="true">›</span></a
+          >
+        </li>
+        <li>
+          <a
+            class="focus-ring flex min-h-11 items-center justify-between gap-3 rounded text-sm font-medium hover:underline"
+            href="/reminders#calendar"
+            >{$t("calendar.heading")}<span aria-hidden="true">›</span></a
+          >
+        </li>
+      </ul>
     </section>
 
     <section class="panel p-5 sm:p-6" aria-labelledby="personal-data-heading">

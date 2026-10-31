@@ -99,6 +99,8 @@
     },
   ];
 
+  // The one global "add": the phone bar's + on phones, the sidebar's button
+  // on desktop. Every record page's own + opens that page's form directly.
   const quickLog: Array<{
     href: string;
     key: MessageKey;
@@ -122,6 +124,12 @@
       key: "shell.logExpense",
       descKey: "shell.logExpenseDesc",
       icon: ReceiptText,
+    },
+    {
+      href: "/documents?new=1",
+      key: "shell.logDocument",
+      descKey: "shell.logDocumentDesc",
+      icon: VehicleDocument,
     },
   ];
 
@@ -194,6 +202,29 @@
     >
       <BrandLogo size={22} />
     </a>
+
+    <!-- Desktop twin of the phone bar's +: the same four entries. -->
+    <section class="mt-5" aria-labelledby="sidebar-quick-log">
+      <h2
+        id="sidebar-quick-log"
+        class="label-tech px-3 pb-1.5 text-[var(--muted)]"
+      >
+        {$t("shell.quickLog")}
+      </h2>
+      <ul class="grid grid-cols-2 gap-1">
+        {#each quickLog as item (item.href)}
+          <li>
+            <a
+              href={item.href}
+              class="focus-ring flex min-h-11 items-center gap-2 rounded border border-[var(--line)] px-2.5 text-sm font-medium text-[var(--fg)] transition hover:bg-[var(--accent-wash)]"
+            >
+              <item.icon size={16} aria-hidden="true" class="shrink-0" />
+              <span class="truncate">{$t(item.key)}</span>
+            </a>
+          </li>
+        {/each}
+      </ul>
+    </section>
 
     <nav
       class="mt-6 flex-1 overflow-y-auto pr-1"

@@ -241,6 +241,28 @@ describe("bike home attention ranking", () => {
     ]);
   });
 
+  it("asks to confirm, in a neutral tone after due items, when history is unknown", () => {
+    const ranked = rankAttention({
+      dueNow: [
+        dueItem({ id: "unknown", dueKm: null }),
+        dueItem({ id: "measured", confidence: "confirmed" }),
+      ],
+      reminders: [],
+    });
+    expect(ranked.map((item) => [item.id, item.tone])).toEqual([
+      ["measured", "due"],
+      ["unknown", "confirm"],
+    ]);
+  });
+
+  it("links a maintenance item to its own bike so the scoped page shows it", () => {
+    const [item] = rankAttention({
+      dueNow: [dueItem({ motorcycleId: "bike 2" })],
+      reminders: [],
+    });
+    expect(item.href).toBe("/maintenance?bike=bike%202");
+  });
+
   it("leaves reminders that are still fine off the list", () => {
     expect(
       rankAttention({

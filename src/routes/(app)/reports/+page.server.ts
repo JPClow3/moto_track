@@ -1,6 +1,6 @@
 import { localizedActions } from "$server/domain/localized-actions";
 import { exportMessages } from "$lib/i18n/exports";
-import { fail } from "@sveltejs/kit";
+import { fail, isRedirect, redirect } from "@sveltejs/kit";
 import { shareTokenHash } from "$server/domain/sale-report-share";
 import { siteUrl } from "$server/env";
 import { buildTimeline, type TimelineEvent } from "$server/domain/parity";
@@ -10,10 +10,21 @@ import { parseLocalizedNumber } from "$server/domain/fuel";
 import { isoDateValue } from "$server/domain/date-value";
 import { lockObjectOwner } from "$server/db/owner-lock";
 import type { Sql } from "postgres";
+import {
+  comparableBenchmarkMetrics,
+  hasComparableBenchmarkMetric,
+  modelBenchmarkKey,
+} from "$server/domain/model-benchmark";
+import type { FuelRecord } from "$server/domain/fuel";
+import { _loadGarage } from "../dashboard/+page.server";
 
 import { latestCalendarDay } from "$lib/utils/calendar-day";
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
+}
+
+function formValue(form: FormData, key: string) {
+  return String(form.get(key) ?? "").trim();
 }
 
 type Row = Record<string, unknown>;
@@ -36,6 +47,129 @@ type ShareRow = {
 };
 
 export const actions = localizedActions({
+  contributeBenchmark: async ({ request, locals }) => {
+    const ownerId = locals.user?.id;
+    if (!ownerId)
+      return fail(401, {
+        benchmark: true,
+        message: "Entre para compartilhar.",
+      });
+
+    const form = await request.formData();
+    const motorcycleId = formValue(form, "motorcycle_id");
+    const consent = formValue(form, "consent");
+    if (!motorcycleId) {
+      return fail(400, {
+        benchmark: true,
+        message: "Escolha uma moto para comparar.",
+      });
+    }
+    if (!consent || !["on", "true", "1"].includes(consent)) {
+      return fail(400, {
+        benchmark: true,
+        message: "Confirme o compartilhamento anônimo para continuar.",
+      });
+    }
+
+    let motorcycle: Row | undefined;
+    let fuelRows: Row[] = [];
+    let maintenanceRows: Row[] = [];
+    try {
+      [motorcycle] = await locals.db<Row[]>`
+        select id, brand, model, year
+        from motorcycles
+        where id = ${motorcycleId} and owner_id = ${ownerId}
+        limit 1
+      `;
+      if (!motorcycle) {
+        return fail(400, {
+          benchmark: true,
+          message: "Motocicleta não encontrada.",
+        });
+      }
+      [fuelRows, maintenanceRows] = await Promise.all([
+        locals.db<Row[]>`
+          select date, odometer_km, liters, tank_full
+          from fuel_records
+          where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}
+        `,
+        locals.db<Row[]>`
+          select date, odometer_km, cost_cents
+          from maintenance_records
+          where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}
+        `,
+      ]);
+    } catch (err) {
+      return fail(400, { benchmark: true, message: messageFrom(err) });
+    }
+
+    const benchmarkKey = modelBenchmarkKey(
+      String(motorcycle.brand ?? ""),
+      String(motorcycle.model ?? ""),
+      Number(motorcycle.year),
+    );
+    if (!benchmarkKey) {
+      return fail(400, {
+        benchmark: true,
+        message:
+          "Complete marca, modelo e ano da moto antes de participar do comparativo.",
+      });
+    }
+
+    const metrics = comparableBenchmarkMetrics(
+      fuelRows as unknown as FuelRecord[],
+      maintenanceRows,
+    );
+    if (!hasComparableBenchmarkMetric(metrics)) {
+      return fail(400, {
+        benchmark: true,
+        message:
+          "Ainda não há histórico comparável. Registre dois tanques cheios ou uma manutenção com odômetros consistentes.",
+      });
+    }
+
+    try {
+      await locals.db.begin(async (tx) => {
+        // One guard row per account/model. Reusing its opaque contribution id
+        // makes a later explicit submission an upsert, while the benchmark
+        // table never receives owner_id.
+        const [guard] = await tx<Array<{ contribution_id: string }>>`
+          insert into model_benchmark_submission_guards (owner_id, model_key)
+          values (${ownerId}, ${benchmarkKey})
+          on conflict (owner_id, model_key)
+          do update set updated_at = now()
+          returning contribution_id
+        `;
+        if (!guard?.contribution_id) {
+          throw new Error("Não foi possível reservar a contribuição anônima.");
+        }
+
+        await tx`
+          insert into anonymous_model_benchmark_contributions
+            (id, model_key, consumption_km_l, maintenance_cents)
+          values (
+            ${guard.contribution_id},
+            ${benchmarkKey},
+            ${metrics.consumptionKmL},
+            ${metrics.maintenanceCentsPer1000Km}
+          )
+          on conflict (id)
+          do update set
+            model_key = excluded.model_key,
+            consumption_km_l = excluded.consumption_km_l,
+            maintenance_cents = excluded.maintenance_cents,
+            updated_at = now()
+        `;
+      });
+    } catch (err) {
+      return fail(400, { benchmark: true, message: messageFrom(err) });
+    }
+
+    throw redirect(
+      303,
+      `/reports?benchmark=${encodeURIComponent(motorcycleId)}#benchmark`,
+    );
+  },
   saveOwnershipBasis: async ({ request, locals }) => {
     const form = await request.formData();
     const id = String(form.get("motorcycle_id") ?? "");
@@ -129,12 +263,36 @@ export const actions = localizedActions({
   },
 });
 
-export async function load({ locals, url }) {
+/**
+ * Consumption, spending, activity and the opt-in model comparison moved here
+ * from the bike home, which now only answers "does my bike need me?".
+ */
+async function loadInsights(event: Parameters<typeof _loadGarage>[0]) {
+  try {
+    const garage = await _loadGarage(event, { includeBenchmark: true });
+    return {
+      consumption: garage.consumption,
+      spend: garage.spend,
+      costs: garage.costs,
+      activity: garage.activity,
+      recentActivity: garage.recentActivity,
+      benchmark: garage.benchmark,
+    };
+  } catch (err) {
+    // No bike yet: the garage loader sends the rider to onboarding; here the
+    // page just shows its own empty state.
+    if (isRedirect(err)) return null;
+    throw err;
+  }
+}
+
+export async function load({ locals, url, parent }) {
   const ownerId = locals.user!.id;
   // Every read here failed open on Supabase too (an errored query resolved to
   // `data: null`, treated as empty) — `.catch` keeps one failing source from
   // blanking the whole timeline.
   const [
+    insights,
     fuel,
     maintenance,
     tires,
@@ -144,6 +302,7 @@ export async function load({ locals, url }) {
     shares,
     ownershipCosts,
   ] = await Promise.all([
+    loadInsights({ locals, url, parent }),
     locals.db<Row[]>`
         select date, total_price_cents, station_name from fuel_records
         where owner_id = ${ownerId}
@@ -215,6 +374,7 @@ export async function load({ locals, url }) {
     end: url.searchParams.get("end") || undefined,
   });
   return {
+    insights,
     motorcycles,
     ownershipCosts,
     shares,

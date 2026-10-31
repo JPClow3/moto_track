@@ -144,8 +144,12 @@ export type AttentionReminder = {
   remainingDays: number | null;
 };
 
-/** overdue → red, due → amber. Nothing else earns a place on the list. */
-export type AttentionTone = "overdue" | "due";
+/**
+ * overdue → red, due → amber. "confirm" is a plan item that is only "due"
+ * because the rider could not say when it was last done: it is a question,
+ * not a warning, so it renders neutral and sorts after real due items.
+ */
+export type AttentionTone = "overdue" | "due" | "confirm";
 
 export type AttentionItem = {
   kind: "maintenance" | "reminder";
@@ -165,7 +169,7 @@ export type AttentionItem = {
   href: string;
 };
 
-const TONE_RANK = { overdue: 0, due: 1 } as const;
+const TONE_RANK = { overdue: 0, due: 1, confirm: 2 } as const;
 const KIND_RANK = { maintenance: 0, reminder: 1 } as const;
 
 const nullLast = (value: number | null) =>
@@ -193,7 +197,12 @@ export function rankAttention({
       title: item.maintenanceType,
       motorcycleId: item.motorcycleId,
       motorcycleName: item.motorcycleName,
-      tone: item.urgency === "overdue" ? "overdue" : "due",
+      tone:
+        item.urgency === "overdue"
+          ? "overdue"
+          : item.confidence === "unknown" && item.dueKm === null
+            ? "confirm"
+            : "due",
       dueKm: item.dueKm,
       remainingKm: null,
       remainingDays: null,
@@ -202,7 +211,9 @@ export function rankAttention({
       officialUrl: item.officialUrl,
       documentVersion: item.documentVersion,
       pageReference: item.pageReference,
-      href: "/maintenance",
+      // ?bike= switches the shell's active bike (see the (app) layout), so
+      // the bike-scoped maintenance page shows this item, not another bike's.
+      href: `/maintenance?bike=${encodeURIComponent(item.motorcycleId)}`,
     })),
     ...reminders
       .filter(

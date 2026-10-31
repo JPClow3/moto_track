@@ -171,8 +171,11 @@
 {/if}
 
 <style>
+  /* The chart scrolls inside this box on phones; `contain` keeps its 32rem
+     minimum from widening the page's grid column (and the whole page). */
   .trend-chart-scroll {
     overflow-x: auto;
+    contain: inline-size;
     padding-bottom: 0.25rem;
   }
 

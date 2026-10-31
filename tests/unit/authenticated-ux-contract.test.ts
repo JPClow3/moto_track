@@ -157,7 +157,7 @@ describe("authenticated UX primitives contract", () => {
     }
   });
 
-  it("gives Fuel one add action and three progressive entry paths in a modal sheet", async () => {
+  it("gives Fuel one add action that opens one short form with scan and repeat shortcuts", async () => {
     const module =
       await import("../../src/routes/(app)/fuel/+page.svelte").catch(
         () => null,
@@ -211,19 +211,98 @@ describe("authenticated UX primitives contract", () => {
       props: { data: mockData as never, form: null },
     });
 
-    // Renders dialogs for ActionMenu and RecordSheets
     expect(body).toContain("<dialog");
-    // ActionMenu choices
+    // Scan and repeat are shortcuts inside the one form, not a chooser.
     expect(body).toContain("Escanear comprovante");
-    expect(body).toContain("Digitar manualmente");
     expect(body).toContain("Repetir último");
-    // Primary action
+    expect(body).not.toContain("Digitar manualmente");
     expect(body).toContain("page-action");
-    // No permanent creation form in default view
-    expect(body).not.toContain('id="fuel-new-record"');
+    // Odometer, litres and total up front; the rest behind one disclosure,
+    // and one station field instead of a saved/free-text pair.
+    expect(body).toContain('id="fuel-new-odometer"');
+    expect(body).toContain('id="fuel-new-liters"');
+    expect(body).toContain('id="fuel-new-total-price"');
+    expect(body).toContain("Mais detalhes");
+    expect(body).not.toContain("Posto cadastrado");
+    expect(body).not.toContain('name="price_per_liter"');
+    // Save stays pinned in the sheet; rows edit instead of deleting inline.
+    expect(body).toContain("sheet-actions");
+    expect(body).not.toContain('action="?/deleteRecord"');
+    const fuelSrc = source("src/routes/(app)/fuel/+page.svelte");
+    expect(fuelSrc).toContain('action="?/updateRecord"');
+    expect(fuelSrc).not.toContain('action="?/repeatLast"');
   }, 15_000);
 
-  it("gives Maintenance one add action and two entry paths in sheets without permanent forms", async () => {
+  it("never throws on a fill-up date that is not YYYY-MM-DD", async () => {
+    // postgres.js returns `date` as a Date; the loader normalizes it, and the
+    // fields must still render if a stringified Date slips through.
+    const module =
+      await import("../../src/lib/components/FuelRecordFields.svelte");
+    const { body } = render(module.default, {
+      props: {
+        idPrefix: "fuel-edit",
+        motorcycles: [{ id: "m1", name: "CB 500F" }],
+        initial: { motorcycle_id: "m1", date: "Sat Oct 31 2026" },
+      },
+    });
+    expect(body).toContain("CB 500F");
+    const fuelServer = source("src/routes/(app)/fuel/+page.server.ts");
+    expect(fuelServer).toContain("date: isoDateValue(row.date)");
+  });
+
+  it("keeps an unassigned fill-up unassigned in the editor", async () => {
+    const module =
+      await import("../../src/lib/components/FuelRecordFields.svelte");
+    const { body } = render(module.default, {
+      props: {
+        idPrefix: "fuel-edit",
+        motorcycles: [{ id: "m1", name: "CB 500F" }],
+        initial: { motorcycle_id: "", date: "2026-10-01" },
+        allowUnassigned: true,
+      },
+    });
+    expect(body).toContain("Sem moto");
+    expect(body).toMatch(/<option value=""[^>]*selected/);
+    expect(source("src/routes/(app)/dashboard/+page.server.ts")).toContain(
+      'bikeHref("/fuel", row.motorcycle_id)',
+    );
+  });
+
+  it("keeps an archived bike's fill-up linked to it in the editor", async () => {
+    const module =
+      await import("../../src/lib/components/FuelRecordFields.svelte");
+    const { body } = render(module.default, {
+      props: {
+        idPrefix: "fuel-edit",
+        motorcycles: [{ id: "m1", name: "CB 500F" }],
+        initial: { motorcycle_id: "archived-1", date: "2026-10-01" },
+        allowUnassigned: true,
+      },
+    });
+    expect(body).toContain("Moto arquivada");
+    expect(body).toMatch(/<option value="archived-1"[^>]*selected/);
+  });
+
+  it("keeps a fill-up's saved station when the station was renamed since", async () => {
+    const module =
+      await import("../../src/lib/components/FuelRecordFields.svelte");
+    const { body } = render(module.default, {
+      props: {
+        idPrefix: "fuel-edit",
+        motorcycles: [{ id: "m1", name: "CB 500F" }],
+        stations: [{ id: "s1", name: "Posto Shell (novo nome)" }],
+        initial: {
+          motorcycle_id: "m1",
+          date: "2026-10-01",
+          station_name: "Posto Shell",
+          station_id: "s1",
+        },
+      },
+    });
+    expect(body).toMatch(/name="station_id" value="s1"/);
+  });
+
+  it("gives Maintenance one add action and a primary 'Já fiz' on each plan card", async () => {
     const module =
       await import("../../src/routes/(app)/maintenance/+page.svelte");
 
@@ -276,12 +355,16 @@ describe("authenticated UX primitives contract", () => {
     });
 
     expect(body).toContain("page-header");
-    expect(body).toContain("bike-context-bar");
+    // The shell's switcher is the only bike context.
+    expect(body).not.toContain("bike-context-bar");
     expect(body).toContain("signal-strip");
     expect(body).toContain("page-action");
     expect(body).toContain("<dialog");
     expect(body).toContain("Registrar serviço realizado");
     expect(body).toContain("Agendar manutenção");
+    expect(body).toContain("Já fiz");
+    // History correction is a sheet behind the card's menu, not inline.
+    expect(body).not.toContain("history-p1-status");
     expect(body).not.toContain('id="new-plan-details"');
     expect(body).not.toContain('id="marketplace-details"');
   }, 15000);
@@ -348,7 +431,7 @@ describe("authenticated UX primitives contract", () => {
     });
 
     expect(body).toContain("page-header");
-    expect(body).toContain("bike-context-bar");
+    expect(body).not.toContain("bike-context-bar");
     expect(body).toContain("signal-strip");
     expect(body).toContain("page-action");
     expect(body).toContain("<dialog");
@@ -358,7 +441,7 @@ describe("authenticated UX primitives contract", () => {
     expect(body).not.toContain('id="tire-pressure-motorcycle"');
   }, 15000);
 
-  it("gives Dashboard active bike context, unified activity timeline, and shortcut action menu", async () => {
+  it("keeps the bike home short: compact hero, what is due, one cost metric", async () => {
     const module =
       await import("../../src/routes/(app)/dashboard/+page.svelte");
 
@@ -404,23 +487,19 @@ describe("authenticated UX primitives contract", () => {
     };
 
     const { body } = render(module.default, {
-      props: { data: mockData as never, form: null },
+      props: { data: mockData as never },
     });
 
     expect(body).toContain("page-header");
-    // The bike home leads with a hero card for the active bike, then one-tap
-    // quick-log deep links into each page's "new record" sheet.
     expect(body).toContain("bike-hero");
-    expect(body).toContain('href="/fuel?new=1"');
-    expect(body).toContain('href="/maintenance?new=1"');
-    expect(body).toContain('href="/expenses?new=1"');
-    expect(body).toContain("activity-timeline");
-    expect(body).toContain("page-action");
-    expect(body).toContain("<dialog");
-    expect(body).toContain("Abastecimento");
-    expect(body).toContain("Manutenção");
-    expect(body).toContain("Despesa");
-    expect(body).toContain("Documento");
+    expect(body).toContain("Tudo em dia");
+    expect(body).toContain('href="/reports"');
+    // Adding is the shell's +; analysis lives on /reports.
+    expect(body).not.toContain("page-action");
+    expect(body).not.toContain("<dialog");
+    expect(body).not.toContain('href="/fuel?new=1"');
+    expect(body).not.toContain("activity-timeline");
+    expect(body).not.toContain("contributeBenchmark");
   }, 15000);
 
   it("rebuilds Garage with RecordSheet and no permanent creation rail", async () => {
@@ -532,14 +611,15 @@ describe("authenticated UX primitives contract", () => {
   }, 15000);
 
   it.each(["fuel", "maintenance", "tires"])(
-    "re-selects the shell's active bike on /%s when the shell switches bikes",
+    "follows the shell's active bike on /%s with no page-level bike selector",
     (route) => {
-      // SvelteKit reuses the page component across shell bike switches, so a
-      // one-time initializer would keep saving against the previous bike.
+      // SvelteKit reuses the page component across shell bike switches, so
+      // the bike context must be derived reactively, never initialised once
+      // or overridden by a second selector on the page.
       const pageSrc = source(`src/routes/(app)/${route}/+page.svelte`);
-      expect(pageSrc).toMatch(
-        /\$: if \(data\.activeMotorcycleId !== syncedActiveId\) \{\s+syncedActiveId = data\.activeMotorcycleId;\s+selectedMotorcycleId = activeOrFirstId\(\);/,
-      );
+      expect(pageSrc).toMatch(/\$: \w+ = String\(\s*data\.activeMotorcycleId/);
+      expect(pageSrc).not.toContain("BikeContextBar");
+      expect(pageSrc).not.toContain("bind:value={selectedMotorcycleId}");
     },
   );
 });

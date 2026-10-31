@@ -228,6 +228,7 @@ export const ptBR = {
     retry: "Tentar novamente",
     loadError: "Não foi possível carregar todos os dados.",
     actionSuccess: "Alterações salvas.",
+    done: "Pronto",
   },
   nav: {
     dashboard: "Painel",
@@ -236,7 +237,7 @@ export const ptBR = {
     maintenance: "Manutenção",
     tires: "Pneus",
     documents: "Documentos",
-    reminders: "Lembretes",
+    reminders: "Próximos",
     expenses: "Despesas",
     reports: "Relatórios",
     work: "Trabalho",
@@ -283,10 +284,14 @@ export const ptBR = {
     snoozeDays: "+7 dias",
     snoozeKm: "+500 km",
     complete: "Concluir",
-    pageTitle: "Lembretes",
-    pageSubtitle: "Acompanhe o que precisa acontecer na sua moto.",
+    pageTitle: "Próximos",
+    pageSubtitle: "Manutenção e lembretes, do mais urgente ao mais tranquilo.",
     noMotorcyclesHint: "Cadastre uma moto para criar e acompanhar lembretes.",
     goToGarage: "Abrir garagem",
+    maintenanceHeading: "Manutenção",
+    openMaintenance: "Abrir manutenção",
+    emptyBesidesMaintenance:
+      "Nenhum lembrete além da manutenção acima. Crie um para taxas, documentos ou o que quiser lembrar.",
   },
   documents: {
     pageTitle: "Documentos",
@@ -359,7 +364,7 @@ export const ptBR = {
     statusOk: "Em dia",
     inDays: "{count} d",
     noReminders: "Nenhum lembrete ativo.",
-    viewReminders: "Ver lembretes",
+    viewReminders: "Ver próximos",
     emptyGarage: "Garagem vazia",
     emptyGarageHint: "Cadastre uma moto para calcular a nota de saúde.",
     addBike: "Cadastrar moto",
@@ -401,7 +406,7 @@ export const ptBR = {
     confidenceUnknown:
       "Sem histórico confirmado. Inspecione antes de assumir um marco.",
     noManualSource: "Sem fonte oficial ligada a este item.",
-    benchmarkTitle: "Comparativo anônimo",
+    benchmarkTitle: "Compare com motos iguais à sua",
     benchmarkEyebrow: "Comunidade",
     benchmarkHint:
       "Veja como seus registros se comparam com outros motociclistas do mesmo modelo.",
@@ -434,6 +439,7 @@ export const ptBR = {
     benchmarkIntervals: "{count} intervalos de consumo",
     benchmarkMaintenanceRecords: "{count} registros de manutenção",
     benchmarkDistanceRecorded: "{distance} registrados",
+    statusConfirm: "A confirmar",
   },
   catalog: {
     brandLabel: "Marca",
@@ -459,16 +465,22 @@ export const ptBR = {
   },
   history: {
     title: "Histórico inicial",
-    hint: "Para cada serviço, diga o que você sabe. Não vamos inventar uma revisão passada: “não sei” vira atenção agora; “não foi feito” vira atrasado.",
+    hint: "Uma resposta vale para todos os itens. Não vamos inventar uma revisão passada: o que você não souber fica “a confirmar”, sem alerta.",
     hintExact: "Os intervalos abaixo foram conferidos no manual indicado.",
     hintLine:
       "Este é um plano inicial; confirme os intervalos no documento do ano escolhido.",
-    manualInterval: "Intervalo do manual",
-    starterInterval: "Lembrete inicial",
+    manualInterval: "Manual: a cada",
+    starterInterval: "Sugestão: a cada",
     checkManual: "Consulte o manual.",
     confirmedDone: "Feito recentemente",
     notDone: "Não foi feito",
     unknown: "Não sei confirmar",
+    overallQuestion: "As revisões desta moto estão em dia?",
+    overallYes: "Sim, estão em dia",
+    overallNo: "Não, tem coisa atrasada",
+    overallUnknown: "Não sei",
+    adjustEach: "Ajustar item a item (opcional)",
+    sameAsAbove: "Igual à resposta acima",
   },
   garage: {
     invalidServiceStart:
@@ -547,8 +559,8 @@ export const ptBR = {
     planFormTitle: "Novo plano",
     noMotorcyclesSelect: "Cadastre uma moto primeiro",
     maintenanceType: "Tipo de manutenção",
-    intervalKm: "Intervalo (km)",
-    intervalDays: "Intervalo (dias)",
+    intervalKm: "Repetir a cada (km)",
+    intervalDays: "Repetir a cada (dias)",
     savePlan: "Salvar plano",
     partsHeading: "Peças",
     partsListHeading: "Peças cadastradas",
@@ -561,7 +573,7 @@ export const ptBR = {
     historyNotDone: "Histórico inicial não confirmado",
     historyUnknown: "Histórico inicial desconhecido",
     historyConfirmed: "Histórico inicial confirmado",
-    editHistory: "Corrigir histórico inicial",
+    editHistory: "Ajustar última troca",
     historyStatusLabel: "O que você sabe sobre este serviço",
     lastDoneKmLabel: "Odômetro do último serviço (km)",
     historyEditHint:
@@ -628,6 +640,8 @@ export const ptBR = {
     emptyRecords: "Nenhum registro ainda.",
     emptyRecordsHint:
       "Registre um serviço para construir o histórico da sua moto.",
+    markDone: "Já fiz",
+    deletePlan: "Tirar do plano",
   },
   fuel: {
     pageTitle: "Combustível",
@@ -879,6 +893,7 @@ export const ptBR = {
     createToken: "Criar token",
     revokeToken: "Revogar",
     tokenCreated: "Token criado. Copie agora: {token}",
+    fuelPreferences: "Abastecimento: postos e padrões",
   },
   offline: {
     title: "Offline",
@@ -1053,6 +1068,8 @@ export const ptBR = {
     addBike: "Adicionar moto",
     accountMenu: "Menu da conta",
     account: "Conta",
+    logDocument: "Documento",
+    logDocumentDesc: "CRLV, CNH, seguro e validades",
   },
   serviceUx: {
     logService: "Registrar serviço",
@@ -1217,6 +1234,22 @@ export const ptBR = {
     latitudePlaceholder: "-23,550520",
     longitudePlaceholder: "-46,633308",
     decimalHint: "Use vírgula ou ponto para os decimais, por exemplo 4,59.",
+    today: "Hoje",
+    change: "Alterar",
+    pricePerLiterComputed: "= {price} por litro",
+    moreDetails: "Mais detalhes",
+    moreDetailsHint: "Posto, combustível, observações",
+    stationLabel: "Posto",
+    fuelLabel: "Combustível",
+    repeatFilled:
+      "Valores do último abastecimento preenchidos. Informe o odômetro.",
+    scanFilled: "Comprovante lido. Confira os valores e salve.",
+    updated: "Abastecimento atualizado",
+    editTitle: "Editar abastecimento",
+    preferences: "Postos e preferências",
+    allStations: "Todos os postos",
+    noBike: "Sem moto",
+    archivedBike: "Moto arquivada",
   },
   home: {
     title: "Moto",
@@ -1270,6 +1303,8 @@ export const ptBR = {
     addExpense: "Registrar despesa",
     activityTitle: "Atividade recente",
     activityCalendar: "Calendário de registros",
+    confirmHint: "Confirme quando foi feito",
+    openInsights: "Ver gastos e consumo em Análises",
   },
   onboarding: {
     eyebrow: "Primeiros passos",
@@ -1284,5 +1319,6 @@ export const ptBR = {
     demoAction: "Explorar com moto de demonstração",
     noExactSchedule:
       "Sem uma agenda exata selecionada, a moto será criada sem recomendações automáticas.",
+    skipHistory: "Pular esta etapa",
   },
 } as const;

@@ -26,9 +26,9 @@ describe("SvelteKit named action contract", () => {
     expect(source.match(/action="\?\/record"/g)).toHaveLength(3);
   });
 
-  it("posts both tire delete forms to the named delete action", () => {
+  it("posts the tire delete (inside the edit sheet) to the named delete action", () => {
     const source = readFileSync("src/routes/(app)/tires/+page.svelte", "utf8");
 
-    expect(source.match(/action="\?\/deleteTire"/g)).toHaveLength(2);
+    expect(source.match(/action="\?\/deleteTire"/g)).toHaveLength(1);
   });
 });

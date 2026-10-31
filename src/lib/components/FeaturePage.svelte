@@ -4,6 +4,7 @@
   import Download from "lucide-svelte/icons/download";
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import { createEventDispatcher } from "svelte";
+  import { afterNavigate, replaceState } from "$app/navigation";
   import PageHeader from "$lib/components/app/PageHeader.svelte";
   import PageAction from "$lib/components/app/PageAction.svelte";
   import RecordSheet from "$lib/components/app/RecordSheet.svelte";
@@ -82,6 +83,25 @@
   export function openCreate() {
     createSheet?.open();
   }
+
+  // Quick-log deep link: /<route>?new=1 opens the "new record" form directly
+  // (never the page's chooser), then drops the param so a reload does not
+  // reopen it. afterNavigate also catches the global + while already here.
+  afterNavigate(({ to }) => {
+    const url = to?.url;
+    if (!url || url.searchParams.get("new") !== "1") return;
+    if (!needsBike) openCreate();
+    const clean = new URL(url);
+    clean.searchParams.delete("new");
+    // The router finishes initialising after the first afterNavigate pass.
+    setTimeout(() => {
+      try {
+        replaceState(`${clean.pathname}${clean.search}${clean.hash}`, {});
+      } catch {
+        history.replaceState(history.state, "", clean);
+      }
+    }, 0);
+  });
 
   function handleActionClick() {
     if (actionChoices && actionChoices.length > 0) {
@@ -321,7 +341,7 @@
     "rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]";
 </script>
 
-<section class="grid gap-6" aria-busy={formBusy}>
+<section class="grid grid-cols-1 gap-6" aria-busy={formBusy}>
   <PageHeader title={feature.title} description={feature.subtitle}>
     <svelte:fragment slot="actions">
       {#if !needsBike}
@@ -375,6 +395,10 @@
       {errorStatus}
     </p>
   {/if}
+
+  <!-- Page-specific content that leads the list (e.g. due maintenance on
+       Próximos). -->
+  <slot name="lead" />
 
   {#if rows.length === 0}
     <!-- One designed block instead of an empty table with a header row. -->
@@ -727,7 +751,7 @@
         {/if}
       {/each}
 
-      <div class="mt-2 flex items-center justify-end gap-2">
+      <div class="sheet-actions">
         <button
           type="button"
           class="button-secondary"
@@ -873,7 +897,7 @@
             {/if}
           {/each}
 
-          <div class="mt-2 flex items-center justify-end gap-2">
+          <div class="sheet-actions">
             <button
               type="button"
               class="button-secondary"

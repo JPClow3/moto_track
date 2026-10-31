@@ -564,13 +564,15 @@
         </details>
       {/if}
 
-      <button
-        class="button-primary min-h-11 w-full"
-        type="submit"
-        disabled={!data.canAddActive || pendingAction === "create"}
-      >
-        {$t("garage.createAction")}
-      </button>
+      <div class="sheet-actions">
+        <button
+          class="button-primary min-h-11 w-full"
+          type="submit"
+          disabled={!data.canAddActive || pendingAction === "create"}
+        >
+          {$t("garage.createAction")}
+        </button>
+      </div>
     </form>
   </RecordSheet>
 
@@ -682,13 +684,15 @@
                 ?.manual_reference ?? ""}
             />
           </div>
-          <button
-            class="button-primary min-h-11"
-            disabled={pendingAction === `specs:${editingMotorcycle.id}`}
-            type="submit"
-          >
-            {$t("garage.saveSpecs")}
-          </button>
+          <div class="sheet-actions">
+            <button
+              class="button-primary min-h-11"
+              disabled={pendingAction === `specs:${editingMotorcycle.id}`}
+              type="submit"
+            >
+              {$t("garage.saveSpecs")}
+            </button>
+          </div>
         </form>
       </div>
     {/if}
