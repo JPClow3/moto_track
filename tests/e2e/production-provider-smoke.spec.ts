@@ -55,12 +55,13 @@ test.describe("production provider acceptance", () => {
         .getByRole("button", { name: /escanear|scan/i })
         .click();
 
-      await expect(page.locator("#ocr-date")).toHaveValue("2026-09-22", {
+      // The receipt prefills the one fill-up form for review.
+      await expect(page.locator("#fuel-new-date")).toHaveValue("2026-09-22", {
         timeout: 60_000,
       });
-      await expect(page.locator("#ocr-liters")).toHaveValue("10");
-      await expect(page.locator("#ocr-total-price")).toHaveValue("60");
-      await expect(page.locator("#ocr-price-per-liter")).toHaveValue("6");
+      await expect(page.locator("#fuel-new-liters")).toHaveValue("10");
+      await expect(page.locator("#fuel-new-total-price")).toHaveValue("60,00");
+      await expect(page.getByText(/por litro|per litre/)).toBeVisible();
       await page
         .getByRole("button", { name: /fechar|close/i })
         .last()

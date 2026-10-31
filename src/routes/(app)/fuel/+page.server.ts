@@ -307,7 +307,21 @@ export async function load({ locals, parent }) {
   // `Record<string, unknown>` alongside a literal property otherwise makes TS
   // drop the index signature from the result, rejecting every other
   // `row.<column>` access below.
-  const fuelRows = fuelResult.rows.map<Row & { liters: number }>((row) => ({
+  const defaultMotorcycleId =
+    motorcycles.find((moto) => String(moto.id) === activeMotorcycleId)?.id ??
+    motorcycles[0]?.id ??
+    null;
+
+  // The shell's bike switcher is the page's only bike context: with more
+  // than one bike, the list, signals and chart all follow the active bike.
+  const scopedRows =
+    motorcycles.length > 1 && defaultMotorcycleId
+      ? fuelResult.rows.filter(
+          (row) =>
+            String(row.motorcycle_id ?? "") === String(defaultMotorcycleId),
+        )
+      : fuelResult.rows;
+  const fuelRows = scopedRows.map<Row & { liters: number }>((row) => ({
     ...row,
     liters: Number(row.liters),
   }));
@@ -315,11 +329,6 @@ export async function load({ locals, parent }) {
     (sum, row) => sum + Number(row.total_price_cents ?? 0),
     0,
   );
-
-  const defaultMotorcycleId =
-    motorcycles.find((moto) => String(moto.id) === activeMotorcycleId)?.id ??
-    motorcycles[0]?.id ??
-    null;
 
   return {
     errorMessage: fuelResult.error ?? "",
@@ -421,43 +430,60 @@ export const actions: Actions = localizedActions({
     });
     return { ok: true };
   },
-  repeatLast: async ({ request, locals, platform }) => {
+  updateRecord: async ({ request, locals }) => {
     const form = await request.formData();
-    // Repeat the selected bike's last fill-up; without one, the latest overall.
-    const motorcycleId = String(form.get("motorcycle_id") || "");
-    let last: Row | undefined;
+    const id = String(form.get("id") ?? "");
+    const ownerId = locals.user!.id;
+    const totalCents = cents(form.get("total_price"));
+    const liters = numberValue(form.get("liters"));
+    const payload = {
+      motorcycle_id: String(form.get("motorcycle_id") || "") || null,
+      station_id: String(form.get("station_id") || "") || null,
+      fuel_grade_id: String(form.get("fuel_grade_id") || "") || null,
+      date: String(form.get("date") || appToday()),
+      odometer_km: integerValue(form.get("odometer_km")),
+      liters,
+      total_price_cents: totalCents,
+      price_per_liter_millicents:
+        liters > 0 ? Math.round((totalCents / 100 / liters) * 100000) : 0,
+      fuel_type: String(form.get("fuel_type") || "gasoline"),
+      tank_full: form.get("tank_full") === "true",
+      station_name: String(form.get("station_name") || ""),
+      notes: String(form.get("notes") || ""),
+      updated_at: new Date().toISOString(),
+    };
     try {
-      [last] = motorcycleId
-        ? await locals.db<Row[]>`
-            select * from fuel_records
-            where owner_id = ${locals.user!.id}
-              and motorcycle_id = ${motorcycleId}
-            order by date desc, odometer_km desc
-            limit 1
-          `
-        : await locals.db<Row[]>`
-            select * from fuel_records
-            where owner_id = ${locals.user!.id}
-            order by date desc, odometer_km desc
-            limit 1
-          `;
+      const updated = await locals.db.begin(async (transaction) => {
+        const db = transaction as unknown as typeof locals.db;
+        await lockObjectOwner(db, ownerId);
+        const [existing] = await db<Array<{ motorcycle_id: string | null }>>`
+          select motorcycle_id from fuel_records
+          where owner_id = ${ownerId} and id = ${id}
+          for update
+        `;
+        if (!existing) return false;
+        await assertOwnedFuelReferences(db, ownerId, payload);
+        await db`
+          update fuel_records set ${db(payload)}
+          where owner_id = ${ownerId} and id = ${id}
+        `;
+        // Moving a fill-up to another bike changes both bikes' odometers.
+        for (const motorcycleId of new Set([
+          existing.motorcycle_id,
+          payload.motorcycle_id,
+        ])) {
+          if (motorcycleId)
+            await syncMotorcycleOdometer(db, ownerId, motorcycleId, {
+              strict: true,
+            });
+        }
+        return true;
+      });
+      if (!updated) return fail(404, { message: "Registro não encontrado." });
     } catch (err) {
       return fail(400, { message: messageFrom(err) });
     }
-    if (!last) {
-      return fail(400, { message: "Sem abastecimento anterior." });
-    }
-    form.set("motorcycle_id", String(last.motorcycle_id ?? ""));
-    form.set("station_id", String(last.station_id ?? ""));
-    form.set("fuel_grade_id", String(last.fuel_grade_id ?? ""));
-    form.set("fuel_type", String(last.fuel_type ?? "gasoline"));
-    form.set("tank_full", String(last.tank_full ?? false));
-    form.set("station_name", String(last.station_name ?? ""));
-    form.set(
-      "price_per_liter",
-      String(Number(last.price_per_liter_millicents ?? 0) / 100000),
-    );
-    return createFuelRecord({ form, locals, platform });
+    return { ok: true };
   },
   ocrScan: async ({ request, platform }) => {
     const form = await request.formData();

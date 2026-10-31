@@ -201,6 +201,27 @@ export function initialHistoryStatus(
   return "unknown";
 }
 
+/**
+ * Reads the history step: one answer (`history_all`) covers every item and a
+ * per-item answer (`history_<type>`) overrides it. Skipping the step records
+ * every item as unknown, which the app shows as "to confirm", not overdue.
+ */
+export function initialHistoryAnswers(
+  form: FormData,
+  maintenanceTypes: string[],
+): Record<string, InitialHistoryStatus> {
+  const skipped = form.get("history_skip") !== null;
+  const overall = skipped ? "" : String(form.get("history_all") ?? "");
+  return Object.fromEntries(
+    maintenanceTypes.map((type) => [
+      type,
+      initialHistoryStatus(
+        skipped ? "" : String(form.get(`history_${type}`) || overall),
+      ),
+    ]),
+  );
+}
+
 export function dueStateForPlan({
   historyStatus,
   lastDoneKm,

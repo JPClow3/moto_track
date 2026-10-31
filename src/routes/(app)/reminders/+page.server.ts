@@ -18,6 +18,7 @@ import {
 } from "$server/domain/reminders";
 
 import { appToday } from "$lib/utils/calendar-day";
+import { buildDueNow, rankAttention } from "$server/domain/due-now";
 function messageFrom(err: unknown) {
   return err instanceof Error ? err.message : String(err);
 }
@@ -167,7 +168,7 @@ type OdometerRow = { id: string; current_odometer_km: number | null };
 
 export async function load({ locals }) {
   const ownerId = locals.user!.id;
-  const [feature, calendars, odometers] = await Promise.all([
+  const [feature, calendars, odometers, planRows] = await Promise.all([
     loadFeature(locals.db, "reminders", locals.user!),
     locals.db<Array<{ id: string; token_prefix: string; expires_at: string }>>`
       select id, token_prefix, expires_at::text from calendar_feeds
@@ -178,6 +179,17 @@ export async function load({ locals }) {
       select id, current_odometer_km from motorcycles
       where owner_id = ${ownerId} and deleted_at is null
     `.catch(() => [] as OdometerRow[]),
+    // Same plan read as the bike home, so "Próximos" lists maintenance and
+    // reminders together under one name.
+    locals.db<Record<string, unknown>[]>`
+      select p.id, p.motorcycle_id, p.maintenance_type, p.interval_km, p.interval_days,
+        p.last_done_km, p.last_done_date, p.initial_history_status, p.estimated_cost_cents,
+        p.schedule_milestones, p.recurrence_km, p.recurrence_months, p.last_completed_milestone,
+        p.calendar_anchor_mode, m.in_service_date, m.name as motorcycle_name
+      from maintenance_plan_items p
+      join motorcycles m on m.id = p.motorcycle_id and m.owner_id = p.owner_id
+      where p.owner_id = ${ownerId} and p.is_active = true and m.is_active = true
+    `.catch(() => [] as Record<string, unknown>[]),
   ]);
   const odometerFor = new Map(
     odometers.map((row) => [row.id, Number(row.current_odometer_km ?? 0)]),
@@ -192,7 +204,16 @@ export async function load({ locals }) {
     })),
     (row) => row.urgency,
   );
-  return { ...feature, rows, calendars };
+  const maintenanceDue = rankAttention({
+    dueNow: buildDueNow({
+      rows: planRows,
+      odometerByMotorcycle: odometerFor,
+      limit: Number.POSITIVE_INFINITY,
+      today,
+    }),
+    reminders: [],
+  });
+  return { ...feature, rows, calendars, maintenanceDue };
 }
 
 function urgencyFor(

@@ -25,7 +25,7 @@
   </div>
 
   {#if description}
-    <p class="mt-1.5 max-w-2xl text-sm text-[var(--muted)]">
+    <p class="mt-1.5 hidden max-w-2xl text-sm text-[var(--muted)] sm:block">
       {description}
     </p>
   {/if}

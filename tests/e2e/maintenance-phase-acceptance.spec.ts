@@ -212,8 +212,19 @@ test.describe("exact catalog item occurrence acceptance", () => {
           .filter({
             has: page.getByRole("heading", { name: item.type, exact: true }),
           });
-        await card.locator("summary").click();
-        const history = card.locator('form[action="?/updateHistory"]');
+        // History correction lives behind the card's ⋯ menu, in a sheet.
+        const openHistory = async () => {
+          await card
+            .getByRole("button", { name: /Mais ações|More actions/ })
+            .click();
+          await card
+            .getByRole("button", {
+              name: /Ajustar última troca|Adjust last service/,
+            })
+            .click();
+        };
+        await openHistory();
+        const history = page.locator('form[action="?/updateHistory"]');
         await history
           .locator('[name="initial_history_status"]')
           .selectOption("confirmed_done");
@@ -250,12 +261,12 @@ test.describe("exact catalog item occurrence acceptance", () => {
           1,
         );
         await expect(card).toContainText(item.nextKm.toLocaleString("pt-BR"));
-        await card.locator("summary").click();
+        await openHistory();
         await expect(
-          card.locator('select[name="last_completed_milestone"]'),
+          history.locator('select[name="last_completed_milestone"]'),
         ).toHaveValue("1");
         await expect(
-          card.locator(
+          history.locator(
             'select[name="last_completed_milestone"] option[value="2"]',
           ),
         ).toContainText(

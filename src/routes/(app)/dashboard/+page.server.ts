@@ -1,6 +1,5 @@
-import { localizedActions } from "$server/domain/localized-actions";
 import { createTranslator } from "$lib/i18n";
-import { fail, redirect, type Actions } from "@sveltejs/kit";
+import { redirect } from "@sveltejs/kit";
 import { dashboardSummary, healthScore } from "$server/domain/reports";
 import { evaluateReminder, type ReminderInput } from "$server/domain/reminders";
 import {
@@ -76,14 +75,6 @@ type BenchmarkData = {
   } | null;
 };
 
-function messageFrom(err: unknown) {
-  return err instanceof Error ? err.message : String(err);
-}
-
-function formValue(form: FormData, key: string) {
-  return String(form.get(key) ?? "").trim();
-}
-
 const sumCents = (rows: Row[], key: string) =>
   rows.reduce((sum, row) => sum + Number(row[key] ?? 0), 0);
 
@@ -108,7 +99,25 @@ function rowsOrEmpty<T>(
   });
 }
 
-export async function load({ locals, url, parent }) {
+type GarageLoadEvent = {
+  locals: App.Locals;
+  url: URL;
+  parent: () => Promise<{ activeMotorcycleId: string | null }>;
+};
+
+export async function load(event) {
+  return _loadGarage(event);
+}
+
+/**
+ * The bike home and the Análises page read the same garage summary. Only
+ * Análises asks for the opt-in model comparison, which costs two extra
+ * queries the home screen no longer shows.
+ */
+export async function _loadGarage(
+  { locals, url, parent }: GarageLoadEvent,
+  { includeBenchmark = false } = {},
+) {
   const user = locals.user;
   const today = appToday();
 
@@ -487,7 +496,7 @@ export async function load({ locals, url, parent }) {
     .filter((row) => row.key);
 
   let benchmark: BenchmarkData | null = null;
-  if (benchmarkMotorcycle) {
+  if (includeBenchmark && benchmarkMotorcycle) {
     const benchmarkKey = modelBenchmarkKey(
       String(benchmarkMotorcycle.brand ?? ""),
       String(benchmarkMotorcycle.model ?? ""),
@@ -579,7 +588,7 @@ export async function load({ locals, url, parent }) {
         maintenance: maintenanceComparison,
       },
     };
-  } else if (benchmarkModels.length === 0) {
+  } else if (includeBenchmark && benchmarkModels.length === 0) {
     benchmark = {
       motorcycleId: null,
       modelLabel: "",
@@ -697,116 +706,3 @@ export async function load({ locals, url, parent }) {
     errorMessage: loadError ? translate(locals.locale, "common.loadError") : "",
   };
 }
-
-export const actions: Actions = localizedActions({
-  contributeBenchmark: async ({ request, locals }) => {
-    const ownerId = locals.user?.id;
-    if (!ownerId) return fail(401, { message: "Entre para compartilhar." });
-
-    const form = await request.formData();
-    const motorcycleId = formValue(form, "motorcycle_id");
-    const consent = formValue(form, "consent");
-    if (!motorcycleId) {
-      return fail(400, { message: "Escolha uma moto para comparar." });
-    }
-    if (!consent || !["on", "true", "1"].includes(consent)) {
-      return fail(400, {
-        message: "Confirme o compartilhamento anônimo para continuar.",
-      });
-    }
-
-    let motorcycle: Row | undefined;
-    let fuelRows: Row[] = [];
-    let maintenanceRows: Row[] = [];
-    try {
-      [motorcycle] = await locals.db<Row[]>`
-        select id, brand, model, year
-        from motorcycles
-        where id = ${motorcycleId} and owner_id = ${ownerId}
-        limit 1
-      `;
-      if (!motorcycle) {
-        return fail(400, { message: "Motocicleta não encontrada." });
-      }
-      [fuelRows, maintenanceRows] = await Promise.all([
-        locals.db<Row[]>`
-          select date, odometer_km, liters, tank_full
-          from fuel_records
-          where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}
-        `,
-        locals.db<Row[]>`
-          select date, odometer_km, cost_cents
-          from maintenance_records
-          where owner_id = ${ownerId} and motorcycle_id = ${motorcycleId}
-        `,
-      ]);
-    } catch (err) {
-      return fail(400, { message: messageFrom(err) });
-    }
-
-    const benchmarkKey = modelBenchmarkKey(
-      String(motorcycle.brand ?? ""),
-      String(motorcycle.model ?? ""),
-      Number(motorcycle.year),
-    );
-    if (!benchmarkKey) {
-      return fail(400, {
-        message:
-          "Complete marca, modelo e ano da moto antes de participar do comparativo.",
-      });
-    }
-
-    const metrics = comparableBenchmarkMetrics(
-      fuelRows as unknown as FuelRecord[],
-      maintenanceRows,
-    );
-    if (!hasComparableBenchmarkMetric(metrics)) {
-      return fail(400, {
-        message:
-          "Ainda não há histórico comparável. Registre dois tanques cheios ou uma manutenção com odômetros consistentes.",
-      });
-    }
-
-    try {
-      await locals.db.begin(async (tx) => {
-        // One guard row per account/model. Reusing its opaque contribution id
-        // makes a later explicit submission an upsert, while the benchmark
-        // table never receives owner_id.
-        const [guard] = await tx<Array<{ contribution_id: string }>>`
-          insert into model_benchmark_submission_guards (owner_id, model_key)
-          values (${ownerId}, ${benchmarkKey})
-          on conflict (owner_id, model_key)
-          do update set updated_at = now()
-          returning contribution_id
-        `;
-        if (!guard?.contribution_id) {
-          throw new Error("Não foi possível reservar a contribuição anônima.");
-        }
-
-        await tx`
-          insert into anonymous_model_benchmark_contributions
-            (id, model_key, consumption_km_l, maintenance_cents)
-          values (
-            ${guard.contribution_id},
-            ${benchmarkKey},
-            ${metrics.consumptionKmL},
-            ${metrics.maintenanceCentsPer1000Km}
-          )
-          on conflict (id)
-          do update set
-            model_key = excluded.model_key,
-            consumption_km_l = excluded.consumption_km_l,
-            maintenance_cents = excluded.maintenance_cents,
-            updated_at = now()
-        `;
-      });
-    } catch (err) {
-      return fail(400, { message: messageFrom(err) });
-    }
-
-    throw redirect(
-      303,
-      `/dashboard?benchmark=${encodeURIComponent(motorcycleId)}`,
-    );
-  },
-});

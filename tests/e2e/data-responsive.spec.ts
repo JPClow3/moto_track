@@ -645,7 +645,7 @@ test.describe("data surfaces responsive behavior", () => {
 
       await gotoAppRoute(
         page,
-        `/dashboard?benchmark=${encodeURIComponent(motorcycle.id)}`,
+        `/reports?benchmark=${encodeURIComponent(motorcycle.id)}`,
       );
       const details = page.locator("details.group\\/benchmark");
       await details.locator(":scope > summary").click();
@@ -658,7 +658,7 @@ test.describe("data surfaces responsive behavior", () => {
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const contribution = await postAction(
           page,
-          "/dashboard?/contributeBenchmark",
+          "/reports?/contributeBenchmark",
           {
             motorcycle_id: motorcycle.id,
             consent: "on",
@@ -669,7 +669,7 @@ test.describe("data surfaces responsive behavior", () => {
 
       await gotoAppRoute(
         page,
-        `/dashboard?benchmark=${encodeURIComponent(motorcycle.id)}`,
+        `/reports?benchmark=${encodeURIComponent(motorcycle.id)}`,
       );
       await page.locator("details.group\\/benchmark > summary").click();
       await expect(

@@ -12,7 +12,6 @@
   import { showToast } from "$components/ui/toast";
   import { VehicleTax } from "$components/icons";
   import Plus from "lucide-svelte/icons/plus";
-  import { afterNavigate, replaceState } from "$app/navigation";
 
   export let data;
   export let form;
@@ -41,26 +40,6 @@
   let featurePage: FeaturePage;
   let policySheet: RecordSheet;
   let claimSheet: RecordSheet;
-
-  // Quick-log deep link: /expenses?new=1 opens the "new expense" sheet, then
-  // drops the param so a reload or back navigation does not reopen it.
-  // afterNavigate (not onMount) also catches the global quick-log while the
-  // rider is already on /expenses.
-  afterNavigate(({ to }) => {
-    const url = to?.url;
-    if (!url || url.searchParams.get("new") !== "1") return;
-    if (data.motorcycles.length > 0) featurePage?.openCreate();
-    const clean = new URL(url);
-    clean.searchParams.delete("new");
-    // The router finishes initialising after the first afterNavigate pass.
-    setTimeout(() => {
-      try {
-        replaceState(`${clean.pathname}${clean.search}${clean.hash}`, {});
-      } catch {
-        history.replaceState(history.state, "", clean);
-      }
-    }, 0);
-  });
 
   $: actionChoices = [
     {
@@ -282,13 +261,15 @@
         </div>
       </div>
 
-      <button
-        class="button-primary mt-2 min-h-11"
-        type="submit"
-        disabled={formBusy}
-      >
-        {$t("common.save")}
-      </button>
+      <div class="sheet-actions">
+        <button
+          class="button-primary mt-2 min-h-11"
+          type="submit"
+          disabled={formBusy}
+        >
+          {$t("common.save")}
+        </button>
+      </div>
     </form>
   </RecordSheet>
 
@@ -390,13 +371,15 @@
         </div>
       </div>
 
-      <button
-        class="button-primary mt-2 min-h-11"
-        type="submit"
-        disabled={formBusy || !hasPolicies}
-      >
-        {$t("common.save")}
-      </button>
+      <div class="sheet-actions">
+        <button
+          class="button-primary mt-2 min-h-11"
+          type="submit"
+          disabled={formBusy || !hasPolicies}
+        >
+          {$t("common.save")}
+        </button>
+      </div>
     </form>
   </RecordSheet>
 

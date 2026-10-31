@@ -691,6 +691,33 @@ a {
     background: var(--panel);
   }
 
+  /* A form's Cancel/Save row stays pinned to the bottom of the sheet while
+     the fields scroll, so Save is reachable above the phone keyboard. The
+     body drops its bottom padding (the row carries it instead) so `bottom: 0`
+     is the sheet's real edge in every engine. */
+  .record-sheet-body:has(.sheet-actions) {
+    padding-bottom: 0;
+  }
+
+  .sheet-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-inline: -1.5rem;
+    padding: 0.75rem 1.5rem 1.25rem;
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+  }
+
+  .sheet-actions > .button-primary:only-child {
+    flex: 1 1 auto;
+  }
+
   /* Desktop right drawer (>= 1024px) */
   @media (min-width: 1024px) {
     .record-sheet {
@@ -786,6 +813,26 @@ a {
 
   .action-menu-dialog[open] {
     animation: confirm-in 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* On phones every chooser is a bottom sheet, in thumb reach, matching the
+     quick-log and "Mais" sheets. */
+  @media (max-width: 639px) {
+    .action-menu-dialog {
+      position: fixed;
+      inset: auto 0 0 0;
+      width: 100vw;
+      max-width: 100vw;
+      margin: 0;
+      border-width: 1px 0 0;
+      border-radius: 12px 12px 0 0;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .action-menu-dialog[open] {
+      animation: record-sheet-slide-in-bottom 0.24s
+        cubic-bezier(0.16, 1, 0.3, 1);
+    }
   }
 
   /* PageAction: inline in the page header at every size (the phone bar's

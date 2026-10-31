@@ -12,7 +12,6 @@
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
   import PageHeader from "$lib/components/app/PageHeader.svelte";
   import PageAction from "$lib/components/app/PageAction.svelte";
-  import BikeContextBar from "$lib/components/app/BikeContextBar.svelte";
   import SignalStrip, {
     type Signal,
   } from "$lib/components/app/SignalStrip.svelte";
@@ -61,28 +60,29 @@
   };
 
   $: hasMotorcycles = data.motorcycles.length > 0;
-  $: activeTires = (data.activeTires ?? []) as TireRow[];
-  $: historyTires = (data.rows ?? []) as TireRow[];
-  $: pressures = data.pressures ?? [];
+  $: activeTires = ((data.activeTires ?? []) as TireRow[]).filter((tire) =>
+    onActiveBike(tire.motorcycle_id, selectedMotorcycleId, scopeToActive),
+  );
+  $: historyTires = ((data.rows ?? []) as TireRow[]).filter((tire) =>
+    onActiveBike(tire.motorcycle_id, selectedMotorcycleId, scopeToActive),
+  );
+  $: pressures = (data.pressures ?? []).filter(
+    (pressure: Record<string, unknown>) =>
+      onActiveBike(pressure.motorcycle_id, selectedMotorcycleId, scopeToActive),
+  );
   $: hasTireData = historyTires.length > 0;
 
-  // Defaults to the shell's active bike (resolved server-side), so the page
-  // view and the ?new=1 sheet start on the bike the rider picked. SvelteKit
-  // reuses this component when the shell switches bikes, so follow that
-  // change too (as /fuel does) while keeping page-local picks in between.
-  const activeOrFirstId = () =>
-    String(data.activeMotorcycleId ?? data.motorcycles[0]?.id ?? "");
-  let selectedMotorcycleId = activeOrFirstId();
-  let syncedActiveId: unknown = data.activeMotorcycleId;
-  $: if (data.activeMotorcycleId !== syncedActiveId) {
-    syncedActiveId = data.activeMotorcycleId;
-    selectedMotorcycleId = activeOrFirstId();
-  }
-  $: currentMotorcycle =
-    data.motorcycles.find(
-      (m: Record<string, unknown>) =>
-        String(m.id) === String(selectedMotorcycleId),
-    ) ?? data.motorcycles[0];
+  // The shell's bike switcher is the page's only bike context: with more
+  // than one bike, tires and pressures follow the active bike.
+  $: selectedMotorcycleId = String(
+    data.activeMotorcycleId ?? data.motorcycles[0]?.id ?? "",
+  );
+  $: scopeToActive = data.motorcycles.length > 1;
+  const onActiveBike = (
+    motorcycleId: unknown,
+    active: string,
+    scoped: boolean,
+  ) => !scoped || String(motorcycleId ?? "") === active;
 
   let formBusy = false;
   let errorMessage = "";
@@ -190,6 +190,16 @@
     };
   }
 
+  // Delete lives in the edit sheet, so a successful delete closes it.
+  const enhanceDeleteTire: SubmitFunction = async (input) => {
+    const finish = await enhanceDelete(input);
+    if (!finish) return;
+    return async (output) => {
+      await finish(output);
+      if (output.result.type === "success") editSheet?.close();
+    };
+  };
+
   const enhanceDelete: SubmitFunction = async ({ cancel }) => {
     const ok = await confirmDialog.ask($t("feature.confirmDelete"));
     if (!ok) {
@@ -285,38 +295,6 @@
       </PageOverflowMenu>
     </svelte:fragment>
   </PageHeader>
-
-  {#if hasMotorcycles}
-    <BikeContextBar
-      name={currentMotorcycle
-        ? String(currentMotorcycle.name)
-        : $t("maintenance.bikeFallback")}
-      model={currentMotorcycle
-        ? `${currentMotorcycle.brand || ""} ${currentMotorcycle.model || ""}`.trim()
-        : ""}
-      odometerKm={currentMotorcycle?.current_odometer_km ?? null}
-    >
-      <svelte:fragment slot="selection">
-        {#if data.motorcycles.length > 1}
-          <div class="flex items-center gap-2">
-            <label for="tires-bike-select" class="sr-only">
-              {$t("authenticatedUx.selectBike")}
-            </label>
-            <select
-              id="tires-bike-select"
-              class="field px-2 py-1 text-sm"
-              bind:value={selectedMotorcycleId}
-              aria-label={$t("authenticatedUx.selectBike")}
-            >
-              {#each data.motorcycles as moto (moto.id)}
-                <option value={moto.id}>{moto.name}</option>
-              {/each}
-            </select>
-          </div>
-        {/if}
-      </svelte:fragment>
-    </BikeContextBar>
-  {/if}
 
   {#if data.errorMessage || form?.message || errorMessage}
     <div
@@ -414,23 +392,6 @@
                   >
                     <Edit size={16} aria-hidden="true" />
                   </button>
-                  <form
-                    method="POST"
-                    action="?/deleteTire"
-                    use:enhance={enhanceDelete}
-                  >
-                    <input type="hidden" name="_intent" value="delete" />
-                    <input type="hidden" name="id" value={String(tire.id)} />
-                    <button
-                      class="button-danger min-h-11 px-3 py-1"
-                      type="submit"
-                      disabled={formBusy}
-                      aria-label={`${$t("common.delete")} ${String(tire.brand_model ?? "")}`}
-                      title={$t("common.delete")}
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                    </button>
-                  </form>
                 </div>
               </div>
 
@@ -729,23 +690,6 @@
                     >
                       <Edit size={16} aria-hidden="true" />
                     </button>
-                    <form
-                      method="POST"
-                      action="?/deleteTire"
-                      use:enhance={enhanceDelete}
-                    >
-                      <input type="hidden" name="_intent" value="delete" />
-                      <input type="hidden" name="id" value={String(tire.id)} />
-                      <button
-                        class="button-danger min-h-11 px-3 py-1"
-                        type="submit"
-                        disabled={formBusy}
-                        aria-label={`${$t("common.delete")} ${String(tire.brand_model ?? "")}`}
-                        title={$t("common.delete")}
-                      >
-                        <Trash2 size={16} aria-hidden="true" />
-                      </button>
-                    </form>
                   </div>
                 </td>
               </tr>
@@ -902,13 +846,15 @@
         >
       </label>
 
-      <button
-        class="button-primary min-h-11 w-full"
-        type="submit"
-        disabled={!hasMotorcycles || formBusy}
-      >
-        {$t("tires.installAction")}
-      </button>
+      <div class="sheet-actions">
+        <button
+          class="button-primary min-h-11 w-full"
+          type="submit"
+          disabled={!hasMotorcycles || formBusy}
+        >
+          {$t("tires.installAction")}
+        </button>
+      </div>
     </form>
   </RecordSheet>
 
@@ -990,13 +936,15 @@
         </div>
       </div>
 
-      <button
-        class="button-primary min-h-11 w-full"
-        type="submit"
-        disabled={!hasMotorcycles || formBusy}
-      >
-        {$t("tires.pressureAction")}
-      </button>
+      <div class="sheet-actions">
+        <button
+          class="button-primary min-h-11 w-full"
+          type="submit"
+          disabled={!hasMotorcycles || formBusy}
+        >
+          {$t("tires.pressureAction")}
+        </button>
+      </div>
     </form>
   </RecordSheet>
 
@@ -1151,13 +1099,32 @@
           >
         </label>
 
-        <button
-          class="button-primary min-h-11 w-full"
-          type="submit"
-          disabled={formBusy}
-        >
-          {$t("common.saveChanges")}
-        </button>
+        <div class="sheet-actions">
+          <button
+            class="button-danger mr-auto min-h-11"
+            type="submit"
+            form="tire-delete-form"
+            disabled={formBusy}
+          >
+            {$t("common.delete")}
+          </button>
+          <button
+            class="button-primary min-h-11"
+            type="submit"
+            disabled={formBusy}
+          >
+            {$t("common.saveChanges")}
+          </button>
+        </div>
+      </form>
+      <form
+        id="tire-delete-form"
+        method="POST"
+        action="?/deleteTire"
+        use:enhance={enhanceDeleteTire}
+      >
+        <input type="hidden" name="_intent" value="delete" />
+        <input type="hidden" name="id" value={String(editingTire.id)} />
       </form>
     {/if}
   </RecordSheet>
@@ -1221,13 +1188,15 @@
             />
           </div>
         </div>
-        <button
-          class="button-primary min-h-11 w-full"
-          type="submit"
-          disabled={formBusy}
-        >
-          {$t("common.save")}
-        </button>
+        <div class="sheet-actions">
+          <button
+            class="button-primary min-h-11 w-full"
+            type="submit"
+            disabled={formBusy}
+          >
+            {$t("common.save")}
+          </button>
+        </div>
       </form>
 
       <div class="border-t border-[var(--line)] pt-4">

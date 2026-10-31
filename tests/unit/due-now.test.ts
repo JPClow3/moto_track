@@ -241,6 +241,20 @@ describe("bike home attention ranking", () => {
     ]);
   });
 
+  it("asks to confirm, in a neutral tone after due items, when history is unknown", () => {
+    const ranked = rankAttention({
+      dueNow: [
+        dueItem({ id: "unknown", dueKm: null }),
+        dueItem({ id: "measured", confidence: "confirmed" }),
+      ],
+      reminders: [],
+    });
+    expect(ranked.map((item) => [item.id, item.tone])).toEqual([
+      ["measured", "due"],
+      ["unknown", "confirm"],
+    ]);
+  });
+
   it("leaves reminders that are still fine off the list", () => {
     expect(
       rankAttention({

@@ -6,6 +6,7 @@
   import { formatDate, formatMoney } from "$lib/i18n";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
   import OwnershipCosts from "$components/OwnershipCosts.svelte";
+  import GarageInsights from "$components/GarageInsights.svelte";
   import EmptyState from "$components/ui/EmptyState.svelte";
   import StatusBadge from "$components/ui/StatusBadge.svelte";
   import { showToast } from "$components/ui/toast";
@@ -122,7 +123,7 @@
     destructive
   />
 
-  {#if form?.message}
+  {#if form?.message && !form?.benchmark}
     <p
       class="rounded border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger)]"
       role="alert"
@@ -164,6 +165,13 @@
           <ExternalLink size={16} aria-hidden="true" />
         </a>
       </div>
+    {/if}
+
+    {#if data.insights}
+      <GarageInsights
+        insights={data.insights}
+        benchmarkMessage={form?.benchmark ? String(form.message ?? "") : ""}
+      />
     {/if}
 
     <OwnershipCosts motorcycles={data.ownershipCosts} />
@@ -488,13 +496,15 @@
         </p>
       </div>
 
-      <button
-        class="button-primary mt-2 min-h-11"
-        type="submit"
-        disabled={formBusy}
-      >
-        {appCopy($locale, "Criar link seguro")}
-      </button>
+      <div class="sheet-actions">
+        <button
+          class="button-primary mt-2 min-h-11"
+          type="submit"
+          disabled={formBusy}
+        >
+          {appCopy($locale, "Criar link seguro")}
+        </button>
+      </div>
     </form>
   </RecordSheet>
 </section>

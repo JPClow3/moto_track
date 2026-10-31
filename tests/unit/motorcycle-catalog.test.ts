@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   catalogYears,
   dueStateForPlan,
+  initialHistoryAnswers,
   initialHistoryStatus,
 } from "$server/domain/motorcycle-catalog";
 
@@ -138,6 +139,26 @@ describe("seeded motorcycle catalogue", () => {
   it("does not mirror manufacturer PDFs into the application", () => {
     expect(migration).toContain("direct Honda PDF");
     expect(migration).not.toContain("bytea");
+  });
+
+  it("applies one history answer to every item unless an item overrides it", () => {
+    const form = new FormData();
+    form.set("history_all", "confirmed_done");
+    form.set("history_Óleo do motor", "not_done");
+    form.set("history_Corrente", "");
+    expect(
+      initialHistoryAnswers(form, ["Óleo do motor", "Corrente", "Velas"]),
+    ).toEqual({
+      "Óleo do motor": "not_done",
+      Corrente: "confirmed_done",
+      Velas: "confirmed_done",
+    });
+
+    form.set("history_skip", "1");
+    expect(initialHistoryAnswers(form, ["Óleo do motor", "Velas"])).toEqual({
+      "Óleo do motor": "unknown",
+      Velas: "unknown",
+    });
   });
 
   it("does not infer a service history for a 50,000 km motorcycle", () => {

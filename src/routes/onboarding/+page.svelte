@@ -215,6 +215,13 @@
           >{$t("onboarding.createBike")}</button
         >
       </div>
+      <!-- Optional step: skipping records every item as "a confirmar". -->
+      <button
+        class="focus-ring min-h-11 justify-self-center rounded px-3 text-sm font-semibold text-[var(--muted)] underline underline-offset-4 hover:text-[var(--fg)]"
+        type="submit"
+        name="history_skip"
+        value="1">{$t("onboarding.skipHistory")}</button
+      >
     {/if}
   </form>
   <form method="POST" action="?/demo" use:enhance>
