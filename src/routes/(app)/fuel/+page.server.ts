@@ -468,7 +468,16 @@ export const actions: Actions = localizedActions({
           for update
         `;
         if (!existing) return false;
-        await assertOwnedFuelReferences(db, ownerId, payload);
+        // Keeping the record's own bike needs no check (it is already this
+        // owner's) and must work for an archived bike, which the reference
+        // guard rejects; only a newly chosen bike is checked.
+        await assertOwnedFuelReferences(db, ownerId, {
+          ...payload,
+          motorcycle_id:
+            payload.motorcycle_id === existing.motorcycle_id
+              ? null
+              : payload.motorcycle_id,
+        });
         await db`
           update fuel_records set ${db(payload)}
           where owner_id = ${ownerId} and id = ${id}

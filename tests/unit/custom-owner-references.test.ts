@@ -184,3 +184,53 @@ describe("custom action owner references", () => {
     });
   }
 });
+
+describe("fuel record edits", () => {
+  // The record belongs to a bike the reference guard no longer accepts (an
+  // archived bike has deleted_at set), as an edit from the fuel page can.
+  function editDatabase() {
+    const updates: unknown[][] = [];
+    const queryDb = (input: unknown, ...values: unknown[]): unknown => {
+      if (!Array.isArray(input)) return input;
+      const query = input.join("?");
+      if (query.includes('select id from neon_auth."user"'))
+        return Promise.resolve([{ id: "owner" }]);
+      if (query.includes("select motorcycle_id from fuel_records"))
+        return Promise.resolve([{ motorcycle_id: "archived-bike" }]);
+      if (query.includes("select id from motorcycles"))
+        return Promise.resolve(values[0] === "owned" ? [{ id: "owned" }] : []);
+      if (query.includes("update fuel_records")) updates.push(values);
+      return Promise.resolve([]);
+    };
+    const db = Object.assign(queryDb, {
+      begin: async (callback: (sql: unknown) => Promise<unknown>) =>
+        callback(queryDb),
+    });
+    return { db, updates };
+  }
+  const edit = {
+    id: "record",
+    date: "2026-10-23",
+    liters: "5",
+    odometer_km: "1000",
+    total_price: "30",
+  };
+
+  it("saves an archived bike's fill-up without re-checking its own bike", async () => {
+    const { db, updates } = editDatabase();
+    const result = await fuel.updateRecord!(
+      makeEvent(db, { ...edit, motorcycle_id: "archived-bike" }) as never,
+    );
+    expect(result).toMatchObject({ ok: true });
+    expect(updates).toHaveLength(1);
+  });
+
+  it("still rejects moving a fill-up to a bike the owner cannot use", async () => {
+    const { db, updates } = editDatabase();
+    const result = await fuel.updateRecord!(
+      makeEvent(db, { ...edit, motorcycle_id: "foreign" }) as never,
+    );
+    expect(result).toMatchObject({ status: 400 });
+    expect(updates).toEqual([]);
+  });
+});

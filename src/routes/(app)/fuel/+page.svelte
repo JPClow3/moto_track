@@ -68,15 +68,19 @@
 
   $: defaults = data.preferences[0] ?? {};
   $: hasRecords = data.rows.length > 0;
-  // The shell's bike switcher is the only bike context; the server already
-  // scoped the rows to it, so the latest row is this bike's last fill-up.
+  // The shell's bike switcher is the only bike context; the server scoped
+  // the rows to it (plus fill-ups not linked to any bike).
   $: activeMotorcycleId = String(
     data.activeMotorcycleId ?? data.motorcycles[0]?.id ?? "",
   );
   $: activeMotorcycle = data.motorcycles.find(
     (moto: Row) => String(moto.id) === activeMotorcycleId,
   ) as Row | undefined;
-  $: lastRecord = data.rows[0] as Row | undefined;
+  // History may also hold unassigned or archived-bike fill-ups, so "Repetir
+  // último" and the odometer hint use this bike's own latest one.
+  $: lastRecord = data.rows.find(
+    (row: Row) => String(row.motorcycle_id ?? "") === activeMotorcycleId,
+  ) as Row | undefined;
   $: latestOdometer =
     lastRecord?.odometer_km ?? activeMotorcycle?.current_odometer_km ?? null;
 
