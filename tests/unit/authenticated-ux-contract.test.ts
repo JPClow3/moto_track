@@ -233,6 +233,23 @@ describe("authenticated UX primitives contract", () => {
     expect(fuelSrc).not.toContain('action="?/repeatLast"');
   }, 15_000);
 
+  it("never throws on a fill-up date that is not YYYY-MM-DD", async () => {
+    // postgres.js returns `date` as a Date; the loader normalizes it, and the
+    // fields must still render if a stringified Date slips through.
+    const module =
+      await import("../../src/lib/components/FuelRecordFields.svelte");
+    const { body } = render(module.default, {
+      props: {
+        idPrefix: "fuel-edit",
+        motorcycles: [{ id: "m1", name: "CB 500F" }],
+        initial: { motorcycle_id: "m1", date: "Sat Oct 31 2026" },
+      },
+    });
+    expect(body).toContain("CB 500F");
+    const fuelServer = source("src/routes/(app)/fuel/+page.server.ts");
+    expect(fuelServer).toContain("date: isoDateValue(row.date)");
+  });
+
   it("gives Maintenance one add action and a primary 'Já fiz' on each plan card", async () => {
     const module =
       await import("../../src/routes/(app)/maintenance/+page.svelte");

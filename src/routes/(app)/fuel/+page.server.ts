@@ -36,6 +36,7 @@ import {
 } from "$server/domain/offline-fuel-replay";
 
 import { appToday } from "$lib/utils/calendar-day";
+import { isoDateValue } from "$server/domain/date-value";
 type Row = Record<string, unknown>;
 
 // Riders type "4,59" (pt-BR) as often as "4.59"; decimal fields are text
@@ -335,7 +336,9 @@ export async function load({ locals, parent }) {
 
   return {
     errorMessage: fuelResult.error ?? "",
-    rows: fuelRows,
+    // postgres.js returns `date` as a Date; the page lists, filters and
+    // edits YYYY-MM-DD strings.
+    rows: fuelRows.map((row) => ({ ...row, date: isoDateValue(row.date) })),
     motorcycles,
     /** The shell's active bike, else the first one: the page's default view. */
     activeMotorcycleId: defaultMotorcycleId

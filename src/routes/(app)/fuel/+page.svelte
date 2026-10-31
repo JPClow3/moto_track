@@ -10,6 +10,7 @@
     requestOfflineFuelSync,
   } from "$lib/utils/offline-fuel";
   import { privateFileUrl } from "$lib/utils/private-file-url";
+  import { dateOnlyValue } from "$lib/utils/feature-values";
   import ConfirmDialog from "$components/ConfirmDialog.svelte";
   import NearbyStations from "$components/NearbyStations.svelte";
   import LocationFields from "$components/LocationFields.svelte";
@@ -226,7 +227,7 @@
   $: editValues = editingRow
     ? ({
         motorcycle_id: String(editingRow.motorcycle_id ?? activeMotorcycleId),
-        date: String(editingRow.date ?? "").slice(0, 10),
+        date: dateOnlyValue(editingRow.date) ?? undefined,
         odometer_km: String(editingRow.odometer_km ?? ""),
         liters: decimalInput(editingRow.liters, 3),
         total_price: decimalInput(

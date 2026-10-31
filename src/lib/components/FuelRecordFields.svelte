@@ -99,16 +99,18 @@
   $: bikeName = String(
     motorcycles.find((moto) => String(moto.id) === motorcycleId)?.name ?? "",
   );
+  // Only a YYYY-MM-DD value is formatted; anything else would make the
+  // formatter throw "Invalid time value".
   $: dateLabel =
     date === calendarDay()
       ? $t("fuelUx.today")
-      : date
+      : /^\d{4}-\d{2}-\d{2}$/.test(date)
         ? $format.date(`${date}T00:00:00.000Z`, {
             day: "2-digit",
             month: "short",
             timeZone: "UTC",
           })
-        : "";
+        : date;
 </script>
 
 <!-- Bike and date are almost always "this bike, today": a chip, tap to change. -->
