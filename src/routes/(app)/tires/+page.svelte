@@ -82,7 +82,9 @@
     motorcycleId: unknown,
     active: string,
     scoped: boolean,
-  ) => !scoped || String(motorcycleId ?? "") === active;
+  ) =>
+    // Records never linked to a bike stay visible on every bike.
+    !scoped || motorcycleId == null || String(motorcycleId) === active;
 
   let formBusy = false;
   let errorMessage = "";

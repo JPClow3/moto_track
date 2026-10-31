@@ -211,7 +211,9 @@ export function rankAttention({
       officialUrl: item.officialUrl,
       documentVersion: item.documentVersion,
       pageReference: item.pageReference,
-      href: "/maintenance",
+      // ?bike= switches the shell's active bike (see the (app) layout), so
+      // the bike-scoped maintenance page shows this item, not another bike's.
+      href: `/maintenance?bike=${encodeURIComponent(item.motorcycleId)}`,
     })),
     ...reminders
       .filter(

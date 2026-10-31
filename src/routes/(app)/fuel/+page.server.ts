@@ -314,11 +314,14 @@ export async function load({ locals, parent }) {
 
   // The shell's bike switcher is the page's only bike context: with more
   // than one bike, the list, signals and chart all follow the active bike.
+  // Fill-ups never linked to a bike (legacy imports) stay visible on every
+  // bike rather than disappearing.
   const scopedRows =
     motorcycles.length > 1 && defaultMotorcycleId
       ? fuelResult.rows.filter(
           (row) =>
-            String(row.motorcycle_id ?? "") === String(defaultMotorcycleId),
+            row.motorcycle_id == null ||
+            String(row.motorcycle_id) === String(defaultMotorcycleId),
         )
       : fuelResult.rows;
   const fuelRows = scopedRows.map<Row & { liters: number }>((row) => ({

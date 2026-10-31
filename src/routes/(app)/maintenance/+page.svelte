@@ -95,7 +95,9 @@
     motorcycleId: unknown,
     active: string,
     scoped: boolean,
-  ) => !scoped || String(motorcycleId ?? "") === active;
+  ) =>
+    // Records never linked to a bike stay visible on every bike.
+    !scoped || motorcycleId == null || String(motorcycleId) === active;
   $: bikeRows = (data.rows ?? []).filter((row: Record<string, unknown>) =>
     onActiveBike(row.motorcycle_id, activeMotorcycleId, scopeToActive),
   );
@@ -111,6 +113,10 @@
   ]
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
+  // A type picked on another bike may not exist on this one (and the picker
+  // hides with a single type), so fall back to all instead of an empty list.
+  $: if (filterType !== "all" && !recordTypes.includes(filterType))
+    filterType = "all";
 
   type MaintenanceRecord = {
     id: string;

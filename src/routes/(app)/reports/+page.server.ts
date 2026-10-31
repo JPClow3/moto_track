@@ -288,11 +288,11 @@ async function loadInsights(event: Parameters<typeof _loadGarage>[0]) {
 
 export async function load({ locals, url, parent }) {
   const ownerId = locals.user!.id;
-  const insightsPromise = loadInsights({ locals, url, parent });
   // Every read here failed open on Supabase too (an errored query resolved to
   // `data: null`, treated as empty) — `.catch` keeps one failing source from
   // blanking the whole timeline.
   const [
+    insights,
     fuel,
     maintenance,
     tires,
@@ -302,6 +302,7 @@ export async function load({ locals, url, parent }) {
     shares,
     ownershipCosts,
   ] = await Promise.all([
+    loadInsights({ locals, url, parent }),
     locals.db<Row[]>`
         select date, total_price_cents, station_name from fuel_records
         where owner_id = ${ownerId}
@@ -373,7 +374,7 @@ export async function load({ locals, url, parent }) {
     end: url.searchParams.get("end") || undefined,
   });
   return {
-    insights: await insightsPromise,
+    insights,
     motorcycles,
     ownershipCosts,
     shares,

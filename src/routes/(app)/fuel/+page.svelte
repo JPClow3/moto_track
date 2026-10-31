@@ -100,6 +100,10 @@
       data.rows.map((row: Row) => stationLabel(row)).filter(Boolean),
     ),
   ].sort((a, b) => a.localeCompare(b));
+  // A station picked on another bike may not exist here (and the picker hides
+  // below two stations), so drop it instead of leaving an empty list.
+  $: if (filterStation && !stationOptions.includes(filterStation))
+    filterStation = "";
   $: periodChips = [
     { id: "90d", label: $t("fuel.period90d") },
     { id: "12m", label: $t("fuel.period12m") },
