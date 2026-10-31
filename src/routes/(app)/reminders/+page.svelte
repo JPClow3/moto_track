@@ -10,6 +10,7 @@
   import type { MessageKey } from "$lib/i18n";
   import { enhance } from "$app/forms";
   import type { SubmitFunction } from "@sveltejs/kit";
+  import { onMount } from "svelte";
   export let data;
   export let form;
 
@@ -53,6 +54,14 @@
   $: showBikeNames =
     new Set(maintenanceDue.map((item) => item.motorcycleId)).size > 1;
 
+  // Collapsed by default; opened by Conta's #calendar link, and kept open
+  // while a newly created subscription URL is on screen.
+  let calendarOpen = false;
+  $: if (form?.calendarUrl) calendarOpen = true;
+  onMount(() => {
+    if (location.hash === "#calendar") calendarOpen = true;
+  });
+
   const enhanceCalendar =
     (successKey: MessageKey): SubmitFunction =>
     () =>
@@ -88,7 +97,9 @@
   motorcycles={data.motorcycles}
   errorMessage={form?.message || data.errorMessage}
   emptyIcon={Bell}
-  emptyTitle={$t("recordsUx.remindersEmpty")}
+  emptyTitle={maintenanceDue.length
+    ? $t("reminders.emptyBesidesMaintenance")
+    : $t("recordsUx.remindersEmpty")}
   rowStatus={reminderStatus}
 >
   <svelte:fragment slot="lead">
@@ -147,7 +158,7 @@
   <details
     id="calendar"
     class="group/calendar panel mt-6 p-5"
-    open={Boolean(form?.calendarUrl) || undefined}
+    bind:open={calendarOpen}
   >
     <summary
       class="focus-ring flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded"

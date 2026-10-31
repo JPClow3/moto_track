@@ -103,10 +103,11 @@ test.describe("app shell responsive foundation", () => {
     await gotoAppRoute(page, "/maintenance");
     expect(page.url()).not.toContain("/onboarding");
 
-    let destructiveForm = page.locator(
-      'form[action="?/deletePart"], form[action="?/deletePlan"], form[action="?/deletePhoto"]',
-    );
-    if (!(await destructiveForm.count())) {
+    // Plan delete lives in each plan card's ⋯ menu ("Tirar do plano").
+    const planCards = page
+      .locator("article")
+      .filter({ has: page.locator('form[action="?/deletePlan"]') });
+    if (!(await planCards.count())) {
       await page
         .getByRole("button", { name: /agendar|plano|schedule/i })
         .first()
@@ -118,15 +119,15 @@ test.describe("app shell responsive foundation", () => {
         .locator('form[action="?/savePlan"]')
         .getByRole("button", { name: /salvar|save/i })
         .click();
-      destructiveForm = page.locator(
-        'form[action="?/deletePart"], form[action="?/deletePlan"], form[action="?/deletePhoto"]',
-      );
-      await expect(destructiveForm.first()).toBeVisible();
+      await expect(planCards.first()).toBeVisible();
     }
 
-    await destructiveForm
-      .first()
-      .getByRole("button", { name: /excluir|delete/i })
+    const card = planCards.first();
+    await card
+      .getByRole("button", { name: /mais ações|more actions/i })
+      .click();
+    await card
+      .getByRole("button", { name: /tirar do plano|remove from plan/i })
       .click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();

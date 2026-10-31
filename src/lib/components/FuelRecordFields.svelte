@@ -133,7 +133,7 @@
 <div
   id={`${idPrefix}-context`}
   class="grid gap-3 sm:grid-cols-2"
-  class:hidden={!editContext}
+  class:hidden={!editContext && Boolean(date)}
 >
   <div class="field-group">
     <label class="field-label" for={`${idPrefix}-motorcycle`}>
@@ -160,6 +160,7 @@
       type="date"
       name="date"
       bind:value={date}
+      on:invalid={() => (editContext = true)}
       required
     />
   </div>

@@ -272,6 +272,8 @@ export const en: Messages = {
     goToGarage: "Open garage",
     maintenanceHeading: "Maintenance",
     openMaintenance: "Open maintenance",
+    emptyBesidesMaintenance:
+      "No reminders besides the maintenance above. Add one for fees, documents or anything else.",
   },
   documents: {
     pageTitle: "Documents",

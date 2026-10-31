@@ -43,6 +43,8 @@ test.describe("completed core flows", () => {
     const reminder = (await response.json()).result;
     try {
       await page.reload();
+      // Calendar sync is a set-once setting, collapsed below the list.
+      await page.locator("#calendar > summary").click();
       await page
         .getByRole("button", { name: "Gerar link de assinatura", exact: true })
         .click();

@@ -290,6 +290,8 @@ export const ptBR = {
     goToGarage: "Abrir garagem",
     maintenanceHeading: "Manutenção",
     openMaintenance: "Abrir manutenção",
+    emptyBesidesMaintenance:
+      "Nenhum lembrete além da manutenção acima. Crie um para taxas, documentos ou o que quiser lembrar.",
   },
   documents: {
     pageTitle: "Documentos",
