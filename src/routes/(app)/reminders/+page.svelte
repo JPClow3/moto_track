@@ -54,12 +54,14 @@
   $: showBikeNames =
     new Set(maintenanceDue.map((item) => item.motorcycleId)).size > 1;
 
-  // Collapsed by default; opened by Conta's #calendar link, and kept open
-  // while a newly created subscription URL is on screen.
-  let calendarOpen = false;
-  $: if (form?.calendarUrl) calendarOpen = true;
+  // Collapsed by default; opened by Conta's #calendar link and while a new
+  // subscription URL is on screen. Only ever opened from code, never bound:
+  // binding `open` let hydration close a section the rider had expanded.
+  let calendarDetails: HTMLDetailsElement | undefined;
+  $: if (form?.calendarUrl && calendarDetails) calendarDetails.open = true;
   onMount(() => {
-    if (location.hash === "#calendar") calendarOpen = true;
+    if (location.hash === "#calendar" && calendarDetails)
+      calendarDetails.open = true;
   });
 
   const enhanceCalendar =
@@ -158,7 +160,7 @@
   <details
     id="calendar"
     class="group/calendar panel mt-6 p-5"
-    bind:open={calendarOpen}
+    bind:this={calendarDetails}
   >
     <summary
       class="focus-ring flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded"

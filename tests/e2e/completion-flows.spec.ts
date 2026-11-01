@@ -43,6 +43,7 @@ test.describe("completed core flows", () => {
     const reminder = (await response.json()).result;
     try {
       await page.reload();
+      await expect(page.locator('html[data-app-ready="true"]')).toHaveCount(1);
       // Calendar sync is a set-once setting, collapsed below the list.
       await page.locator("#calendar > summary").click();
       await page
