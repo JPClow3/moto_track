@@ -744,9 +744,7 @@
               >
             </div>
           </div>
-          <span
-            class="display numeric shrink-0 text-lg font-bold text-[var(--fg)]"
-          >
+          <span class="display numeric shrink-0 text-lg text-[var(--fg)]">
             {brl(Number(row.total_price_cents))}
           </span>
           <ChevronRight

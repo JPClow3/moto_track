@@ -18,7 +18,7 @@ export const PUBLIC_ENGLISH_COPY: Record<string, string> = {
   "Centro de comando": "Command center",
   "Toda a vida da": "Your motorcycle's",
   "sua moto,": "whole life,",
-  "num só painel.": "in one dashboard.",
+  "num só painel": "in one dashboard",
   "Hodômetro, custos, revisões, documentos e lembretes num só lugar. Pare de adivinhar quanto a sua moto custa — e saiba exatamente quando ela precisa de você.":
     "Odometer, costs, services, documents and reminders in one place. Know what your motorcycle costs and when it needs your attention.",
   "Começar de graça": "Start for free",
@@ -86,7 +86,8 @@ export const PUBLIC_ENGLISH_COPY: Record<string, string> = {
     "Guides with torque settings, intervals and parts, free to read without an account.",
   "Ver todos os guias": "See all guides",
   "Ler guia": "Read guide",
-  "Pronto para acelerar?": "Ready to ride?",
+  "Quanto custa o seu próximo quilômetro?":
+    "What does your next kilometer cost?",
   "Larga a planilha e o caderno. O Moto Track guarda a saúde, o custo e o histórico da sua companheira de estrada.":
     "Keep your motorcycle's health, costs and history together in Moto Track.",
   "Criar conta agora": "Create an account",
@@ -279,14 +280,14 @@ export const PUBLIC_ENGLISH_COPY: Record<string, string> = {
     "Fuel economy calculated on every full tank",
   "Foto do cupom preenche os campos": "A receipt photo fills in the fields",
   "Rascunhos guardados sem internet": "Drafts saved without a connection",
-  "Histórico que acompanha a moto.": "A history that stays with your bike.",
+  "Histórico que acompanha a moto": "A history that stays with your bike",
   "Planos de manutenção por km ou por data":
     "Maintenance plans by mileage or date",
   "Fotos e notas fiscais anexadas ao serviço":
     "Photos and invoices attached to each service",
   "Relatório de venda para mostrar ao comprador":
     "A sale report to show buyers",
-  "A próxima revisão, à vista.": "Keep your next service in sight.",
+  "A próxima revisão, à vista": "Keep your next service in sight",
   "Vencimento por km rodado ou por data": "Due by mileage or by date",
   "Aviso por e-mail e notificação no celular": "Email and phone notifications",
 
@@ -296,7 +297,6 @@ export const PUBLIC_ENGLISH_COPY: Record<string, string> = {
     "Gray motorcycle parked on a mountain road at dawn",
   "Minha garagem": "My garage",
   "Minha moto": "My motorcycle",
-  "Cada quilômetro conta.": "Every kilometer counts.",
   "Exemplo de custo total": "Sample ownership cost",
   "Consumo médio": "Average economy",
   "Abastecimentos completos": "Full-tank records",
@@ -336,7 +336,7 @@ export const PUBLIC_ENGLISH_COPY: Record<string, string> = {
   "Explore exemplos de custos, abastecimentos e lembretes da sua moto.":
     "Explore sample motorcycle costs, fuel records and service reminders.",
   "Explore antes de criar conta": "Explore before signing up",
-  "Sua moto. Tudo mais claro.": "Your bike. A clearer picture.",
+  "Sua moto, tudo mais claro": "Your bike, a clearer picture",
   "Alterne as telas para explorar exemplos de custos, consumo, histórico de manutenção e lembretes.":
     "Switch between views to explore sample costs, fuel economy, service history and reminders.",
   "Os dados são fictícios. Seu painel é construído a partir dos registros que você adicionar.":

@@ -21,8 +21,6 @@
 </svelte:head>
 
 <section class="relative overflow-hidden border-b border-[var(--line)]">
-  <div class="grid-backdrop" aria-hidden="true"></div>
-  <div class="accent-glow legal-glow" aria-hidden="true"></div>
   <div class="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
@@ -117,7 +115,6 @@
     <div
       class="relative mt-10 overflow-hidden rounded-panel bg-[var(--panel-invert)] p-7 text-paper"
     >
-      <div class="corner-slashes" aria-hidden="true"></div>
       <div class="relative flex gap-4">
         <Mail
           size={20}
@@ -141,12 +138,6 @@
 </section>
 
 <style>
-  .legal-glow {
-    top: -75%;
-    right: -10%;
-    width: 55%;
-    height: 150%;
-  }
   .legal-nav-link {
     transition:
       color 0.2s,
@@ -156,18 +147,5 @@
     color: var(--fg);
     border-left: 2px solid var(--fg);
     padding-left: calc(1rem - 2px);
-  }
-  .corner-slashes {
-    position: absolute;
-    top: -10px;
-    right: -30px;
-    width: 160px;
-    height: 90px;
-    opacity: 0.18;
-    background: repeating-linear-gradient(
-      100deg,
-      var(--accent) 0 6px,
-      transparent 6px 16px
-    );
   }
 </style>

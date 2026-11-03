@@ -45,9 +45,6 @@
 
 <!-- ── HEADER ──────────────────────────────────────────────── -->
 <section class="relative overflow-hidden border-b border-[var(--line)]">
-  <div class="grid-backdrop" aria-hidden="true"></div>
-  <div class="accent-glow header-glow" aria-hidden="true"></div>
-
   <div class="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
@@ -83,7 +80,6 @@
         class="lead panel focus-ring group relative block overflow-hidden p-6 sm:p-10"
         href={`/blog/${lead.slug}`}
       >
-        <div class="corner-slashes" aria-hidden="true"></div>
         <div class="relative max-w-3xl">
           <p class="eyebrow">
             <span class="slash-rule" aria-hidden="true"></span>
@@ -193,28 +189,6 @@
 </section>
 
 <style>
-  .header-glow {
-    top: -60%;
-    right: -5%;
-    width: 45%;
-    height: 140%;
-  }
-
-  .corner-slashes {
-    position: absolute;
-    top: -10px;
-    right: -30px;
-    width: 180px;
-    height: 100px;
-    pointer-events: none;
-    opacity: 0.14;
-    background: repeating-linear-gradient(
-      100deg,
-      var(--accent) 0 6px,
-      transparent 6px 16px
-    );
-  }
-
   .lead {
     transition:
       border-color 0.25s,

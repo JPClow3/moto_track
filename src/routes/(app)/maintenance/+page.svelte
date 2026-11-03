@@ -682,7 +682,7 @@
                     aria-label={`${plan.progress_percent}%`}
                   >
                     <div
-                      class="h-full rounded-full transition-all"
+                      class="h-full rounded-full"
                       style={`width:${plan.progress_percent}%;background:${urgencyColor(urgency)}`}
                     ></div>
                   </div>

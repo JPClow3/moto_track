@@ -18,7 +18,7 @@ live in `src/app.css`; Tailwind maps role colours to the same CSS variables.
 | Due soon                                         | `--warning`, `--warning-soft`                                  |                                         |
 | OK / done / healthy                              | `--success`, `--success-soft`                                  |                                         |
 | Neutral information                              | `--info`, `--info-soft`                                        |                                         |
-| Chart categories                                 | `--cat-fuel`, `--cat-maintenance`, `--cat-tires`, `--cat-fees` | Never red, never a status tone          |
+| Chart categories                                 | `--cat-fuel`, `--cat-maintenance`, `--cat-tires`, `--cat-fees` | Fuel leads in teal; the rest are zinc   |
 
 `danger`, `success`, `warning` and `info` Tailwind colours resolve to CSS
 variables, so opacity modifiers like `bg-danger/10` produce nothing. Use the
@@ -27,16 +27,21 @@ variables, so opacity modifiers like `bg-danger/10` produce nothing. Use the
 Active navigation, empty states, decorative icons and table headers are neutral
 (ink / muted / `--accent-wash`, which is now a neutral wash).
 
+Surfaces stay flat: no colour washes, glows, blueprint grids or stripe fields
+behind content, and no coloured shadows on buttons. The speed-mark appears only
+as the small `.slash-rule` in an eyebrow.
+
 ## Type
 
 - One family: Archivo Variable (`var(--font-sans)`), width axis via
   `font-stretch`.
-- `.display` (condensed 76%, weight 750, line-height 1.05) is for page titles,
+- `.display` (condensed 76%, weight 600, line-height 1.05) is for page titles,
   section titles and large numerals only.
 - `.label-tech` is sentence case, normal width, 12px semibold. Labels are not
   uppercase.
-- `.eyebrow` (uppercase, red slashes) is for marketing pages only. App page
-  headers have no eyebrow.
+- `.eyebrow` (sentence case, red slashes, `--fg-soft` label) is for marketing
+  pages only. App page headers have no eyebrow.
+- Headlines, labels and buttons end without a period.
 - Scale: 12 (caption) / 14 (labels, table cells) / 16 (body, inputs) / 20 (card
   title) / 28 (page title) / 44 (key metric). Nothing below 12px.
 - Numbers use `.numeric` (tabular, slashed zero).

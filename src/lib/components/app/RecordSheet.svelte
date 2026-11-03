@@ -78,7 +78,7 @@
       <div class="flex items-center justify-between gap-4">
         <h2
           id={titleId}
-          class="display text-2xl font-bold tracking-tight text-[var(--fg)]"
+          class="display text-2xl tracking-tight text-[var(--fg)]"
         >
           {title}
         </h2>
