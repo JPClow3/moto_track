@@ -20,8 +20,6 @@
 <main
   class="relative grid min-h-screen place-items-center overflow-hidden px-6 py-24"
 >
-  <div class="grid-backdrop" aria-hidden="true"></div>
-
   <div class="relative mx-auto max-w-lg text-center">
     <a
       href={home}

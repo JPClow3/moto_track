@@ -57,7 +57,7 @@
     onclick={() => (open = !open)}
   >
     <span
-      class="grid h-8 w-8 shrink-0 place-items-center rounded bg-[var(--panel-sunken)] text-xs font-bold uppercase text-[var(--muted)] ring-1 ring-[var(--line)]"
+      class="grid h-8 w-8 shrink-0 place-items-center rounded bg-[var(--panel-sunken)] text-xs font-semibold uppercase text-[var(--muted)] ring-1 ring-[var(--line)]"
       aria-hidden="true"
     >
       {email?.charAt(0) ?? "U"}

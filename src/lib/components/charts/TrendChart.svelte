@@ -121,16 +121,9 @@
         stroke-linejoin="round"
       />
 
-      <!-- Latest reading, called out like a live instrument readout. -->
+      <!-- Latest reading. Static: the data is a log, not a live feed. -->
       <circle
         class="marker"
-        cx={lastCoord.x}
-        cy={lastCoord.y}
-        r="4.5"
-        fill={TONE}
-      />
-      <circle
-        class="pulse"
         cx={lastCoord.x}
         cy={lastCoord.y}
         r="4.5"
@@ -207,13 +200,6 @@
     animation: fade 0.3s ease 1.2s forwards;
   }
 
-  .pulse {
-    transform-origin: center;
-    transform-box: fill-box;
-    opacity: 0;
-    animation: ping 2s ease-out 1.4s infinite;
-  }
-
   @keyframes draw {
     to {
       stroke-dashoffset: 0;
@@ -226,18 +212,6 @@
     }
   }
 
-  @keyframes ping {
-    0% {
-      opacity: 0.5;
-      transform: scale(1);
-    }
-    70%,
-    100% {
-      opacity: 0;
-      transform: scale(3.2);
-    }
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .line,
     .area,
@@ -245,11 +219,6 @@
       animation: none;
       stroke-dashoffset: 0;
       opacity: 1;
-    }
-
-    .pulse {
-      animation: none;
-      opacity: 0;
     }
   }
 </style>

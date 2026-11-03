@@ -97,7 +97,7 @@
       pathLength="1"
     />
     <text x="40" y="335" fill={INK.fg} font-size="28" class="condensed"
-      >{c("Cada quilômetro conta.")}</text
+      >{c("Cada quilômetro conta")}</text
     >
   {:else if kind === "service"}
     <path

@@ -36,8 +36,6 @@
 <div
   class="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12"
 >
-  <div class="grid-backdrop" aria-hidden="true"></div>
-
   <div class="relative w-full max-w-[440px]">
     <div class="mb-8 text-center">
       <a

@@ -298,9 +298,6 @@
 
 <!-- ── HEADER ──────────────────────────────────────────────── -->
 <section class="relative overflow-hidden border-b border-[var(--line)]">
-  <div class="grid-backdrop" aria-hidden="true"></div>
-  <div class="accent-glow header-glow" aria-hidden="true"></div>
-
   <div class="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
     <p class="eyebrow">
       <span class="slash-rule" aria-hidden="true"></span>
@@ -428,7 +425,6 @@
 <section
   class="relative overflow-hidden bg-ink px-4 py-20 text-paper sm:px-6 sm:py-24"
 >
-  <div class="cta-slashes" aria-hidden="true"></div>
   <div class="relative mx-auto max-w-3xl text-center">
     <h2 class="display text-5xl sm:text-6xl">
       {publicCopy($locale, "Faltou alguma coisa?")}
@@ -440,7 +436,7 @@
       )}
     </p>
     <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
-      <a class="button-accent px-7 py-3.5 text-base shadow-brand" href="/auth">
+      <a class="button-accent px-7 py-3.5 text-base" href="/auth">
         {publicCopy($locale, "Criar conta")}
         <ArrowRight size={20} />
       </a>
@@ -455,13 +451,6 @@
 </section>
 
 <style>
-  .header-glow {
-    top: -60%;
-    right: -5%;
-    width: 45%;
-    height: 140%;
-  }
-
   /* Divider between counts. Driven by nth-child rather than the loop index:
      the strip is 2-up on mobile and 4-up from `sm`, so "not the first cell"
      and "not the first cell *in its row*" are different rules — the index
@@ -507,21 +496,6 @@
       90deg,
       transparent 0 calc(5% - 2px),
       var(--bg) calc(5% - 2px) 5%
-    );
-  }
-
-  .cta-slashes {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 40%;
-    height: 100%;
-    pointer-events: none;
-    opacity: 0.07;
-    background: repeating-linear-gradient(
-      100deg,
-      var(--accent) 0 6px,
-      transparent 6px 16px
     );
   }
 

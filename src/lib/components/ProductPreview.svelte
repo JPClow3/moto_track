@@ -129,7 +129,7 @@
 
 {#snippet body(view: PreviewView)}
   {#if view === "overview"}
-    {@render title("Cada quilômetro conta.")}
+    {@render title("Cada quilômetro conta")}
     <div class="grid grid-cols-2 gap-3">
       <MetricCard
         label={c("Custo / km")}
@@ -233,7 +233,7 @@
       {c("Registre litros, valor, hodômetro e recibo em um só lugar.")}
     </p>
   {:else if view === "maintenance"}
-    {@render title("Histórico que acompanha a moto.")}
+    {@render title("Histórico que acompanha a moto")}
     <img
       src="/images/launch/workshop-care.webp"
       width="1536"
@@ -261,7 +261,7 @@
       {/each}
     </ul>
   {:else}
-    {@render title("A próxima revisão, à vista.")}
+    {@render title("A próxima revisão, à vista")}
     <div class="panel p-5">
       <div class="flex items-start justify-between gap-3">
         <OilCan size={24} class="shrink-0 text-[var(--muted)]" />

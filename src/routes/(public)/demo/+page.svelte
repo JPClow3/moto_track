@@ -31,7 +31,7 @@
       )}
     </p>
     <h1 class="display mt-5 text-5xl sm:text-7xl">
-      {c("Sua moto. Tudo mais claro.")}
+      {c("Sua moto, tudo mais claro")}
     </h1>
     <p class="mt-6 text-lg leading-relaxed text-[var(--muted)]">
       {c(

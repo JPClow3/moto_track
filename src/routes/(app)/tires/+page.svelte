@@ -410,7 +410,7 @@
                   aria-label={`${$t("tires.wearLabel")}: ${wear}%`}
                 >
                   <div
-                    class="h-full rounded-full transition-all"
+                    class="h-full rounded-full"
                     style={`width:${Math.min(Math.max(wear, 0), 100)}%;background:${wearToneColor(tone)}`}
                   ></div>
                 </div>
@@ -586,7 +586,7 @@
                     ? $format.date(String(pressure.date))
                     : ""}
                 </p>
-                <p class="numeric mt-0.5 text-base font-bold">
+                <p class="numeric mt-0.5 text-base font-semibold">
                   {$format.number(Number(pressure.psi_front))}/{$format.number(
                     Number(pressure.psi_rear),
                   )}

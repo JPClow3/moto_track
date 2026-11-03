@@ -75,7 +75,7 @@
       <header
         class="flex items-center justify-between border-b border-[var(--line)] px-4 py-3"
       >
-        <h2 id="action-menu-title" class="display text-xl font-bold">
+        <h2 id="action-menu-title" class="display text-xl">
           {title}
         </h2>
         <button

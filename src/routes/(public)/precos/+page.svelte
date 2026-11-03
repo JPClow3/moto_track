@@ -65,9 +65,6 @@
 </svelte:head>
 
 <div class="relative overflow-hidden px-4 py-16 sm:px-6 sm:py-24">
-  <div class="grid-backdrop" aria-hidden="true"></div>
-  <div class="accent-glow page-glow" aria-hidden="true"></div>
-
   <div class="relative mx-auto max-w-4xl">
     <div class="mx-auto max-w-2xl text-center">
       <p class="eyebrow justify-center">
@@ -132,7 +129,6 @@
       <div
         class="relative flex flex-col overflow-hidden rounded-panel bg-[var(--panel-invert)] p-6 text-paper shadow-lift sm:p-8"
       >
-        <div class="corner-slashes" aria-hidden="true"></div>
         <div class="flex items-center justify-between">
           <h2 class="display text-3xl">{$t("pricing.proName")}</h2>
           <span
@@ -207,28 +203,6 @@
 </div>
 
 <style>
-  .page-glow {
-    top: -20%;
-    right: -10%;
-    width: 55%;
-    height: 80%;
-  }
-
-  .corner-slashes {
-    position: absolute;
-    top: -10px;
-    right: -30px;
-    width: 160px;
-    height: 90px;
-    pointer-events: none;
-    opacity: 0.18;
-    background: repeating-linear-gradient(
-      100deg,
-      var(--accent) 0 6px,
-      transparent 6px 16px
-    );
-  }
-
   .billing-choice {
     display: grid;
     gap: 0.15rem;

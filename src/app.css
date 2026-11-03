@@ -65,12 +65,14 @@
   --warning-soft: #fff7ed;
   --info: #2f5aa8;
   --info-soft: #eef3fb;
-  /* Categorical chart colours: fuel, maintenance, tires, fees. Never red and
-     never a status tone, so a cost chart never reads as an alert. */
+  /* Categorical chart colours: fuel, maintenance, tires, fees. Fuel is the
+     biggest share for almost every rider, so it alone carries a hue; the rest
+     are zinc steps that fade with their usual share. Never red and never a
+     status tone, so a cost chart never reads as an alert. */
   --cat-fuel: #0e7490;
-  --cat-maintenance: #4f46e5;
-  --cat-tires: #52525b;
-  --cat-fees: #a21caf;
+  --cat-maintenance: #3f3f46;
+  --cat-tires: #71717a;
+  --cat-fees: #a1a1aa;
   --shadow-color: 24 24 27;
   /* A surface that contrasts against --panel in BOTH themes, for the one card
      that needs to out-weigh its neighbour. Dark-on-light here. */
@@ -128,9 +130,9 @@
   --info: #86a8f0;
   --info-soft: rgba(134, 168, 240, 0.12);
   --cat-fuel: #22b3cf;
-  --cat-maintenance: #8b85ff;
-  --cat-tires: #a1a1aa;
-  --cat-fees: #e061ef;
+  --cat-maintenance: #a1a1aa;
+  --cat-tires: #71717a;
+  --cat-fees: #52525b;
   --shadow-color: 0 0 0;
   /* --panel is already #18181b in dark, so the inverted card lifts *up* to
      zinc-800 instead — otherwise it is indistinguishable from a normal panel. */
@@ -200,7 +202,7 @@ a {
   .display {
     font-family: var(--font-sans);
     font-stretch: 76%;
-    font-weight: 750;
+    font-weight: 600;
     letter-spacing: -0.01em;
     line-height: 1.05;
     text-wrap: balance;
@@ -218,7 +220,6 @@ a {
      reads like an odometer. */
   .numeric {
     font-variant-numeric: tabular-nums slashed-zero;
-    letter-spacing: -0.01em;
   }
 
   /* ── Brand motifs ─────────────────────────────────────────────────────────
@@ -243,12 +244,16 @@ a {
     height: 8px;
   }
 
-  /* Marketing section eyebrow: red slashes + small caps. App page headers
-   don't use it — the title already says where you are. */
+  /* Marketing section eyebrow: red slashes + a sentence-case label. The red
+   stays on the slashes so the label doesn't compete with the one CTA. App page
+   headers don't use it — the title already says where you are. */
   .eyebrow {
     font-family: var(--font-sans);
-    @apply flex items-center gap-3 text-xs font-semibold uppercase;
-    letter-spacing: 0.08em;
+    @apply flex items-center gap-3 text-sm font-medium;
+    color: var(--fg-soft);
+  }
+
+  .eyebrow .slash-rule {
     color: var(--accent);
   }
 
@@ -279,35 +284,6 @@ a {
   .nav-link:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 4px;
-  }
-
-  /* Blueprint grid, masked to fade out. Replaces the blurred-blob backdrops. */
-  .grid-backdrop {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(to right, var(--line) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--line) 1px, transparent 1px);
-    background-size: 72px 72px;
-    opacity: 0.5;
-    -webkit-mask-image: radial-gradient(
-      ellipse 80% 60% at 50% 0%,
-      #000 20%,
-      transparent 75%
-    );
-    mask-image: radial-gradient(
-      ellipse 80% 60% at 50% 0%,
-      #000 20%,
-      transparent 75%
-    );
-    pointer-events: none;
-  }
-
-  /* A single red bloom, like a tail light. Marketing only. */
-  .accent-glow {
-    position: absolute;
-    background: radial-gradient(circle, var(--accent-soft) 0%, transparent 65%);
-    pointer-events: none;
   }
 
   /* Skewed tick, echoing the speed-mark. Neutral by default; tint it with a

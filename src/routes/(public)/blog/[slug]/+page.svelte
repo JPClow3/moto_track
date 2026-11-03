@@ -45,9 +45,6 @@
 
 <!-- ── ARTICLE HEADER ──────────────────────────────────────── -->
 <section class="relative overflow-hidden border-b border-[var(--line)]">
-  <div class="grid-backdrop" aria-hidden="true"></div>
-  <div class="accent-glow header-glow" aria-hidden="true"></div>
-
   <div class="relative mx-auto max-w-3xl px-4 py-14 sm:px-6 sm:py-16">
     <a
       class="focus-ring label-tech inline-flex min-h-11 items-center gap-2 rounded text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
@@ -128,7 +125,6 @@
   <div
     class="relative overflow-hidden rounded-panel bg-[var(--panel-invert)] p-6 text-paper sm:p-8"
   >
-    <div class="corner-slashes" aria-hidden="true"></div>
     <div class="relative sm:flex sm:items-center sm:justify-between sm:gap-8">
       <div>
         <h2 class="display text-3xl">
@@ -271,28 +267,6 @@
 {/if}
 
 <style>
-  .header-glow {
-    top: -70%;
-    right: 0%;
-    width: 50%;
-    height: 150%;
-  }
-
-  .corner-slashes {
-    position: absolute;
-    top: -10px;
-    right: -30px;
-    width: 160px;
-    height: 90px;
-    pointer-events: none;
-    opacity: 0.18;
-    background: repeating-linear-gradient(
-      100deg,
-      var(--accent) 0 6px,
-      transparent 6px 16px
-    );
-  }
-
   .card {
     transition: background-color 0.25s;
   }

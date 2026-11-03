@@ -57,7 +57,7 @@
       view: "maintenance",
       icon: Wrench,
       label: "Manutenção",
-      title: "Histórico que acompanha a moto.",
+      title: "Histórico que acompanha a moto",
       body: "Registre peças, serviços e desgaste dos pneus. Um histórico completo que vira valor na hora da revenda.",
       points: [
         "Planos de manutenção por km ou por data",
@@ -69,7 +69,7 @@
       view: "reminders",
       icon: Bell,
       label: "Lembretes",
-      title: "A próxima revisão, à vista.",
+      title: "A próxima revisão, à vista",
       body: "Nunca mais perca uma troca de óleo ou o IPVA. Alertas por quilometragem rodada ou por data.",
       points: [
         "Vencimento por km rodado ou por data",
@@ -140,9 +140,6 @@
          Text and CTAs are static: they are complete on the first painted
          frame. Only the product card moves, and only by translation. -->
     <section class="relative overflow-hidden border-b border-[var(--line)]">
-      <div class="grid-backdrop" aria-hidden="true"></div>
-      <div class="accent-glow hero-glow" aria-hidden="true"></div>
-
       <div
         class="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:gap-16 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_.95fr] lg:py-28"
       >
@@ -156,7 +153,7 @@
             {publicCopy($locale, "Toda a vida da")}
             {publicCopy($locale, "sua moto,")}
             <span class="text-[var(--accent)]"
-              >{publicCopy($locale, "num só painel.")}</span
+              >{publicCopy($locale, "num só painel")}</span
             >
           </h1>
 
@@ -168,10 +165,7 @@
           </p>
 
           <div class="mt-10 flex flex-wrap items-center gap-3">
-            <a
-              class="button-accent px-7 py-3.5 text-base shadow-brand"
-              href="/auth"
-            >
+            <a class="button-accent px-7 py-3.5 text-base" href="/auth">
               {publicCopy($locale, "Começar de graça")}
             </a>
             <a class="button-secondary px-7 py-3.5 text-base" href="/demo"
@@ -466,7 +460,6 @@
           <div
             class="relative flex flex-col overflow-hidden rounded-panel bg-[var(--panel-invert)] p-6 text-paper shadow-lift sm:p-8"
           >
-            <div class="corner-slashes" aria-hidden="true"></div>
             <div class="flex items-center justify-between gap-3">
               <h3 class="display text-3xl">Pro</h3>
               <span
@@ -588,10 +581,9 @@
     <section
       class="relative overflow-hidden bg-ink px-4 py-20 text-paper sm:px-6 sm:py-28"
     >
-      <div class="cta-slashes" aria-hidden="true"></div>
       <div class="relative mx-auto max-w-3xl text-center">
         <h2 class="display text-5xl sm:text-7xl">
-          {publicCopy($locale, "Pronto para acelerar?")}
+          {publicCopy($locale, "Quanto custa o seu próximo quilômetro?")}
         </h2>
         <p class="mx-auto mt-6 max-w-xl text-lg text-paper/70">
           {publicCopy(
@@ -599,10 +591,7 @@
             "Larga a planilha e o caderno. O Moto Track guarda a saúde, o custo e o histórico da sua companheira de estrada.",
           )}
         </p>
-        <a
-          class="button-accent mx-auto mt-10 px-8 py-4 text-base shadow-brand"
-          href="/auth"
-        >
+        <a class="button-accent mx-auto mt-10 px-8 py-4 text-base" href="/auth">
           {publicCopy($locale, "Criar conta agora")}
           <ArrowRight size={20} />
         </a>
@@ -614,40 +603,8 @@
 </div>
 
 <style>
-  /* .slash-rule, .grid-backdrop, .accent-glow and .tick are global brand
+  /* .slash-rule and .tick are global brand
      motifs — see app.css. Only page-specific pieces live here. */
-
-  .hero-glow {
-    top: -30%;
-    right: -10%;
-    width: 55%;
-    height: 90%;
-  }
-
-  .corner-slashes,
-  .cta-slashes {
-    position: absolute;
-    pointer-events: none;
-    background: repeating-linear-gradient(
-      100deg,
-      var(--accent) 0 6px,
-      transparent 6px 16px
-    );
-  }
-  .corner-slashes {
-    top: -10px;
-    right: -30px;
-    width: 160px;
-    height: 90px;
-    opacity: 0.18;
-  }
-  .cta-slashes {
-    top: 0;
-    right: 0;
-    width: 40%;
-    height: 100%;
-    opacity: 0.07;
-  }
 
   .feature {
     transition: background-color 0.25s;
