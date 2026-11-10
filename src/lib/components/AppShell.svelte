@@ -189,12 +189,12 @@
   });
 </script>
 
-<div class="relative min-h-screen bg-[var(--bg)] text-[var(--fg)]">
+<div class="app-shell relative min-h-screen bg-[var(--bg)] text-[var(--fg)]">
   <a href="#main-content" class="skip-link">{$t("a11y.skipToContent")}</a>
 
   <!-- Sidebar (lg and up) -->
   <aside
-    class="fixed inset-y-0 left-0 hidden w-60 flex-col border-r border-[var(--line)] bg-[var(--panel)] px-3 py-4 lg:flex"
+    class="fixed inset-y-0 left-[var(--safe-area-inset-left)] hidden w-60 flex-col border-r border-[var(--line)] bg-[var(--panel)] px-3 pb-[calc(1rem+var(--safe-area-inset-bottom))] pt-[calc(1rem+var(--safe-area-inset-top))] lg:flex"
   >
     <a
       href="/dashboard"
@@ -282,7 +282,7 @@
   <!-- Main area -->
   <div class="flex min-h-screen flex-col lg:pl-60">
     <header
-      class="sticky top-0 z-20 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur-md"
+      class="sticky top-0 z-20 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] pt-[var(--safe-area-inset-top)] backdrop-blur-md"
     >
       <div
         class="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 py-1.5 sm:px-6 lg:px-8"
@@ -521,7 +521,8 @@
     background: color-mix(in srgb, var(--panel) 96%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-inline: var(--safe-area-inset-left) var(--safe-area-inset-right);
+    padding-bottom: var(--safe-area-inset-bottom);
   }
 
   .bar-item {
@@ -593,12 +594,12 @@
   }
 
   .app-main {
-    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(5.5rem + var(--safe-area-inset-bottom));
   }
 
   @media (min-width: 1024px) {
     .app-main {
-      padding-bottom: 2rem;
+      padding-bottom: calc(2rem + var(--safe-area-inset-bottom));
     }
   }
 </style>

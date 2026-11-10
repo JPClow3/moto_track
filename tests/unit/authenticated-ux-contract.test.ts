@@ -211,6 +211,28 @@ describe("authenticated UX primitives contract", () => {
       props: { data: mockData as never, form: null },
     });
 
+    // Every simultaneously mounted sheet must name its own heading, including
+    // closed edit/import dialogs that share the same rendered document.
+    const sheets = [
+      ...body.matchAll(
+        /<dialog\b[^>]*aria-labelledby="([^"]+)"[^>]*>([\s\S]*?)<\/dialog>/g,
+      ),
+    ];
+    const titleIds = sheets.map((sheet) => sheet[1]);
+    expect(titleIds.length).toBeGreaterThan(1);
+    expect(new Set(titleIds).size).toBe(titleIds.length);
+    for (const [, titleId, content] of sheets) {
+      expect(content).toContain(`id="${titleId}"`);
+    }
+    const rerendered = render(module!.default, {
+      props: { data: mockData as never, form: null },
+    }).body;
+    expect(
+      [...rerendered.matchAll(/<dialog\b[^>]*aria-labelledby="([^"]+)"/g)].map(
+        (match) => match[1],
+      ),
+    ).toEqual(titleIds);
+
     expect(body).toContain("<dialog");
     // Scan and repeat are shortcuts inside the one form, not a chooser.
     expect(body).toContain("Escanear comprovante");

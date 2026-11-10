@@ -65,8 +65,20 @@
   });
 </script>
 
+{#if open}
+  <!-- Keep the viewport backdrop outside the filtered header: backdrop-filter
+       would otherwise constrain this fixed element to the header's box. -->
+  <button
+    type="button"
+    class="fixed inset-0 z-40 cursor-default border-0 bg-black/40 backdrop-blur-sm md:hidden"
+    onclick={closeMenu}
+    aria-hidden="true"
+    tabindex="-1"
+  ></button>
+{/if}
+
 <header
-  class="bg-[var(--bg)]/80 sticky top-0 z-50 border-b border-[var(--line)] backdrop-blur-md"
+  class="sticky top-0 z-50 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_80%,transparent)] pt-[var(--safe-area-inset-top)] backdrop-blur-md"
 >
   <nav
     class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4"
@@ -133,15 +145,6 @@
   </nav>
 
   {#if open}
-    <!-- Click-away backdrop: not keyboard reachable and redundant with the
-         toggle + Escape, so it stays out of the accessibility tree. -->
-    <button
-      type="button"
-      class="fixed inset-0 top-[65px] z-40 cursor-default border-0 bg-black/40 backdrop-blur-sm md:hidden"
-      onclick={closeMenu}
-      aria-hidden="true"
-      tabindex="-1"
-    ></button>
     <div
       id="mobile-nav"
       class="relative z-50 border-t border-[var(--line)] bg-[var(--bg)] px-6 py-1 shadow-lift md:hidden"

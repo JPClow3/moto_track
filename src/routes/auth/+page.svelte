@@ -34,7 +34,7 @@
 <svelte:head><title>{$t("auth.signIn")} · Moto Track</title></svelte:head>
 
 <div
-  class="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12"
+  class="page-shell relative flex items-center justify-center overflow-hidden px-4 py-12"
 >
   <div class="relative w-full max-w-[440px]">
     <div class="mb-8 text-center">

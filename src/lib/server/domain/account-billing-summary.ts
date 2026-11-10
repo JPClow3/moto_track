@@ -63,6 +63,7 @@ export async function fetchAccountBillingSummary(
     const environment = billingEnvironment(platform);
     const subscription = await dodoClient(platform).subscriptions.retrieve(
       String(profile.billing_subscription_id),
+      undefined,
       { timeout: 3000, maxRetries: 0 },
     );
     if (!intervalForProduct(subscription.product_id, platform)) return null;

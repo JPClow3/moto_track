@@ -54,7 +54,7 @@
   }
 
   [data-tone="overdue"] {
-    color: var(--accent);
+    color: var(--accent-on-soft);
     background: var(--accent-soft);
   }
 

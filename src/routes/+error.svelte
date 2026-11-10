@@ -18,7 +18,7 @@
 </svelte:head>
 
 <main
-  class="relative grid min-h-screen place-items-center overflow-hidden px-6 py-24"
+  class="page-shell relative grid place-items-center overflow-hidden px-6 py-24"
 >
   <div class="relative mx-auto max-w-lg text-center">
     <a

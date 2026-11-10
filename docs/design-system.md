@@ -14,7 +14,7 @@ live in `src/app.css`; Tailwind maps role colours to the same CSS variables.
 | Destructive confirm                              | `.button-danger-solid`                                         | Only the final confirm inside a dialog  |
 | Focus                                            | `--focus` ink outline (`.focus-ring`)                          | Never red                               |
 | Invalid field                                    | `--danger` border                                              | Via `:user-invalid`                     |
-| Overdue / critical                               | `--accent`, `--accent-soft`                                    | The only red in the signed-in app body  |
+| Overdue / critical                               | `--accent`, `--accent-soft`, `--accent-on-soft`                | The only red in the signed-in app body  |
 | Due soon                                         | `--warning`, `--warning-soft`                                  |                                         |
 | OK / done / healthy                              | `--success`, `--success-soft`                                  |                                         |
 | Neutral information                              | `--info`, `--info-soft`                                        |                                         |
@@ -23,6 +23,10 @@ live in `src/app.css`; Tailwind maps role colours to the same CSS variables.
 `danger`, `success`, `warning` and `info` Tailwind colours resolve to CSS
 variables, so opacity modifiers like `bg-danger/10` produce nothing. Use the
 `-soft` tokens instead: `bg-[var(--danger-soft)]`.
+
+Overdue badges use `--accent-on-soft` for text on `--accent-soft`, so small
+status labels clear 4.5:1 contrast in both themes. Marketing fills continue
+to use `--accent-solid`.
 
 Active navigation, empty states, decorative icons and table headers are neutral
 (ink / muted / `--accent-wash`, which is now a neutral wash).
@@ -75,3 +79,9 @@ as the small `.slash-rule` in an eyebrow.
 - Numeric inputs: decimals use `type="text" inputmode="decimal"` and are parsed
   server-side with `parseLocalizedNumber` / `parseFormNumber` (accepts
   `4,59`). Integers (km, year, days) keep `type="number" inputmode="numeric"`.
+- Safe areas: `--safe-area-inset-*` tokens resolve the viewport's four `env()`
+  insets. The document protects normal-flow content at the sides and bottom;
+  fixed navigation, sidebars and top-layer dialogs apply their own insets.
+  Headers reserve the top inset. Keep these tokens when adding a fixed surface.
+  Full-height public, authentication and error layouts use `.page-shell`, which
+  subtracts the document's bottom inset from the small viewport height.

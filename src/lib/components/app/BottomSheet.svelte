@@ -99,7 +99,8 @@
     border-top-left-radius: 12px;
     border-top-right-radius: 12px;
     box-shadow: 0 -8px 32px rgb(var(--shadow-color) / 0.3);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-inline: var(--safe-area-inset-left) var(--safe-area-inset-right);
+    padding-bottom: var(--safe-area-inset-bottom);
     animation: sheet-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
