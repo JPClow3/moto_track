@@ -599,7 +599,7 @@
 
   @media (min-width: 1024px) {
     .app-main {
-      padding-bottom: 2rem;
+      padding-bottom: calc(2rem + var(--safe-area-inset-bottom));
     }
   }
 </style>
