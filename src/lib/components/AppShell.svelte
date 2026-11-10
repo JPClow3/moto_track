@@ -282,7 +282,7 @@
   <!-- Main area -->
   <div class="flex min-h-screen flex-col lg:pl-60">
     <header
-      class="sticky top-0 z-20 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur-md"
+      class="sticky top-0 z-20 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] pt-[env(safe-area-inset-top)] backdrop-blur-md"
     >
       <div
         class="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 py-1.5 sm:px-6 lg:px-8"

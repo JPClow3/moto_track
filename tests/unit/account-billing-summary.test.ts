@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Subscription } from "dodopayments/resources/subscriptions";
-import { verifiedAccountBillingSummary } from "$server/domain/account-billing-summary";
+import {
+  fetchAccountBillingSummary,
+  verifiedAccountBillingSummary,
+} from "$server/domain/account-billing-summary";
 import { isoTimestampValue } from "$server/domain/date-value";
+
+vi.mock("$env/dynamic/private", () => ({ env: {} }));
+vi.mock("$env/dynamic/public", () => ({ env: {} }));
 
 const due = "2026-10-07T10:28:13.113Z";
 const profile = {
@@ -28,6 +34,73 @@ const subscription = {
   quantity: 1,
 } as unknown as Subscription;
 const now = Date.parse("2026-09-30T12:00:00Z");
+
+const platform = {
+  env: {
+    DODO_PAYMENTS_API_KEY: "test_billing_summary_key",
+    DODO_PAYMENTS_ENVIRONMENT: "live_mode",
+    DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_monthly",
+    DODO_PRO_YEARLY_PRODUCT_ID: "pdt_yearly",
+  },
+} as unknown as App.Platform;
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
+
+describe("account billing provider resilience", () => {
+  it("fetches the verified summary without leaking request options into the query", async () => {
+    const request = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(Response.json(subscription));
+
+    await expect(
+      fetchAccountBillingSummary(profile, "owner", platform),
+    ).resolves.toEqual({ trialEndsAt: null, nextBillingAt: due });
+
+    const [input] = request.mock.calls[0];
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    expect(url.pathname).toBe("/subscriptions/sub_owner");
+    expect(url.search).toBe("");
+  });
+
+  it("falls back after one failed attempt instead of delaying settings with retries", async () => {
+    vi.useFakeTimers();
+    const request = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new TypeError("Provider unavailable"));
+
+    const result = fetchAccountBillingSummary(profile, "owner", platform);
+    await vi.runAllTimersAsync();
+
+    await expect(result).resolves.toBeNull();
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts a stalled provider after three seconds and returns the fallback", async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | null | undefined;
+    const request = vi.spyOn(globalThis, "fetch").mockImplementation(
+      (_input, options) =>
+        new Promise((_resolve, reject) => {
+          signal = options?.signal;
+          signal?.addEventListener("abort", () =>
+            reject(new DOMException("Request aborted", "AbortError")),
+          );
+        }),
+    );
+
+    const result = fetchAccountBillingSummary(profile, "owner", platform);
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    await expect(result).resolves.toBeNull();
+    expect(signal?.aborted).toBe(true);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("account billing presentation", () => {
   it("normalizes Postgres Date and ISO timestamps without weekday truncation", () => {

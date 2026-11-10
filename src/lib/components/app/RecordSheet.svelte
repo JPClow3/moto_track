@@ -1,23 +1,28 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, type Snippet } from "svelte";
   import X from "lucide-svelte/icons/x";
   import { t } from "$lib/i18n/store";
 
-  // Module-level counter so each RecordSheet instance gets a unique title ID.
-  // This prevents the duplicate-ID bug that occurs when FeaturePage mounts both
-  // a create sheet and an edit sheet: both previously used id="record-sheet-title",
-  // which made aria-labelledby point to whichever appeared first in the DOM.
-  let _uid = 0;
-  function nextUid() {
-    return ++_uid;
-  }
-
-  export let title: string;
-  export let description = "";
-  export let closeLabel = "";
-  export let dismissible = true;
-  /** Override the generated ID if you need to reference it externally. */
-  export let titleId = `record-sheet-title-${nextUid()}`;
+  // Unique within the rendered tree and stable across SSR and hydration.
+  const uid = $props.id();
+  let {
+    title,
+    description = "",
+    closeLabel = "",
+    dismissible = true,
+    titleId = `record-sheet-title-${uid}`,
+    children,
+    footer,
+  }: {
+    title: string;
+    description?: string;
+    closeLabel?: string;
+    dismissible?: boolean;
+    /** Override the generated ID if you need to reference it externally. */
+    titleId?: string;
+    children?: Snippet;
+    footer?: Snippet;
+  } = $props();
 
   const dispatch = createEventDispatcher<{
     close: { reason: string };
@@ -69,9 +74,9 @@
   bind:this={dialog}
   class="record-sheet"
   aria-labelledby={titleId}
-  on:close={handleClose}
-  on:cancel={handleCancel}
-  on:click={onBackdropClick}
+  onclose={handleClose}
+  oncancel={handleCancel}
+  onclick={onBackdropClick}
 >
   <section class="record-sheet-panel" aria-labelledby={titleId}>
     <header class="record-sheet-header">
@@ -86,7 +91,7 @@
           type="button"
           class="focus-ring -mr-2 flex h-11 w-11 items-center justify-center rounded text-[var(--muted)] hover:text-[var(--fg)]"
           aria-label={closeLabel || $t("common.close")}
-          on:click={() => close("close-button")}
+          onclick={() => close("close-button")}
         >
           <X size={20} aria-hidden="true" />
         </button>
@@ -99,12 +104,12 @@
     </header>
 
     <div class="record-sheet-body">
-      <slot />
+      {@render children?.()}
     </div>
 
-    {#if $$slots.footer}
+    {#if footer}
       <footer class="record-sheet-footer">
-        <slot name="footer" />
+        {@render footer()}
       </footer>
     {/if}
   </section>

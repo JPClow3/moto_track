@@ -48,6 +48,8 @@
   --accent-contrast: #ffffff;
   /* Red at low alpha, for tints behind overdue / critical states only. */
   --accent-soft: rgba(220, 38, 38, 0.08);
+  /* Text on the tinted status surface needs more contrast than bare marks. */
+  --accent-on-soft: #b91c1c;
   --accent-ring: rgba(220, 38, 38, 0.25);
   /* Destructive actions. Darker than the brand red so a delete control never
      reads as the same thing as a brand mark or an "add" button. */
@@ -113,6 +115,7 @@
   --accent-solid-hover: #b91c1c;
   --accent-contrast: #ffffff;
   --accent-soft: rgba(239, 68, 68, 0.12);
+  --accent-on-soft: #f87171;
   --accent-ring: rgba(239, 68, 68, 0.35);
   --danger: #f87171;
   --danger-hover: #fca5a5;
