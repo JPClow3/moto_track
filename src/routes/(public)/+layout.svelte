@@ -21,7 +21,7 @@
   />
 </svelte:head>
 
-<div class="flex min-h-screen flex-col">
+<div class="page-shell flex flex-col">
   <a class="skip-link" href="#main-content">{$t("a11y.skipToContent")}</a>
   <PublicHeader />
   <main id="main-content" class="flex-1" tabindex="-1">

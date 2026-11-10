@@ -194,6 +194,26 @@ test.describe("public responsive foundation", () => {
       page.locator('#auth-sign-in input[name="redirectTo"]').first(),
     ).toHaveValue("/billing/checkout");
   });
+
+  test("a short public page reserves its bottom inset before scrolling", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 3000 });
+    await page.goto("/suporte");
+    await waitForAppReady(page);
+    await page.addStyleTag({
+      content: ":root { --safe-area-inset-bottom: 34px; }",
+    });
+
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    const footerBottom = await page
+      .locator("footer")
+      .evaluate((footer) => footer.getBoundingClientRect().bottom);
+    expect(footerBottom).toBeLessThanOrEqual(3000 - 34 + 1);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollHeight),
+    ).toBeLessThanOrEqual(3001);
+  });
 });
 
 for (const colorScheme of ["light", "dark"] as const) {

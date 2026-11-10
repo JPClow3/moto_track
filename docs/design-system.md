@@ -83,3 +83,5 @@ as the small `.slash-rule` in an eyebrow.
   insets. The document protects normal-flow content at the sides and bottom;
   fixed navigation, sidebars and top-layer dialogs apply their own insets.
   Headers reserve the top inset. Keep these tokens when adding a fixed surface.
+  Full-height public, authentication and error layouts use `.page-shell`, which
+  subtracts the document's bottom inset from the small viewport height.

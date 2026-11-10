@@ -190,7 +190,7 @@ html {
 }
 
 body {
-  min-height: 100vh;
+  min-height: 100svh;
   margin: 0;
   padding-inline: var(--safe-area-inset-left) var(--safe-area-inset-right);
   padding-bottom: var(--safe-area-inset-bottom);
@@ -199,6 +199,11 @@ body {
 /* The app already reserves space for its fixed navigation and bottom inset. */
 body:has(.app-shell) {
   padding-bottom: 0;
+}
+
+/* Leave room for the document's bottom inset even before a short page scrolls. */
+.page-shell {
+  min-height: calc(100svh - var(--safe-area-inset-bottom));
 }
 
 a {
