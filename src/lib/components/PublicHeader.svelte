@@ -78,7 +78,7 @@
 {/if}
 
 <header
-  class="sticky top-0 z-50 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_80%,transparent)] pt-[env(safe-area-inset-top)] backdrop-blur-md"
+  class="sticky top-0 z-50 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_80%,transparent)] pt-[var(--safe-area-inset-top)] backdrop-blur-md"
 >
   <nav
     class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4"

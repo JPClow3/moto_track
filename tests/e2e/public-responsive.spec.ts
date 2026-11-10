@@ -103,6 +103,63 @@ test.describe("public responsive foundation", () => {
     }
   });
 
+  test("public controls stay inside portrait and landscape safe areas", async ({
+    page,
+  }) => {
+    for (const insets of [
+      { width: 375, height: 812, top: 24, right: 0, bottom: 34, left: 0 },
+      { width: 667, height: 375, top: 0, right: 44, bottom: 21, left: 44 },
+    ]) {
+      await page.setViewportSize(insets);
+      await page.goto("/roadmap");
+      await waitForAppReady(page);
+      // Browser emulation does not expose physical notch insets. Override the
+      // env-backed tokens to verify the layout's response to non-zero values.
+      await page.addStyleTag({
+        content: `:root {
+          --safe-area-inset-top: ${insets.top}px;
+          --safe-area-inset-right: ${insets.right}px;
+          --safe-area-inset-bottom: ${insets.bottom}px;
+          --safe-area-inset-left: ${insets.left}px;
+        }`,
+      });
+
+      const controls = await page
+        .locator("header a:visible, header button:visible, footer a:visible")
+        .evaluateAll((elements) =>
+          elements.map((element) => {
+            const box = element.getBoundingClientRect();
+            return { left: box.left, right: box.right };
+          }),
+        );
+      for (const control of controls) {
+        expect(control.left).toBeGreaterThanOrEqual(insets.left);
+        expect(control.right).toBeLessThanOrEqual(insets.width - insets.right);
+      }
+      const firstHeaderLink = await page
+        .locator("header a")
+        .first()
+        .boundingBox();
+      expect(firstHeaderLink!.y).toBeGreaterThanOrEqual(insets.top);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth + 1,
+        ),
+      ).toBe(true);
+
+      await page.evaluate(() =>
+        window.scrollTo(0, document.documentElement.scrollHeight),
+      );
+      await expect
+        .poll(() =>
+          page
+            .locator("footer")
+            .evaluate((footer) => footer.getBoundingClientRect().bottom),
+        )
+        .toBeLessThanOrEqual(insets.height - insets.bottom + 1);
+    }
+  });
+
   test("signup preserves checkout intent and auth feedback is announced", async ({
     page,
   }) => {

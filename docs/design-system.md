@@ -79,3 +79,7 @@ as the small `.slash-rule` in an eyebrow.
 - Numeric inputs: decimals use `type="text" inputmode="decimal"` and are parsed
   server-side with `parseLocalizedNumber` / `parseFormNumber` (accepts
   `4,59`). Integers (km, year, days) keep `type="number" inputmode="numeric"`.
+- Safe areas: `--safe-area-inset-*` tokens resolve the viewport's four `env()`
+  insets. The document protects normal-flow content at the sides and bottom;
+  fixed navigation, sidebars and top-layer dialogs apply their own insets.
+  Headers reserve the top inset. Keep these tokens when adding a fixed surface.
